@@ -1,4 +1,5 @@
 export const metadata = {
+  title: "Пульт оператора",
   robots: { index: false, follow: false },
 };
 

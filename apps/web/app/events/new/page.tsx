@@ -9,14 +9,14 @@ import { moscowToday } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 
 const STEPS = [
-  { id: "what", q: "Что за вечер?", hint: "Формат, не смета. Смету придумает сервер, если доживём.", unknown: false },
-  { id: "when", q: "Когда и в каком городе?", hint: "Без даты покажем красивых, но занятых. Скучно.", unknown: false },
-  { id: "guests", q: "Сколько человек влезает?", hint: "Нужно залу и райдеру. На цену в этом окне не влияет — честно.", unknown: false },
-  { id: "artist", q: "Кто на сцене?", hint: "Не знаете жанр — так и скажите. Это не экзамен.", unknown: true },
-  { id: "venue", q: "Крыша уже есть?", hint: "Можно оставить дыру. Залать потом.", unknown: true },
-  { id: "tech", q: "Что с колонками?", hint: "Черновик. Договором это станет позже, если вообще.", unknown: true },
-  { id: "budget", q: "Потолок, если есть", hint: "Ориентир человеку. Не счёт и не обещание.", unknown: true },
-  { id: "check", q: "Ещё не поздно сбежать", hint: "Дальше можно звать предложения. Цифра приедет с номером.", unknown: false },
+  { id: "what", q: "Формат события", hint: "Выберите базовый сценарий — детали можно изменить позже.", unknown: false },
+  { id: "when", q: "Дата и город", hint: "По этим данным каталог проверит доступные слоты.", unknown: false },
+  { id: "guests", q: "Количество гостей", hint: "Нужно для подбора формата площадки и требований райдера.", unknown: false },
+  { id: "artist", q: "Артист", hint: "Выберите направление или оставьте пункт для уточнения оператором.", unknown: true },
+  { id: "venue", q: "Площадка", hint: "Укажите, есть ли площадка или её нужно подобрать.", unknown: true },
+  { id: "tech", q: "Технические условия", hint: "Отметьте текущее состояние — точный райдер согласуется в Deal Room.", unknown: true },
+  { id: "budget", q: "Бюджет", hint: "Диапазон помогает отфильтровать варианты, но не рассчитывает итоговую цену.", unknown: true },
+  { id: "check", q: "Проверка заявки", hint: "Проверьте данные перед отправкой. Итоговая сумма появится только в серверном предложении.", unknown: false },
 ] as const;
 
 type Draft = {
@@ -52,10 +52,13 @@ export default function NewEventPage() {
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [roofName, setRoofName] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "offline">("saved");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [online, setOnline] = useState(true);
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(DRAFT_KEY);
+      const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as {
           draft?: Draft;
@@ -87,6 +90,21 @@ export default function NewEventPage() {
   }, []);
 
   useEffect(() => {
+    const sync = () => {
+      const nextOnline = navigator.onLine;
+      setOnline(nextOnline);
+      setSaveStatus(nextOnline ? "saved" : "offline");
+    };
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
+
+  useEffect(() => {
     document.querySelector<HTMLButtonElement>(".steps button.active")?.scrollIntoView({
       inline: "center",
       block: "nearest",
@@ -96,7 +114,12 @@ export default function NewEventPage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, unknown, step, roofName }));
+    setSaveStatus(navigator.onLine ? "saving" : "offline");
+    const timer = window.setTimeout(() => {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, unknown, step, roofName, savedAt: new Date().toISOString() }));
+      setSaveStatus(navigator.onLine ? "saved" : "offline");
+    }, 450);
+    return () => window.clearTimeout(timer);
   }, [draft, unknown, step, roofName, hydrated]);
 
   const preview = useMemo(() => {
@@ -160,7 +183,7 @@ export default function NewEventPage() {
         }),
       });
       router.push("/cabinet");
-      sessionStorage.removeItem(DRAFT_KEY);
+      localStorage.removeItem(DRAFT_KEY);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось сохранить");
     } finally {
@@ -169,13 +192,19 @@ export default function NewEventPage() {
   }
 
   const s = STEPS[step];
+  const saveLabel = !online || saveStatus === "offline" ? "Без сети · сохранено на устройстве" : saveStatus === "saving" ? "Сохраняем…" : "Сохранено автоматически";
 
   return (
     <main>
-      <p className="kicker">Восемь шагов. Без 3D-шара и срочности «на вчера».</p>
-      <h1>Собрать вечер</h1>
-      <p className="timeline">Цена здесь не считается. Можете выдохнуть: калькулятор мы спрятали специально.</p>
-      <div className="steps" role="tablist" aria-label="Шаги вечера">
+      <div className="page-heading-row">
+        <div>
+          <p className="kicker">Event Studio · 8 шагов</p>
+          <h1>Новая заявка</h1>
+        </div>
+        <span className={`save-indicator ${saveStatus}`} role="status">{saveLabel}</span>
+      </div>
+      <p className="timeline">Здесь формируется черновик события. Итоговая цена на этом экране не рассчитывается.</p>
+      <div className="steps" role="tablist" aria-label="Шаги заявки">
         {STEPS.map((item, i) => (
           <button
             key={item.id}
@@ -191,6 +220,22 @@ export default function NewEventPage() {
       <p className="timeline">
         Шаг {step + 1} из {STEPS.length}
       </p>
+      <button
+        type="button"
+        className="preview-toggle secondary"
+        aria-expanded={previewOpen}
+        onClick={() => setPreviewOpen((value) => !value)}
+      >
+        <span>Превью события</span>
+        <span>{previewOpen ? "Скрыть" : "Показать"}</span>
+      </button>
+      {previewOpen ? (
+        <aside className="card tint mobile-preview">
+          <h2>Превью события</h2>
+          <p>{preview}</p>
+          <p className="timeline">Черновик сохраняется автоматически. Итоговые условия поступят с сервера.</p>
+        </aside>
+      ) : null}
       <div className="wizard">
         <section className="card">
           <h2>{s.q}</h2>
@@ -213,7 +258,7 @@ export default function NewEventPage() {
                 Или своими словами
                 <input
                   value={["Свадьба", "Корпоратив", "День рождения", "Клубная ночь"].includes(draft.what) ? "" : draft.what}
-                  placeholder="выпускной, презентация, поминки по Excel"
+                  placeholder="Например, выпускной или презентация"
                   onChange={(e) => set("what", e.target.value)}
                 />
               </label>
@@ -231,7 +276,7 @@ export default function NewEventPage() {
                   onChange={(e) => set("date", e.target.value)}
                 />
               </label>
-              <p className="timeline">Как в Москве. Каталог тоже считает сутки по МСК, не по Гринвичу. Пилот выдачи — Москва.</p>
+              <p className="timeline">Время указывается по Москве. Пилотный каталог сейчас работает по Москве.</p>
             </>
           )}
           {s.id === "guests" && (
@@ -252,7 +297,7 @@ export default function NewEventPage() {
                 ["dj", "DJ"],
                 ["host", "Ведущий"],
                 ["cover", "Кавер"],
-                ["unknown", "Сюрприз"],
+                ["unknown", "Помочь с выбором"],
               ].map(([val, label]) => (
                 <button
                   key={val}
@@ -321,7 +366,7 @@ export default function NewEventPage() {
             />
           )}
           {s.id === "check" && (
-            <p>Если всё похоже на правду — сохраняем. Цифра с номером приедет в гримёрку, не в этот экран.</p>
+            <p>После отправки заявка появится в кабинете. Серверное предложение с quote_id будет показано в Deal Room.</p>
           )}
           {s.unknown ? (
             <label className="unknown">
@@ -336,10 +381,10 @@ export default function NewEventPage() {
                   }
                 }}
               />
-              Пока туман
+              Пока не знаю
             </label>
           ) : null}
-          {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
+          {error ? <div className="validation-summary" role="alert"><strong>Проверьте этот шаг</strong><p>{error}</p></div> : null}
           <p className="wizard-actions">
             <button type="button" className="secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>
               Назад
@@ -349,19 +394,19 @@ export default function NewEventPage() {
                 type="button"
                 onClick={() => {
                   if (s.id === "what" && !draft.what.trim()) {
-                    setError("Хоть свадьба, хоть поминки по Excel — без названия это не вечер.");
+                    setError("Укажите формат события.");
                     return;
                   }
                   if (s.id === "when" && !draft.date) {
-                    setError("Без даты это экскурсия по красивым, а не бронь.");
+                    setError("Укажите дату и время события.");
                     return;
                   }
                   if (s.id === "when" && draft.date.slice(0, 10) < moscowToday()) {
-                    setError("Вчерашнюю дату календарь не воскрешает.");
+                    setError("Выберите текущую или будущую дату.");
                     return;
                   }
                   if (s.id === "guests" && (!Number(draft.guests) || Number(draft.guests) < 1)) {
-                    setError("Хотя бы один живой, иначе это репетиция без зала.");
+                    setError("Укажите количество гостей больше нуля.");
                     return;
                   }
                   setError("");
@@ -377,12 +422,12 @@ export default function NewEventPage() {
             )}
           </p>
         </section>
-        <aside className="card tint">
-          <h2>Что уже нацарапали</h2>
+        <aside className="card tint desktop-preview">
+          <h2>Превью события</h2>
           <p>{preview}</p>
-          <p className="timeline">Черновик. Юридической силы — как у салфетки, пока нет серверного предложения.</p>
+          <p className="timeline">Черновик сохраняется автоматически. Итоговые условия поступят с сервера.</p>
           <p>
-            <span className="chip wait">«на вчера» — в следующей жизни</span>
+            <span className="chip wait">Срочный поиск пока недоступен</span>
           </p>
         </aside>
       </div>

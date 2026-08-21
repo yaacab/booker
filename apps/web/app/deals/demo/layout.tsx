@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Гримёрка (демо)",
+  title: "Deal Room (демо)",
   alternates: { canonical: "/deals/demo" },
 };
 

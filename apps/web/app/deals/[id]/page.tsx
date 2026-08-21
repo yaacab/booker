@@ -41,10 +41,10 @@ type Room = {
 };
 
 function ackLabel(q: Room["quote"]): string {
-  if (q.customer_ack && q.supplier_ack) return "оба кивнули";
-  if (q.customer_ack) return "кивнул только заказчик";
-  if (q.supplier_ack) return "кивнул только исполнитель";
-  return "ещё торгуются";
+  if (q.customer_ack && q.supplier_ack) return "подтверждено обеими сторонами";
+  if (q.customer_ack) return "подтвердил только заказчик";
+  if (q.supplier_ack) return "подтвердил только исполнитель";
+  return "ожидает подтверждений";
 }
 
 export default function DealPage() {
@@ -71,8 +71,22 @@ export default function DealPage() {
   }, [params.id]);
 
   useEffect(() => {
-    if (room?.event_title) document.title = `${room.event_title} · Гримёрка · Букер`;
+    if (room?.event_title) document.title = `${room.event_title} · Deal Room · Букер`;
   }, [room?.event_title]);
+
+  useEffect(() => {
+    if (!quoteOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setQuoteOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [quoteOpen]);
 
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -89,7 +103,7 @@ export default function DealPage() {
   if (!room) {
     return (
       <main>
-        <h1>Гримёрка</h1>
+        <h1>Deal Room</h1>
         {error ? <p>{error}</p> : <div className="skeleton" style={{ minHeight: 220 }} />}
       </main>
     );
@@ -152,7 +166,7 @@ export default function DealPage() {
       <p>
         <strong>итого {money(room.quote.total_rub)}</strong>
       </p>
-      <p className="timeline">{room.quote.source || "Цифру собрал сервер. Не Excel и не настроение."}</p>
+      <p className="timeline">{room.quote.source || "Сумма получена с сервера и связана с этой версией предложения."}</p>
       <p>
         <span className="chip wait">{ackLabel(room.quote)}</span>
       </p>
@@ -184,7 +198,7 @@ export default function DealPage() {
         <p className="mono">
           {room.booking_id} · {STATUS_LABEL[room.status] || room.status}
         </p>
-        <h1>{room.event_title || "Гримёрка сделки"}</h1>
+        <h1>{room.event_title || "Deal Room"}</h1>
         <p>Вы {side === "customer" ? "заказчик" : "исполнитель"}. {room.next_step}</p>
         {people.length ? (
           <p className="deal-rail-mobile timeline">
@@ -217,7 +231,7 @@ export default function DealPage() {
                 )
               }
             >
-              Кивнуть условиям
+              Подтвердить условия
             </button>
             <button type="button" className="secondary" onClick={() => void act(() => api(`/bookings/${room.booking_id}/hold`, { method: "POST" }))}>
               Удержать дату
@@ -288,7 +302,7 @@ export default function DealPage() {
           {tab === "chat" && (
             <section className="card">
               {room.messages.length === 0 ? (
-                <p className="timeline">Пока тихо. Цифра справа, человек — кнопкой ниже.</p>
+                <p className="timeline">Сообщений пока нет. Условия предложения доступны справа.</p>
               ) : null}
               {room.messages.map((m) => (
                 <div key={m.id} className={`msg ${m.kind === "system" ? "system" : m.kind === "operator" ? "operator" : "chat"}`}>
@@ -315,7 +329,7 @@ export default function DealPage() {
                 <input
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="В гримёрку, не в вотсап"
+                  placeholder="Напишите сообщение участникам сделки"
                   disabled={busy}
                 />
                 <button type="submit" disabled={busy || !message.trim()}>
@@ -330,7 +344,7 @@ export default function DealPage() {
                     window.location.href = "mailto:hello@bukergo.ru?subject=Оператор%20Deal%20Room";
                   }}
                 >
-                  Позвать человека
+                  Связаться с оператором
                 </button>
               </p>
             </section>
@@ -338,10 +352,10 @@ export default function DealPage() {
           {tab === "terms" && (
             <section className="card">
               <p>
-                Заказчик: {room.quote.customer_ack ? "кивнул" : "ещё думает"}. Исполнитель:{" "}
-                {room.quote.supplier_ack ? "кивнул" : "ещё думает"}.
+                Заказчик: {room.quote.customer_ack ? "подтвердил" : "ожидается подтверждение"}. Исполнитель:{" "}
+                {room.quote.supplier_ack ? "подтвердил" : "ожидается подтверждение"}.
               </p>
-              <p>{ackLabel(room.quote)}. Один «ок» в чате — просто шум.</p>
+              <p>{ackLabel(room.quote)}. Сообщение в чате не заменяет подтверждение актуальной версии.</p>
             </section>
           )}
           {tab === "documents" && (
@@ -357,6 +371,14 @@ export default function DealPage() {
                   : "Счёта нет. Статус платежа передаёт платёжный партнёр."}
               </p>
               <p>Перевод напрямую не фиксируется платформой.</p>
+              <p>Стороны могут проводить расчёты самостоятельно или по взаимному согласию запросить подключение гаранта.</p>
+              <a
+                className="btn secondary"
+                href={`mailto:hello@bukergo.ru?subject=${encodeURIComponent(`Гарант для сделки ${room.booking_id}`)}`}
+              >
+                Запросить условия гаранта
+              </a>
+              <p className="timeline">Вариант начнёт действовать только после отдельного согласия обеих сторон.</p>
             </section>
           )}
           {tab === "dispute" && (
@@ -390,7 +412,7 @@ export default function DealPage() {
           {tab === "stages" && <section className="card">{journalBlock}</section>}
         </section>
         <aside className="deal-aside">
-          <p className="kicker">Следующий ход</p>
+          <p className="kicker">Следующий шаг</p>
           <p>{room.next_step}</p>
           <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
             {action.label}
@@ -400,7 +422,7 @@ export default function DealPage() {
       </div>
       <div className="sticky-cta">
         <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
-          Цифра
+          Предложение
         </button>
         <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
           {action.label}

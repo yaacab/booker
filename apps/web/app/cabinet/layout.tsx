@@ -1,4 +1,5 @@
 export const metadata = {
+  title: "Мои сделки",
   robots: { index: false, follow: false },
 };
 

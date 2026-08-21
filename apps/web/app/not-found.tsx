@@ -18,7 +18,7 @@ export default function NotFound() {
         </Link>
         {" "}
         <Link className="btn secondary" href="/events/new">
-          Собрать вечер
+          Создать заявку
         </Link>
       </p>
     </main>

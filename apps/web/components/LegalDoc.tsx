@@ -66,10 +66,10 @@ export function LegalDoc({ source }: { source: string }) {
   return (
     <main className="page-enter legal-doc">
       <p className="timeline">
-        <Link href="/legal">Бумажки</Link>
+        <Link href="/legal">Правовые документы</Link>
       </p>
       <div className="legal-banner">
-        Редакция {LEGAL_PACK_VERSION}. Пока юрист не кивнул — это черновик, не действующая оферта и не консультация.
+        Редакция {LEGAL_PACK_VERSION}. До завершения юридической проверки документ считается черновиком и не является действующей офертой или консультацией.
         Живые платежи спим. Реквизиты оператора ещё пустые.
         Весь пакет: <Link href="/legal">сюда</Link>.
       </div>

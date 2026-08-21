@@ -53,7 +53,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <main>
-      <p className="kicker">Крыша</p>
+      <p className="kicker">Профиль площадки</p>
       <h1>{data.name}</h1>
       <p>
         {data.city} · до {data.capacity} гостей{" "}
@@ -72,12 +72,12 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       <SlotList slots={data.slots} highlightDay={day} />
       <p className="artist-desk-cta" style={{ marginTop: 16 }}>
         <Link className="btn" href={`/events/new?venue=need&roof=${encodeURIComponent(data.name)}`}>
-          Собрать вечер с этой крышей
+          Создать заявку с этой площадкой
         </Link>
       </p>
       <div className="sticky-cta">
         <Link className="btn" href={`/events/new?venue=need&roof=${encodeURIComponent(data.name)}`}>
-          Собрать вечер с этой крышей
+          Создать заявку с этой площадкой
         </Link>
       </div>
     </main>

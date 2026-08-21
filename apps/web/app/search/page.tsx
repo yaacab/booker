@@ -12,7 +12,7 @@ export async function generateMetadata({
   const q = await searchParams;
   const city = q.city || "Москва";
   return {
-    title: `Кто ещё не занят — ${city}`,
+    title: `Каталог — ${city}`,
     alternates: { canonical: "/search" },
   };
 }
@@ -67,28 +67,28 @@ export default async function SearchPage({
   const empty = items.length === 0 && venues.length === 0 && !error;
   return (
     <main className="page-enter">
-      <p className="kicker">Только те, у кого дата в календаре. Остальные просто красивые.</p>
-      <h1>Кто ещё не занят</h1>
+      <p className="kicker">Каталог с проверкой календаря</p>
+      <h1>Свободные артисты и площадки</h1>
       <div className="catalog-layout">
         <CatalogFilters city={city} date={q.date} category={q.category} />
         <div>
           <p className="timeline">
             {city}
-            {q.date ? ` · ${formatDay(`${q.date}T12:00:00+03:00`)}` : " · дату не выбрали — покажем ближайшую дырку"}
+            {q.date ? ` · ${formatDay(`${q.date}T12:00:00+03:00`)}` : " · дата не выбрана — показываем ближайший свободный слот"}
             {q.category ? ` · ${categoryLabel(q.category)}` : ""}
           </p>
           {!(PILOT_CITIES as readonly string[]).includes(city) ? (
             <article className="card empty">
-              <h2>Пилот крутится в Москве</h2>
+              <h2>Пилотный каталог работает в Москве</h2>
               <p>
-                В {city} календаря в выдаче ещё нет. Можно собрать вечер и позвать человека — чудес без обещаний.
+                Для города {city} календарная выдача пока не подключена. Можно создать заявку — оператор поможет с подбором.
               </p>
               <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                 <Link className="btn" href="/search?city=Москва">
                   Смотреть Москву
                 </Link>
                 <a className="btn secondary" href="mailto:hello@bukergo.ru?subject=Другой%20город">
-                  Позвать человека
+                  Связаться с оператором
                 </a>
               </p>
             </article>
@@ -96,25 +96,25 @@ export default async function SearchPage({
           {error ? <p>{error}</p> : null}
           {empty ? (
             <article className="card empty">
-              <h2>{q.date ? "Эта дата уже жената" : "В этой охоте никого"}</h2>
+              <h2>{q.date ? "На выбранную дату свободных вариантов нет" : "По заданным условиям ничего не найдено"}</h2>
               <p>
                 {q.date
-                  ? "Другой день, другой жанр — или зовите человека. Чудеса без обещаний он ещё умеет."
-                  : "Другой город, другой жанр — или зовите человека. Без календаря сюда не пускаем."}
+                  ? "Попробуйте соседнюю дату, измените формат или отправьте заявку оператору."
+                  : "Измените город, формат или другие параметры поиска."}
               </p>
               <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                 <Link className="btn" href="/events/new">
-                  Собрать вечер
+                  Создать заявку
                 </Link>
                 <a className="btn secondary" href="mailto:hello@bukergo.ru?subject=Дата%20занята">
-                  Позвать человека
+                  Связаться с оператором
                 </a>
               </p>
             </article>
           ) : null}
           {items.length > 0 ? (
             <>
-              {venues.length > 0 ? <h2>На сцене</h2> : null}
+              {venues.length > 0 ? <h2>Артисты</h2> : null}
               <div className="grid">
                 {items.map((item) => {
                   const st = slotState(item);
@@ -141,7 +141,7 @@ export default async function SearchPage({
                         {q.date ? `слот на ${formatDay(`${q.date}T12:00:00+03:00`)}` : formatWhen(item.next_open_at)}
                       </p>
                       {item.tariffs?.[0] ? (
-                        <p className="timeline">от {money(item.tariffs[0].honorarium_rub)} — это ещё не счёт</p>
+                        <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
                       ) : null}
                     </Link>
                   );
@@ -151,7 +151,7 @@ export default async function SearchPage({
           ) : null}
           {venues.length > 0 ? (
             <>
-              {items.length > 0 ? <h2>Крыша</h2> : null}
+              {items.length > 0 ? <h2>Площадки</h2> : null}
               <div className="grid">
                 {venues.map((item) => {
                   const st = slotState(item);
@@ -178,7 +178,7 @@ export default async function SearchPage({
                         {q.date ? `слот на ${formatDay(`${q.date}T12:00:00+03:00`)}` : formatWhen(item.next_open_at)}
                       </p>
                       {item.tariffs?.[0] ? (
-                        <p className="timeline">от {money(item.tariffs[0].honorarium_rub)} — это ещё не счёт</p>
+                        <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
                       ) : null}
                     </Link>
                   );
