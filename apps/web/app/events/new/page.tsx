@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getToken } from "@/lib/api";
-import { categoryLabel } from "@/lib/copy";
 import { CityField } from "@/components/CityField";
 import { moscowToday } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -12,11 +11,32 @@ const STEPS = [
   { id: "what", q: "Формат события", hint: "Выберите базовый сценарий — детали можно изменить позже.", unknown: false },
   { id: "when", q: "Дата и город", hint: "По этим данным каталог проверит доступные слоты.", unknown: false },
   { id: "guests", q: "Количество гостей", hint: "Нужно для подбора формата площадки и требований райдера.", unknown: false },
-  { id: "artist", q: "Артист", hint: "Выберите направление или оставьте пункт для уточнения оператором.", unknown: true },
+  { id: "artist", q: "Состав команды", hint: "Добавьте несколько ролей. Конкретных исполнителей подберём по общей доступности даты.", unknown: true },
   { id: "venue", q: "Площадка", hint: "Укажите, есть ли площадка или её нужно подобрать.", unknown: true },
   { id: "tech", q: "Технические условия", hint: "Отметьте текущее состояние — точный райдер согласуется в Deal Room.", unknown: true },
   { id: "budget", q: "Бюджет", hint: "Диапазон помогает отфильтровать варианты, но не рассчитывает итоговую цену.", unknown: true },
   { id: "check", q: "Проверка заявки", hint: "Проверьте данные перед отправкой. Итоговая сумма появится только в серверном предложении.", unknown: false },
+] as const;
+
+const TEAM_ROLES = [
+  { id: "host", label: "Ведущий", mark: "В", group: "Программа", description: "Ведёт сценарий и взаимодействует с гостями" },
+  { id: "dj", label: "DJ", mark: "DJ", group: "Программа", description: "Музыкальное сопровождение и танцевальный блок" },
+  { id: "vocal", label: "Вокалист", mark: "VO", group: "Артисты", description: "Сольная программа или отдельные выходы" },
+  { id: "cover", label: "Кавер-группа", mark: "CG", group: "Артисты", description: "Живой сет полным составом" },
+  { id: "musician", label: "Музыкант", mark: "MU", group: "Артисты", description: "Саксофон, гитара, перкуссия и другие инструменты" },
+  { id: "dance", label: "Танцевальное шоу", mark: "DS", group: "Шоу", description: "Один или несколько танцевальных номеров" },
+  { id: "show", label: "Шоу-программа", mark: "SH", group: "Шоу", description: "Иллюзионист, стендап или специальный номер" },
+  { id: "photo", label: "Фотограф", mark: "PH", group: "Медиа", description: "Репортажная и постановочная съёмка" },
+  { id: "video", label: "Видеограф", mark: "VI", group: "Медиа", description: "Видео события и монтаж" },
+  { id: "sound", label: "Звукорежиссёр", mark: "AU", group: "Продакшен", description: "Звук, микрофоны и техническая координация" },
+  { id: "light", label: "Светорежиссёр", mark: "LX", group: "Продакшен", description: "Световая схема и управление во время программы" },
+] as const;
+
+const TEAM_PRESETS = [
+  { id: "base", title: "Ведущий + DJ", description: "Базовая программа события", roles: { host: 1, dj: 1 } },
+  { id: "live", title: "Живой концерт", description: "Вокал и живое сопровождение", roles: { vocal: 1, musician: 2, sound: 1 } },
+  { id: "media", title: "Событие под ключ", description: "Программа и медиакоманда", roles: { host: 1, dj: 1, photo: 1, video: 1 } },
+  { id: "show", title: "Большое шоу", description: "Сцена, артисты и продакшен", roles: { cover: 1, dance: 4, sound: 1, light: 1 } },
 ] as const;
 
 type Draft = {
@@ -25,6 +45,8 @@ type Draft = {
   date: string;
   guests: string;
   artist: string;
+  team: Record<string, number>;
+  customTeam: string[];
   venue: string;
   tech: string;
   budget: string;
@@ -36,6 +58,8 @@ const EMPTY: Draft = {
   date: "",
   guests: "80",
   artist: "dj",
+  team: { dj: 1 },
+  customTeam: [],
   venue: "unknown",
   tech: "unknown",
   budget: "",
@@ -55,18 +79,25 @@ export default function NewEventPage() {
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "offline">("saved");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [online, setOnline] = useState(true);
+  const [customRole, setCustomRole] = useState("");
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as {
-          draft?: Draft;
+          draft?: Partial<Draft>;
           unknown?: Record<string, boolean>;
           step?: number;
           roofName?: string;
         };
-        if (saved.draft) setDraft({ ...EMPTY, ...saved.draft });
+        if (saved.draft) {
+          const restored = { ...EMPTY, ...saved.draft };
+          if (!saved.draft.team && saved.draft.artist && saved.draft.artist !== "unknown") {
+            restored.team = { [saved.draft.artist]: 1 };
+          }
+          setDraft(restored);
+        }
         if (saved.unknown) setUnknown(saved.unknown);
         if (typeof saved.step === "number") setStep(Math.min(STEPS.length - 1, Math.max(0, saved.step)));
         if (saved.roofName) setRoofName(saved.roofName);
@@ -123,8 +154,10 @@ export default function NewEventPage() {
   }, [draft, unknown, step, roofName, hydrated]);
 
   const preview = useMemo(() => {
-    const artist =
-      draft.artist === "unknown" || unknown.artist ? "артист не выбран" : categoryLabel(draft.artist) || draft.artist;
+    const artist = unknown.artist
+      ? "состав подберёт оператор"
+      : [...TEAM_ROLES.filter((role) => (draft.team[role.id] || 0) > 0).map((role) => `${role.label}${draft.team[role.id] > 1 ? ` ×${draft.team[role.id]}` : ""}`), ...draft.customTeam]
+          .join(", ") || "состав не выбран";
     const venue =
       draft.venue === "unknown" || unknown.venue
         ? "площадка не выбрана"
@@ -142,6 +175,40 @@ export default function NewEventPage() {
       venue,
     ].join(" · ");
   }, [draft, unknown, roofName]);
+
+  const selectedTeamCount = useMemo(
+    () => Object.values(draft.team).reduce((sum, count) => sum + count, 0) + draft.customTeam.length,
+    [draft.team, draft.customTeam]
+  );
+
+  function setTeamCount(roleId: string, count: number) {
+    setDraft((current) => {
+      const team = { ...current.team };
+      if (count <= 0) delete team[roleId];
+      else team[roleId] = Math.min(20, count);
+      return { ...current, artist: Object.keys(team)[0] || "unknown", team };
+    });
+    setUnknown((current) => ({ ...current, artist: false }));
+  }
+
+  function addPreset(roles: Record<string, number>) {
+    setDraft((current) => {
+      const team = { ...current.team };
+      Object.entries(roles).forEach(([roleId, count]) => {
+        team[roleId] = Math.max(team[roleId] || 0, count);
+      });
+      return { ...current, artist: Object.keys(team)[0] || "unknown", team };
+    });
+    setUnknown((current) => ({ ...current, artist: false }));
+  }
+
+  function addCustomRole() {
+    const value = customRole.trim();
+    if (!value || draft.customTeam.some((item) => item.toLowerCase() === value.toLowerCase())) return;
+    setDraft((current) => ({ ...current, customTeam: [...current.customTeam, value] }));
+    setUnknown((current) => ({ ...current, artist: false }));
+    setCustomRole("");
+  }
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -169,7 +236,12 @@ export default function NewEventPage() {
           guest_count: Number(draft.guests || 50),
           budget_rub: draft.budget ? Number(draft.budget) : null,
           notes: [
-            unknown.artist ? "артист:пока не знаю" : `артист:${draft.artist}`,
+            unknown.artist
+              ? "состав:требуется помощь оператора"
+              : `состав:${[
+                  ...TEAM_ROLES.filter((role) => (draft.team[role.id] || 0) > 0).map((role) => `${role.id}x${draft.team[role.id]}`),
+                  ...draft.customTeam.map((role) => `custom:${role}`),
+                ].join(",")}`,
             unknown.venue
               ? "площадка:пока не знаю"
               : roofName
@@ -292,25 +364,80 @@ export default function NewEventPage() {
             </>
           )}
           {s.id === "artist" && (
-            <div className="choice-grid">
-              {[
-                ["dj", "DJ"],
-                ["host", "Ведущий"],
-                ["cover", "Кавер"],
-                ["unknown", "Помочь с выбором"],
-              ].map(([val, label]) => (
-                <button
-                  key={val}
-                  type="button"
-                  className={`choice ${draft.artist === val ? "on" : ""}`}
-                  onClick={() => {
-                    set("artist", val);
-                    setUnknown((u) => ({ ...u, artist: val === "unknown" }));
-                  }}
-                >
-                  {label}
+            <div className="team-builder">
+              <div className="team-builder-head">
+                <div>
+                  <strong>Команда события</strong>
+                  <p className="timeline">Можно выбрать сразу несколько ролей и указать количество.</p>
+                </div>
+                <span className={`chip ${selectedTeamCount ? "ok" : "wait"}`}>
+                  {selectedTeamCount ? `Выбрано: ${selectedTeamCount}` : "Состав пуст"}
+                </span>
+              </div>
+
+              <div className="team-presets" aria-label="Готовые составы">
+                {TEAM_PRESETS.map((preset) => (
+                  <button key={preset.id} type="button" className="team-preset" onClick={() => addPreset(preset.roles)}>
+                    <strong>{preset.title}</strong>
+                    <span>{preset.description}</span>
+                    <small>Добавить набор →</small>
+                  </button>
+                ))}
+              </div>
+
+              <div className="team-role-grid">
+                {TEAM_ROLES.map((role) => {
+                  const count = draft.team[role.id] || 0;
+                  return (
+                    <article className={`team-role-card ${count ? "on" : ""}`} key={role.id}>
+                      <button
+                        type="button"
+                        className="team-role-main"
+                        aria-pressed={count > 0}
+                        onClick={() => setTeamCount(role.id, count ? 0 : 1)}
+                      >
+                        <span className="team-role-mark" aria-hidden>{role.mark}</span>
+                        <span className="team-role-copy">
+                          <strong>{role.label}</strong>
+                          <small>{role.description}</small>
+                        </span>
+                        <span className="team-role-state" aria-hidden>{count ? "✓" : "+"}</span>
+                      </button>
+                      {count ? (
+                        <div className="team-quantity" aria-label={`Количество: ${role.label}`}>
+                          <button type="button" className="secondary" aria-label={`Уменьшить количество: ${role.label}`} onClick={() => setTeamCount(role.id, count - 1)}>−</button>
+                          <span><strong>{count}</strong><small>чел.</small></span>
+                          <button type="button" className="secondary" aria-label={`Увеличить количество: ${role.label}`} onClick={() => setTeamCount(role.id, count + 1)}>+</button>
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+
+              <form className="custom-role" onSubmit={(event) => { event.preventDefault(); addCustomRole(); }}>
+                <label>
+                  Другая роль
+                  <input value={customRole} maxLength={60} onChange={(event) => setCustomRole(event.target.value)} placeholder="Например, иллюзионист" />
+                </label>
+                <button type="submit" className="secondary" disabled={!customRole.trim()}>Добавить</button>
+              </form>
+
+              {draft.customTeam.length ? (
+                <div className="selected-team" aria-label="Добавленные роли">
+                  {draft.customTeam.map((role) => (
+                    <button key={role} type="button" className="selected-team-chip" onClick={() => setDraft((current) => ({ ...current, customTeam: current.customTeam.filter((item) => item !== role) }))}>
+                      {role} <span aria-hidden>×</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              {selectedTeamCount ? (
+                <button type="button" className="linkish team-clear" onClick={() => setDraft((current) => ({ ...current, artist: "unknown", team: {}, customTeam: [] }))}>
+                  Очистить состав
                 </button>
-              ))}
+              ) : null}
             </div>
           )}
           {s.id === "venue" && (
@@ -377,11 +504,15 @@ export default function NewEventPage() {
                   const on = e.target.checked;
                   setUnknown((u) => ({ ...u, [s.id]: on }));
                   if (on && (s.id === "artist" || s.id === "venue" || s.id === "tech")) {
-                    set(s.id, "unknown");
+                    if (s.id === "artist") {
+                      setDraft((current) => ({ ...current, artist: "unknown", team: {}, customTeam: [] }));
+                    } else {
+                      set(s.id, "unknown");
+                    }
                   }
                 }}
               />
-              Пока не знаю
+              {s.id === "artist" ? "Нужна помощь с составом" : "Пока не знаю"}
             </label>
           ) : null}
           {error ? <div className="validation-summary" role="alert"><strong>Проверьте этот шаг</strong><p>{error}</p></div> : null}
@@ -407,6 +538,10 @@ export default function NewEventPage() {
                   }
                   if (s.id === "guests" && (!Number(draft.guests) || Number(draft.guests) < 1)) {
                     setError("Укажите количество гостей больше нуля.");
+                    return;
+                  }
+                  if (s.id === "artist" && selectedTeamCount === 0 && !unknown.artist) {
+                    setError("Добавьте хотя бы одну роль или выберите помощь с составом.");
                     return;
                   }
                   setError("");

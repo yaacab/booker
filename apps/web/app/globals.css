@@ -264,6 +264,57 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
 .role-option span:first-child { display: grid; gap: 2px; }
 .role-option small { color: var(--muted); font-weight: 400; }
 .role-option.on { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); background: #f3f8f7; }
+.team-builder { display: grid; gap: 18px; }
+.team-builder-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.team-builder-head p { margin: 4px 0 0; }
+.team-presets {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, 42%); gap: 10px;
+  overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: inline mandatory;
+  padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: var(--brand) transparent;
+}
+.team-preset {
+  min-height: 132px; padding: 16px; display: grid; align-content: space-between; justify-items: start;
+  text-align: left; scroll-snap-align: start; background: var(--night); color: #fff;
+  border: 1px solid #2e3331; box-shadow: none;
+}
+.team-preset:hover { background: #202523; }
+.team-preset span { color: #c5cdc9; font-weight: 400; font-size: 13px; }
+.team-preset small { color: #d7b77d; }
+.team-role-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.team-role-card {
+  min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+.team-role-card.on { border-color: var(--brand); background: #f3f8f7; box-shadow: 0 0 0 1px var(--brand); }
+.team-role-main {
+  width: 100%; min-height: 108px; padding: 14px; display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 24px; gap: 11px; align-items: start;
+  border: 0; border-radius: 0; text-align: left; background: transparent; color: var(--ink); box-shadow: none;
+}
+.team-role-main:hover { background: color-mix(in srgb, var(--surface-2) 68%, transparent); box-shadow: none; }
+.team-role-mark {
+  width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px;
+  background: var(--night); color: #fff; font-family: var(--mono); font-size: 12px;
+}
+.team-role-card.on .team-role-mark { background: var(--brand); }
+.team-role-copy { display: grid; gap: 4px; min-width: 0; }
+.team-role-copy small { color: var(--muted); font-weight: 400; line-height: 1.35; }
+.team-role-state { color: var(--brand); font-size: 20px; line-height: 1; text-align: right; }
+.team-quantity {
+  display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; gap: 6px;
+  padding: 9px 12px 12px; border-top: 1px solid #dce8e6;
+}
+.team-quantity button { min-height: 36px; height: 36px; padding: 0; border-radius: 10px; }
+.team-quantity span { display: flex; justify-content: center; align-items: baseline; gap: 5px; }
+.team-quantity small { color: var(--muted); }
+.custom-role { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px; }
+.selected-team { display: flex; flex-wrap: wrap; gap: 8px; }
+.selected-team-chip {
+  min-height: 36px; padding: 6px 11px; border-radius: 999px;
+  background: #f3f8f7; color: var(--brand-dark); border: 1px solid #c8dfdc;
+}
+.selected-team-chip:hover { background: #e7f1ef; color: var(--brand-dark); box-shadow: none; }
+.team-clear { justify-self: start; color: var(--danger); }
 .site-footer {
   margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--border);
   color: var(--muted); font-size: 14px;
@@ -467,6 +518,12 @@ details.timeline summary { cursor: pointer; }
   .mobile-preview { flex-direction: column; }
   .desktop-preview { display: none; }
   .choice-grid { grid-template-columns: 1fr; }
+  .team-builder-head { display: grid; gap: 8px; }
+  .team-presets { grid-auto-columns: minmax(230px, 82%); margin-right: -16px; padding-right: 16px; }
+  .team-role-grid { grid-template-columns: 1fr; }
+  .team-role-main { min-height: 96px; }
+  .custom-role { grid-template-columns: 1fr; }
+  .custom-role button { width: 100%; }
   .modal-layer { align-items: end; padding: 10px; }
   .modal-card { width: 100%; border-radius: 20px 20px 14px 14px; }
 }
