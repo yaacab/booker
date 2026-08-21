@@ -1,0 +1,17 @@
+[Unit]
+Description=Букер API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/booker/apps/api
+Environment=BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db
+Environment=BOOKER_CORS_ORIGINS=https://bukergo.ru,https://www.bukergo.ru,http://localhost:3000
+Environment=BOOKER_PUBLIC_URL=https://bukergo.ru
+ExecStart=/opt/booker/.venv/bin/uvicorn booker_api.main:app --host 127.0.0.1 --port 8030
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target

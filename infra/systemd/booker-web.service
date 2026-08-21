@@ -1,0 +1,19 @@
+[Unit]
+Description=Букер web (Next.js)
+After=network.target booker-api.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/booker/apps/web
+Environment=NODE_ENV=production
+Environment=PORT=3030
+Environment=BOOKER_INTERNAL_API_URL=http://127.0.0.1:8030
+Environment=NEXT_PUBLIC_API_URL=/api
+Environment=NEXT_PUBLIC_SITE_URL=https://bukergo.ru
+ExecStart=/usr/bin/npx next start -H 127.0.0.1 -p 3030
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target

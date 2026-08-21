@@ -1,0 +1,413 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { HoldCountdown } from "@/components/HoldCountdown";
+import { api } from "@/lib/api";
+import { money } from "@/lib/format";
+import { nextAction, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
+
+const TABS = [
+  { id: "chat", label: "Чат" },
+  { id: "terms", label: "Условия" },
+  { id: "documents", label: "Документы" },
+  { id: "payments", label: "Платежи" },
+  { id: "dispute", label: "Спор" },
+  { id: "stages", label: "Этапы" },
+] as const;
+
+type Room = {
+  booking_id: string;
+  offer_id: string;
+  status: string;
+  role: "customer" | "supplier";
+  next_step: string;
+  event_title?: string;
+  participants?: { role: string; name: string; duty: string }[];
+  hold?: { status: string; expires_at: string } | null;
+  quote: {
+    quote_id: string;
+    honorarium_rub: number;
+    commission_rub: number;
+    total_rub: number;
+    customer_ack: boolean;
+    supplier_ack: boolean;
+    source?: string;
+  };
+  contract: { id: string; customer_signed: boolean; supplier_signed: boolean; body: string } | null;
+  payment: { id: string; status: string; amount_rub: number } | null;
+  messages: { id: string; kind: string; body: string }[];
+};
+
+function ackLabel(q: Room["quote"]): string {
+  if (q.customer_ack && q.supplier_ack) return "оба кивнули";
+  if (q.customer_ack) return "кивнул только заказчик";
+  if (q.supplier_ack) return "кивнул только исполнитель";
+  return "ещё торгуются";
+}
+
+export default function DealPage() {
+  const params = useParams<{ id: string }>();
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("chat");
+  const [room, setRoom] = useState<Room | null>(null);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [disputeCategory, setDisputeCategory] = useState("no_show");
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    try {
+      setRoom(await api<Room>(`/deal-room/${params.id}`));
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Нет доступа");
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, [params.id]);
+
+  useEffect(() => {
+    if (room?.event_title) document.title = `${room.event_title} · Гримёрка · Букер`;
+  }, [room?.event_title]);
+
+  async function act(fn: () => Promise<unknown>) {
+    setBusy(true);
+    try {
+      await fn();
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!room) {
+    return (
+      <main>
+        <h1>Гримёрка</h1>
+        {error ? <p>{error}</p> : <div className="skeleton" style={{ minHeight: 220 }} />}
+      </main>
+    );
+  }
+
+  const current = room;
+  const side = current.role;
+  const people = current.participants ?? [];
+  const action = nextAction(current.status);
+  const idx = STAGE_ORDER.indexOf(current.status);
+  const journal = STAGE_ORDER.map((s: string, i: number) => ({
+    s,
+    cls: i < idx ? "done" : i === idx ? "now" : "",
+    who: i < idx ? "стороны" : i === idx ? "сейчас" : "дальше",
+    result: STATUS_LABEL[s],
+  }));
+
+  async function runNext() {
+    if (action.kind === "ack") {
+      await act(() => api(`/offers/${current.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) }));
+      return;
+    }
+    if (action.kind === "contract") {
+      if (current.contract) {
+        await act(() =>
+          api(`/contracts/${current.contract!.id}/sign`, { method: "POST", body: JSON.stringify({ side, otp: "123456" }) })
+        );
+      } else {
+        await act(() => api(`/bookings/${current.booking_id}/contract`, { method: "POST" }));
+      }
+      return;
+    }
+    if (action.kind === "pay") {
+      await act(() =>
+        api(`/bookings/${current.booking_id}/payments`, {
+          method: "POST",
+          body: JSON.stringify({ idempotency_key: `web-${current.booking_id}` }),
+        })
+      );
+    }
+    if (action.kind === "operator") {
+      window.location.href = "mailto:hello@bukergo.ru?subject=Оператор";
+    }
+  }
+
+  function iLabel(cls: string) {
+    if (cls === "done") return "зафиксировано";
+    if (cls === "now") return "ждёт действия";
+    return "не начато";
+  }
+
+  const quoteBlock = (
+    <div className="quote card">
+      <p className="mono">quote_id: {current.quote.quote_id}</p>
+      <p>гонорар {money(room.quote.honorarium_rub)}</p>
+      <p>
+        комиссия {money(room.quote.commission_rub)}{" "}
+        {room.quote.commission_rub === 0 ? <span className="chip wait">первая сделка</span> : null}
+      </p>
+      <p>
+        <strong>итого {money(room.quote.total_rub)}</strong>
+      </p>
+      <p className="timeline">{room.quote.source || "Цифру собрал сервер. Не Excel и не настроение."}</p>
+      <p>
+        <span className="chip wait">{ackLabel(room.quote)}</span>
+      </p>
+      {room.hold ? <HoldCountdown expiresAt={room.hold.expires_at} /> : null}
+    </div>
+  );
+
+  const journalBlock = (
+    <ul className="journal">
+      {journal.map((row: { s: string; cls: string; who: string; result: string }) => (
+        <li key={row.s} className={row.cls}>
+          <strong>{row.result}</strong>
+          <div className="timeline">
+            {row.who} · результат: {iLabel(row.cls)}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+
+  return (
+    <main>
+      <div className="deal-head">
+        <p>
+          <Link href="/cabinet">
+            К сделкам
+          </Link>
+        </p>
+        <p className="mono">
+          {room.booking_id} · {STATUS_LABEL[room.status] || room.status}
+        </p>
+        <h1>{room.event_title || "Гримёрка сделки"}</h1>
+        <p>Вы {side === "customer" ? "заказчик" : "исполнитель"}. {room.next_step}</p>
+        {people.length ? (
+          <p className="deal-rail-mobile timeline">
+            {people.map((p) => p.name).join(" · ")}
+          </p>
+        ) : null}
+      </div>
+      {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
+      <div className="deal-shell">
+        <aside className="deal-rail">
+          <h2>Журнал</h2>
+          {journalBlock}
+          <h2>Участники</h2>
+          {people.map((p) => (
+            <p key={p.role}>
+              <strong>{p.name}</strong>
+              <br />
+              <span className="timeline">{p.duty}</span>
+            </p>
+          ))}
+        </aside>
+        <section>
+          <p className="deal-toolbar" aria-busy={busy} style={busy ? { opacity: 0.55, pointerEvents: "none" } : undefined}>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                void act(() =>
+                  api(`/offers/${room.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) })
+                )
+              }
+            >
+              Кивнуть условиям
+            </button>
+            <button type="button" className="secondary" onClick={() => void act(() => api(`/bookings/${room.booking_id}/hold`, { method: "POST" }))}>
+              Удержать дату
+            </button>
+            <button type="button" className="secondary" onClick={() => void act(() => api(`/bookings/${room.booking_id}/contract`, { method: "POST" }))}>
+              Договор
+            </button>
+            {room.contract ? (
+              <button
+                type="button"
+                className="secondary"
+                onClick={() =>
+                  void act(() =>
+                    api(`/contracts/${room.contract!.id}/sign`, {
+                      method: "POST",
+                      body: JSON.stringify({ side, otp: "123456" }),
+                    })
+                  )
+                }
+              >
+                Подписать OTP
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="secondary"
+              onClick={() =>
+                void act(() =>
+                  api(`/bookings/${room.booking_id}/payments`, {
+                    method: "POST",
+                    body: JSON.stringify({ idempotency_key: `web-${room.booking_id}` }),
+                  })
+                )
+              }
+            >
+              Счёт
+            </button>
+            {room.payment ? (
+              <button
+                type="button"
+                className="secondary"
+                onClick={() =>
+                  void act(() =>
+                    api(`/payments/${room.payment!.id}/stub-complete`, {
+                      method: "POST",
+                      body: JSON.stringify({ status: "succeeded" }),
+                    })
+                  )
+                }
+              >
+                Пилот: отметить оплату
+              </button>
+            ) : null}
+          </p>
+          <div className="tabs" role="tablist">
+            {TABS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === item.id}
+                onClick={() => setTab(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {tab === "chat" && (
+            <section className="card">
+              {room.messages.length === 0 ? (
+                <p className="timeline">Пока тихо. Цифра справа, человек — кнопкой ниже.</p>
+              ) : null}
+              {room.messages.map((m) => (
+                <div key={m.id} className={`msg ${m.kind === "system" ? "system" : m.kind === "operator" ? "operator" : "chat"}`}>
+                  <strong>
+                    {m.kind === "system" ? "Система" : m.kind === "operator" ? "Оператор" : "Сторона"}:
+                  </strong>{" "}
+                  {m.body}
+                </div>
+              ))}
+              <form
+                className="chat-compose"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const body = message.trim();
+                  if (!body || busy) return;
+                  void act(() =>
+                    api(`/deal-room/${room.booking_id}/messages`, {
+                      method: "POST",
+                      body: JSON.stringify({ body }),
+                    }).then(() => setMessage(""))
+                  );
+                }}
+              >
+                <input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="В гримёрку, не в вотсап"
+                  disabled={busy}
+                />
+                <button type="submit" disabled={busy || !message.trim()}>
+                  Отправить
+                </button>
+              </form>
+              <p>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    window.location.href = "mailto:hello@bukergo.ru?subject=Оператор%20Deal%20Room";
+                  }}
+                >
+                  Позвать человека
+                </button>
+              </p>
+            </section>
+          )}
+          {tab === "terms" && (
+            <section className="card">
+              <p>
+                Заказчик: {room.quote.customer_ack ? "кивнул" : "ещё думает"}. Исполнитель:{" "}
+                {room.quote.supplier_ack ? "кивнул" : "ещё думает"}.
+              </p>
+              <p>{ackLabel(room.quote)}. Один «ок» в чате — просто шум.</p>
+            </section>
+          )}
+          {tab === "documents" && (
+            <section className="card">
+              <pre style={{ whiteSpace: "pre-wrap" }}>{room.contract?.body || "Договора ещё нет"}</pre>
+            </section>
+          )}
+          {tab === "payments" && (
+            <section className="card">
+              <p>
+                {room.payment
+                  ? `${room.payment.status} · ${money(room.payment.amount_rub)}`
+                  : "Счёта нет. Статус платежа передаёт платёжный партнёр."}
+              </p>
+              <p>Перевод напрямую не фиксируется платформой.</p>
+            </section>
+          )}
+          {tab === "dispute" && (
+            <section className="card">
+              <p>Спор рассматривает оператор. ИИ только помогает сформулировать категорию.</p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void act(() =>
+                    api(`/bookings/${room.booking_id}/disputes`, {
+                      method: "POST",
+                      body: JSON.stringify({ category: disputeCategory, notes: message }),
+                    })
+                  );
+                }}
+              >
+                <label>
+                  Категория
+                  <select value={disputeCategory} onChange={(e) => setDisputeCategory(e.target.value)}>
+                    <option value="no_show">Неявка</option>
+                    <option value="delay">Опоздание</option>
+                    <option value="quality">Качество услуги</option>
+                    <option value="payment">Платёж</option>
+                    <option value="cancel">Отмена</option>
+                  </select>
+                </label>
+                <button type="submit">Открыть спор</button>
+              </form>
+            </section>
+          )}
+          {tab === "stages" && <section className="card">{journalBlock}</section>}
+        </section>
+        <aside className="deal-aside">
+          <p className="kicker">Следующий ход</p>
+          <p>{room.next_step}</p>
+          <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
+            {action.label}
+          </button>
+          {quoteBlock}
+        </aside>
+      </div>
+      <div className="sticky-cta">
+        <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
+          Цифра
+        </button>
+        <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
+          {action.label}
+        </button>
+      </div>
+      <div className={`sheet-backdrop ${quoteOpen ? "open" : ""}`} onClick={() => setQuoteOpen(false)} />
+      <div className={`sheet ${quoteOpen ? "open" : ""}`}>{quoteBlock}</div>
+    </main>
+  );
+}
