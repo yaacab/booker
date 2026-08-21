@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from booker_api.models import CatalogCategory, Event, EventTeamRequirement
+from booker_api.models import CatalogCategory, Event, EventTeamRequirement, Request
 
 PILOT_CATEGORIES = [
     ("dj", "DJ", "music", 10),
@@ -93,24 +93,53 @@ def requirement_payload(row: EventTeamRequirement) -> dict:
 
 
 def replace_requirements(db: Session, event: Event, items: list[dict]) -> list[EventTeamRequirement]:
-    db.query(EventTeamRequirement).filter(EventTeamRequirement.event_id == event.id).delete()
+    existing = (
+        db.query(EventTeamRequirement)
+        .filter(EventTeamRequirement.event_id == event.id)
+        .order_by(EventTeamRequirement.sort_order, EventTeamRequirement.id)
+        .all()
+    )
+    by_id = {row.id: row for row in existing}
+    unused = list(existing)
     rows: list[EventTeamRequirement] = []
+
+    def take(row: EventTeamRequirement) -> EventTeamRequirement:
+        unused.remove(row)
+        return row
+
     for i, raw in enumerate(items):
         code = str(raw.get("category_code") or "").strip().lower()
         if not code:
             continue
-        row = EventTeamRequirement(
-            event_id=event.id,
-            category_code=code,
-            role_label=str(raw.get("role_label") or ROLE_LABEL.get(code, code)),
-            qty=max(1, int(raw.get("qty") or 1)),
-            required=bool(raw.get("required", True)),
-            status=str(raw.get("status") or "open"),
-            sort_order=int(raw.get("sort_order") or i),
-            notes=str(raw.get("notes") or ""),
-        )
-        db.add(row)
+        incoming_id = str(raw.get("id") or "").strip()
+        row = None
+        if incoming_id and incoming_id in by_id and by_id[incoming_id] in unused:
+            row = take(by_id[incoming_id])
+        else:
+            for cand in unused:
+                if cand.category_code == code:
+                    row = take(cand)
+                    break
+        if row is None:
+            row = EventTeamRequirement(event_id=event.id, category_code=code)
+            db.add(row)
+        row.category_code = code
+        row.role_label = str(raw.get("role_label") or ROLE_LABEL.get(code, code))
+        row.qty = max(1, int(raw.get("qty") or 1))
+        row.required = bool(raw.get("required", True))
+        row.status = str(raw.get("status") or getattr(row, "status", None) or "open")
+        row.sort_order = int(raw["sort_order"]) if raw.get("sort_order") is not None else i
+        row.notes = str(raw.get("notes") or "")
         rows.append(row)
+
+    leftover_ids = [row.id for row in unused if row.id]
+    if leftover_ids:
+        db.query(Request).filter(Request.requirement_id.in_(leftover_ids)).update(
+            {Request.requirement_id: None},
+            synchronize_session=False,
+        )
+        for row in unused:
+            db.delete(row)
     db.flush()
     return rows
 

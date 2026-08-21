@@ -224,8 +224,8 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
         require_org_member(db, user, venue.organization_id)
     else:
         raise HTTPException(400, "resource_type: artist|hall")
-    before = getattr(body, "buffer_before_min", 0) or 0
-    after = getattr(body, "buffer_after_min", 0) or 0
+    before = max(0, getattr(body, "buffer_before_min", 0) or 0)
+    after = max(0, getattr(body, "buffer_after_min", 0) or 0)
     if overlapping_slots(
         db,
         body.resource_type,

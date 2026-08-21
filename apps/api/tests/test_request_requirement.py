@@ -132,3 +132,25 @@ def test_request_requirement_id_and_event_requests(client):
     assert linked_row["booking_id"] == booking_id
     assert linked_row["quote_id"] == quote_id
     assert linked_row["requirement_id"] == requirement_id
+
+    kept = client.put(
+        f"/events/{event['id']}/requirements",
+        json={"items": [{"category_code": "dj", "qty": 2, "notes": "сет 2ч"}]},
+        headers=ch,
+    )
+    assert kept.status_code == 200, kept.text
+    kept_req = kept.json()["requirements"][0]
+    assert kept_req["id"] == requirement_id
+    assert kept_req["qty"] == 2
+    after_replace = client.get(f"/events/{event['id']}", headers=ch).json()
+    assert {row["id"]: row for row in after_replace["requests"]}[linked_id]["requirement_id"] == requirement_id
+
+    dropped = client.put(
+        f"/events/{event['id']}/requirements",
+        json={"items": [{"category_code": "host", "qty": 1}]},
+        headers=ch,
+    )
+    assert dropped.status_code == 200, dropped.text
+    assert dropped.json()["requirements"][0]["id"] != requirement_id
+    after_drop = client.get(f"/events/{event['id']}", headers=ch).json()
+    assert {row["id"]: row for row in after_drop["requests"]}[linked_id]["requirement_id"] is None

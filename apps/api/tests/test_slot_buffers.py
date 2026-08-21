@@ -69,3 +69,20 @@ def test_adjacent_slots_ok_without_buffer_conflict_with_after_buffer(client):
     assert page.status_code == 200
     buffered_row = next(s for s in page.json()["slots"] if s["id"] == buffered.json()["id"])
     assert buffered_row["buffer_after_min"] == 60
+
+
+def test_negative_slot_buffer_rejected(client):
+    owner, artist = _owner_artist(client, "buf-neg@booker.test")
+    res = client.post(
+        "/slots",
+        json={
+            "resource_type": "artist",
+            "resource_id": artist["id"],
+            "starts_at": "2026-10-02T18:00:00+00:00",
+            "ends_at": "2026-10-02T22:00:00+00:00",
+            "buffer_before_min": -15,
+            "buffer_after_min": -30,
+        },
+        headers=auth_header(owner["token"]),
+    )
+    assert res.status_code == 422

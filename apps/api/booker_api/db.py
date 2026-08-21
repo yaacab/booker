@@ -10,29 +10,34 @@ class Base(DeclarativeBase):
     pass
 
 
-def ensure_sqlite_columns(bind) -> None:
-    if not str(bind.url).startswith("sqlite"):
-        return
+def _add_column_if_missing(bind, table: str, column: str, ddl: str) -> None:
     inspector = inspect(bind)
-    tables = inspector.get_table_names()
-    if "users" in tables:
-        cols = {c["name"] for c in inspector.get_columns("users")}
-        if "active_organization_id" not in cols:
-            with bind.begin() as conn:
-                conn.execute(text("ALTER TABLE users ADD COLUMN active_organization_id VARCHAR(36)"))
-    if "availability_slots" in tables:
-        slot_cols = {c["name"] for c in inspector.get_columns("availability_slots")}
-        if "buffer_before_min" not in slot_cols:
-            with bind.begin() as conn:
-                conn.execute(text("ALTER TABLE availability_slots ADD COLUMN buffer_before_min INTEGER DEFAULT 0"))
-        if "buffer_after_min" not in slot_cols:
-            with bind.begin() as conn:
-                conn.execute(text("ALTER TABLE availability_slots ADD COLUMN buffer_after_min INTEGER DEFAULT 0"))
-    if "requests" in tables:
-        request_cols = {c["name"] for c in inspector.get_columns("requests")}
-        if "requirement_id" not in request_cols:
-            with bind.begin() as conn:
-                conn.execute(text("ALTER TABLE requests ADD COLUMN requirement_id VARCHAR(36)"))
+    if table not in inspector.get_table_names():
+        return
+    cols = {c["name"] for c in inspector.get_columns(table)}
+    if column in cols:
+        return
+    with bind.begin() as conn:
+        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {ddl}"))
+
+
+def ensure_missing_columns(bind) -> None:
+    """Backfill columns on existing SQLite or Postgres tables. create_all does not ALTER."""
+    dialect = bind.dialect.name
+    if dialect not in {"sqlite", "postgresql"}:
+        return
+    _add_column_if_missing(bind, "users", "active_organization_id", "active_organization_id VARCHAR(36)")
+    _add_column_if_missing(
+        bind, "availability_slots", "buffer_before_min", "buffer_before_min INTEGER DEFAULT 0"
+    )
+    _add_column_if_missing(
+        bind, "availability_slots", "buffer_after_min", "buffer_after_min INTEGER DEFAULT 0"
+    )
+    _add_column_if_missing(bind, "requests", "requirement_id", "requirement_id VARCHAR(36)")
+
+
+def ensure_sqlite_columns(bind) -> None:
+    ensure_missing_columns(bind)
 
 
 def make_engine(url: str | None = None):
@@ -48,7 +53,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, futu
 def init_schema(bind=None) -> None:
     target = bind or engine
     Base.metadata.create_all(bind=target)
-    ensure_sqlite_columns(target)
+    ensure_missing_columns(target)
 
 
 def get_db() -> Generator[Session, None, None]:

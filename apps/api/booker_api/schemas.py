@@ -68,8 +68,8 @@ class SlotIn(BaseModel):
     resource_id: str
     starts_at: datetime
     ends_at: datetime
-    buffer_before_min: int | None = 0
-    buffer_after_min: int | None = 0
+    buffer_before_min: int | None = Field(default=0, ge=0)
+    buffer_after_min: int | None = Field(default=0, ge=0)
 
 
 class EventIn(BaseModel):
