@@ -3,14 +3,21 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from booker_api.composition import seed_categories
 from booker_api.config import settings
-from booker_api.db import Base, engine
-from booker_api.routers import admin, catalog, deals, health, identity, payments
+from booker_api.db import SessionLocal, engine, init_schema
+from booker_api.routers import admin, catalog, deals, health, identity, payments, services
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    init_schema(engine)
+    db = SessionLocal()
+    try:
+        seed_categories(db)
+        db.commit()
+    finally:
+        db.close()
     yield
 
 
@@ -25,6 +32,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(identity.router)
 app.include_router(catalog.router)
+app.include_router(services.router)
 app.include_router(deals.router)
 app.include_router(payments.router)
 app.include_router(admin.router)

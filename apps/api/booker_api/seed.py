@@ -10,6 +10,7 @@ from booker_api.models import (
     ArtistTariff,
     AvailabilitySlot,
     Organization,
+    Service,
     TeamMember,
     User,
     Venue,
@@ -184,6 +185,32 @@ def enrich_catalog(db: Session) -> int:
     nova = db.query(Artist).filter(Artist.name == "DJ Nova").one_or_none()
     if nova and (not nova.rider_json or nova.rider_json == "{}"):
         nova.rider_json = '{"format":"DJ-сет 2 часа","lineup":"1 человек","tech":"пульт, 2 колонки"}'
+    if nova:
+        existing = db.query(Service).filter(Service.organization_id == nova.organization_id).count()
+        if existing == 0:
+            db.add_all(
+                [
+                    Service(
+                        organization_id=nova.organization_id,
+                        category_code="dj",
+                        title="DJ-сет Nova",
+                        description="Витрина, не quote.",
+                        city="Москва",
+                        published=True,
+                        honorarium_rub=80000,
+                    ),
+                    Service(
+                        organization_id=nova.organization_id,
+                        category_code="host",
+                        title="Ведущий в паре",
+                        description="Витрина, не quote.",
+                        city="Москва",
+                        published=True,
+                        honorarium_rub=60000,
+                    ),
+                ]
+            )
+            added += 2
     return added
 
 

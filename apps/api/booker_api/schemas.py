@@ -68,6 +68,8 @@ class SlotIn(BaseModel):
     resource_id: str
     starts_at: datetime
     ends_at: datetime
+    buffer_before_min: int | None = Field(default=0, ge=0)
+    buffer_after_min: int | None = Field(default=0, ge=0)
 
 
 class EventIn(BaseModel):
@@ -149,3 +151,46 @@ class VerifyIn(BaseModel):
     target_id: str
     approve: bool
     notes: str = ""
+
+
+PILOT_SERVICE_CATEGORIES = (
+    "dj",
+    "host",
+    "cover",
+    "photo",
+    "makeup",
+    "decor",
+    "catering",
+    "venue",
+)
+
+
+class ServiceIn(BaseModel):
+    organization_id: str
+    category_code: str
+    title: str
+    description: str = ""
+    city: str = "Москва"
+    published: bool = True
+    honorarium_rub: int | None = None
+
+    @field_validator("category_code")
+    @classmethod
+    def category_from_pilot(cls, value: str) -> str:
+        code = (value or "").strip().lower()
+        if code not in PILOT_SERVICE_CATEGORIES:
+            raise ValueError("category_code: dj|host|cover|photo|makeup|decor|catering|venue")
+        return code
+
+
+class ServiceOut(BaseModel):
+    id: str
+    organization_id: str
+    category_code: str
+    title: str
+    description: str
+    city: str
+    published: bool
+    honorarium_rub: int | None = None
+
+    model_config = {"from_attributes": True}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CatalogFilters } from "@/components/CatalogFilters";
-import { CHIP, categoryLabel, PILOT_CITIES } from "@/lib/copy";
+import { CatalogFilters, type CategoryChip } from "@/components/CatalogFilters";
+import { CATEGORY, CHIP, categoryLabel, PILOT_CITIES } from "@/lib/copy";
 import { formatDay, formatWhen, initials, money } from "@/lib/format";
 
 export async function generateMetadata({
@@ -34,6 +34,28 @@ type SearchItem = {
   tariffs?: { honorarium_rub: number }[];
 };
 
+function fallbackCategories(): CategoryChip[] {
+  return Object.entries(CATEGORY).map(([code, title]) => ({ code, title }));
+}
+
+async function loadCategories(): Promise<CategoryChip[]> {
+  try {
+    const res = await fetch(`${API}/categories`, { cache: "no-store" });
+    if (!res.ok) return fallbackCategories();
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    const mapped = items
+      .map((c: { code?: string; title?: string }) => ({
+        code: String(c.code || ""),
+        title: c.title || categoryLabel(c.code),
+      }))
+      .filter((c: CategoryChip) => c.code);
+    return mapped.length ? mapped : fallbackCategories();
+  } catch {
+    return fallbackCategories();
+  }
+}
+
 function slotState(item: SearchItem): { label: string; cls: string } {
   if ((item.open_slots ?? 0) > 0 && item.verified) return { label: CHIP.slotOk, cls: "ok" };
   if ((item.open_slots ?? 0) > 0 && !item.verified) return { label: CHIP.slotWait, cls: "wait" };
@@ -43,10 +65,15 @@ function slotState(item: SearchItem): { label: string; cls: string } {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ city?: string; date?: string; category?: string }>;
+  searchParams: Promise<{ city?: string; date?: string; category?: string; event?: string; requirement?: string }>;
 }) {
   const q = await searchParams;
   const city = q.city || "Москва";
+  const extra = new URLSearchParams();
+  if (q.date) extra.set("date", q.date);
+  if (q.event) extra.set("event", q.event);
+  if (q.requirement) extra.set("requirement", q.requirement);
+  const itemQs = extra.toString();
   const params = new URLSearchParams();
   params.set("city", city);
   if (q.category) params.set("category", q.category);
@@ -54,10 +81,13 @@ export default async function SearchPage({
   let items: SearchItem[] = [];
   let venues: SearchItem[] = [];
   let error: string | null = null;
+  const [catalogRes, categories] = await Promise.all([
+    fetch(`${API}/catalog/search?${params.toString()}`, { cache: "no-store" }).catch(() => null),
+    loadCategories(),
+  ]);
   try {
-    const res = await fetch(`${API}/catalog/search?${params.toString()}`, { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
+    if (catalogRes?.ok) {
+      const data = await catalogRes.json();
       items = data.items ?? [];
       venues = data.venues ?? [];
     } else error = "Каталог временно недоступен.";
@@ -70,12 +100,21 @@ export default async function SearchPage({
       <p className="kicker">Каталог с проверкой календаря</p>
       <h1>Свободные артисты и площадки</h1>
       <div className="catalog-layout">
-        <CatalogFilters city={city} date={q.date} category={q.category} />
+        <CatalogFilters
+          city={city}
+          date={q.date}
+          category={q.category}
+          categories={categories}
+          event={q.event}
+          requirement={q.requirement}
+        />
         <div>
           <p className="timeline">
             {city}
             {q.date ? ` · ${formatDay(`${q.date}T12:00:00+03:00`)}` : " · дата не выбрана — показываем ближайший свободный слот"}
-            {q.category ? ` · ${categoryLabel(q.category)}` : ""}
+            {q.category
+              ? ` · ${categories.find((c) => c.code === q.category)?.title || categoryLabel(q.category)}`
+              : ""}
           </p>
           {!(PILOT_CITIES as readonly string[]).includes(city) ? (
             <article className="card empty">
@@ -119,7 +158,7 @@ export default async function SearchPage({
                 {items.map((item) => {
                   const st = slotState(item);
                   return (
-                    <Link className="card" key={item.id} href={`/artists/${item.id}${q.date ? `?date=${q.date}` : ""}`}>
+                    <Link className="card" key={item.id} href={`/artists/${item.id}${itemQs ? `?${itemQs}` : ""}`}>
                       <div className="card-head">
                         <span className="avatar" aria-hidden>
                           {initials(item.name)}
@@ -156,7 +195,7 @@ export default async function SearchPage({
                 {venues.map((item) => {
                   const st = slotState(item);
                   return (
-                    <Link className="card" key={item.id} href={`/venues/${item.id}${q.date ? `?date=${q.date}` : ""}`}>
+                    <Link className="card" key={item.id} href={`/venues/${item.id}${itemQs ? `?${itemQs}` : ""}`}>
                       <div className="card-head">
                         <span className="avatar" aria-hidden>
                           {initials(item.name)}

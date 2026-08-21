@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, getToken } from "@/lib/api";
-import { CHIP } from "@/lib/copy";
-import { money, moscowDate } from "@/lib/format";
+import { CHIP, categoryLabel } from "@/lib/copy";
+import { formatWhen, money, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { SlotList } from "@/components/SlotList";
 
@@ -21,8 +21,22 @@ type Artist = {
   tariffs: { id: string; title: string; honorarium_rub: number }[];
   slots: Slot[];
 };
+type EventItem = { id: string; title: string; status: string; event_date: string; city?: string };
+type Requirement = {
+  id?: string;
+  category_code: string;
+  role_label?: string;
+  qty?: number;
+  notes?: string;
+};
+type QuickRequestResult = { event_id?: string; request_id?: string; status?: string };
 
 const CAT: Record<string, string> = { dj: "DJ-сет", host: "Ведущий", cover: "Кавер" };
+
+function requirementLabel(req: Requirement): string {
+  const label = categoryLabel(req.category_code) || req.role_label || req.category_code;
+  return req.qty && req.qty > 1 ? `${label} · ${req.qty} чел.` : label;
+}
 
 export default function ArtistPage() {
   const params = useParams<{ id: string }>();
@@ -32,12 +46,21 @@ export default function ArtistPage() {
   const [slotId, setSlotId] = useState("");
   const [busy, setBusy] = useState(false);
   const [wantedDay, setWantedDay] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [eventId, setEventId] = useState("");
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [requirementId, setRequirementId] = useState("");
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const wanted = q.get("slot");
     const day = q.get("date");
+    const fromEvent = q.get("event");
+    const fromReq = q.get("requirement");
     setWantedDay(day);
+    if (fromEvent) setEventId(fromEvent);
+    if (fromReq) setRequirementId(fromReq);
     fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/artists/${params.id}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найден"))))
       .then((json: Artist) => {
@@ -57,6 +80,47 @@ export default function ArtistPage() {
   }, [params.id]);
 
   useEffect(() => {
+    if (!getToken()) {
+      setSignedIn(false);
+      setEvents([]);
+      return;
+    }
+    setSignedIn(true);
+    let cancelled = false;
+    api<{ items: EventItem[] }>("/events")
+      .then((res) => {
+        if (!cancelled) setEvents(res.items || []);
+      })
+      .catch(() => {
+        if (!cancelled) setEvents([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!eventId || !getToken()) {
+      setRequirements([]);
+      return;
+    }
+    let cancelled = false;
+    api<{ requirements?: Requirement[] }>(`/events/${eventId}`)
+      .then((detail) => {
+        if (cancelled) return;
+        const items = detail.requirements || [];
+        setRequirements(items);
+        setRequirementId((current) => (current && items.some((r) => r.id === current) ? current : ""));
+      })
+      .catch(() => {
+        if (!cancelled) setRequirements([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
+  useEffect(() => {
     if (data?.name) document.title = `${data.name} · Букер`;
   }, [data]);
 
@@ -69,13 +133,22 @@ export default function ArtistPage() {
       setError("Нет свободного слота");
       return;
     }
+    const body: { artist_id: string; slot_id: string; event_id?: string; requirement_id?: string } = {
+      artist_id: params.id,
+      slot_id: slotId,
+    };
+    if (eventId) {
+      body.event_id = eventId;
+      if (requirementId) body.requirement_id = requirementId;
+    }
     try {
       setBusy(true);
-      await api("/quick-request", {
+      const created = await api<QuickRequestResult>("/quick-request", {
         method: "POST",
-        body: JSON.stringify({ artist_id: params.id, slot_id: slotId }),
+        body: JSON.stringify(body),
       });
-      router.push("/cabinet");
+      const known = eventId || created.event_id;
+      router.push(known ? `/events/${encodeURIComponent(known)}` : "/cabinet");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка заявки");
     } finally {
@@ -100,6 +173,7 @@ export default function ArtistPage() {
   }
 
   const rider = data.rider || {};
+  const selectableRequirements = requirements.filter((req): req is Requirement & { id: string } => Boolean(req.id));
 
   return (
     <main>
@@ -146,6 +220,40 @@ export default function ArtistPage() {
           </a>
         </p>
       ) : null}
+      {signedIn ? (
+        <div className="grid" style={{ marginTop: 20 }}>
+          <label>
+            Событие
+            <select value={eventId} onChange={(e) => setEventId(e.target.value)} aria-label="Событие">
+              <option value="">Новая заявка без события</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {ev.title}
+                  {ev.event_date ? ` · ${formatWhen(ev.event_date)}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          {eventId ? (
+            <label>
+              Роль
+              <select
+                value={requirementId}
+                onChange={(e) => setRequirementId(e.target.value)}
+                aria-label="Роль в событии"
+              >
+                <option value="">Без привязки к роли</option>
+                {selectableRequirements.map((req) => (
+                  <option key={req.id} value={req.id}>
+                    {requirementLabel(req)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
+      ) : null}
+      {signedIn ? <p className="timeline">Цена на этом шаге не считается. Предложение придёт с сервера.</p> : null}
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       <p className="artist-desk-cta">
         <button type="button" onClick={() => void request()} disabled={!slotId || busy}>

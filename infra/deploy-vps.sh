@@ -23,7 +23,11 @@ ssh -i "${KEY}" -p "${PORT}" -o ForwardX11=no "${REMOTE}" 'bash -s' << 'REMOTE_S
 set -euo pipefail
 mkdir -p /opt/booker/data /var/www/letsencrypt
 /opt/booker/.venv/bin/pip install -e "/opt/booker/apps/api[dev]" -q
+systemctl stop booker-web || true
+pkill -f "/opt/booker/apps/web/node_modules/.bin/next" || true
+sleep 1
 cd /opt/booker/apps/web
+rm -rf .next
 npm install --silent
 export NEXT_PUBLIC_API_URL=/api
 export NEXT_PUBLIC_SITE_URL=https://bukergo.ru

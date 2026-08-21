@@ -9,7 +9,16 @@ export type SlotRow = {
   ends_at?: string;
   status: string;
   hall?: string;
+  buffer_before_min?: number;
+  buffer_after_min?: number;
 };
+
+function bufferCopy(slot: SlotRow): string | null {
+  const parts: string[] = [];
+  if (slot?.buffer_before_min) parts.push(`буфер ${slot.buffer_before_min} мин до`);
+  if (slot?.buffer_after_min) parts.push(`буфер ${slot.buffer_after_min} мин после`);
+  return parts.length ? parts.join(" · ") : null;
+}
 
 function statusCopy(status: string): { label: string; cls: string } {
   if (status === "open") return { label: "свободен", cls: "ok" };
@@ -90,12 +99,14 @@ export function SlotList({
               const st = statusCopy(s.status);
               const open = s.status === "open";
               const on = value === s.id;
+              const buffer = bufferCopy(s);
               const inner = (
                 <>
                   <span className="slot-when">
                     {s.hall ? `${s.hall} · ` : ""}
                     {formatClock(s.starts_at)}
                     <span className="timeline"> МСК</span>
+                    {buffer ? <span className="timeline"> · {buffer}</span> : null}
                   </span>
                   <span className={`chip ${st.cls}`}>{st.label}</span>
                 </>

@@ -2,30 +2,33 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, getToken, setToken } from "@/lib/api";
+import { api, getActiveOrg, getToken, setActiveOrg, setToken } from "@/lib/api";
+import { KIND_LABEL } from "@/lib/copy";
 import { loginHref } from "@/lib/next";
+
+type Org = { id: string; name: string; kind: string; role: string };
 
 type Me = {
   email: string;
   full_name: string;
   is_platform_admin?: boolean;
-  organizations: { id: string; name: string; kind: string; role: string }[];
+  organizations: Org[];
+  active_organization_id?: string;
 };
 
-const KIND: Record<string, string> = {
-  customer: "заказчик",
-  artist: "исполнитель",
-  venue: "площадка",
-};
 const ROLE: Record<string, string> = {
   owner: "владелец",
-  member: "в команде",
   admin: "админ",
+  manager: "менеджер",
+  viewer: "просмотр",
+  member: "в команде",
 };
 
 export default function ProfilePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState("");
+  const [active, setActive] = useState("");
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     if (!getToken()) {
@@ -33,7 +36,11 @@ export default function ProfilePage() {
       return;
     }
     api<Me>("/me")
-      .then(setMe)
+      .then((data) => {
+        setMe(data);
+        const orgs = data.organizations || [];
+        setActive(getActiveOrg() || data.active_organization_id || orgs[0]?.id || "");
+      })
       .catch((e: Error) => setError(e.message));
   }, []);
 
@@ -64,16 +71,52 @@ export default function ProfilePage() {
     );
   }
 
+  const orgs = me.organizations || [];
+
   return (
     <main>
       <p className="kicker">Это вы</p>
       <h1>{me.full_name}</h1>
       <p className="timeline">{me.email}</p>
-      {me.organizations.map((o) => (
+      {orgs.length > 1 ? (
+        <label>
+          Активное пространство
+          <select
+            value={active}
+            disabled={switching}
+            onChange={(e) => {
+              const id = e.target.value;
+              setActive(id);
+              setSwitching(true);
+              setActiveOrg(id);
+              void api("/me/active-org", {
+                method: "POST",
+                body: JSON.stringify({ organization_id: id }),
+              })
+                .then(() => {
+                  window.location.reload();
+                })
+                .catch((err: unknown) => {
+                  setSwitching(false);
+                  setError(err instanceof Error ? err.message : "Не удалось переключить");
+                });
+            }}
+          >
+            {orgs.map((o) => (
+              <option key={o.id} value={o.id}>
+                {(KIND_LABEL[o.kind] || o.kind) + " · " + o.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {error ? <p className="timeline">{error}</p> : null}
+      {orgs.map((o) => (
         <article className="card" key={o.id}>
           <strong>{o.name}</strong>
           <div>
-            {KIND[o.kind] || o.kind} · {ROLE[o.role] || o.role}
+            {KIND_LABEL[o.kind] || o.kind} · {ROLE[o.role] || o.role}
+            {active === o.id ? " · сейчас" : ""}
           </div>
         </article>
       ))}

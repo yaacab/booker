@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
-import { api, setToken } from "@/lib/api";
+import { api, setActiveOrg, setToken } from "@/lib/api";
 import { safeNext } from "@/lib/next";
 
 export default function LoginPage() {
@@ -49,10 +49,14 @@ export default function LoginPage() {
       else localStorage.removeItem("booker.admin");
       if (mode === "register") {
         const kind = String(form.get("kind") || "customer");
-        await api("/orgs", {
+        const org = await api<{ id: string }>("/orgs", {
           method: "POST",
           body: JSON.stringify({ name: payload.full_name, kind, city: "Москва" }),
         });
+        setActiveOrg(org.id);
+      } else {
+        const me = await api<{ active_organization_id?: string }>("/me");
+        if (me.active_organization_id) setActiveOrg(me.active_organization_id);
       }
       router.push(safeNext(new URLSearchParams(window.location.search).get("next")));
     } catch (err) {
