@@ -320,14 +320,25 @@ def quick_request(body: dict, user: User = Depends(current_user), db: Session = 
                 raise HTTPException(400, "requirement_id не относится к этому событию")
     else:
         members = db.query(TeamMember).filter(TeamMember.user_id == user.id).all()
-        customer_org_id = None
+        customer_ids: list[str] = []
+        writable_ids: list[str] = []
         for m in members:
             org = db.get(Organization, m.organization_id)
-            if org and org.kind == "customer":
-                customer_org_id = org.id
-                break
-        if not customer_org_id:
+            if not org or org.kind != "customer":
+                continue
+            customer_ids.append(org.id)
+            if user.is_platform_admin or m.role in {"owner", "admin", "manager"}:
+                writable_ids.append(org.id)
+        if not customer_ids:
             raise HTTPException(400, "Сначала создайте организацию заказчика")
+        active_id = user.active_organization_id
+        if active_id in writable_ids:
+            customer_org_id = active_id
+        elif writable_ids:
+            customer_org_id = writable_ids[0]
+        else:
+            customer_org_id = active_id if active_id in customer_ids else customer_ids[0]
+        require_org_writer(db, user, customer_org_id)
         event = Event(
             organization_id=customer_org_id,
             title=body.get("title") or f"Заявка: {artist.name}",

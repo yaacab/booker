@@ -108,6 +108,31 @@ def test_quick_request_attaches_to_existing_event(client):
     assert "quote_id" not in req
 
 
+def test_quick_request_without_event_id_requires_writer(client):
+    ctx = _setup(client)
+    extra = client.post(
+        "/slots",
+        json={
+            "resource_type": "artist",
+            "resource_id": ctx["artist"]["id"],
+            "starts_at": "2026-09-13T18:00:00+00:00",
+            "ends_at": "2026-09-13T22:00:00+00:00",
+        },
+        headers=ctx["oh"],
+    ).json()
+    payload = {
+        "artist_id": ctx["artist"]["id"],
+        "slot_id": extra["id"],
+        "title": "Заявка из каталога",
+    }
+    denied = client.post("/quick-request", json=payload, headers=ctx["vh"])
+    assert denied.status_code == 403
+    allowed = client.post("/quick-request", json=payload, headers=ctx["ch"])
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["status"] == "RequestSent"
+    assert allowed.json()["event_id"]
+
+
 def test_quick_request_without_event_id_creates_event(client):
     ctx = _setup(client)
     extra = client.post(
