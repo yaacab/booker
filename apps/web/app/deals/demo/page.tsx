@@ -182,7 +182,7 @@ export default function DealRoomDemoPage() {
             <p>
               <strong>итого {money(100000)}</strong>
             </p>
-            <p className="timeline">Первая сделка: комиссия платформы 0. Гонорар как есть. Цифру собрал сервер.</p>
+            <p className="timeline">Первая сделка: комиссия платформы 0. Сумма получена с сервера.</p>
           </div>
           <p className="timeline">Hold появится после взаимного ack. Таймер не пульсирует.</p>
           <div className="card" style={{ marginTop: 12 }}>

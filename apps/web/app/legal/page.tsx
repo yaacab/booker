@@ -6,7 +6,7 @@ export const metadata = { title: "Правовые документы", alternat
 export default function LegalIndexPage() {
   return (
     <main className="page-enter">
-      <p className="kicker">Мелкий шрифт. Без попкорна.</p>
+      <p className="kicker">Правила сервиса</p>
       <h1>Правовые документы</h1>
       <div className="legal-banner">
         Редакция {LEGAL_PACK_VERSION}. Черновики для человека с дипломом. Эквайринг не включаем, пока
