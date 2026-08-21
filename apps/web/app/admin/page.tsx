@@ -65,9 +65,9 @@ export default function AdminPage() {
 
   return (
     <main>
-      <p className="kicker">За кулисами</p>
-      <h1>Пульт. Нервы прилагаются.</h1>
-      <p className="timeline">Споры судит человек. Журнал не стирается. Страховкой не прикидываемся.</p>
+      <p className="kicker">Операторский контур</p>
+      <h1>Пульт управления</h1>
+      <p className="timeline">Спорные ситуации рассматривает оператор. Действия сохраняются в журнале аудита.</p>
       {error ? (
         <p>
           {error}. <Link href={loginHref("/admin")}>Войти</Link>
@@ -78,7 +78,7 @@ export default function AdminPage() {
           <h2>Верификация</h2>
           {(queue?.artists ?? []).map((a) => (
             <p key={a.id}>
-              {a.name} · {a.status === "pending" ? "ещё знакомимся" : a.status}{" "}
+              {a.name} · {a.status === "pending" ? "ожидает проверки" : a.status}{" "}
               <button type="button" disabled={busyId === a.id} onClick={() => void decide(a.id, true)}>
                 Подтвердить
               </button>{" "}
@@ -96,7 +96,7 @@ export default function AdminPage() {
         </article>
         <article className="card">
           <h2>Споры</h2>
-          <p>Категория из гримёрки. Вердикт пишет человек, не чат.</p>
+          <p>Категория и материалы поступают из Deal Room. Решение принимает оператор.</p>
         </article>
         <article className="card tint">
           <h2>Риск</h2>

@@ -7,14 +7,14 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Букер — пока вы спорите в чате, дата уже чужая",
+    default: "Букер — сделки с артистами и площадками",
     template: "%s · Букер",
   },
   description:
-    "Слот, цифра с сервера и подписи в одной комнате. Мы не играем сет и не сдаём зал. Спор разбирает человек.",
+    "Свободные слоты, предложения, подтверждения и документы в одном рабочем пространстве.",
   openGraph: {
-    title: "Букер — пока вы спорите в чате, дата уже чужая",
-    description: "Слот, цифра с сервера и подписи в одной комнате.",
+    title: "Букер — сделки с артистами и площадками",
+    description: "Свободные слоты, предложения и подтверждения в одном Deal Room.",
     siteName: "Букер",
     locale: "ru_RU",
     type: "website",

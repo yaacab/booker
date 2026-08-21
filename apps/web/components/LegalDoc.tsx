@@ -66,12 +66,12 @@ export function LegalDoc({ source }: { source: string }) {
   return (
     <main className="page-enter legal-doc">
       <p className="timeline">
-        <Link href="/legal">Бумажки</Link>
+        <Link href="/legal">Правовые документы</Link>
       </p>
       <div className="legal-banner">
-        Редакция {LEGAL_PACK_VERSION}. Пока юрист не кивнул — это черновик, не действующая оферта и не консультация.
-        Живые платежи спим. Реквизиты оператора ещё пустые.
-        Весь пакет: <Link href="/legal">сюда</Link>.
+        Редакция {LEGAL_PACK_VERSION}. До завершения юридической проверки документ считается черновиком и не является действующей офертой или консультацией.
+        Платежи в пилотной версии отключены. Реквизиты оператора будут заполнены после юридической проверки.
+        Все документы: <Link href="/legal">в общем разделе</Link>.
       </div>
       {blocks.map((block, i) => (
         <BlockView key={i} block={block} />

@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#2D6A66",
     lang: "ru",
     shortcuts: [
-      { name: "Кто ещё не занят", short_name: "Свободные", url: "/search" },
-      { name: "Собрать вечер", short_name: "Вечер", url: "/events/new" },
+      { name: "Открыть каталог", short_name: "Каталог", url: "/search" },
+      { name: "Создать заявку", short_name: "Заявка", url: "/events/new" },
     ],
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },

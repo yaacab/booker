@@ -103,7 +103,7 @@ export default function ArtistPage() {
 
   return (
     <main>
-      <p className="kicker">Человек со слотом</p>
+      <p className="kicker">Профиль артиста</p>
       <h1>{data.name}</h1>
       <p>
         {data.city} · {CAT[data.category] || data.category}{" "}
@@ -111,12 +111,12 @@ export default function ArtistPage() {
       </p>
       <p>{data.facts.note}</p>
       <p className="timeline">
-        Отвечает: {data.facts.response || "пока загадка"}. Закрытых вечеров: {data.facts.deals ?? 0}. Звёзды не рисуем — рано хвастаться.
+        Ответ обычно: {data.facts.response || "данных пока мало"}. Завершённых сделок: {data.facts.deals ?? 0}.
       </p>
       <div className="grid" style={{ marginTop: 20 }}>
         <article className="card">
           <h2>Формат и состав</h2>
-          <p>{rider.format || CAT[data.category] || "формат уточняется в гримёрке"}</p>
+          <p>{rider.format || CAT[data.category] || "формат уточняется в Deal Room"}</p>
           <p>{rider.lineup || "состав: уточняется"}</p>
         </article>
         <article className="card tint">
@@ -132,7 +132,7 @@ export default function ArtistPage() {
               </li>
             ))}
           </ul>
-          <p className="timeline">Итог — только когда сервер пришлёт номер. Это ещё витрина.</p>
+          <p className="timeline">Это ориентир. Итоговые условия поступят с сервера и будут связаны с quote_id.</p>
         </article>
       </div>
       <h2>Календарь</h2>
@@ -142,19 +142,19 @@ export default function ArtistPage() {
       ) ? (
         <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           <a className="btn secondary" href="mailto:hello@bukergo.ru?subject=Нет%20слота">
-            Позвать человека
+            Связаться с оператором
           </a>
         </p>
       ) : null}
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       <p className="artist-desk-cta">
         <button type="button" onClick={() => void request()} disabled={!slotId || busy}>
-          {busy ? "Шлём заявку…" : "Запросить цифру"}
+          {busy ? "Отправляем заявку…" : "Запросить предложение"}
         </button>
       </p>
       <div className="sticky-cta">
         <button type="button" onClick={() => void request()} disabled={!slotId || busy}>
-          {busy ? "Шлём заявку…" : "Запросить цифру"}
+          {busy ? "Отправляем заявку…" : "Запросить предложение"}
         </button>
       </div>
     </main>

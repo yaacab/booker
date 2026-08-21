@@ -88,8 +88,8 @@ export default function CabinetPage() {
 
   return (
     <main>
-      <p className="kicker">Очередь</p>
-      <h1>Что горит</h1>
+      <p className="kicker">Рабочее пространство</p>
+      <h1>Мои сделки</h1>
       {email ? <p className="timeline">{email}</p> : null}
       {!ready ? <div className="skeleton" /> : null}
       {error ? (
@@ -99,15 +99,15 @@ export default function CabinetPage() {
       ) : null}
       {empty ? (
         <article className="card empty">
-          <h2>Пока тихо. Подозрительно.</h2>
-          <p>Соберите вечер или найдите дырку в календаре. Пустой кабинет — не дзен, а недоделка.</p>
-          <p className="timeline">Первая сделка в контуре — комиссия платформы 0. Гонорар как обычно.</p>
+          <h2>У вас пока нет заявок</h2>
+          <p>Создайте первую заявку или найдите свободный слот в каталоге. Черновик можно заполнить за несколько минут.</p>
+          <p className="timeline">Условия и итоговая сумма появятся в Deal Room после серверного предложения.</p>
           <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Link className="btn" href="/events/new">
-              Собрать вечер
+              Создать заявку
             </Link>
             <Link className="btn secondary" href="/search">
-              Кто ещё не занят
+              Открыть каталог
             </Link>
           </p>
         </article>
@@ -128,7 +128,7 @@ export default function CabinetPage() {
                 </div>
                 <p>
                   <Link href={`/search?date=${moscowDate(e.event_date)}${e.city ? `&city=${encodeURIComponent(e.city)}` : ""}`}>
-                    Кто ещё не занят на эту дату
+                    Найти доступных на эту дату
                   </Link>
                 </p>
               </article>
@@ -149,11 +149,11 @@ export default function CabinetPage() {
                 <p className="timeline">витрина {money(r.honorarium_rub)} — это ещё не счёт</p>
                 {r.booking_id ? (
                   <Link className="btn" href={`/deals/${r.booking_id}`}>
-                    В гримёрку
+                    Открыть Deal Room
                   </Link>
                 ) : (
                   <button type="button" disabled={offerBusy === r.id} onClick={() => void sendOffer(r)}>
-                    {offerBusy === r.id ? "Считаем…" : "Ответить цифрой"}
+                    {offerBusy === r.id ? "Отправляем…" : "Отправить предложение"}
                   </button>
                 )}
               </article>

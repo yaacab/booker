@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Собрать вечер",
+  title: "Новая заявка",
   alternates: { canonical: "/events/new" },
 };
 

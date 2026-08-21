@@ -28,63 +28,71 @@ export default function HomePage() {
   return (
     <main className="page-enter hero">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <p className="kicker">Не доска объявлений. И не караоке для менеджеров.</p>
-      <h1>Пока вы миритесь в чате, дата уже чужая.</h1>
-      <p>
-        Букер держит слот, цифру и подписи в одной комнате. На сцену не выходим — голос не тот.
-        Цену не рисуем маркером: её считает сервер.
-      </p>
-      <form className="search" action="/search" method="get">
-        <CityField name="city" defaultValue="Москва" />
-        <label>
-          Дата
-          <input name="date" type="date" min={moscowToday()} />
-        </label>
-        <label>
-          Кто нужен
-          <select name="category" defaultValue="dj">
-            <option value="dj">DJ</option>
-            <option value="host">Ведущий</option>
-            <option value="cover">Кавер</option>
-            <option value="venue">Площадка</option>
-          </select>
-        </label>
-        <button type="submit">Кто ещё не занят</button>
-      </form>
-      <p className="timeline">Пилот: в каталоге живые слоты пока из Москвы.</p>
+      <section className="hero-grid">
+        <div className="hero-copy">
+          <p className="kicker">Backstage Control Room</p>
+          <h1>Соберите событие. Мы сведём стороны в одной сделке.</h1>
+          <p>
+            Дата, свободный слот, райдер, предложение и подтверждения — в спокойном профессиональном интерфейсе.
+          </p>
+          <ul className="hero-checks">
+            <li>Цена появляется только в серверном предложении</li>
+            <li>Каждая сторона подтверждает условия отдельно</li>
+            <li>История сделки сохраняется в Deal Room</li>
+          </ul>
+        </div>
+        <aside className="hero-search card">
+          <p className="kicker">Поиск по календарю</p>
+          <h2>Найдите свободный слот</h2>
+          <p className="timeline">Сначала дата и формат — затем доступные участники.</p>
+          <form className="search search-vertical" action="/search" method="get">
+            <CityField name="city" defaultValue="Москва" />
+            <label>
+              Дата
+              <input name="date" type="date" min={moscowToday()} />
+            </label>
+            <label>
+              Кто нужен
+              <select name="category" defaultValue="dj">
+                <option value="dj">DJ</option>
+                <option value="host">Ведущий</option>
+                <option value="cover">Кавер-группа</option>
+                <option value="venue">Площадка</option>
+              </select>
+            </label>
+            <button type="submit">Показать свободных</button>
+          </form>
+          <p className="timeline">Пилотный каталог сейчас работает по Москве.</p>
+        </aside>
+      </section>
       <p className="legal-banner" style={{ marginTop: 20 }}>
-        Оферта ещё черновик, эквайринг выключен. Первая сделка в контуре — комиссия платформы 0, гонорар как есть.
+        Юридические документы находятся в режиме пилота, проведение платежей пока отключено.
         {" "}
-        <Link href="/legal">Бумажки</Link>
+        <Link href="/legal">Подробнее о правилах сервиса</Link>
       </p>
-      <article className="card tint" style={{ marginTop: 28 }}>
-        <p className="kicker">Для новых</p>
-        <h2>Первый заход — нашу долю оставляете себе</h2>
-        <p>
-          Гонорар артисту как обычно: мы не Дед Мороз. Комиссию платформы на первую сделку в контуре
-          обнуляем. Прямой перевод на карту «как друзья» в подарок не входит.
-        </p>
-      </article>
       <div className="grid" style={{ marginTop: 32 }}>
         <article className="card">
-          <h2>Цифра без фокуса</h2>
-          <p>Калькулятор в голове — мило. В договоре — нет. Приезжает номер цены с сервера.</p>
+          <p className="kicker">01 · Предложение</p>
+          <h2>Сумма связана с quote_id</h2>
+          <p>Каталог показывает ориентир. Итоговые условия поступают с сервера и фиксируются отдельной версией.</p>
         </article>
         <article className="card">
-          <h2>Одна дата — один хозяин</h2>
-          <p>Hold с таймером. Проспали — слот снова гуляет. Два «да» на одну пятницу мы не выдаём.</p>
+          <p className="kicker">02 · Календарь</p>
+          <h2>Один ресурс — один слот</h2>
+          <p>Временное удержание имеет срок действия. После его окончания дата снова становится доступной.</p>
         </article>
         <article className="card">
-          <h2>Нейронка в судьи не идёт</h2>
-          <p>Скандал разбирает человек. Мы не страховая, не кавер-группа и не ваш семейный чат.</p>
+          <p className="kicker">03 · Поддержка</p>
+          <h2>ИИ объясняет, оператор решает</h2>
+          <p>Помощник структурирует факты и статусы. Решения по спорным вопросам принимает оператор.</p>
         </article>
       </div>
       <p style={{ marginTop: 28, display: "flex", gap: 8, flexWrap: "wrap" }}>
         <Link className="btn" href="/events/new">
-          Собрать вечер
+          Создать заявку
         </Link>
         <Link className="btn secondary" href="/deals/demo">
-          Подсмотреть гримёрку
+          Посмотреть Deal Room
         </Link>
       </p>
     </main>

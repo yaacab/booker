@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState("");
+  const [selectedRole, setSelectedRole] = useState("customer");
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -25,7 +26,7 @@ export default function LoginPage() {
           method: "POST",
           body: JSON.stringify({ email: String(form.get("email") || "") }),
         });
-        setNotice("Если такой ящик есть — напишем. На пилоте голуби ещё не обучены, письмо не улетает.");
+        setNotice("Если аккаунт существует, инструкция для восстановления будет отправлена на указанную почту.");
         return;
       }
       const path = mode === "login" ? "/auth/login" : "/auth/register";
@@ -67,19 +68,19 @@ export default function LoginPage() {
         <BrandLockup />
       </p>
       <p className="kicker">
-        {mode === "recover" ? "Пароль сбежал" : mode === "login" ? "Свои" : "Новые"}
+        {mode === "recover" ? "Восстановление доступа" : mode === "login" ? "Backstage Control Room" : "Новый аккаунт"}
       </p>
       <h1>
         {mode === "recover"
-          ? "Притворимся, что забыли"
+          ? "Вернём доступ к кабинету"
           : mode === "login"
-            ? "Зайти, пока дата не утекла"
-            : "Завести кабинет"}
+            ? "Войти в Букер"
+            : "Создать кабинет"}
       </h1>
       {mode === "login" ? (
         <details className="timeline">
-          <summary>Песочница для своих</summary>
-          <p>Пароль у всех password1. Подпись в гримёрке — 123456.</p>
+          <summary>Демонстрационные аккаунты</summary>
+          <p>Пароль для демовхода: password1. Код подтверждения в Deal Room: 123456.</p>
           <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
             {(
               [
@@ -106,7 +107,7 @@ export default function LoginPage() {
           </p>
         </details>
       ) : (
-        <p className="timeline">Роль выбираете сейчас. Админку с улицы не выдаём — характера хватит и так.</p>
+        <p className="timeline">Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи.</p>
       )}
       <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420 }} onSubmit={onSubmit}>
         {mode === "register" ? (
@@ -115,14 +116,26 @@ export default function LoginPage() {
               Имя
               <input name="full_name" required />
             </label>
-            <label>
-              Роль
-              <select name="kind" defaultValue="customer">
-                <option value="customer">Заказчик</option>
-                <option value="artist">Артист / менеджер</option>
-                <option value="venue">Площадка</option>
-              </select>
-            </label>
+            <fieldset className="role-picker">
+              <legend>Роль</legend>
+              <input type="hidden" name="kind" value={selectedRole} />
+              {[
+                ["customer", "Заказчик", "Ищу артиста или площадку"],
+                ["artist", "Артист / менеджер", "Управляю датами и предложениями"],
+                ["venue", "Площадка", "Размещаю пространство и слоты"],
+              ].map(([value, title, description]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`role-option ${selectedRole === value ? "on" : ""}`}
+                  aria-pressed={selectedRole === value}
+                  onClick={() => setSelectedRole(value)}
+                >
+                  <span><strong>{title}</strong><small>{description}</small></span>
+                  <span aria-hidden>{selectedRole === value ? "✓" : ""}</span>
+                </button>
+              ))}
+            </fieldset>
           </>
         ) : null}
         <label>
@@ -139,31 +152,31 @@ export default function LoginPage() {
           <>
             <label className="unknown">
               <input name="accept_offer" type="checkbox" required />
-              Принимаю <a href="/legal/offer">оферту</a>. Мы не ваш диджей, даже если очень просят.
+              Принимаю <a href="/legal/offer">оферту</a> и правила использования сервиса.
             </label>
             <label className="unknown">
               <input name="accept_privacy" type="checkbox" required />
-              Данные по <a href="/legal/privacy">политике</a> — без этого кабинет не заводится, извините.
+              Согласен с <a href="/legal/privacy">политикой обработки персональных данных</a>.
             </label>
             <label className="unknown">
               <input name="marketing_opt_in" type="checkbox" />
-              Можно иногда писать про акции. Галочка не обязательная, совесть тоже.
+              Получать новости продукта и специальные предложения. Необязательно.
             </label>
           </>
         ) : null}
         {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
         {notice ? <p className="timeline">{notice}</p> : null}
         <button type="submit" disabled={pending}>
-          {pending ? "…" : mode === "recover" ? "Попробовать" : mode === "login" ? "Войти" : "Поехали"}
+          {pending ? "Обрабатываем…" : mode === "recover" ? "Отправить инструкцию" : mode === "login" ? "Войти" : "Создать аккаунт"}
         </button>
       </form>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="button" className="secondary" onClick={() => setMode(mode === "login" ? "register" : "login")}>
-          {mode === "login" ? "Ещё без кабинета" : "Уже был, забыл"}
+          {mode === "login" ? "Создать аккаунт" : "Вернуться ко входу"}
         </button>
         {mode === "login" ? (
           <button type="button" className="secondary" onClick={() => setMode("recover")}>
-            Пароль испарился
+            Забыли пароль?
           </button>
         ) : null}
       </p>
