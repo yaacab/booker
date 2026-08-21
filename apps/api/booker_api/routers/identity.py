@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from booker_api.composition import ALLOWED_ORG_KINDS, ALLOWED_ROLES, normalize_kind
 from booker_api.db import get_db
 from booker_api.models import Organization, TeamMember, User
 from booker_api.schemas import LoginIn, MemberIn, OrgIn, RegisterIn
@@ -83,14 +84,16 @@ def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
         "full_name": user.full_name,
         "is_platform_admin": user.is_platform_admin,
         "organizations": orgs,
+        "active_organization_id": user.active_organization_id or (orgs[0]["id"] if orgs else None),
     }
 
 
 @router.post("/orgs")
 def create_org(body: OrgIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    if body.kind not in {"customer", "artist", "venue"}:
+    kind = normalize_kind(body.kind)
+    if kind not in ALLOWED_ORG_KINDS:
         raise HTTPException(400, "kind: customer|artist|venue")
-    org = Organization(name=body.name, kind=body.kind, city=body.city)
+    org = Organization(name=body.name, kind=kind, city=body.city)
     db.add(org)
     db.flush()
     db.add(
@@ -101,6 +104,7 @@ def create_org(body: OrgIn, user: User = Depends(current_user), db: Session = De
             can_confirm_offer=True,
         )
     )
+    user.active_organization_id = org.id
     audit(
         db,
         actor_user_id=user.id,
@@ -145,14 +149,28 @@ def add_member(
     owner = require_org_member(db, user, org_id)
     if owner.role not in {"owner", "admin"} and not user.is_platform_admin:
         raise HTTPException(403, "Только владелец добавляет команду")
+    if body.role not in ALLOWED_ROLES:
+        raise HTTPException(400, "role: owner|admin|manager|viewer")
     if not db.get(User, body.user_id):
         raise HTTPException(404, "Пользователь не найден")
+    confirm = False if body.role == "viewer" else body.can_confirm_offer
     member = TeamMember(
         user_id=body.user_id,
         organization_id=org_id,
         role=body.role,
-        can_confirm_offer=body.can_confirm_offer,
+        can_confirm_offer=confirm,
     )
     db.add(member)
     db.commit()
     return {"id": member.id, "can_confirm_offer": member.can_confirm_offer}
+
+
+@router.post("/me/active-org")
+def set_active_org(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    org_id = body.get("organization_id")
+    if not org_id:
+        raise HTTPException(400, "organization_id обязателен")
+    require_org_member(db, user, org_id)
+    user.active_organization_id = org_id
+    db.commit()
+    return {"active_organization_id": org_id}

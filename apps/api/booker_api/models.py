@@ -35,6 +35,7 @@ class User(Base):
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    active_organization_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     memberships: Mapped[list["TeamMember"]] = relationship(back_populates="user")
@@ -140,6 +141,8 @@ class AvailabilitySlot(Base):
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(16), default="open")  # open|held|confirmed
+    buffer_before_min: Mapped[int] = mapped_column(Integer, default=0)
+    buffer_after_min: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Event(Base):
@@ -155,12 +158,43 @@ class Event(Base):
     notes: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="Draft")
 
+    requirements: Mapped[list["EventTeamRequirement"]] = relationship(back_populates="event")
+
+
+class CatalogCategory(Base):
+    __tablename__ = "catalog_categories"
+
+    code: Mapped[str] = mapped_column(String(32), primary_key=True)
+    title: Mapped[str] = mapped_column(String(128))
+    group_code: Mapped[str] = mapped_column(String(32), default="other")
+    published: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class EventTeamRequirement(Base):
+    __tablename__ = "event_team_requirements"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), index=True)
+    category_code: Mapped[str] = mapped_column(String(32), index=True)
+    role_label: Mapped[str] = mapped_column(String(128), default="")
+    qty: Mapped[int] = mapped_column(Integer, default=1)
+    required: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String(32), default="open")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    notes: Mapped[str] = mapped_column(Text, default="")
+
+    event: Mapped[Event] = relationship(back_populates="requirements")
+
 
 class Request(Base):
     __tablename__ = "requests"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), index=True)
+    requirement_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("event_team_requirements.id"), nullable=True, index=True
+    )
     resource_type: Mapped[str] = mapped_column(String(16))
     resource_id: Mapped[str] = mapped_column(String(36), index=True)
     supplier_org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
@@ -299,3 +333,18 @@ class Dispute(Base):
     status: Mapped[str] = mapped_column(String(16), default="open")
     decision: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Service(Base):
+    """Каталожная услуга поверх таксономии. Не заменяет Artist/Venue; honorarium_rub — витрина, не quote."""
+
+    __tablename__ = "services"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    category_code: Mapped[str] = mapped_column(String(32), index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    city: Mapped[str] = mapped_column(String(128), default="Москва")
+    published: Mapped[bool] = mapped_column(Boolean, default=True)
+    honorarium_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)

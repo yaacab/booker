@@ -19,6 +19,9 @@ def engine():
         future=True,
     )
     Base.metadata.create_all(bind=eng)
+    from booker_api.db import ensure_sqlite_columns
+
+    ensure_sqlite_columns(eng)
     return eng
 
 

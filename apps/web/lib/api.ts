@@ -1,4 +1,5 @@
 const TOKEN_KEY = "booker.token";
+const ORG_KEY = "booker.org";
 
 export function apiBase(): string {
   if (typeof window !== "undefined") {
@@ -16,10 +17,24 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+export function getActiveOrg(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(ORG_KEY);
+}
+
+export function setActiveOrg(id: string | null): void {
+  if (typeof window === "undefined") return;
+  if (id) localStorage.setItem(ORG_KEY, id);
+  else localStorage.removeItem(ORG_KEY);
+}
+
 export function setToken(token: string | null): void {
   if (typeof window === "undefined") return;
   if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  else {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(ORG_KEY);
+  }
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -27,6 +42,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   headers.set("Content-Type", "application/json");
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  const org = getActiveOrg();
+  if (org) headers.set("X-Booker-Org", org);
   const res = await fetch(`${apiBase()}${path}`, { ...init, headers });
   const text = await res.text();
   let data: { detail?: unknown } = {};

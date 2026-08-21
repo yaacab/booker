@@ -15,6 +15,8 @@ class Settings(BaseSettings):
         "https://bookergo.ru,https://bukergo.online"
     )
     public_url: str = "https://bukergo.ru"
+    composition_v2: bool = True
+    workspace_switcher: bool = True
 
 
 settings = Settings()

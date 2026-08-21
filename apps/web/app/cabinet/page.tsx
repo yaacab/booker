@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, getToken, setToken } from "@/lib/api";
-import { formatWhen, money, moscowDate } from "@/lib/format";
+import { api, getActiveOrg, getToken, setActiveOrg, setToken } from "@/lib/api";
+import { KIND_LABEL } from "@/lib/copy";
+import { formatWhen, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { STATUS_LABEL } from "@/lib/status";
 
@@ -25,6 +26,8 @@ export default function CabinetPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [bookings, setBookings] = useState<BookingItem[]>([]);
+  const [kind, setKind] = useState<string>("");
+  const [orgName, setOrgName] = useState("");
   const [ready, setReady] = useState(false);
   const [offerBusy, setOfferBusy] = useState<string | null>(null);
 
@@ -35,13 +38,26 @@ export default function CabinetPage() {
       return;
     }
     try {
-      const me = await api<{ email: string; is_platform_admin?: boolean }>("/me");
+      const me = await api<{
+        email: string;
+        is_platform_admin?: boolean;
+        organizations?: { id: string; name: string; kind: string }[];
+        active_organization_id?: string;
+      }>("/me");
       setEmail(me.email);
       if (me.is_platform_admin) localStorage.setItem("booker.admin", "1");
+      const orgId = getActiveOrg() || me.active_organization_id || me.organizations?.[0]?.id;
+      const org = me.organizations?.find((o) => o.id === orgId) || me.organizations?.[0];
+      if (org) {
+        setActiveOrg(org.id);
+        setKind(org.kind);
+        setOrgName(org.name);
+      }
+      const q = org ? `?organization_id=${encodeURIComponent(org.id)}` : "";
       const [ev, rq, bk] = await Promise.all([
-        api<{ items: EventItem[] }>("/events"),
-        api<{ items: RequestItem[] }>("/requests"),
-        api<{ items: BookingItem[] }>("/bookings"),
+        api<{ items: EventItem[] }>("/events" + q),
+        api<{ items: RequestItem[] }>("/requests" + q),
+        api<{ items: BookingItem[] }>("/bookings" + q),
       ]);
       setEvents(ev.items);
       setRequests(rq.items);
@@ -88,9 +104,9 @@ export default function CabinetPage() {
 
   return (
     <main>
-      <p className="kicker">Рабочее пространство</p>
-      <h1>Мои сделки</h1>
-      {email ? <p className="timeline">{email}</p> : null}
+      <p className="kicker">Рабочее пространство · {KIND_LABEL[kind] || "Букер"}</p>
+      <h1>{kind === "artist" || kind === "venue" ? "Входящие и сделки" : "Мои события"}</h1>
+      {email ? <p className="timeline">{email}{orgName ? ` · ${orgName}` : ""}</p> : null}
       {!ready ? <div className="skeleton" /> : null}
       {error ? (
         <p>
@@ -99,44 +115,45 @@ export default function CabinetPage() {
       ) : null}
       {empty ? (
         <article className="card empty">
-          <h2>У вас пока нет заявок</h2>
-          <p>Создайте первую заявку или найдите свободный слот в каталоге. Черновик можно заполнить за несколько минут.</p>
+          <h2>{kind === "artist" || kind === "venue" ? "Пока нет входящих заявок" : "У вас пока нет заявок"}</h2>
+          <p>
+            {kind === "artist" || kind === "venue"
+              ? "Когда заказчик отправит запрос на ваш слот, он появится здесь."
+              : "Создайте первую заявку или найдите свободный слот в каталоге. Черновик можно заполнить за несколько минут."}
+          </p>
           <p className="timeline">Условия и итоговая сумма появятся в Deal Room после серверного предложения.</p>
           <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link className="btn" href="/events/new">
-              Создать заявку
-            </Link>
+            {kind === "customer" || !kind ? (
+              <Link className="btn" href="/events/new">
+                Создать заявку
+              </Link>
+            ) : null}
             <Link className="btn secondary" href="/search">
               Открыть каталог
             </Link>
           </p>
         </article>
       ) : null}
-      {events.length > 0 ? (
+      {events.length > 0 && kind !== "artist" && kind !== "venue" ? (
         <>
           <h2>События</h2>
           <div className="grid">
             {events.map((e) => (
-              <article className="card" key={e.id}>
+              <Link className="card" key={e.id} href={`/events/${e.id}`}>
                 <strong>{e.title}</strong>
                 <div>
                   <span className={`chip ${chipCls(e.status)}`}>{STATUS_LABEL[e.status] || e.status}</span>
                 </div>
-                <div className="mono">
+                <span className="mono">
                   {formatWhen(e.event_date)}
                   {e.city ? ` · ${e.city}` : ""}
-                </div>
-                <p>
-                  <Link href={`/search?date=${moscowDate(e.event_date)}${e.city ? `&city=${encodeURIComponent(e.city)}` : ""}`}>
-                    Найти доступных на эту дату
-                  </Link>
-                </p>
-              </article>
+                </span>
+              </Link>
             ))}
           </div>
         </>
       ) : null}
-      {requests.length > 0 ? (
+      {requests.length > 0 && kind !== "customer" ? (
         <>
           <h2>Входящие заявки</h2>
           <div className="grid">

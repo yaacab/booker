@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
+import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { getToken, setToken } from "@/lib/api";
 import { loginHref } from "@/lib/next";
 
@@ -14,6 +15,7 @@ function tabTitle(path: string): string {
   if (path === "/") return DEFAULT_TITLE;
   if (path.startsWith("/search")) return "Каталог · Букер";
   if (path.startsWith("/events/new")) return "Новая заявка · Букер";
+  if (path.startsWith("/events/")) return "Событие · Букер";
   if (path.startsWith("/cabinet")) return "Сделки · Букер";
   if (path.startsWith("/profile")) return "Профиль · Букер";
   if (path.startsWith("/admin")) return "Пульт · Букер";
@@ -82,6 +84,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             {authed ? <Link href="/cabinet" aria-current={path.startsWith("/cabinet") || path.startsWith("/deals") ? "page" : undefined}>Сделки</Link> : null}
             {authed ? <Link href="/profile" aria-current={path.startsWith("/profile") ? "page" : undefined}>Профиль</Link> : null}
             {admin ? <Link href="/admin" aria-current={path.startsWith("/admin") ? "page" : undefined}>Оператор</Link> : null}
+            {authed ? <WorkspaceSwitcher /> : null}
             {authed ? (
               <button
                 type="button"

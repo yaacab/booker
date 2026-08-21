@@ -1,13 +1,22 @@
-# Дорожная карта (фазы 0–4)
+# Дорожная карта
 
-| Фаза | Срок | Результат |
-|------|------|-----------|
-| 0 Research+legal | 2–4 нед | Интервью, юр.скелет, шортлист платежей, прототип экранов |
-| 1 Alpha | 4–8 нед | Каталог, календарь, заявка, чат-лайт, оператор вручную |
-| 2 MVP | +3–5 мес | Deal Room, hold, договор, платёж-партнёр, админ+аудит |
-| 3 Market fit | 6–12 мес | Studio Lite, срочность, AI FAQ, подписки, агентства, Protect v1 с резервом |
-| 4 Scale | 12+ мес | Подрядчики, туры, билеты, white label, PostGIS, OpenSearch, 3D |
+Пилот (код сейчас): identity, каталог+календарь, заявка, Deal Room, hold, оффер с `quote_id`, админ+audit, UI Backstage, Service+залы, буферы слотов, Event Studio, `request.requirement_id` + GET event.requests.
 
-Отложено явно: Event Studio, AI-оператор в спорах, Protect без резерва, срочные тарифы, агентства, PostGIS, 3D, white label, билеты.
+Очередь блупринта v1.0:
 
-Фазы 3–4 не начинать, пока не выполнены KPI пилота и стоп-условие контракта.
+| Фаза | Результат |
+|------|-----------|
+| 0 | Флаги, выжимка блупринта, миграции SQLite — **сделано** |
+| 1 | Workspace=Organization, переключение, RBAC owner/admin/manager/viewer — **сделано** |
+| P0.3 | `EventTeamRequirement` вместо состава в `notes` — **сделано** |
+| 2 | Taxonomy, Service, объект/зал — **сделано** |
+| 3 | Resource + буферы слотов — **сделано** (поля на AvailabilitySlot, overlap с буфером) |
+| 4 | Event Studio мультисостав — **сделано** (qty, PUT requirements, страница события) |
+| 5 | Deal на позицию, Event Control Room — **сделано** (request.requirement_id, GET event.requests, заявка из каталога в роль) |
+| 6–8 | Документы, коммерция, рост — **не в этом деплое** (нет 3D, Turbo, Protect, живого эквайринга) |
+
+Фаза 3 буферы: на существующем AvailabilitySlot (artist|hall), без новой таблицы Resource.
+
+Следующие: фазы 6–8 (документы, коммерция, рост). Не в пилоте: 3D, Turbo, Protect, живой эквайринг.
+
+Отложено: 3D, Turbo, AI в спорах, Protect, эквайринг до юриста, смена SQLite→Postgres в этом спринте.

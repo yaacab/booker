@@ -12,7 +12,7 @@ const STEPS = [
   { id: "what", q: "Формат события", hint: "Выберите базовый сценарий — детали можно изменить позже.", unknown: false },
   { id: "when", q: "Дата и город", hint: "По этим данным каталог проверит доступные слоты.", unknown: false },
   { id: "guests", q: "Количество гостей", hint: "Нужно для подбора формата площадки и требований райдера.", unknown: false },
-  { id: "artist", q: "Артист", hint: "Выберите направление или оставьте пункт для уточнения оператором.", unknown: true },
+  { id: "artist", q: "Состав", hint: "Отметьте нужные роли. Это ещё не бронь и не цена — только состав события.", unknown: true },
   { id: "venue", q: "Площадка", hint: "Укажите, есть ли площадка или её нужно подобрать.", unknown: true },
   { id: "tech", q: "Технические условия", hint: "Отметьте текущее состояние — точный райдер согласуется в Deal Room.", unknown: true },
   { id: "budget", q: "Бюджет", hint: "Диапазон помогает отфильтровать варианты, но не рассчитывает итоговую цену.", unknown: true },
@@ -25,6 +25,8 @@ type Draft = {
   date: string;
   guests: string;
   artist: string;
+  roles: string[];
+  roleQty: Record<string, number>;
   venue: string;
   tech: string;
   budget: string;
@@ -36,10 +38,18 @@ const EMPTY: Draft = {
   date: "",
   guests: "80",
   artist: "dj",
+  roles: ["dj"],
+  roleQty: { dj: 1 },
   venue: "unknown",
   tech: "unknown",
   budget: "",
 };
+
+function qtyOf(qty: Record<string, number> | undefined, code: string): number {
+  const n = Number(qty?.[code]);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(20, Math.floor(n));
+}
 
 const DRAFT_KEY = "booker.eventDraft";
 
@@ -66,7 +76,12 @@ export default function NewEventPage() {
           step?: number;
           roofName?: string;
         };
-        if (saved.draft) setDraft({ ...EMPTY, ...saved.draft });
+        if (saved.draft) {
+          const roles = saved.draft.roles || EMPTY.roles;
+          const roleQty: Record<string, number> = { ...(saved.draft.roleQty || {}) };
+          for (const code of roles) roleQty[code] = qtyOf(roleQty, code);
+          setDraft({ ...EMPTY, ...saved.draft, roles, roleQty });
+        }
         if (saved.unknown) setUnknown(saved.unknown);
         if (typeof saved.step === "number") setStep(Math.min(STEPS.length - 1, Math.max(0, saved.step)));
         if (saved.roofName) setRoofName(saved.roofName);
@@ -123,8 +138,16 @@ export default function NewEventPage() {
   }, [draft, unknown, step, roofName, hydrated]);
 
   const preview = useMemo(() => {
-    const artist =
-      draft.artist === "unknown" || unknown.artist ? "артист не выбран" : categoryLabel(draft.artist) || draft.artist;
+    const roles = unknown.artist ? [] : (draft.roles.length ? draft.roles : [draft.artist]).filter((c) => c && c !== "unknown");
+    const artist = roles.length
+      ? roles
+          .map((c) => {
+            const n = qtyOf(draft.roleQty, c);
+            const label = categoryLabel(c) || c;
+            return n > 1 ? `${label} ×${n}` : label;
+          })
+          .join(", ")
+      : "состав не выбран";
     const venue =
       draft.venue === "unknown" || unknown.venue
         ? "площадка не выбрана"
@@ -154,9 +177,22 @@ export default function NewEventPage() {
     }
     setSaving(true);
     try {
-      const me = await api<{ organizations: { id: string; kind: string }[] }>("/me");
-      const org = me.organizations.find((o) => o.kind === "customer") || me.organizations[0];
+      const me = await api<{ organizations: { id: string; kind: string }[]; active_organization_id?: string }>("/me");
+      const org =
+        me.organizations.find((o) => o.id === me.active_organization_id && o.kind === "customer") ||
+        me.organizations.find((o) => o.kind === "customer") ||
+        me.organizations[0];
       if (!org) throw new Error("Сначала войдите как заказчик");
+      const roleCodes = unknown.artist
+        ? []
+        : (draft.roles.length ? draft.roles : [draft.artist]).filter((c) => c && c !== "unknown");
+      const requirements: { category_code: string; qty: number }[] = roleCodes.map((code) => ({
+        category_code: code,
+        qty: qtyOf(draft.roleQty, code),
+      }));
+      if (!unknown.venue && draft.venue !== "unknown") {
+        requirements.push({ category_code: "venue", qty: 1 });
+      }
       await api("/events", {
         method: "POST",
         body: JSON.stringify({
@@ -168,8 +204,9 @@ export default function NewEventPage() {
             : new Date().toISOString(),
           guest_count: Number(draft.guests || 50),
           budget_rub: draft.budget ? Number(draft.budget) : null,
+          requirements,
           notes: [
-            unknown.artist ? "артист:пока не знаю" : `артист:${draft.artist}`,
+            unknown.artist ? "артист:пока не знаю" : `артист:${roleCodes[0] || draft.artist}`,
             unknown.venue
               ? "площадка:пока не знаю"
               : roofName
@@ -292,26 +329,70 @@ export default function NewEventPage() {
             </>
           )}
           {s.id === "artist" && (
-            <div className="choice-grid">
-              {[
-                ["dj", "DJ"],
-                ["host", "Ведущий"],
-                ["cover", "Кавер"],
-                ["unknown", "Помочь с выбором"],
-              ].map(([val, label]) => (
-                <button
-                  key={val}
-                  type="button"
-                  className={`choice ${draft.artist === val ? "on" : ""}`}
-                  onClick={() => {
-                    set("artist", val);
-                    setUnknown((u) => ({ ...u, artist: val === "unknown" }));
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <>
+              <div className="choice-grid">
+                {[
+                  ["dj", "DJ"],
+                  ["host", "Ведущий"],
+                  ["cover", "Кавер"],
+                  ["photo", "Фотограф"],
+                  ["makeup", "Визажист"],
+                  ["unknown", "Помочь с выбором"],
+                ].map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    className={`choice ${
+                      val === "unknown"
+                        ? unknown.artist || draft.artist === "unknown"
+                          ? "on"
+                          : ""
+                        : draft.roles.includes(val)
+                          ? "on"
+                          : ""
+                    }`}
+                    onClick={() => {
+                      if (val === "unknown") {
+                        setDraft((d) => ({ ...d, artist: "unknown", roles: [], roleQty: {} }));
+                        setUnknown((u) => ({ ...u, artist: true }));
+                        return;
+                      }
+                      setUnknown((u) => ({ ...u, artist: false }));
+                      setDraft((d) => {
+                        const has = d.roles.includes(val);
+                        const roles = has ? d.roles.filter((c) => c !== val) : [...d.roles, val];
+                        const roleQty = { ...d.roleQty };
+                        if (has) delete roleQty[val];
+                        else roleQty[val] = qtyOf(roleQty, val);
+                        return { ...d, roles, roleQty, artist: roles[0] || "unknown" };
+                      });
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {!unknown.artist && draft.roles.length ? (
+                <>
+                  {draft.roles.map((code) => (
+                    <label key={code}>
+                      {categoryLabel(code) || code} · количество
+                      <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={qtyOf(draft.roleQty, code)}
+                        onChange={(e) => {
+                          const next = qtyOf({ [code]: Number(e.target.value) }, code);
+                          setDraft((d) => ({ ...d, roleQty: { ...d.roleQty, [code]: next } }));
+                        }}
+                      />
+                    </label>
+                  ))}
+                  <p className="timeline">Количество нужно для состава заявки. На цену в этом окне не влияет.</p>
+                </>
+              ) : null}
+            </>
           )}
           {s.id === "venue" && (
             <div className="choice-grid">
@@ -377,7 +458,8 @@ export default function NewEventPage() {
                   const on = e.target.checked;
                   setUnknown((u) => ({ ...u, [s.id]: on }));
                   if (on && (s.id === "artist" || s.id === "venue" || s.id === "tech")) {
-                    set(s.id, "unknown");
+                    if (s.id === "artist") setDraft((d) => ({ ...d, artist: "unknown", roles: [], roleQty: {} }));
+                    else set(s.id, "unknown");
                   }
                 }}
               />

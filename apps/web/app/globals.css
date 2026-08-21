@@ -108,6 +108,11 @@ a.btn { color: #fff; }
 }
 .nav-mobile-auth { display: none; align-items: center; }
 .nav-public { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.workspace-switch select {
+  max-width: 200px; font: inherit; font-size: 13px; font-weight: 600;
+  padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink);
+}
 .nav-public a {
   color: var(--ink); padding: 9px 12px; border-radius: 10px;
   font-size: 14px; font-weight: 600;
@@ -319,6 +324,24 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
   border: 1px solid var(--border) !important;
 }
 .filter-title { margin: 0 0 12px; font-size: 18px; }
+.filter-label { margin: 12px 0 8px; font-size: 14px; font-weight: 600; }
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.category-chips .chip {
+  text-decoration: none;
+  min-height: 36px;
+  padding: 6px 12px;
+  color: var(--ink);
+}
+.category-chips .chip.on {
+  color: #fff;
+  background: var(--night);
+  border-color: var(--night);
+}
 .artist-desk-cta { margin-top: 16px; }
 .slot-day {
   margin: 16px 0 8px; font-size: 15px; text-transform: capitalize; color: var(--ink);

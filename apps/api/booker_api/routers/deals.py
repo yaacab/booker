@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from booker_api.calendar import overlapping_slots
+from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
+from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import (
     Artist,
@@ -16,6 +18,7 @@ from booker_api.models import (
     Conversation,
     Dispute,
     Event,
+    EventTeamRequirement,
     Message,
     Offer,
     OfferVersion,
@@ -28,7 +31,15 @@ from booker_api.models import (
 )
 from booker_api.pricing import first_deal_waive, price_breakdown
 from booker_api.schemas import DISPUTE_CATEGORIES
-from booker_api.security import audit, aware, current_user, hold_deadline, now, require_org_member
+from booker_api.security import (
+    audit,
+    aware,
+    current_user,
+    hold_deadline,
+    now,
+    require_org_member,
+    require_org_writer,
+)
 
 router = APIRouter(tags=["deals"])
 
@@ -88,7 +99,7 @@ def expire_holds(db: Session) -> int:
 
 @router.post("/events")
 def create_event(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    require_org_member(db, user, body["organization_id"])
+    require_org_writer(db, user, body["organization_id"])
     event = Event(
         organization_id=body["organization_id"],
         title=body["title"],
@@ -102,9 +113,14 @@ def create_event(body: dict, user: User = Depends(current_user), db: Session = D
         status="Draft",
     )
     db.add(event)
+    db.flush()
+    requirements = []
+    if settings.composition_v2:
+        explicit = body.get("requirements")
+        requirements = ensure_requirements(db, event, explicit if isinstance(explicit, list) else None)
     db.commit()
     db.refresh(event)
-    return {"id": event.id, "status": event.status}
+    return {"id": event.id, "status": event.status, "requirements": requirements}
 
 
 def _org_ids(db: Session, user: User) -> list[str]:
@@ -115,8 +131,15 @@ def _org_ids(db: Session, user: User) -> list[str]:
 
 
 @router.get("/events")
-def list_events(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def list_events(
+    organization_id: str | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     ids = _org_ids(db, user)
+    if organization_id:
+        require_org_member(db, user, organization_id)
+        ids = [organization_id]
     rows = db.query(Event).filter(Event.organization_id.in_(ids)).all() if ids else []
     return {
         "items": [
@@ -126,15 +149,84 @@ def list_events(user: User = Depends(current_user), db: Session = Depends(get_db
                 "status": e.status,
                 "event_date": e.event_date.isoformat(),
                 "city": e.city,
+                "organization_id": e.organization_id,
             }
             for e in rows
         ]
     }
 
 
+@router.get("/events/{event_id}")
+def get_event(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
+    requirements = ensure_requirements(db, event) if settings.composition_v2 else []
+    requests = []
+    for req in db.query(Request).filter(Request.event_id == event.id).all():
+        offer = db.query(Offer).filter(Offer.request_id == req.id).one_or_none()
+        booking = None
+        quote_id = None
+        if offer:
+            booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none()
+            if offer.active_version_id:
+                version = db.get(OfferVersion, offer.active_version_id)
+                if version:
+                    quote_id = version.id
+        item = {
+            "id": req.id,
+            "status": req.status,
+            "resource_type": req.resource_type,
+            "resource_id": req.resource_id,
+            "requirement_id": getattr(req, "requirement_id", None),
+            "booking_id": booking.id if booking else None,
+        }
+        if quote_id:
+            item["quote_id"] = quote_id
+        requests.append(item)
+    db.commit()
+    return {
+        "id": event.id,
+        "title": event.title,
+        "status": event.status,
+        "city": event.city,
+        "event_date": event.event_date.isoformat(),
+        "guest_count": event.guest_count,
+        "notes": event.notes,
+        "organization_id": event.organization_id,
+        "requirements": requirements,
+        "requests": requests,
+    }
+
+
+@router.put("/events/{event_id}/requirements")
+def put_event_requirements(
+    event_id: str,
+    body: dict,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_writer(db, user, event.organization_id)
+    items = body.get("items") if isinstance(body.get("items"), list) else []
+    rows = replace_requirements(db, event, items)
+    db.commit()
+    return {"requirements": [requirement_payload(r) for r in rows]}
+
+
 @router.get("/requests")
-def list_requests(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def list_requests(
+    organization_id: str | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     ids = _org_ids(db, user)
+    if organization_id:
+        require_org_member(db, user, organization_id)
+        ids = [organization_id]
     rows = db.query(Request).filter(Request.supplier_org_id.in_(ids)).all() if ids else []
     items = []
     for req in rows:
@@ -177,8 +269,15 @@ def list_requests(user: User = Depends(current_user), db: Session = Depends(get_
 
 
 @router.get("/bookings")
-def list_bookings(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def list_bookings(
+    organization_id: str | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     ids = set(_org_ids(db, user))
+    if organization_id:
+        require_org_member(db, user, organization_id)
+        ids = {organization_id}
     rows = db.query(Booking).all()
     items = []
     for booking in rows:
@@ -202,32 +301,45 @@ def list_bookings(user: User = Depends(current_user), db: Session = Depends(get_
 
 @router.post("/quick-request")
 def quick_request(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    members = db.query(TeamMember).filter(TeamMember.user_id == user.id).all()
-    customer_org_id = None
-    for m in members:
-        org = db.get(Organization, m.organization_id)
-        if org and org.kind == "customer":
-            customer_org_id = org.id
-            break
-    if not customer_org_id:
-        raise HTTPException(400, "Сначала создайте организацию заказчика")
     artist = db.get(Artist, body["artist_id"])
     if not artist:
         raise HTTPException(404, "Артист не найден")
     slot = db.get(AvailabilitySlot, body["slot_id"])
     if not slot or slot.status != "open":
         raise HTTPException(409, "Слот недоступен")
-    event = Event(
-        organization_id=customer_org_id,
-        title=body.get("title") or f"Заявка: {artist.name}",
-        city=artist.city,
-        event_date=slot.starts_at,
-        guest_count=int(body.get("guest_count") or 50),
-        notes=body.get("notes") or "",
-        status="Draft",
-    )
-    db.add(event)
-    db.flush()
+    event_id = body.get("event_id")
+    requirement_id = body.get("requirement_id")
+    if event_id:
+        event = db.get(Event, event_id)
+        if not event:
+            raise HTTPException(404, "Событие не найдено")
+        require_org_writer(db, user, event.organization_id)
+        if requirement_id:
+            need = db.get(EventTeamRequirement, requirement_id)
+            if not need or need.event_id != event.id:
+                raise HTTPException(400, "requirement_id не относится к этому событию")
+    else:
+        members = db.query(TeamMember).filter(TeamMember.user_id == user.id).all()
+        customer_org_id = None
+        for m in members:
+            org = db.get(Organization, m.organization_id)
+            if org and org.kind == "customer":
+                customer_org_id = org.id
+                break
+        if not customer_org_id:
+            raise HTTPException(400, "Сначала создайте организацию заказчика")
+        event = Event(
+            organization_id=customer_org_id,
+            title=body.get("title") or f"Заявка: {artist.name}",
+            city=artist.city,
+            event_date=slot.starts_at,
+            guest_count=int(body.get("guest_count") or 50),
+            notes=body.get("notes") or "",
+            status="Draft",
+        )
+        db.add(event)
+        db.flush()
+        requirement_id = None
     req = Request(
         event_id=event.id,
         resource_type="artist",
@@ -235,6 +347,8 @@ def quick_request(body: dict, user: User = Depends(current_user), db: Session = 
         supplier_org_id=artist.organization_id,
         status="RequestSent",
     )
+    if hasattr(req, "requirement_id"):
+        req.requirement_id = requirement_id
     event.status = "RequestSent"
     db.add(req)
     db.flush()
@@ -259,7 +373,7 @@ def create_request(
     event = db.get(Event, event_id)
     if not event:
         raise HTTPException(404, "Событие не найдено")
-    require_org_member(db, user, event.organization_id)
+    require_org_writer(db, user, event.organization_id)
     resource_type = body["resource_type"]
     resource_id = body["resource_id"]
     if resource_type == "artist":
@@ -272,6 +386,11 @@ def create_request(
         if not venue:
             raise HTTPException(404, "Площадка не найдена")
         supplier_org_id = venue.organization_id
+    requirement_id = body.get("requirement_id")
+    if requirement_id:
+        need = db.get(EventTeamRequirement, requirement_id)
+        if not need or need.event_id != event.id:
+            raise HTTPException(400, "requirement_id не относится к этому событию")
     req = Request(
         event_id=event.id,
         resource_type=resource_type,
@@ -279,6 +398,8 @@ def create_request(
         supplier_org_id=supplier_org_id,
         status="RequestSent",
     )
+    if hasattr(req, "requirement_id"):
+        req.requirement_id = requirement_id
     db.add(req)
     db.flush()
     event.status = "RequestSent"

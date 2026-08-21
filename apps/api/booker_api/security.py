@@ -74,6 +74,15 @@ def require_org_member(db: Session, user: User, org_id: str) -> TeamMember:
     return fake
 
 
+def require_org_writer(db: Session, user: User, org_id: str) -> TeamMember:
+    member = require_org_member(db, user, org_id)
+    if user.is_platform_admin:
+        return member
+    if member.role not in {"owner", "admin", "manager"}:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только просмотр: нужна роль менеджера")
+    return member
+
+
 def require_admin(user: User = Depends(current_user)) -> User:
     if not user.is_platform_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")

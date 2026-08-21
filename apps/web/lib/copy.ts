@@ -8,10 +8,21 @@ export const CHIP = {
   slotNone: "календарь молчит",
 };
 
+export const KIND_LABEL: Record<string, string> = {
+  customer: "Заказчик",
+  artist: "Исполнитель",
+  venue: "Площадка",
+  performer: "Исполнитель",
+};
+
 export const CATEGORY: Record<string, string> = {
   dj: "DJ",
   host: "Ведущий",
   cover: "Кавер",
+  photo: "Фотограф",
+  makeup: "Визажист",
+  decor: "Декоратор",
+  catering: "Кейтеринг",
   venue: "Площадка",
 };
 
