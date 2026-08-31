@@ -30,6 +30,6 @@
 | C5 | `confirm_another_workspace` в UI | **сделано** |
 | C6 | Analytics taxonomy + Control Room polish + e2e flow | **сделано** |
 
-Деплой P1 supply console: **сделано** (af2bf06 — C1–C5; C6 — после merge PR).
+Деплой P1 supply console: **сделано** (af2bf06 — C1–C5; d1bdbe3 — C6).
 
 Отложено: 3D, Turbo, AI в спорах, Protect, эквайринг до юриста, смена SQLite→Postgres в этом спринте.
