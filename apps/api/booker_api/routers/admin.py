@@ -23,9 +23,11 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 def list_verifications(_: User = Depends(require_admin), db: Session = Depends(get_db)):
     rows = db.query(Verification).filter(Verification.status == "queued").all()
     pending_artists = db.query(Artist).filter(Artist.verified_status == "pending").all()
+    pending_venues = db.query(Venue).filter(Venue.verified_status == "pending").all()
     return {
         "queue": [{"id": r.id, "target_type": r.target_type, "target_id": r.target_id} for r in rows],
         "artists": [{"id": a.id, "name": a.name, "status": a.verified_status} for a in pending_artists],
+        "venues": [{"id": v.id, "name": v.name, "status": v.verified_status} for v in pending_venues],
     }
 
 

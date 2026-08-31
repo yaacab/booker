@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, getToken } from "@/lib/api";
-import { KIND_LABEL, categoryLabel } from "@/lib/copy";
+import { CATEGORY, KIND_LABEL, categoryLabel } from "@/lib/copy";
 import { formatWhen, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { STATUS_LABEL } from "@/lib/status";
@@ -15,6 +15,13 @@ type Requirement = {
   role_label?: string;
   qty?: number;
   notes?: string;
+};
+
+type DraftItem = {
+  id?: string;
+  category_code: string;
+  qty: number;
+  role_label: string;
 };
 
 type EventRequest = {
@@ -33,9 +40,13 @@ type EventDetail = {
   city?: string;
   event_date: string;
   guest_count?: number;
+  organization_id?: string;
   requirements?: Requirement[];
   requests?: EventRequest[];
 };
+
+const WRITE_ROLES = new Set(["owner", "admin", "manager"]);
+const CATEGORY_CODES = Object.keys(CATEGORY);
 
 function chipCls(status: string): string {
   if (status === "Confirmed" || status === "Completed") return "ok";
@@ -63,6 +74,20 @@ function unmatchedRequests(requests: EventRequest[], requirements: Requirement[]
   return requests.filter((item) => !item.requirement_id || !ids.has(item.requirement_id));
 }
 
+function qtyOf(n: number | undefined): number {
+  if (!Number.isFinite(n) || !n || n < 1) return 1;
+  return Math.min(20, Math.floor(n));
+}
+
+function toDraft(items: Requirement[]): DraftItem[] {
+  return items.map((item) => ({
+    id: item.id,
+    category_code: item.category_code,
+    qty: qtyOf(item.qty),
+    role_label: item.role_label || "",
+  }));
+}
+
 function RequestDeal({ item }: { item: EventRequest }) {
   return (
     <p className="timeline">
@@ -82,6 +107,22 @@ export default function EventPage() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
+  const [canWrite, setCanWrite] = useState(false);
+  const [draft, setDraft] = useState<DraftItem[]>([]);
+  const [editError, setEditError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function loadEvent(id: string) {
+    const [data, me] = await Promise.all([
+      api<EventDetail>(`/events/${id}`),
+      api<{ organizations?: { id: string; role?: string }[] }>("/me"),
+    ]);
+    setEvent(data);
+    setDraft(toDraft(data.requirements ?? []));
+    const org = me.organizations?.find((o) => o.id === data.organization_id);
+    setCanWrite(WRITE_ROLES.has(org?.role || ""));
+    setError("");
+  }
 
   useEffect(() => {
     const id = params.id;
@@ -91,11 +132,7 @@ export default function EventPage() {
       setReady(true);
       return;
     }
-    api<EventDetail>(`/events/${id}`)
-      .then((data) => {
-        setEvent(data);
-        setError("");
-      })
+    loadEvent(id)
       .catch((err: unknown) => {
         setEvent(null);
         setError(err instanceof Error ? err.message : "Событие недоступно");
@@ -106,6 +143,45 @@ export default function EventPage() {
   useEffect(() => {
     if (event?.title) document.title = `${event.title} · Букер`;
   }, [event?.title]);
+
+  async function saveRequirements() {
+    if (!event) return;
+    setSaving(true);
+    setEditError("");
+    try {
+      const items = draft
+        .filter((item) => item.category_code)
+        .map((item) => ({
+          ...(item.id ? { id: item.id } : {}),
+          category_code: item.category_code,
+          qty: qtyOf(item.qty),
+          ...(item.role_label.trim() ? { role_label: item.role_label.trim() } : {}),
+        }));
+      const res = await api<{ requirements: Requirement[] }>(`/events/${event.id}/requirements`, {
+        method: "PUT",
+        body: JSON.stringify({ items }),
+      });
+      setEvent((prev) => (prev ? { ...prev, requirements: res.requirements } : prev));
+      setDraft(toDraft(res.requirements));
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Не удалось сохранить");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function addRow() {
+    const code = CATEGORY_CODES.find((c) => !draft.some((d) => d.category_code === c)) || CATEGORY_CODES[0];
+    setDraft((rows) => [...rows, { category_code: code, qty: 1, role_label: "" }]);
+  }
+
+  function updateRow(index: number, patch: Partial<DraftItem>) {
+    setDraft((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+
+  function removeRow(index: number) {
+    setDraft((rows) => rows.filter((_, i) => i !== index));
+  }
 
   if (!ready) {
     return (
@@ -156,6 +232,64 @@ export default function EventPage() {
       </p>
       <p className="timeline">Каждая позиция — своя сделка.</p>
       <h2>Роли</h2>
+      {canWrite ? (
+        <article className="card">
+          <p className="timeline">Редактирование состава. Цена на этом экране не считается.</p>
+          {draft.length === 0 ? <p className="timeline">Пока нет позиций — добавьте роль.</p> : null}
+          {draft.map((row, index) => (
+            <p key={row.id || `draft-${index}`}>
+              <label>
+                Категория{" "}
+                <select
+                  value={row.category_code}
+                  onChange={(e) => updateRow(index, { category_code: e.target.value })}
+                >
+                  {CATEGORY_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {categoryLabel(code)}
+                    </option>
+                  ))}
+                </select>
+              </label>{" "}
+              <label>
+                Кол-во{" "}
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={row.qty}
+                  onChange={(e) => updateRow(index, { qty: qtyOf(Number(e.target.value)) })}
+                />
+              </label>{" "}
+              <label>
+                Подпись{" "}
+                <input
+                  type="text"
+                  placeholder="необязательно"
+                  value={row.role_label}
+                  onChange={(e) => updateRow(index, { role_label: e.target.value })}
+                />
+              </label>{" "}
+              <button type="button" className="secondary" onClick={() => removeRow(index)}>
+                Убрать
+              </button>
+            </p>
+          ))}
+          <p>
+            <button type="button" className="secondary" onClick={addRow}>
+              Добавить роль
+            </button>{" "}
+            <button type="button" disabled={saving} onClick={() => void saveRequirements()}>
+              {saving ? "Сохраняем…" : "Сохранить состав"}
+            </button>
+          </p>
+          {editError ? (
+            <p className="timeline" role="alert">
+              {editError}
+            </p>
+          ) : null}
+        </article>
+      ) : null}
       {requirements.length === 0 ? (
         <p className="timeline">Состав пока не указан. Добавьте роли в заявке — цена на этом экране не считается.</p>
       ) : (
