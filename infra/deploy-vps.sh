@@ -21,7 +21,14 @@ rsync -az --delete \
 
 ssh -i "${KEY}" -p "${PORT}" -o ForwardX11=no "${REMOTE}" 'bash -s' << 'REMOTE_SCRIPT'
 set -euo pipefail
-mkdir -p /opt/booker/data /var/www/letsencrypt
+mkdir -p /opt/booker/data /var/www/letsencrypt /var/backups/booker
+chmod +x /opt/booker/infra/backup-booker.sh /opt/booker/infra/restore-drill.sh 2>/dev/null || true
+if [[ ! -f /etc/cron.d/booker-backup ]]; then
+  cp /opt/booker/infra/cron-booker-backup.example /etc/cron.d/booker-backup
+  chmod 644 /etc/cron.d/booker-backup
+fi
+BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
+  /opt/booker/infra/backup-booker.sh || echo "backup skipped (non-fatal)"
 /opt/booker/.venv/bin/pip install -e "/opt/booker/apps/api[dev]" -q
 systemctl stop booker-web || true
 pkill -f "/opt/booker/apps/web/node_modules/.bin/next" || true
