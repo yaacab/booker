@@ -5,6 +5,7 @@ import Link from "next/link";
 import { money } from "@/lib/format";
 
 const TABS = [
+  { id: "summary", label: "Сводка" },
   { id: "chat", label: "Чат" },
   { id: "terms", label: "Условия" },
   { id: "documents", label: "Документы" },
@@ -20,7 +21,7 @@ const PEOPLE = [
 ];
 
 export default function DealRoomDemoPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("chat");
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("summary");
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [guarantorOpen, setGuarantorOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
@@ -94,6 +95,20 @@ export default function DealRoomDemoPage() {
               </button>
             ))}
           </div>
+          {tab === "summary" && (
+            <div className="card">
+              <p className="kicker">Сводка сделки</p>
+              <p className="timeline">Демо-событие · BK-DEMO</p>
+              <p>
+                Статус брони: <strong>Ожидает подтверждения</strong>
+              </p>
+              <p>
+                <span className="kicker">Следующее действие</span>
+                <br />
+                Подтвердить условия обеими сторонами
+              </p>
+            </div>
+          )}
           {tab === "chat" && (
             <div className="card">
               <div className="msg system">
@@ -193,10 +208,16 @@ export default function DealRoomDemoPage() {
         </aside>
       </div>
       <div className="sticky-cta">
-        <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
-          Предложение
-        </button>
-        <button type="button">Подтвердить</button>
+        <p className="sticky-next">
+          <span className="kicker">Следующее действие</span>
+          <span className="timeline">Подтвердить условия обеими сторонами</span>
+        </p>
+        <div className="sticky-cta-row">
+          <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
+            Предложение
+          </button>
+          <button type="button">Подтвердить</button>
+        </div>
       </div>
       <div className={`sheet-backdrop ${quoteOpen ? "open" : ""}`} onClick={() => setQuoteOpen(false)} />
       <div className={`sheet ${quoteOpen ? "open" : ""}`}>

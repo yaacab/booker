@@ -6,9 +6,10 @@ import { useParams } from "next/navigation";
 import { HoldCountdown } from "@/components/HoldCountdown";
 import { api } from "@/lib/api";
 import { money } from "@/lib/format";
-import { nextAction, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
+import { nextAction, nextActionHint, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
 
 const TABS = [
+  { id: "summary", label: "Сводка" },
   { id: "chat", label: "Чат" },
   { id: "terms", label: "Условия" },
   { id: "documents", label: "Документы" },
@@ -52,7 +53,7 @@ function ackLabel(q: Room["quote"]): string {
 
 export default function DealPage() {
   const params = useParams<{ id: string }>();
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("chat");
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("summary");
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -307,6 +308,36 @@ export default function DealPage() {
               </button>
             ))}
           </div>
+          {tab === "summary" && (
+            <section className="card">
+              <p className="kicker">Сводка сделки</p>
+              {room.event_id ? (
+                <p>
+                  <Link href={`/events/${room.event_id}`}>{room.event_title || "Событие"}</Link>
+                </p>
+              ) : (
+                <p className="timeline">Событие не привязано</p>
+              )}
+              {room.requirement_id ? (
+                <p className="mono">requirement_id: {room.requirement_id}</p>
+              ) : null}
+              <p>
+                Статус брони: <strong>{STATUS_LABEL[room.status] || room.status}</strong>
+              </p>
+              <p>
+                <span className="kicker">Следующее действие</span>
+                <br />
+                {room.next_step}
+                <br />
+                <span className="timeline">{nextActionHint(action.kind)}</span>
+              </p>
+              {room.event_id ? (
+                <p>
+                  <Link href={`/events/${room.event_id}`}>Event Control Room</Link>
+                </p>
+              ) : null}
+            </section>
+          )}
           {tab === "chat" && (
             <section className="card">
               {room.messages.length === 0 ? (
@@ -441,12 +472,18 @@ export default function DealPage() {
         </aside>
       </div>
       <div className="sticky-cta">
-        <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
-          Предложение
-        </button>
-        <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
-          {action.label}
-        </button>
+        <p className="sticky-next">
+          <span className="kicker">Следующее действие</span>
+          <span className="timeline">{room.next_step}</span>
+        </p>
+        <div className="sticky-cta-row">
+          <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
+            Предложение
+          </button>
+          <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
+            {action.label}
+          </button>
+        </div>
       </div>
       <div className={`sheet-backdrop ${quoteOpen ? "open" : ""}`} onClick={() => setQuoteOpen(false)} />
       <div className={`sheet ${quoteOpen ? "open" : ""}`}>{quoteBlock}</div>
