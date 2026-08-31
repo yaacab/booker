@@ -27,6 +27,7 @@ export default function CabinetPage() {
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [kind, setKind] = useState<string>("");
+  const [role, setRole] = useState<string>("");
   const [orgName, setOrgName] = useState("");
   const [ready, setReady] = useState(false);
   const [offerBusy, setOfferBusy] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export default function CabinetPage() {
       const me = await api<{
         email: string;
         is_platform_admin?: boolean;
-        organizations?: { id: string; name: string; kind: string }[];
+        organizations?: { id: string; name: string; kind: string; role?: string }[];
         active_organization_id?: string;
       }>("/me");
       setEmail(me.email);
@@ -51,6 +52,7 @@ export default function CabinetPage() {
       if (org) {
         setActiveOrg(org.id);
         setKind(org.kind);
+        setRole(org.role || "");
         setOrgName(org.name);
       }
       const q = org ? `?organization_id=${encodeURIComponent(org.id)}` : "";
@@ -168,6 +170,8 @@ export default function CabinetPage() {
                   <Link className="btn" href={`/deals/${r.booking_id}`}>
                     Открыть Deal Room
                   </Link>
+                ) : role === "viewer" ? (
+                  <p className="timeline">Только просмотр: оффер отправляет менеджер</p>
                 ) : (
                   <button type="button" disabled={offerBusy === r.id} onClick={() => void sendOffer(r)}>
                     {offerBusy === r.id ? "Отправляем…" : "Отправить предложение"}

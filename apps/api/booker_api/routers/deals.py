@@ -117,7 +117,9 @@ def create_event(body: dict, user: User = Depends(current_user), db: Session = D
     requirements = []
     if settings.composition_v2:
         explicit = body.get("requirements")
-        requirements = ensure_requirements(db, event, explicit if isinstance(explicit, list) else None)
+        requirements = ensure_requirements(
+            db, event, explicit if isinstance(explicit, list) else None, actor_user_id=user.id
+        )
     db.commit()
     db.refresh(event)
     return {"id": event.id, "status": event.status, "requirements": requirements}
@@ -162,7 +164,9 @@ def get_event(event_id: str, user: User = Depends(current_user), db: Session = D
     if not event:
         raise HTTPException(404, "Событие не найдено")
     require_org_member(db, user, event.organization_id)
-    requirements = ensure_requirements(db, event) if settings.composition_v2 else []
+    requirements = (
+        ensure_requirements(db, event, actor_user_id=user.id) if settings.composition_v2 else []
+    )
     requests = []
     for req in db.query(Request).filter(Request.event_id == event.id).all():
         offer = db.query(Offer).filter(Offer.request_id == req.id).one_or_none()
@@ -212,7 +216,7 @@ def put_event_requirements(
         raise HTTPException(404, "Событие не найдено")
     require_org_writer(db, user, event.organization_id)
     items = body.get("items") if isinstance(body.get("items"), list) else []
-    rows = replace_requirements(db, event, items)
+    rows = replace_requirements(db, event, items, actor_user_id=user.id)
     db.commit()
     return {"requirements": [requirement_payload(r) for r in rows]}
 
@@ -437,7 +441,7 @@ def create_offer(
     req = db.get(Request, request_id)
     if not req:
         raise HTTPException(404, "Заявка не найдена")
-    member = require_org_member(db, user, req.supplier_org_id)
+    member = require_org_writer(db, user, req.supplier_org_id)
     if not member.can_confirm_offer and not user.is_platform_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет права подтверждать оффер")
     honorarium = int(body["honorarium_rub"])
@@ -520,9 +524,11 @@ def new_version(
         raise HTTPException(404, "Оффер не найден")
     req = db.get(Request, offer.request_id)
     event = db.get(Event, req.event_id)
-    if not (
-        membership_ok(db, user, req.supplier_org_id) or membership_ok(db, user, event.organization_id)
-    ):
+    if membership_ok(db, user, req.supplier_org_id):
+        require_org_writer(db, user, req.supplier_org_id)
+    elif event and membership_ok(db, user, event.organization_id):
+        require_org_writer(db, user, event.organization_id)
+    else:
         raise HTTPException(403, "Нет доступа")
     honorarium = int(body["honorarium_rub"])
     booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none()
@@ -577,12 +583,12 @@ def ack_offer(
     event = db.get(Event, req.event_id)
     side = body["side"]
     if side == "supplier":
-        member = require_org_member(db, user, req.supplier_org_id)
+        member = require_org_writer(db, user, req.supplier_org_id)
         if not member.can_confirm_offer:
             raise HTTPException(403, "Нет права подтверждать оффер")
         version.supplier_ack = True
     elif side == "customer":
-        require_org_member(db, user, event.organization_id)
+        require_org_writer(db, user, event.organization_id)
         version.customer_ack = True
     else:
         raise HTTPException(400, "side: customer|supplier")

@@ -92,7 +92,12 @@ def requirement_payload(row: EventTeamRequirement) -> dict:
     }
 
 
-def replace_requirements(db: Session, event: Event, items: list[dict]) -> list[EventTeamRequirement]:
+def replace_requirements(
+    db: Session,
+    event: Event,
+    items: list[dict],
+    actor_user_id: str | None = None,
+) -> list[EventTeamRequirement]:
     existing = (
         db.query(EventTeamRequirement)
         .filter(EventTeamRequirement.event_id == event.id)
@@ -102,6 +107,7 @@ def replace_requirements(db: Session, event: Event, items: list[dict]) -> list[E
     by_id = {row.id: row for row in existing}
     unused = list(existing)
     rows: list[EventTeamRequirement] = []
+    created_rows: list[EventTeamRequirement] = []
 
     def take(row: EventTeamRequirement) -> EventTeamRequirement:
         unused.remove(row)
@@ -123,6 +129,7 @@ def replace_requirements(db: Session, event: Event, items: list[dict]) -> list[E
         if row is None:
             row = EventTeamRequirement(event_id=event.id, category_code=code)
             db.add(row)
+            created_rows.append(row)
         row.category_code = code
         row.role_label = str(raw.get("role_label") or ROLE_LABEL.get(code, code))
         row.qty = max(1, int(raw.get("qty") or 1))
@@ -141,10 +148,27 @@ def replace_requirements(db: Session, event: Event, items: list[dict]) -> list[E
         for row in unused:
             db.delete(row)
     db.flush()
+    if actor_user_id and created_rows:
+        from booker_api.security import audit
+
+        for row in created_rows:
+            audit(
+                db,
+                actor_user_id=actor_user_id,
+                action="requirement.created",
+                entity_type="event_team_requirement",
+                entity_id=row.id,
+                payload={"event_id": event.id, "category_code": row.category_code},
+            )
     return rows
 
 
-def ensure_requirements(db: Session, event: Event, explicit: list[dict] | None = None) -> list[dict]:
+def ensure_requirements(
+    db: Session,
+    event: Event,
+    explicit: list[dict] | None = None,
+    actor_user_id: str | None = None,
+) -> list[dict]:
     rows = (
         db.query(EventTeamRequirement)
         .filter(EventTeamRequirement.event_id == event.id)
@@ -156,5 +180,5 @@ def ensure_requirements(db: Session, event: Event, explicit: list[dict] | None =
     source = explicit if explicit is not None else parse_notes(event.notes)
     if not source:
         return []
-    created = replace_requirements(db, event, source)
+    created = replace_requirements(db, event, source, actor_user_id=actor_user_id)
     return [requirement_payload(r) for r in created]
