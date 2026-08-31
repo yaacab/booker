@@ -48,6 +48,11 @@ export default function CabinetPage() {
   const [serviceHonorarium, setServiceHonorarium] = useState("");
   const [serviceBusy, setServiceBusy] = useState(false);
   const [serviceError, setServiceError] = useState("");
+  const [completeness, setCompleteness] = useState<{
+    score: number;
+    items: { id: string; label: string; done: boolean }[];
+    applicable?: boolean;
+  } | null>(null);
 
   async function load() {
     if (!getToken()) {
@@ -84,9 +89,13 @@ export default function CabinetPage() {
           api<{ items: ServiceItem[] }>(`/services?organization_id=${encodeURIComponent(org.id)}`).then((res) => {
             setServices(res.items);
           }),
+          api<{ score: number; items: { id: string; label: string; done: boolean }[]; applicable?: boolean }>(
+            `/organizations/${encodeURIComponent(org.id)}/supply-completeness`,
+          ).then((res) => setCompleteness(res)),
         );
       } else {
         setServices([]);
+        setCompleteness(null);
       }
       const [ev, rq, bk] = (await Promise.all(loads.slice(0, 3))) as [
         { items: EventItem[] },
@@ -269,6 +278,18 @@ export default function CabinetPage() {
       ) : null}
       {showServices ? (
         <>
+          {completeness?.applicable ? (
+            <article className="card tint">
+              <strong>Полнота профиля — {completeness.score}%</strong>
+              <ul className="timeline">
+                {completeness.items.map((item) => (
+                  <li key={item.id}>
+                    {item.done ? "✓" : "○"} {item.label}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ) : null}
           <h2>Услуги</h2>
           {services.length > 0 ? (
             <ul>

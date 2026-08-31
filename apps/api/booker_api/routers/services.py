@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
-from booker_api.models import Service, User
+from booker_api.models import Organization, Service, User
 from booker_api.schemas import ServiceIn, ServiceOut
 from booker_api.security import audit, current_user, require_org_member, require_org_writer
+from booker_api.supply_completeness import supply_completeness as compute_supply_completeness
 
 router = APIRouter(tags=["services"])
 
@@ -49,6 +50,19 @@ def list_public_services(
     if category:
         q = q.filter(Service.category_code == category.strip().lower())
     return {"items": [_out(row) for row in q.all()]}
+
+
+@router.get("/organizations/{org_id}/supply-completeness")
+def get_supply_completeness(
+    org_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    require_org_member(db, user, org_id)
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(404, "Организация не найдена")
+    return compute_supply_completeness(db, org)
 
 
 @router.get("/services")
