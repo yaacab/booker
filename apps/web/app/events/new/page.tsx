@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import { categoryLabel } from "@/lib/copy";
 import { CityField } from "@/components/CityField";
+import EventStudioShell from "@/components/event-studio/EventStudioShell";
+import { isEventStudioMapV1 } from "@/lib/features";
 import { moscowToday } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 
@@ -55,6 +57,9 @@ const DRAFT_KEY = "booker.eventDraft";
 
 export default function NewEventPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [studioFlagReady, setStudioFlagReady] = useState(false);
+  const [useStudioMap, setUseStudioMap] = useState(false);
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState("");
@@ -65,6 +70,11 @@ export default function NewEventPage() {
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "offline">("saved");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [online, setOnline] = useState(true);
+
+  useEffect(() => {
+    setUseStudioMap(isEventStudioMapV1(searchParams));
+    setStudioFlagReady(true);
+  }, [searchParams]);
 
   useEffect(() => {
     try {
@@ -230,6 +240,20 @@ export default function NewEventPage() {
 
   const s = STEPS[step];
   const saveLabel = !online || saveStatus === "offline" ? "Без сети · сохранено на устройстве" : saveStatus === "saving" ? "Сохраняем…" : "Сохранено автоматически";
+
+  if (!studioFlagReady) {
+    return (
+      <main>
+        <p className="kicker">Event Studio</p>
+        <h1>Новая заявка</h1>
+        <div className="skeleton" style={{ minHeight: 180 }} />
+      </main>
+    );
+  }
+
+  if (useStudioMap) {
+    return <EventStudioShell />;
+  }
 
   return (
     <main>
