@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, trackClientEvent } from "@/lib/api";
 import { categoryLabel } from "@/lib/copy";
 import { CityField } from "@/components/CityField";
 import EventStudioShell from "@/components/event-studio/EventStudioShell";
@@ -229,6 +229,7 @@ export default function NewEventPage() {
             .join("; "),
         }),
       });
+      trackClientEvent("event.studio.completed", { guest_count: Number(draft.guests || 50) });
       router.push("/cabinet");
       localStorage.removeItem(DRAFT_KEY);
     } catch (err) {

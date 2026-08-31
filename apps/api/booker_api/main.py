@@ -6,7 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from booker_api.composition import seed_categories
 from booker_api.config import settings
 from booker_api.db import SessionLocal, engine, init_schema
-from booker_api.routers import admin, catalog, deals, health, identity, payments, services
+from booker_api.routers import (
+    admin,
+    analytics,
+    catalog,
+    deals,
+    health,
+    identity,
+    payments,
+    services,
+)
 
 
 @asynccontextmanager
@@ -31,6 +40,7 @@ app.add_middleware(
 )
 app.include_router(health.router)
 app.include_router(identity.router)
+app.include_router(analytics.router)
 app.include_router(catalog.router)
 app.include_router(services.router)
 app.include_router(deals.router)

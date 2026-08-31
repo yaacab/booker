@@ -32,7 +32,7 @@
 | ID | Задача | Статус | Доказательство |
 |----|--------|--------|----------------|
 | p1-payment-adapter | Payment adapter после партнёра | **BLOCKED** | Зависит от p0-payment-partner |
-| p1-analytics | Taxonomy + dashboards + client events | **pending** | частично: `/admin/metrics`, см. [ANALYTICS.md](product/ANALYTICS.md) |
+| p1-analytics | Taxonomy + dashboards + client events | **partial** | ANALYTICS.md, `/admin/metrics`, `POST /analytics/events`, `trackClientEvent` |
 | p1-supply-console | C1–C6 + iCal, completeness, templates | **partial** | C1–C6 **done** (ROADMAP); polish pending |
 | p1-event-day | Critical path, replacement, offline pack | **partial** | MVP «Следующие шаги» PR #11 |
 | p1-founding-supply | 80–150 профилей + 10 площадок | **BLOCKED** | Операционная задача, не код |
@@ -73,4 +73,5 @@
 
 - 2026-08-31 · **p0-contract-v2** · `848c02a` · `docs/product/CONTRACT.md`, `docs/product/BLUEPRINT.md`, `docs/MASTER_PLAN.md` · journal start
 - 2026-08-31 · **p0-security** · `1610998` · AUTHZ_MATRIX, rate_limit auth/webhook, tests · `make test-api` 56 passed, `make lint` ok
-- 2026-08-31 · **p0-prod-infra** · `4b4d554` · PROD_INFRA plan, backup-booker.sh · plan only
+- 2026-08-31 · **p0-prod-infra** · `85cc979` · PROD_INFRA plan, backup-booker.sh · plan only
+- 2026-08-31 · **p1-analytics** · `7f16a85` · client events API + trackClientEvent · `make test-api` 59 passed, `make web-build` ok

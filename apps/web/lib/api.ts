@@ -73,6 +73,26 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
+export function trackClientEvent(
+  name: string,
+  properties?: Record<string, string | number | boolean | null>,
+): void {
+  if (typeof window === "undefined") return;
+  const token = getToken();
+  if (!token) return;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  const org = getActiveOrg();
+  if (org) headers["X-Booker-Org"] = org;
+  void fetch(`${apiBase()}/analytics/events`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ name, properties: properties ?? {} }),
+  }).catch(() => {});
+}
+
 type OrgCreateBody = {
   name: string;
   kind: string;

@@ -41,5 +41,8 @@
 |--------|-------|-------------|
 | `verification.decided` | Решение по верификации | `artist` / `venue` |
 | `dispute.opened` | Открыт спор | `booking` |
+| `client.event` | Клиентское событие UI (allowlist) | `client_event` |
+
+Клиент: `POST /analytics/events` (auth). Web: `trackClientEvent()` в `apps/web/lib/api.ts`.
 
 Просмотр: `GET /admin/audit` (platform admin). Агрегаты воронки: `GET /admin/metrics` — counts и unique_entities по action за 7/30 дней.

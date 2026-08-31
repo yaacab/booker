@@ -195,3 +195,8 @@ class ServiceOut(BaseModel):
     honorarium_rub: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ClientEventIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_.-]*$")
+    properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=20)
