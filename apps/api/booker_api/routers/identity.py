@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
 from booker_api.composition import ALLOWED_ORG_KINDS, ALLOWED_ROLES, normalize_kind
@@ -10,6 +10,7 @@ from booker_api.security import (
     current_user,
     hash_password,
     issue_token,
+    membership,
     require_org_member,
     verify_password,
 )
@@ -64,7 +65,11 @@ def recover(body: dict):
 
 
 @router.get("/me")
-def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def me(
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+    x_booker_org: str | None = Header(default=None, alias="X-Booker-Org"),
+):
     members = db.query(TeamMember).filter(TeamMember.user_id == user.id).all()
     orgs = []
     for m in members:
@@ -78,13 +83,16 @@ def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
                 "can_confirm_offer": m.can_confirm_offer,
             }
         )
+    active = user.active_organization_id or (orgs[0]["id"] if orgs else None)
+    if x_booker_org and (membership(db, user.id, x_booker_org) or user.is_platform_admin):
+        active = x_booker_org
     return {
         "id": user.id,
         "email": user.email,
         "full_name": user.full_name,
         "is_platform_admin": user.is_platform_admin,
         "organizations": orgs,
-        "active_organization_id": user.active_organization_id or (orgs[0]["id"] if orgs else None),
+        "active_organization_id": active,
     }
 
 
@@ -93,6 +101,16 @@ def create_org(body: OrgIn, user: User = Depends(current_user), db: Session = De
     kind = normalize_kind(body.kind)
     if kind not in ALLOWED_ORG_KINDS:
         raise HTTPException(400, "kind: customer|artist|venue")
+    owned_kinds = []
+    for m in db.query(TeamMember).filter(TeamMember.user_id == user.id).all():
+        existing = db.get(Organization, m.organization_id)
+        if existing:
+            owned_kinds.append(existing.kind)
+    if kind in owned_kinds and not body.confirm_another_workspace:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Уже есть пространство этого типа. Чтобы создать ещё одно, подтвердите явно.",
+        )
     org = Organization(name=body.name, kind=kind, city=body.city)
     db.add(org)
     db.flush()
@@ -171,6 +189,16 @@ def set_active_org(body: dict, user: User = Depends(current_user), db: Session =
     if not org_id:
         raise HTTPException(400, "organization_id обязателен")
     require_org_member(db, user, org_id)
+    previous = user.active_organization_id
     user.active_organization_id = org_id
+    if previous != org_id:
+        audit(
+            db,
+            actor_user_id=user.id,
+            action="workspace.switched",
+            entity_type="organization",
+            entity_id=org_id,
+            payload={"from": previous, "to": org_id},
+        )
     db.commit()
     return {"active_organization_id": org_id}

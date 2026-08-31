@@ -9,9 +9,35 @@ def test_active_org_and_performer_alias(client):
     me = client.get("/me", headers=h).json()
     assert me["active_organization_id"] == org["id"]
     other = client.post("/orgs", json={"name": "Клиент", "kind": "customer"}, headers=h).json()
-    switched = client.post("/me/active-org", json={"organization_id": other["id"]}, headers=h)
+    assert client.get("/me", headers=h).json()["active_organization_id"] == other["id"]
+    switched = client.post("/me/active-org", json={"organization_id": org["id"]}, headers=h)
     assert switched.status_code == 200
-    assert switched.json()["active_organization_id"] == other["id"]
+    assert switched.json()["active_organization_id"] == org["id"]
+    db = client.app.state.SessionLocal()
+    try:
+        from booker_api.models import AuditLog
+
+        actions = [row.action for row in db.query(AuditLog).all()]
+    finally:
+        db.close()
+    assert "workspace.switched" in actions
+    headered = client.get("/me", headers={**h, "X-Booker-Org": other["id"]})
+    assert headered.json()["active_organization_id"] == other["id"]
+
+
+def test_second_org_same_kind_needs_confirm(client):
+    user = register(client, "dup-org@booker.test", "Dup")
+    h = auth_header(user["token"])
+    first = client.post("/orgs", json={"name": "Клиент", "kind": "customer"}, headers=h)
+    assert first.status_code == 200
+    denied = client.post("/orgs", json={"name": "Ещё клиент", "kind": "customer"}, headers=h)
+    assert denied.status_code == 409
+    ok = client.post(
+        "/orgs",
+        json={"name": "Ещё клиент", "kind": "customer", "confirm_another_workspace": True},
+        headers=h,
+    )
+    assert ok.status_code == 200
 
 
 def test_viewer_cannot_create_event(client):

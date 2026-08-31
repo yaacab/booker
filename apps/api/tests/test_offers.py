@@ -150,3 +150,37 @@ def test_second_booking_gets_commission(client):
     assert version["commission_rate"] == 0.10
     assert version["commission_rub"] == 10000
     assert version["total_rub"] == 110000
+
+
+def test_viewer_cannot_post_offer_or_ack(client):
+    ctx = setup_negotiation(client)
+    viewer = register(client, "view-off@booker.test", "View")
+    client.post(
+        f"/orgs/{ctx['artist_org']['id']}/members",
+        json={"user_id": viewer["user_id"], "role": "viewer"},
+        headers=auth_header(ctx["owner"]["token"]),
+    )
+    cust_viewer = register(client, "view-cust@booker.test", "CustView")
+    client.post(
+        f"/orgs/{ctx['cust_org']['id']}/members",
+        json={"user_id": cust_viewer["user_id"], "role": "viewer"},
+        headers=auth_header(ctx["customer"]["token"]),
+    )
+    denied_offer = client.post(
+        f"/requests/{client.get('/requests', headers=auth_header(ctx['owner']['token'])).json()['items'][0]['id']}/offers",
+        json={"honorarium_rub": 90000, "slot_id": ctx["slot"]["id"]},
+        headers=auth_header(viewer["token"]),
+    )
+    assert denied_offer.status_code == 403
+    denied_ack = client.post(
+        f"/offers/{ctx['offer']['id']}/ack",
+        json={"side": "customer"},
+        headers=auth_header(cust_viewer["token"]),
+    )
+    assert denied_ack.status_code == 403
+    denied_version = client.post(
+        f"/offers/{ctx['offer']['id']}/versions",
+        json={"honorarium_rub": 80000},
+        headers=auth_header(viewer["token"]),
+    )
+    assert denied_version.status_code == 403

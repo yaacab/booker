@@ -12,6 +12,11 @@ export function WorkspaceSwitcher() {
 
   useEffect(() => {
     if (!getToken()) return;
+    void api<{ flags?: { workspace_switcher?: boolean } }>("/health").then((health) => {
+      if (health.flags && health.flags.workspace_switcher === false) {
+        setOrgs([]);
+      }
+    });
     void api<{ organizations: Org[]; active_organization_id?: string }>("/me").then((me) => {
       setOrgs(me.organizations || []);
       const next = getActiveOrg() || me.active_organization_id || me.organizations[0]?.id || "";

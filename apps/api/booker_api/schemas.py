@@ -33,6 +33,7 @@ class OrgIn(BaseModel):
     name: str
     kind: str
     city: str = "Москва"
+    confirm_another_workspace: bool = False
 
 
 class MemberIn(BaseModel):
