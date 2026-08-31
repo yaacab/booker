@@ -61,3 +61,62 @@
 ## Документы
 
 Черновики — `docs/legal/` (оглавление `README.md`). Они **не** имеют юридической силы, пока российский юрист не утвердит пакет и в `OPERATOR.md` не появятся реквизиты. Публичные страницы: `/legal`.
+
+---
+
+## Contract v2 (синхронизация с dossier 26.08.2026)
+
+### ICP — кто платит в пилоте
+
+| Сегмент | Описание | Готовность |
+|---------|----------|------------|
+| **Заказчик B2C** | Свадьба, корпоратив, частное событие в Москве; бюджет 300k–3M ₽; нужен состав «под ключ» | Event Studio + concierge |
+| **Заказчик B2B-lite** | Event-менеджер агентства, 2–10 событий/год; несколько ролей на одно событие | Workspace customer + Control Room |
+| **Supply founding** | DJ, ведущий, фото, декор, площадка; верифицированный профиль, календарь ≥30 дней | Кабинет artist/venue |
+| **Не ICP пилота** | Туры, билеты, федеральный маркетплейс, white-label, второй город | Отложено |
+
+### State machines (сервер — источник правды)
+
+**Event** (Control Room): `Draft` → `Planning` → `Confirmed` → `InProgress` → `Completed` | `Cancelled`
+
+**Request** (заявка на позицию): `Open` → `Offered` → `Acknowledged` → `Confirmed` | `Declined` | `Expired`
+
+**Booking / Deal Room**: `DateHeld` → `AwaitingPayment` → `Confirmed` → `Completed` | `Dispute` | `Cancelled`
+
+**OfferVersion**: неизменяема после публикации; новая цена = новая версия + `quote_id`. Клиент не может «принять» оффер без серверного ack.
+
+**Payment**: `Initiated` → `Pending` → `Captured` | `Failed` | `Refunded` (webhook-only подтверждение)
+
+Переходы статусов — только API + audit `*.created` / `state_changed` (см. [ANALYTICS.md](ANALYTICS.md)).
+
+### Монетизация v2
+
+| Модель | Когда | Условие |
+|--------|-------|---------|
+| Take rate 8–12% | Concierge-сделка | Цена с `quote_id`, комиссия на сервере |
+| Фикс 4 990–14 990 ₽ + эквайринг 3–5% | Альтернатива take rate | После согласования с партнёром |
+| Публичные 3% | Массовый каталог | Только после плотности календарей |
+| Protect / страхование | — | **Не строим** до отдельного резерва и юриста |
+
+До гейта U5 и договора с партнёром: **stub-платежи**, external-payment mode с явной пометкой в UI.
+
+### Не строим (v2.0 + пилот)
+
+- 3D Event Studio, Turbo, срочный поиск без антиспама
+- Protect, слово «страхование», AI-судья споров
+- Google Calendar двусторонний sync
+- White-label, второй город до city gate
+- Живой эквайринг без юриста и партнёра
+- Demo-admin, тестовый OTP, «оплата прошла» на клиенте
+- Postgres на prod — **планируется P0**, не блокирует concierge на SQLite при малой нагрузке
+- Рейтинг-формула до 10 отзывов (только факты профиля)
+
+### Stop/Go (кратко)
+
+| Переход | GO | STOP |
+|---------|-----|------|
+| Alpha → paid | Юрист + партнёр *или* external-payment; object auth; analytics | Ложная «защита», нет restore |
+| 10 → 30 deals | fill ≥70%, offer <2h, double-book 0 | Сделки вне продукта |
+| Москва → город 2 | 3 мес thresholds + playbook | Только анкеты |
+
+Полная таблица: [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md), [MASTER_PLAN.md](../MASTER_PLAN.md).
