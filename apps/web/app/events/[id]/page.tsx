@@ -69,6 +69,22 @@ function requestsForRole(requests: EventRequest[], requirementId?: string): Even
   return requests.filter((item) => item.requirement_id === requirementId);
 }
 
+function isClosedRequest(item: EventRequest): boolean {
+  return Boolean(item.booking_id) || item.status === "Confirmed";
+}
+
+function fillRate(requirements: Requirement[], requests: EventRequest[]): { closed: number; total: number } {
+  let total = 0;
+  let closed = 0;
+  for (const req of requirements) {
+    const need = qtyOf(req.qty);
+    total += need;
+    const filled = requestsForRole(requests, req.id).filter(isClosedRequest).length;
+    closed += Math.min(need, filled);
+  }
+  return { closed, total };
+}
+
 function unmatchedRequests(requests: EventRequest[], requirements: Requirement[]): EventRequest[] {
   const ids = new Set(requirements.map((r) => r.id).filter((id): id is string => Boolean(id)));
   return requests.filter((item) => !item.requirement_id || !ids.has(item.requirement_id));
@@ -97,6 +113,9 @@ function RequestDeal({ item }: { item: EventRequest }) {
           {" "}
           <Link href={`/deals/${item.booking_id}`}>Открыть Deal Room</Link>
         </>
+      ) : null}
+      {!item.booking_id && item.status !== "Confirmed" ? (
+        <span className="timeline"> — сделка ещё не закрыта</span>
       ) : null}
     </p>
   );
@@ -216,6 +235,7 @@ export default function EventPage() {
   const requirements = event.requirements ?? [];
   const requests = event.requests ?? [];
   const looseRequests = unmatchedRequests(requests, requirements);
+  const { closed: filledPositions, total: totalPositions } = fillRate(requirements, requests);
   const date = moscowDate(event.event_date);
 
   return (
@@ -230,6 +250,17 @@ export default function EventPage() {
         {event.city ? ` · ${event.city}` : ""}
         {event.guest_count ? ` · ${event.guest_count} гостей` : ""}
       </p>
+      {totalPositions > 0 ? (
+        <article className="card tint reveal">
+          <strong>Закрытие состава</strong>
+          <p className="timeline">
+            {filledPositions} из {totalPositions} позиций закрыто
+            {filledPositions < totalPositions
+              ? " — остальные ждут подтверждённую сделку или Deal Room"
+              : " — все роли в составе закрыты"}
+          </p>
+        </article>
+      ) : null}
       <p className="timeline">Каждая позиция — своя сделка.</p>
       <h2>Роли</h2>
       {canWrite ? (
@@ -316,15 +347,22 @@ export default function EventPage() {
       )}
       {looseRequests.length > 0 ? (
         <>
-          <h2>Заявки</h2>
-          <div className="grid">
-            {looseRequests.map((item) => (
-              <article className="card" key={item.id}>
-                <strong>{KIND_LABEL[item.resource_type || ""] || item.resource_type || "Заявка"}</strong>
-                <RequestDeal item={item} />
-              </article>
-            ))}
-          </div>
+          <h2>Заявки без роли в составе</h2>
+          <article className="card tint">
+            <p className="timeline">
+              {looseRequests.length} заявок не привязаны к позициям состава — их не видно в карточках ролей выше.
+              Привяжите через каталог («Найти на эту дату» у нужной роли) или закройте лишние в Deal Room.
+            </p>
+            <div className="grid">
+              {looseRequests.map((item) => (
+                <article className="card" key={item.id}>
+                  <strong>{KIND_LABEL[item.resource_type || ""] || item.resource_type || "Заявка"}</strong>
+                  <p className="timeline mono">id {item.id.slice(0, 8)}…</p>
+                  <RequestDeal item={item} />
+                </article>
+              ))}
+            </div>
+          </article>
         </>
       ) : null}
       <p>

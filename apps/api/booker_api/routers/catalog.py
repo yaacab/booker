@@ -181,6 +181,15 @@ def create_hall(
         raise HTTPException(400, "capacity должен быть числом")
     hall = VenueHall(venue_id=venue.id, name=name, capacity=capacity)
     db.add(hall)
+    db.flush()
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="hall.created",
+        entity_type="hall",
+        entity_id=hall.id,
+        payload={"venue_id": venue.id, "name": name},
+    )
     db.commit()
     db.refresh(hall)
     return _hall_item(hall)

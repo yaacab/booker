@@ -18,12 +18,16 @@ type Audit = { items: { id: string; action: string; entity_type: string; created
 const ACTION: Record<string, string> = {
   "slot.created": "слот",
   "request.created": "заявка",
+  "requirement.created": "требование",
   "offer.created": "оффер",
   "offer.ack": "кивок",
   "offer.version": "новая версия цены",
   "hold.created": "hold",
   "dispute.opened": "спор",
   "verification.decided": "верификация",
+  "workspace.switched": "смена workspace",
+  "service.created": "услуга",
+  "hall.created": "зал",
 };
 
 export default function AdminPage() {

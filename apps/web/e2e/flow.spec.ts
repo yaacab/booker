@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { API_BASE, apiHealth, injectSession, seedRequestAwaitingOffer } from "./helpers";
 
 test("главная: бренд и поиск", async ({ page }) => {
   await page.goto("/");
@@ -15,6 +16,22 @@ test("юридический пакет опубликован как черно
   await expect(
     page.getByText("обе стороны подтвердили активную версию оффера", { exact: false }),
   ).toBeVisible();
+});
+
+test("заявка → оффер: API seed, artist cabinet, Deal Room", async ({ page, request }) => {
+  test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+
+  const ctx = await seedRequestAwaitingOffer(request);
+  await injectSession(page, ctx.ownerToken, ctx.artistOrgId);
+
+  await page.goto("/cabinet");
+  await expect(page.getByRole("heading", { name: "Входящие заявки" })).toBeVisible();
+  await expect(page.getByText(ctx.eventTitle)).toBeVisible();
+  await page.getByRole("button", { name: "Отправить предложение" }).click();
+
+  await expect(page).toHaveURL(/\/deals\//, { timeout: 15_000 });
+  await expect(page.getByRole("tab", { name: "Чат" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Условия" })).toBeVisible();
 });
 
 test("Deal Room: вкладки Чат / Условия / Документы / Платежи", async ({ page }) => {
