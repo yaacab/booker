@@ -12,6 +12,7 @@ import {
   buildNextSteps,
   isClosedRequest,
   openLooseRequests,
+  needsReplacement,
   qtyOf,
   requestsForRole,
   unmatchedRequests,
@@ -56,13 +57,103 @@ function chipCls(status: string): string {
   return "live";
 }
 
-function searchHref(date: string, category: string, city?: string, eventId?: string, requirementId?: string): string {
+function searchHref(
+  date: string,
+  category: string,
+  city?: string,
+  eventId?: string,
+  requirementId?: string,
+  exclude?: string[],
+): string {
   const q = new URLSearchParams({ date });
   if (category) q.set("category", category);
   if (city) q.set("city", city);
   if (eventId) q.set("event", eventId);
   if (requirementId) q.set("requirement", requirementId);
+  if (exclude?.length) q.set("exclude", exclude.join(","));
   return `/search?${q.toString()}`;
+}
+
+type ReplacementPlan = {
+  needs_replacement: boolean;
+  open_slots: number;
+  cancelled_requests: { id: string; resource_name?: string | null; status: string }[];
+  exclude_resource_ids: string[];
+  search: { date: string; category: string; city: string; exclude?: string };
+};
+
+function ReplacementPanel({
+  eventId,
+  requirementId,
+  label,
+  date,
+  city,
+  category,
+}: {
+  eventId: string;
+  requirementId: string;
+  label: string;
+  date: string;
+  city?: string;
+  category: string;
+}) {
+  const [plan, setPlan] = useState<ReplacementPlan | null>(null);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    api<ReplacementPlan>(`/events/${eventId}/requirements/${requirementId}/replacement`)
+      .then((data) => {
+        if (!cancelled) {
+          setPlan(data);
+          setLoadError("");
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setPlan(null);
+          setLoadError(err instanceof Error ? err.message : "Не удалось загрузить план замены");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, requirementId]);
+
+  if (loadError) {
+    return (
+      <p className="timeline" role="alert">
+        {loadError}
+      </p>
+    );
+  }
+  if (!plan?.needs_replacement) return null;
+
+  const exclude = plan.exclude_resource_ids;
+  return (
+    <article className="card tint" style={{ marginTop: "0.75rem" }}>
+      <strong>Замена: {label}</strong>
+      <p className="timeline">
+        Нужно закрыть {plan.open_slots} {plan.open_slots === 1 ? "позицию" : "позиции"}. Предыдущие исполнители исключены из
+        каталога.
+      </p>
+      <ul className="timeline" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {plan.cancelled_requests.map((item) => (
+          <li key={item.id}>
+            {item.resource_name || "Исполнитель"} — {STATUS_LABEL[item.status] || item.status}
+          </li>
+        ))}
+      </ul>
+      <p>
+        <Link
+          className="btn"
+          href={searchHref(date, category, city || plan.search.city, eventId, requirementId, exclude)}
+        >
+          Подобрать замену
+        </Link>
+      </p>
+    </article>
+  );
 }
 
 function fillRate(requirements: Requirement[], requests: EventRequest[]): { closed: number; total: number } {
@@ -291,22 +382,31 @@ export default function EventPage() {
                         {step.openRequests.map((item) => (
                           <RequestDeal key={item.id} item={item} />
                         ))}
-                        <p>
-                          <Link
-                            className="btn"
-                            href={searchHref(
-                              date,
-                              step.requirement.category_code,
-                              event.city,
-                              event.id,
-                              step.requirement.id,
-                            )}
-                          >
-                            {step.openRequests.some((item) => item.status === "Cancelled")
-                              ? "Подобрать замену"
-                              : "Найти"}
-                          </Link>
-                        </p>
+                        {needsReplacement(step) ? (
+                          <ReplacementPanel
+                            eventId={event.id}
+                            requirementId={step.requirement.id || ""}
+                            label={step.label}
+                            date={date}
+                            city={event.city}
+                            category={step.requirement.category_code}
+                          />
+                        ) : (
+                          <p>
+                            <Link
+                              className="btn"
+                              href={searchHref(
+                                date,
+                                step.requirement.category_code,
+                                event.city,
+                                event.id,
+                                step.requirement.id,
+                              )}
+                            >
+                              Найти
+                            </Link>
+                          </p>
+                        )}
                       </li>
                     ))}
                   </ul>

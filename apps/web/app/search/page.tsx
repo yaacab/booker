@@ -65,7 +65,7 @@ function slotState(item: SearchItem): { label: string; cls: string } {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ city?: string; date?: string; category?: string; event?: string; requirement?: string }>;
+  searchParams: Promise<{ city?: string; date?: string; category?: string; event?: string; requirement?: string; exclude?: string }>;
 }) {
   const q = await searchParams;
   const city = q.city || "Москва";
@@ -73,11 +73,13 @@ export default async function SearchPage({
   if (q.date) extra.set("date", q.date);
   if (q.event) extra.set("event", q.event);
   if (q.requirement) extra.set("requirement", q.requirement);
+  if (q.exclude) extra.set("exclude", q.exclude);
   const itemQs = extra.toString();
   const params = new URLSearchParams();
   params.set("city", city);
   if (q.category) params.set("category", q.category);
   if (q.date) params.set("date", `${q.date}T00:00:00+03:00`);
+  if (q.exclude) params.set("exclude", q.exclude);
   let items: SearchItem[] = [];
   let venues: SearchItem[] = [];
   let error: string | null = null;
@@ -107,6 +109,7 @@ export default async function SearchPage({
           categories={categories}
           event={q.event}
           requirement={q.requirement}
+          exclude={q.exclude}
         />
         <div>
           <p className="timeline">
@@ -115,6 +118,7 @@ export default async function SearchPage({
             {q.category
               ? ` · ${categories.find((c) => c.code === q.category)?.title || categoryLabel(q.category)}`
               : ""}
+            {q.exclude ? " · без ранее отменённых" : ""}
           </p>
           {!(PILOT_CITIES as readonly string[]).includes(city) ? (
             <article className="card empty">

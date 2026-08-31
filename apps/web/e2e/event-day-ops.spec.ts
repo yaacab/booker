@@ -3,6 +3,7 @@ import {
   BLOCKER_LABEL,
   buildNextSteps,
   isClosedRequest,
+  needsReplacement,
   openLooseRequests,
   roleBlocker,
 } from "../lib/eventDayOps";
@@ -49,6 +50,16 @@ test.describe("eventDayOps", () => {
     expect(BLOCKER_LABEL[steps[0].blocker]).toBe("нет оффера");
     expect(steps[1].openRequests).toHaveLength(1);
     expect(steps[1].blocker).toBe("no_booking");
+  });
+
+  test("needsReplacement: cancelled open request", () => {
+    const steps = buildNextSteps(
+      [reqDj],
+      [{ id: "r1", status: "Cancelled", requirement_id: "req-dj" }],
+      (req) => req.category_code,
+    );
+    expect(steps).toHaveLength(1);
+    expect(needsReplacement(steps[0])).toBe(true);
   });
 
   test("openLooseRequests: unmatched without booking", () => {

@@ -34,6 +34,7 @@ from booker_api.models import (
     Venue,
 )
 from booker_api.pricing import first_deal_waive, price_breakdown
+from booker_api.replacement import build_replacement_plan
 from booker_api.schemas import DISPUTE_CATEGORIES
 from booker_api.security import (
     audit,
@@ -81,6 +82,10 @@ def expire_holds(db: Session) -> int:
             slot.status = "open"
         if booking and booking.status == "DateHeld":
             _transition(booking, "Cancelled")
+            offer = db.get(Offer, booking.offer_id)
+            req = db.get(Request, offer.request_id) if offer else None
+            if req:
+                req.status = "Cancelled"
             conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one_or_none()
             if conv:
                 db.add(
@@ -253,6 +258,90 @@ def event_offline_pack(event_id: str, user: User = Depends(current_user), db: Se
         "requests": pack_requests,
         "generated_at": now().isoformat(),
     }
+
+
+@router.get("/events/{event_id}/requirements/{requirement_id}/replacement")
+def requirement_replacement_plan(
+    event_id: str,
+    requirement_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
+    requirement = db.get(EventTeamRequirement, requirement_id)
+    if not requirement or requirement.event_id != event.id:
+        raise HTTPException(404, "Позиция состава не найдена")
+    plan = build_replacement_plan(db, event, requirement)
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="replacement.viewed",
+        entity_type="requirement",
+        entity_id=requirement.id,
+        payload={"open_slots": plan["open_slots"], "cancelled": len(plan["cancelled_requests"])},
+    )
+    db.commit()
+    return plan
+
+
+@router.post("/bookings/{booking_id}/cancel")
+def cancel_booking(
+    booking_id: str,
+    body: dict | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    expire_holds(db)
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(Request, offer.request_id) if offer else None
+    event = db.get(Event, booking.event_id)
+    if not req or not event:
+        raise HTTPException(404, "Бронь не найдена")
+    cust_org = event.organization_id
+    sup_org = req.supplier_org_id
+    if membership_ok(db, user, cust_org):
+        require_org_writer(db, user, cust_org)
+    elif membership_ok(db, user, sup_org):
+        require_org_writer(db, user, sup_org)
+    else:
+        raise HTTPException(403, "Нет доступа")
+    if booking.status in {"Cancelled", "Completed"}:
+        raise HTTPException(409, "Бронь уже закрыта")
+    _transition(booking, "Cancelled")
+    req.status = "Cancelled"
+    slot = db.get(AvailabilitySlot, booking.slot_id)
+    if slot and slot.status in {"held", "confirmed"}:
+        slot.status = "open"
+    hold = (
+        db.query(BookingHold)
+        .filter(BookingHold.booking_id == booking.id, BookingHold.status == "active")
+        .one_or_none()
+    )
+    if hold:
+        hold.status = "cancelled"
+    reason = (body or {}).get("reason") if isinstance(body, dict) else None
+    conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one_or_none()
+    if conv:
+        text = "Сделка отменена."
+        if reason:
+            text = f"{text} Причина: {reason}"
+        db.add(Message(conversation_id=conv.id, kind="system", body=text))
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="booking.cancelled",
+        entity_type="booking",
+        entity_id=booking.id,
+        payload={"request_id": req.id, "reason": reason or ""},
+    )
+    db.commit()
+    return {"booking_id": booking.id, "status": booking.status, "request_id": req.id, "request_status": req.status}
 
 
 @router.put("/events/{event_id}/requirements")

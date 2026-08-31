@@ -336,15 +336,19 @@ def search_catalog(
     city: str = Query("Москва"),
     category: str | None = None,
     date: datetime | None = None,
+    exclude: str | None = Query(None, description="Comma-separated artist/venue ids to hide"),
     db: Session = Depends(get_db),
 ):
     """В выдаче только профили с календарём. Занятые слоты не считаются свободными."""
+    excluded = {item.strip() for item in (exclude or "").split(",") if item.strip()}
     q = db.query(Artist).filter(Artist.city == city)
     if category:
         q = q.filter(Artist.category == category)
     horizon_end = now() + timedelta(days=30)
     results = []
     for artist in q.all():
+        if artist.id in excluded:
+            continue
         slots = (
             db.query(AvailabilitySlot)
             .filter(
@@ -391,6 +395,8 @@ def search_catalog(
     venue_results = []
     if not category or category == "venue":
         for venue in db.query(Venue).filter(Venue.city == city).all():
+            if venue.id in excluded:
+                continue
             halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
             hall_slots = []
             for hall in halls:

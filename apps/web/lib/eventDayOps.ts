@@ -35,6 +35,21 @@ export function isClosedRequest(item: EventRequestLite): boolean {
   return Boolean(item.booking_id) || item.status === "Confirmed";
 }
 
+export function isCancelledRequest(item: EventRequestLite): boolean {
+  return item.status === "Cancelled" || item.status === "Declined" || item.status === "Expired";
+}
+
+export function cancelledRequestsForRole(
+  requests: EventRequestLite[],
+  requirementId?: string,
+): EventRequestLite[] {
+  return requestsForRole(requests, requirementId).filter(isCancelledRequest);
+}
+
+export function needsReplacement(step: NextStepRole): boolean {
+  return step.openSlots > 0 && step.openRequests.some(isCancelledRequest);
+}
+
 export function roleBlocker(requests: EventRequestLite[], need: number): RoleBlocker {
   const closed = requests.filter(isClosedRequest).length;
   const openSlots = Math.max(0, need - closed);
