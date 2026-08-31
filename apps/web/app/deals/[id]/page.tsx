@@ -20,6 +20,8 @@ const TABS = [
 type Room = {
   booking_id: string;
   offer_id: string;
+  event_id?: string;
+  requirement_id?: string | null;
   status: string;
   role: "customer" | "supplier";
   next_step: string;
@@ -36,6 +38,7 @@ type Room = {
     source?: string;
   };
   contract: { id: string; customer_signed: boolean; supplier_signed: boolean; body: string } | null;
+  documents?: { kind: string; id: string; label: string; quote_id?: string; signed: boolean }[];
   payment: { id: string; status: string; amount_rub: number } | null;
   messages: { id: string; kind: string; body: string }[];
 };
@@ -200,6 +203,11 @@ export default function DealPage() {
         </p>
         <h1>{room.event_title || "Deal Room"}</h1>
         <p>Вы {side === "customer" ? "заказчик" : "исполнитель"}. {room.next_step}</p>
+        {room.event_id ? (
+          <p className="timeline">
+            <Link href={`/events/${room.event_id}`}>Event Control Room</Link>
+          </p>
+        ) : null}
         {people.length ? (
           <p className="deal-rail-mobile timeline">
             {people.map((p) => p.name).join(" · ")}
@@ -360,6 +368,18 @@ export default function DealPage() {
           )}
           {tab === "documents" && (
             <section className="card">
+              {room.documents?.length ? (
+                <ul className="timeline">
+                  {room.documents.map((doc) => (
+                    <li key={`${doc.kind}-${doc.id}`}>
+                      {doc.label}
+                      {doc.quote_id ? <> · <span className="mono">{doc.quote_id}</span></> : null}
+                      {" · "}
+                      {doc.signed ? "подписано" : "черновик"}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <pre style={{ whiteSpace: "pre-wrap" }}>{room.contract?.body || "Договора ещё нет"}</pre>
             </section>
           )}

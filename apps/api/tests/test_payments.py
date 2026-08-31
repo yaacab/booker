@@ -91,6 +91,10 @@ def test_webhook_idempotent_and_confirms_once(client):
     ).json()
     assert room["status"] == "Confirmed"
     assert room["tabs"] == ["chat", "terms", "documents", "payments", "dispute"]
+    assert room["event_id"]
+    assert "documents" in room
+    assert any(d["kind"] == "offer" for d in room["documents"])
+    assert any(d["kind"] == "contract" for d in room["documents"])
 
 
 def test_stub_complete_confirms(client):
