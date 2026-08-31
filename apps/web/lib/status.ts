@@ -29,3 +29,12 @@ export function nextAction(status: string): { label: string; kind: string } {
   if (status === "Dispute") return { label: "Позвать человека", kind: "operator" };
   return { label: "Справка", kind: "help" };
 }
+
+export function nextActionHint(kind: string): string {
+  if (kind === "ack") return "Подтвердите условия — обе стороны должны нажать «Кивнуть».";
+  if (kind === "contract") return "Подпишите договор через OTP.";
+  if (kind === "pay") return "Создайте счёт и внесите оплату.";
+  if (kind === "receive") return "Дождитесь дня события.";
+  if (kind === "operator") return "Оператор рассмотрит спор.";
+  return "Проверьте статус сделки.";
+}

@@ -449,11 +449,14 @@ details.timeline summary { cursor: pointer; }
   .deal-toolbar { display: none; }
   .artist-desk-cta { display: none; }
   .sticky-cta {
-    display: flex; position: sticky; bottom: 62px; z-index: 15;
+    display: flex; flex-direction: column; position: sticky; bottom: 62px; z-index: 15;
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 10px; gap: 8px; align-items: center;
+    border-radius: var(--radius); padding: 10px; gap: 8px; align-items: stretch;
     box-shadow: var(--shadow);
   }
+  .sticky-next { margin: 0; font-size: 13px; line-height: 1.35; }
+  .sticky-next .kicker { display: block; margin-bottom: 2px; }
+  .sticky-cta-row { display: flex; gap: 8px; align-items: center; }
   .sticky-cta .btn, .sticky-cta button { flex: 1; }
 }
 @media (max-width: 767px) {

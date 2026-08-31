@@ -34,8 +34,9 @@ test("заявка → оффер: API seed, artist cabinet, Deal Room", async (
   await expect(page.getByRole("tab", { name: "Условия" })).toBeVisible();
 });
 
-test("Deal Room: вкладки Чат / Условия / Документы / Платежи", async ({ page }) => {
+test("Deal Room: вкладки Сводка / Чат / Условия / Документы / Платежи", async ({ page }) => {
   await page.goto("/deals/demo");
+  await expect(page.getByRole("tab", { name: "Сводка" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Чат" })).toBeVisible();
   await page.getByRole("tab", { name: "Условия" }).click();
   await expect(
