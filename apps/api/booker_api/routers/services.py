@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
 from booker_api.models import Organization, Service, User
-from booker_api.schemas import ServiceIn, ServiceOut
+from booker_api.schemas import ServiceFromTemplateIn, ServiceIn, ServiceOut
 from booker_api.security import audit, current_user, require_org_member, require_org_writer
+from booker_api.service_templates import SERVICE_TEMPLATES, get_template
 from booker_api.supply_completeness import supply_completeness as compute_supply_completeness
 
 router = APIRouter(tags=["services"])
@@ -39,6 +40,35 @@ def create_service(body: ServiceIn, user: User = Depends(current_user), db: Sess
     db.commit()
     db.refresh(row)
     return _out(row)
+
+
+@router.get("/service-templates")
+def list_service_templates():
+    return {"items": list(SERVICE_TEMPLATES)}
+
+
+@router.post("/services/from-template")
+def create_service_from_template(
+    body: ServiceFromTemplateIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    require_org_writer(db, user, body.organization_id)
+    tpl = get_template(body.template_id)
+    if not tpl:
+        raise HTTPException(404, "Шаблон не найден")
+    return create_service(
+        ServiceIn(
+            organization_id=body.organization_id,
+            category_code=tpl["category_code"],
+            title=tpl["title"],
+            description=tpl["description"],
+            city=body.city,
+            honorarium_rub=body.honorarium_rub,
+        ),
+        user=user,
+        db=db,
+    )
 
 
 @router.get("/services/public")

@@ -48,6 +48,8 @@ export default function CabinetPage() {
   const [serviceHonorarium, setServiceHonorarium] = useState("");
   const [serviceBusy, setServiceBusy] = useState(false);
   const [serviceError, setServiceError] = useState("");
+  const [templates, setTemplates] = useState<{ id: string; title: string; category_code: string }[]>([]);
+  const [templateBusy, setTemplateBusy] = useState<string | null>(null);
   const [completeness, setCompleteness] = useState<{
     score: number;
     items: { id: string; label: string; done: boolean }[];
@@ -116,6 +118,9 @@ export default function CabinetPage() {
 
   useEffect(() => {
     void load();
+    void api<{ items: { id: string; title: string; category_code: string }[] }>("/service-templates")
+      .then((res) => setTemplates(res.items))
+      .catch(() => setTemplates([]));
   }, []);
 
   async function sendOffer(item: RequestItem) {
@@ -168,6 +173,23 @@ export default function CabinetPage() {
       setServiceError(err instanceof Error ? err.message : "Не удалось создать услугу");
     } finally {
       setServiceBusy(false);
+    }
+  }
+
+  async function createFromTemplate(templateId: string) {
+    if (!orgId || !isWriteRole(role)) return;
+    setTemplateBusy(templateId);
+    setServiceError("");
+    try {
+      const created = await api<ServiceItem>("/services/from-template", {
+        method: "POST",
+        body: JSON.stringify({ organization_id: orgId, template_id: templateId }),
+      });
+      setServices((prev) => [...prev, created]);
+    } catch (err) {
+      setServiceError(err instanceof Error ? err.message : "Не удалось создать из шаблона");
+    } finally {
+      setTemplateBusy(null);
     }
   }
 
@@ -304,6 +326,21 @@ export default function CabinetPage() {
           ) : (
             <p className="timeline">Пока нет услуг в каталоге организации.</p>
           )}
+          {canManageServices && templates.length > 0 ? (
+            <div className="card" style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <span className="timeline">Из шаблона:</span>
+              {templates.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  disabled={templateBusy === tpl.id}
+                  onClick={() => void createFromTemplate(tpl.id)}
+                >
+                  {templateBusy === tpl.id ? "…" : tpl.title}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {canManageServices ? (
             <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420, marginTop: 12 }} onSubmit={createService}>
               <label>
