@@ -335,6 +335,20 @@ class Dispute(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class DealAttachment(Base):
+    __tablename__ = "deal_attachments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(128))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64))
+    storage_key: Mapped[str] = mapped_column(String(512))
+    uploaded_by_user_id: Mapped[str] = mapped_column(String(36))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Service(Base):
     """Каталожная услуга поверх таксономии. Не заменяет Artist/Venue; honorarium_rub — витрина, не quote."""
 

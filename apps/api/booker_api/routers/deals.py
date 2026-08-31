@@ -1,13 +1,16 @@
+import hashlib
 import json
 from datetime import datetime
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from booker_api.calendar import overlapping_slots
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
 from booker_api.config import settings
 from booker_api.db import get_db
+from booker_api.file_scan import scan_upload
 from booker_api.models import (
     Artist,
     ArtistTariff,
@@ -16,6 +19,7 @@ from booker_api.models import (
     BookingHold,
     Contract,
     Conversation,
+    DealAttachment,
     Dispute,
     Event,
     EventTeamRequirement,
@@ -670,7 +674,75 @@ def run_expire(db: Session = Depends(get_db)):
     return {"expired": count}
 
 
-def _deal_documents(version: OfferVersion, contract: Contract | None) -> list[dict]:
+def _booking_participant_orgs(db: Session, booking: Booking) -> tuple[str, str]:
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(Request, offer.request_id)
+    event = db.get(Event, booking.event_id)
+    return event.organization_id, req.supplier_org_id
+
+
+@router.post("/bookings/{booking_id}/attachments")
+async def upload_booking_attachment(
+    booking_id: str,
+    file: UploadFile = File(...),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    cust_org, sup_org = _booking_participant_orgs(db, booking)
+    if not (membership_ok(db, user, cust_org) or membership_ok(db, user, sup_org)):
+        raise HTTPException(403, "Нет доступа")
+    if user.is_platform_admin:
+        pass
+    elif membership_ok(db, user, cust_org):
+        require_org_writer(db, user, cust_org)
+    else:
+        require_org_writer(db, user, sup_org)
+    raw = await file.read()
+    safe_name = scan_upload(raw, file.filename or "file.bin", max_bytes=settings.max_upload_bytes)
+    digest = hashlib.sha256(raw).hexdigest()
+    root = Path(settings.upload_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    booking_dir = root / booking_id
+    booking_dir.mkdir(parents=True, exist_ok=True)
+    storage_key = f"{booking_id}/{digest[:16]}_{safe_name}"
+    path = root / storage_key
+    path.write_bytes(raw)
+    row = DealAttachment(
+        booking_id=booking_id,
+        filename=safe_name,
+        content_type=file.content_type or "application/octet-stream",
+        size_bytes=len(raw),
+        sha256=digest,
+        storage_key=storage_key,
+        uploaded_by_user_id=user.id,
+    )
+    db.add(row)
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="attachment.uploaded",
+        entity_type="booking",
+        entity_id=booking_id,
+        payload={"attachment_id": row.id, "filename": safe_name, "sha256": digest},
+    )
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "filename": row.filename,
+        "size_bytes": row.size_bytes,
+        "sha256": row.sha256,
+    }
+
+
+def _deal_documents(
+    version: OfferVersion,
+    contract: Contract | None,
+    attachments: list[DealAttachment] | None = None,
+) -> list[dict]:
     docs = [
         {
             "kind": "offer",
@@ -687,6 +759,16 @@ def _deal_documents(version: OfferVersion, contract: Contract | None) -> list[di
                 "id": contract.id,
                 "label": "Договор",
                 "signed": contract.customer_signed and contract.supplier_signed,
+            }
+        )
+    for att in attachments or []:
+        docs.append(
+            {
+                "kind": "attachment",
+                "id": att.id,
+                "label": att.filename,
+                "signed": False,
+                "size_bytes": att.size_bytes,
             }
         )
     return docs
@@ -719,6 +801,12 @@ def deal_room(
     version = db.get(OfferVersion, offer.active_version_id)
     contract = db.query(Contract).filter(Contract.booking_id == booking.id).one_or_none()
     payment = db.query(Payment).filter(Payment.booking_id == booking.id).one_or_none()
+    attachments = (
+        db.query(DealAttachment)
+        .filter(DealAttachment.booking_id == booking.id)
+        .order_by(DealAttachment.created_at.asc())
+        .all()
+    )
     hold = (
         db.query(BookingHold)
         .filter(BookingHold.booking_id == booking.id, BookingHold.status == "active")
@@ -760,7 +848,7 @@ def deal_room(
             "supplier_signed": contract.supplier_signed,
             "body": contract.body,
         },
-        "documents": _deal_documents(version, contract),
+        "documents": _deal_documents(version, contract, attachments),
         "payment": None
         if not payment
         else {"id": payment.id, "status": payment.status, "amount_rub": payment.amount_rub},

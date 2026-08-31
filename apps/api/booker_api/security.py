@@ -83,9 +83,18 @@ def require_org_writer(db: Session, user: User, org_id: str) -> TeamMember:
     return member
 
 
+def ensure_admin_2fa_configured(user: User) -> None:
+    if settings.require_admin_2fa_enforced and not user.totp_enabled:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Администратору нужен включённый второй фактор (TOTP)",
+        )
+
+
 def require_admin(user: User = Depends(current_user)) -> User:
     if not user.is_platform_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")
+    ensure_admin_2fa_configured(user)
     return user
 
 

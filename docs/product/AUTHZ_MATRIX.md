@@ -38,6 +38,12 @@
 
 ## Не реализовано (P0 gap)
 
-- File upload AV scan (нет загрузки файлов в MVP)
-- Prod 2FA для всех admin (opt-in через `totp_enabled`)
+- ClamAV / внешний AV (базовая проверка magic bytes — `file_scan.py`)
+- Prod 2FA: `BOOKER_REQUIRE_ADMIN_2FA_ENFORCED=1` блокирует admin без TOTP
 - Rate limits: см. `booker_api/rate_limit.py` (auth + webhook)
+
+## Upload (Deal Room)
+
+| Объект | Операция | Кто может | Guard |
+|--------|----------|-----------|-------|
+| Booking attachment | POST | writer customer/supplier on deal | `scan_upload`, size cap |

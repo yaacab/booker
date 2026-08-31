@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     public_url: str = "https://bukergo.ru"
     composition_v2: bool = True
     workspace_switcher: bool = True
+    require_admin_2fa_enforced: bool = False
+    upload_dir: str = "./data/uploads"
+    max_upload_bytes: int = 5_242_880  # 5 MiB
 
 
 settings = Settings()
