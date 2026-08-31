@@ -19,7 +19,7 @@
 
 | ID | Задача | Статус | Доказательство |
 |----|--------|--------|----------------|
-| p0-contract-v2 | Product Contract v2 (ICP, state machines, monetization, «не строим») | **in_progress** | — |
+| p0-contract-v2 | Product Contract v2 (ICP, state machines, monetization, «не строим») | **done** | `848c02a` — CONTRACT.md, BLUEPRINT.md |
 | p0-legal-289 | Юрпакет + 289-ФЗ, OPERATOR.md, РКН, гейт U5 | **BLOCKED** | Нужны реквизиты оператора и письмо юриста; см. [OPERATOR.md](legal/OPERATOR.md) |
 | p0-payment-partner | Платёжный партнёр (term sheet, 54-ФЗ, sandbox) | **BLOCKED** | Выбор партнёра — решение человека; см. [PAYMENTS_SHORTLIST.md](legal/PAYMENTS_SHORTLIST.md) |
 | p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **pending** | — |
@@ -71,4 +71,4 @@
 
 ## Журнал выполнения
 
-<!-- Агент дополняет после каждого commit: дата, ID, SHA, файлы, проверки -->
+- 2026-08-31 · **p0-contract-v2** · `848c02a` · `docs/product/CONTRACT.md`, `docs/product/BLUEPRINT.md`, `docs/MASTER_PLAN.md` · journal start
