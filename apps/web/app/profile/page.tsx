@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { api, getActiveOrg, getToken, setActiveOrg, setToken } from "@/lib/api";
+import { FormEvent, useEffect, useState } from "react";
+import { api, createOrgWithConfirm, getActiveOrg, getToken, setActiveOrg, setToken } from "@/lib/api";
 import { KIND_LABEL } from "@/lib/copy";
 import { loginHref } from "@/lib/next";
 
@@ -29,6 +29,9 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [active, setActive] = useState("");
   const [switching, setSwitching] = useState(false);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [newOrgKind, setNewOrgKind] = useState("customer");
+  const [orgBusy, setOrgBusy] = useState(false);
 
   useEffect(() => {
     if (!getToken()) {
@@ -72,6 +75,23 @@ export default function ProfilePage() {
   }
 
   const orgs = me.organizations || [];
+
+  async function addOrg(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const name = newOrgName.trim();
+    if (!name) return;
+    setOrgBusy(true);
+    setError("");
+    try {
+      const org = await createOrgWithConfirm({ name, kind: newOrgKind, city: "Москва" });
+      setActiveOrg(org.id);
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось создать пространство");
+    } finally {
+      setOrgBusy(false);
+    }
+  }
 
   return (
     <main>
@@ -120,6 +140,24 @@ export default function ProfilePage() {
           </div>
         </article>
       ))}
+      <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420, marginTop: 16 }} onSubmit={addOrg}>
+        <h2>Добавить пространство</h2>
+        <label>
+          Название
+          <input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} required />
+        </label>
+        <label>
+          Тип
+          <select value={newOrgKind} onChange={(e) => setNewOrgKind(e.target.value)}>
+            <option value="customer">Заказчик</option>
+            <option value="artist">Исполнитель</option>
+            <option value="venue">Площадка</option>
+          </select>
+        </label>
+        <button type="submit" disabled={orgBusy}>
+          {orgBusy ? "Создаём…" : "Создать"}
+        </button>
+      </form>
       {me.is_platform_admin ? (
         <p>
           <Link href="/admin">Пульт. Без нейронки.</Link>

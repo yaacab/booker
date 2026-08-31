@@ -415,6 +415,7 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
             )
     return {
         "id": venue.id,
+        "organization_id": venue.organization_id,
         "name": venue.name,
         "city": venue.city,
         "capacity": venue.capacity,
