@@ -238,6 +238,25 @@ export default function EventPage() {
         {event.city ? ` · ${event.city}` : ""}
         {event.guest_count ? ` · ${event.guest_count} гостей` : ""}
       </p>
+      <p>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            void api<Record<string, unknown>>(`/events/${event.id}/offline-pack`).then((pack) => {
+              const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `event-${event.id.slice(0, 8)}-offline-pack.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            });
+          }}
+        >
+          Скачать offline-pack
+        </button>
+      </p>
       {totalPositions > 0 ? (
         <article className="card tint reveal">
           <strong>Закрытие состава</strong>

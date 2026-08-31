@@ -208,6 +208,53 @@ def get_event(event_id: str, user: User = Depends(current_user), db: Session = D
     }
 
 
+@router.get("/events/{event_id}/offline-pack")
+def event_offline_pack(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Сводка для дня события: печать / офлайн у concierge."""
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
+    requirements = ensure_requirements(db, event, actor_user_id=user.id) if settings.composition_v2 else []
+    reqs = db.query(Request).filter(Request.event_id == event.id).all()
+    pack_requests = []
+    for req in reqs:
+        offer = db.query(Offer).filter(Offer.request_id == req.id).one_or_none()
+        booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none() if offer else None
+        pack_requests.append(
+            {
+                "id": req.id,
+                "status": req.status,
+                "resource_type": req.resource_type,
+                "requirement_id": getattr(req, "requirement_id", None),
+                "booking_id": booking.id if booking else None,
+                "booking_status": booking.status if booking else None,
+            }
+        )
+    db.commit()
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="event.offline_pack",
+        entity_type="event",
+        entity_id=event.id,
+    )
+    db.commit()
+    return {
+        "event": {
+            "id": event.id,
+            "title": event.title,
+            "status": event.status,
+            "city": event.city,
+            "event_date": event.event_date.isoformat(),
+            "guest_count": event.guest_count,
+        },
+        "requirements": requirements,
+        "requests": pack_requests,
+        "generated_at": now().isoformat(),
+    }
+
+
 @router.put("/events/{event_id}/requirements")
 def put_event_requirements(
     event_id: str,
