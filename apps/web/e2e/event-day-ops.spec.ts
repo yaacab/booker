@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   BLOCKER_LABEL,
   buildNextSteps,
+  dayOpsVisible,
   isClosedRequest,
   needsReplacement,
   openLooseRequests,
@@ -71,5 +72,34 @@ test.describe("eventDayOps", () => {
       [reqDj],
     );
     expect(loose.map((item) => item.id)).toEqual(["x"]);
+  });
+
+  test("dayOpsVisible: only when bookings exist", () => {
+    expect(dayOpsVisible(null)).toBe(false);
+    expect(
+      dayOpsVisible({
+        event_status: "Confirmed",
+        can_event_check_in: true,
+        can_event_check_out: false,
+        bookings: [],
+        summary: { confirmed: 0, in_progress: 0, completed: 0, total: 0 },
+      }),
+    ).toBe(false);
+    expect(
+      dayOpsVisible({
+        event_status: "InProgress",
+        can_event_check_in: false,
+        can_event_check_out: true,
+        bookings: [
+          {
+            booking_id: "b1",
+            booking_status: "InProgress",
+            can_check_in: false,
+            can_check_out: true,
+          },
+        ],
+        summary: { confirmed: 0, in_progress: 1, completed: 0, total: 1 },
+      }),
+    ).toBe(true);
   });
 });

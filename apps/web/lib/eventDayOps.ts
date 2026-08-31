@@ -108,3 +108,24 @@ export function openLooseRequests<T extends EventRequestLite>(
 ): T[] {
   return unmatchedRequests(requests, requirements).filter((item) => !isClosedRequest(item));
 }
+
+export type DayBooking = {
+  booking_id: string;
+  resource_name?: string | null;
+  booking_status: string;
+  can_check_in: boolean;
+  can_check_out: boolean;
+};
+
+export type DayStatus = {
+  event_status: string;
+  can_event_check_in: boolean;
+  can_event_check_out: boolean;
+  bookings: DayBooking[];
+  summary: { confirmed: number; in_progress: number; completed: number; total: number };
+};
+
+export function dayOpsVisible(status: DayStatus | null): boolean {
+  if (!status) return false;
+  return status.summary.total > 0;
+}

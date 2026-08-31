@@ -10,6 +10,13 @@ from booker_api.calendar import overlapping_slots
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
 from booker_api.config import settings
 from booker_api.db import get_db
+from booker_api.event_day import (
+    build_day_status,
+    check_in_booking,
+    check_in_event,
+    check_out_booking,
+    check_out_event,
+)
 from booker_api.file_scan import scan_upload
 from booker_api.models import (
     Artist,
@@ -258,6 +265,124 @@ def event_offline_pack(event_id: str, user: User = Depends(current_user), db: Se
         "requests": pack_requests,
         "generated_at": now().isoformat(),
     }
+
+
+@router.get("/events/{event_id}/day-status")
+def event_day_status(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
+    return build_day_status(db, event)
+
+
+@router.post("/events/{event_id}/check-in")
+def event_check_in(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_writer(db, user, event.organization_id)
+    try:
+        result = check_in_event(db, event)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="event.check_in",
+        entity_type="event",
+        entity_id=event.id,
+        payload={"bookings": result["checked_in_bookings"]},
+    )
+    db.commit()
+    return {**result, "day_status": build_day_status(db, event)}
+
+
+@router.post("/events/{event_id}/check-out")
+def event_check_out(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_writer(db, user, event.organization_id)
+    try:
+        result = check_out_event(db, event)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="event.check_out",
+        entity_type="event",
+        entity_id=event.id,
+        payload={"bookings": result["checked_out_bookings"]},
+    )
+    db.commit()
+    return {**result, "day_status": build_day_status(db, event)}
+
+
+@router.post("/bookings/{booking_id}/check-in")
+def booking_check_in(booking_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    event = db.get(Event, booking.event_id)
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(Request, offer.request_id) if offer else None
+    if not event or not req:
+        raise HTTPException(404, "Сделка не найдена")
+    if not (
+        membership_ok(db, user, event.organization_id)
+        or membership_ok(db, user, req.supplier_org_id)
+    ):
+        raise HTTPException(403, "Нет доступа")
+    try:
+        status = check_in_booking(booking)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    if event.status in {"Confirmed", "Planning", "Draft", "RequestSent", "Negotiation"}:
+        event.status = "InProgress"
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="booking.check_in",
+        entity_type="booking",
+        entity_id=booking.id,
+    )
+    db.commit()
+    return {"booking_id": booking.id, "status": status, "event_status": event.status}
+
+
+@router.post("/bookings/{booking_id}/check-out")
+def booking_check_out(booking_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    event = db.get(Event, booking.event_id)
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(Request, offer.request_id) if offer else None
+    if not event or not req:
+        raise HTTPException(404, "Сделка не найдена")
+    if not (
+        membership_ok(db, user, event.organization_id)
+        or membership_ok(db, user, req.supplier_org_id)
+    ):
+        raise HTTPException(403, "Нет доступа")
+    try:
+        status = check_out_booking(booking)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    day = build_day_status(db, event)
+    if day["summary"]["in_progress"] == 0 and day["summary"]["confirmed"] == 0 and day["summary"]["completed"] > 0:
+        event.status = "Completed"
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="booking.check_out",
+        entity_type="booking",
+        entity_id=booking.id,
+    )
+    db.commit()
+    return {"booking_id": booking.id, "status": status, "event_status": event.status}
 
 
 @router.get("/events/{event_id}/requirements/{requirement_id}/replacement")

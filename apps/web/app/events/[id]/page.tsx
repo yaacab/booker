@@ -16,6 +16,8 @@ import {
   qtyOf,
   requestsForRole,
   unmatchedRequests,
+  dayOpsVisible,
+  type DayStatus,
   type EventRequestLite,
   type RequirementLite,
 } from "@/lib/eventDayOps";
@@ -81,6 +83,153 @@ type ReplacementPlan = {
   exclude_resource_ids: string[];
   search: { date: string; category: string; city: string; exclude?: string };
 };
+
+function DayStatusPanel({
+  eventId,
+  canWrite,
+  onUpdated,
+}: {
+  eventId: string;
+  canWrite: boolean;
+  onUpdated: () => void;
+}) {
+  const [day, setDay] = useState<DayStatus | null>(null);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    api<DayStatus>(`/events/${eventId}/day-status`)
+      .then((data) => {
+        if (!cancelled) {
+          setDay(data);
+          setError("");
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Не удалось загрузить статус дня");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
+  async function act(path: string) {
+    setBusy(path);
+    setError("");
+    try {
+      const res = await api<{ day_status?: DayStatus; event_status?: string }>(path, { method: "POST" });
+      if (res.day_status) setDay(res.day_status);
+      onUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось выполнить действие");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function actBooking(bookingId: string, action: "check-in" | "check-out") {
+    setBusy(`${action}-${bookingId}`);
+    setError("");
+    try {
+      await api(`/bookings/${bookingId}/${action}`, { method: "POST" });
+      const fresh = await api<DayStatus>(`/events/${eventId}/day-status`);
+      setDay(fresh);
+      onUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось выполнить действие");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  if (error && !day) {
+    return (
+      <p className="timeline" role="alert">
+        {error}
+      </p>
+    );
+  }
+  if (!dayOpsVisible(day)) return null;
+
+  const d = day!;
+  return (
+    <section className="reveal">
+      <h2>День события</h2>
+      <article className="card tint">
+        <p className="timeline">
+          Подтверждено: {d.summary.confirmed} · в работе: {d.summary.in_progress} · завершено:{" "}
+          {d.summary.completed}
+        </p>
+        {canWrite ? (
+          <p>
+            {d.can_event_check_in ? (
+              <button
+                type="button"
+                className="btn"
+                disabled={Boolean(busy)}
+                onClick={() => void act(`/events/${eventId}/check-in`)}
+              >
+                {busy === `/events/${eventId}/check-in` ? "Отмечаем…" : "Начать день (check-in)"}
+              </button>
+            ) : null}{" "}
+            {d.can_event_check_out ? (
+              <button
+                type="button"
+                className="secondary"
+                disabled={Boolean(busy)}
+                onClick={() => void act(`/events/${eventId}/check-out`)}
+              >
+                {busy === `/events/${eventId}/check-out` ? "Завершаем…" : "Завершить день (check-out)"}
+              </button>
+            ) : null}
+          </p>
+        ) : null}
+        <ul className="timeline" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {d.bookings.map((item) => (
+            <li key={item.booking_id} style={{ marginBottom: "0.75rem" }}>
+              <strong>{item.resource_name || "Исполнитель"}</strong>{" "}
+              <span className={`chip ${chipCls(item.booking_status)}`}>
+                {STATUS_LABEL[item.booking_status] || item.booking_status}
+              </span>
+              {canWrite && item.can_check_in ? (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={Boolean(busy)}
+                    onClick={() => void actBooking(item.booking_id, "check-in")}
+                  >
+                    Check-in
+                  </button>
+                </>
+              ) : null}
+              {canWrite && item.can_check_out ? (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={Boolean(busy)}
+                    onClick={() => void actBooking(item.booking_id, "check-out")}
+                  >
+                    Check-out
+                  </button>
+                </>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        {error ? (
+          <p className="timeline" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </article>
+    </section>
+  );
+}
 
 function ReplacementPanel({
   eventId,
@@ -359,6 +508,7 @@ export default function EventPage() {
           </p>
         </article>
       ) : null}
+      <DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} />
       {requirements.length > 0 || looseOpen.length > 0 ? (
         <section className="reveal">
           <h2>Следующие шаги</h2>
