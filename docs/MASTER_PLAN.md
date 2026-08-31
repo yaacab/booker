@@ -22,8 +22,8 @@
 | p0-contract-v2 | Product Contract v2 (ICP, state machines, monetization, «не строим») | **done** | `848c02a` — CONTRACT.md, BLUEPRINT.md |
 | p0-legal-289 | Юрпакет + 289-ФЗ, OPERATOR.md, РКН, гейт U5 | **EXTERNAL_BLOCKED** | Нужны реквизиты оператора и письмо юриста; см. [OPERATOR.md](legal/OPERATOR.md) |
 | p0-payment-partner | Платёжный партнёр (term sheet, 54-ФЗ, sandbox) | **EXTERNAL_BLOCKED** | Выбор партнёра — решение человека; см. [PAYMENTS_SHORTLIST.md](legal/PAYMENTS_SHORTLIST.md) |
-| p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **partial** | `85cc979`, restore-drill + cron example; VPS cron/restore drill manual |
-| p0-security | Authz matrix, rate limits, 2FA prod, file scan | **partial** | 2FA enforce env, `file_scan.py`, attachments API; ClamAV external |
+| p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **partial** | deploy installs cron + first backup; restore drill on VPS pending |
+| p0-security | Authz matrix, rate limits, 2FA prod, file scan | **partial** | + analytics rate limit; ClamAV external |
 
 ---
 
@@ -32,9 +32,9 @@
 | ID | Задача | Статус | Доказательство |
 |----|--------|--------|----------------|
 | p1-payment-adapter | Payment adapter после партнёра | **EXTERNAL_BLOCKED** | Зависит от p0-payment-partner |
-| p1-analytics | Taxonomy + dashboards + client events | **partial** | client.event in `/admin/metrics`, search + Deal Room tracking |
+| p1-analytics | Taxonomy + dashboards + client events | **partial** | by_event in metrics, rate limit, studio.started tracking |
 | p1-supply-console | C1–C6 + iCal, completeness, templates | **partial** | supply-completeness API + кабинет; iCal/templates pending |
-| p1-event-day | Critical path, replacement, offline pack | **partial** | offline-pack API + download; replacement flow pending |
+| p1-event-day | Critical path, replacement, offline pack | **partial** | replacement CTA + offline-pack; full flow pending |
 | p1-founding-supply | 80–150 профилей + 10 площадок | **EXTERNAL_BLOCKED** | Операционная задача, не код |
 | p1-demand-pilots | 10→30→80 deals, case studies | **EXTERNAL_BLOCKED** | Операционная задача, не код |
 
@@ -81,3 +81,6 @@
 - 2026-08-31 · **p1-analytics** · `f89ccf3` · client.event metrics + search/deal tracking · E2E 13 passed, web-build ok
 - 2026-08-31 · **p1-supply-console** · `eb96f43` · supply-completeness API + cabinet · `make test-api` 69 passed
 - 2026-08-31 · **p1-event-day** · `88b2719` · offline-pack export · test_offline_pack
+- 2026-09-01 · **p0-prod-infra** · `dab06a9` · backup cron on deploy
+- 2026-09-01 · **p1-analytics** · `f23f349` · by_event metrics + analytics rate limit · 70 tests
+- 2026-09-01 · **p1-event-day** · `6a39426` · replacement CTA in Control Room
