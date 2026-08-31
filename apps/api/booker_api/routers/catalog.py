@@ -12,13 +12,29 @@ from booker_api.models import (
     Artist,
     ArtistTariff,
     AvailabilitySlot,
+    Booking,
     CatalogCategory,
+    Offer,
+    Request,
     SessionToken,
     User,
     Venue,
     VenueHall,
     VenueTariff,
 )
+
+
+def _supplier_deals_count(db: Session, org_id: str) -> int:
+    return (
+        db.query(Booking)
+        .join(Offer, Booking.offer_id == Offer.id)
+        .join(Request, Offer.request_id == Request.id)
+        .filter(
+            Request.supplier_org_id == org_id,
+            Booking.status.in_(("Confirmed", "InProgress", "Completed")),
+        )
+        .count()
+    )
 from booker_api.schemas import ArtistIn, SlotIn, TariffIn, VenueIn
 from booker_api.security import (
     audit,
@@ -441,7 +457,7 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
         "media_url": artist.media_url,
         "rider": rider,
         "facts": {
-            "deals": 0,
+            "deals": _supplier_deals_count(db, artist.organization_id),
             "response": "в пилоте обычно за пару часов",
             "note": "Рейтинг из восьми факторов подождёт. Сначала десять живых отзывов, потом цирк.",
         },

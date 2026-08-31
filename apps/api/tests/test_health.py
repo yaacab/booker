@@ -6,3 +6,4 @@ def test_health(client):
     assert body["brand"] == "Букер"
     assert body["flags"]["composition_v2"] is True
     assert body["flags"]["workspace_switcher"] is True
+    assert body["flags"]["payment_provider"] == "stub"

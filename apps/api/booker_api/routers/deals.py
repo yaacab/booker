@@ -670,6 +670,28 @@ def run_expire(db: Session = Depends(get_db)):
     return {"expired": count}
 
 
+def _deal_documents(version: OfferVersion, contract: Contract | None) -> list[dict]:
+    docs = [
+        {
+            "kind": "offer",
+            "id": version.id,
+            "label": "Предложение",
+            "quote_id": version.id,
+            "signed": version.customer_ack and version.supplier_ack,
+        }
+    ]
+    if contract:
+        docs.append(
+            {
+                "kind": "contract",
+                "id": contract.id,
+                "label": "Договор",
+                "signed": contract.customer_signed and contract.supplier_signed,
+            }
+        )
+    return docs
+
+
 @router.get("/deal-room/{booking_id}")
 def deal_room(
     booking_id: str,
@@ -708,6 +730,8 @@ def deal_room(
     return {
         "booking_id": booking.id,
         "offer_id": offer.id,
+        "event_id": event.id,
+        "requirement_id": getattr(req, "requirement_id", None),
         "status": booking.status,
         "role": role,
         "event_title": event.title,
@@ -736,6 +760,7 @@ def deal_room(
             "supplier_signed": contract.supplier_signed,
             "body": contract.body,
         },
+        "documents": _deal_documents(version, contract),
         "payment": None
         if not payment
         else {"id": payment.id, "status": payment.status, "amount_rub": payment.amount_rub},
