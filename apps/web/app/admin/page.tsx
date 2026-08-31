@@ -50,6 +50,9 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<Audit["items"]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpSecret, setTotpSecret] = useState("");
+  const [totpBusy, setTotpBusy] = useState(false);
 
   async function load() {
     if (!getToken()) {
@@ -57,11 +60,13 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [q, a, m] = await Promise.all([
+      const [me, q, a, m] = await Promise.all([
+        api<{ totp_enabled?: boolean }>("/me"),
         api<Queue>("/admin/verifications"),
         api<Audit>("/admin/audit"),
         api<Metrics>("/admin/metrics"),
       ]);
+      setTotpEnabled(Boolean(me.totp_enabled));
       setQueue(q);
       setAudit(a.items.slice(0, 20));
       setMetrics(m);
@@ -88,6 +93,23 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : "Не удалось решить");
     } finally {
       setBusyKey(null);
+    }
+  }
+
+  async function enableTotp(e: React.FormEvent) {
+    e.preventDefault();
+    const secret = totpSecret.trim();
+    if (secret.length < 6) return;
+    setTotpBusy(true);
+    try {
+      await api("/admin/totp/enable", { method: "POST", body: JSON.stringify({ secret }) });
+      setTotpEnabled(true);
+      setTotpSecret("");
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось включить 2FA");
+    } finally {
+      setTotpBusy(false);
     }
   }
 
@@ -130,6 +152,23 @@ export default function AdminPage() {
         </p>
       ) : null}
       <div className="grid">
+        <article className="card tint">
+          <h2>Второй фактор</h2>
+          {totpEnabled ? (
+            <p className="timeline">TOTP включён. Для возвратов укажите код в запросе.</p>
+          ) : (
+            <form onSubmit={enableTotp} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
+              <p className="timeline">Пилот: задайте 6+ символов как код второго фактора.</p>
+              <label>
+                Код TOTP
+                <input value={totpSecret} onChange={(e) => setTotpSecret(e.target.value)} minLength={6} required />
+              </label>
+              <button type="submit" disabled={totpBusy}>
+                {totpBusy ? "Сохраняем…" : "Включить 2FA"}
+              </button>
+            </form>
+          )}
+        </article>
         <article className="card">
           <h2>Верификация</h2>
           {renderTargets("artist", "Артисты", queue?.artists ?? [])}

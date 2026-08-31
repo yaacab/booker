@@ -164,3 +164,17 @@ def test_admin_metrics_client_events_by_name(client):
     assert row["count"] == 3
     assert row["by_event"]["search.performed"] == 2
     assert row["by_event"]["deal.room.opened"] == 1
+
+
+def test_admin_enable_totp(client):
+    admin = _promote_admin(client, "totp-setup@booker.test")
+    assert admin
+    res = client.post(
+        "/admin/totp/enable",
+        json={"secret": "654321"},
+        headers=auth_header(admin["token"]),
+    )
+    assert res.status_code == 200
+    assert res.json()["totp_enabled"] is True
+    me = client.get("/me", headers=auth_header(admin["token"]))
+    assert me.json()["totp_enabled"] is True

@@ -95,6 +95,7 @@ def me(
         "email": user.email,
         "full_name": user.full_name,
         "is_platform_admin": user.is_platform_admin,
+        "totp_enabled": user.totp_enabled,
         "organizations": orgs,
         "active_organization_id": active,
     }

@@ -16,7 +16,7 @@ from booker_api.models import (
     Verification,
 )
 from booker_api.routers.deals import _transition
-from booker_api.schemas import DisputeIn, RefundIn, VerifyIn
+from booker_api.schemas import DisputeIn, RefundIn, TotpEnableIn, VerifyIn
 from booker_api.security import audit, current_user, now, require_admin, require_admin_2fa
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -201,6 +201,29 @@ def refund(
 @router.get("/metrics")
 def pilot_metrics(_: User = Depends(require_admin), db: Session = Depends(get_db)):
     return {"periods": {"7": _period_metrics(db, 7), "30": _period_metrics(db, 30)}}
+
+
+@router.post("/totp/enable")
+def enable_admin_totp(
+    body: TotpEnableIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    if not user.is_platform_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")
+    if user.totp_enabled:
+        raise HTTPException(400, "Второй фактор уже включён")
+    user.totp_secret = body.secret.strip()
+    user.totp_enabled = True
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="admin.totp_enabled",
+        entity_type="user",
+        entity_id=user.id,
+    )
+    db.commit()
+    return {"totp_enabled": True}
 
 
 @router.get("/audit")

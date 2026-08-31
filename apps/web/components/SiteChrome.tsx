@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
-import { getToken, setToken } from "@/lib/api";
+import { getToken, setToken, trackClientEvent } from "@/lib/api";
 import { loginHref } from "@/lib/next";
 
 const ADMIN_KEY = "booker.admin";
@@ -52,6 +52,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       title = city ? `Каталог — ${city} · Букер` : title;
     }
     document.title = title;
+    if (getToken()) {
+      trackClientEvent("page.view", { path });
+    }
   }, [path]);
 
   useEffect(() => {
