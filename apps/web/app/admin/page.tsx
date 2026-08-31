@@ -226,7 +226,7 @@ export default function AdminPage() {
                   <ul>
                     {Object.entries(FUNNEL_LABELS).map(([key, label]) => {
                       const row = metrics.periods[days][key];
-                      if (!row) return null;
+                      if (!row || !("count" in row)) return null;
                       return (
                         <li key={key}>
                           {label}: {row.count}
