@@ -302,7 +302,9 @@ export default function EventPage() {
                               step.requirement.id,
                             )}
                           >
-                            Найти
+                            {step.openRequests.some((item) => item.status === "Cancelled")
+                              ? "Подобрать замену"
+                              : "Найти"}
                           </Link>
                         </p>
                       </li>
