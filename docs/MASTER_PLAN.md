@@ -32,7 +32,7 @@
 | ID | Задача | Статус | Доказательство |
 |----|--------|--------|----------------|
 | p1-payment-adapter | Payment adapter после партнёра | **EXTERNAL_BLOCKED** | Зависит от p0-payment-partner |
-| p1-analytics | Taxonomy + dashboards + client events | **partial** | by_event in metrics, rate limit, studio.started tracking |
+| p1-analytics | Taxonomy + dashboards + client events | **done** | taxonomy `53f6ddb`, funnel/liquidity/leakage dashboards |
 | p1-supply-console | C1–C6 + iCal, completeness, templates | **done** | vacation mode `dffea8d`; iCal `071d5bc` |
 | p1-event-day | Critical path, replacement, offline pack | **done** | check-in/out `bc72c59`; replacement `4f3a4cb`; offline-pack `88b2719` |
 | p1-founding-supply | 80–150 профилей + 10 площадок | **EXTERNAL_BLOCKED** | Операционная задача, не код |
@@ -91,4 +91,5 @@
 - 2026-09-01 · **p1-event-day** · `4f3a4cb` · replacement plan API, booking cancel, catalog exclude, Control Room panel · `make test-api` 80 passed, lint ok
 - 2026-09-01 · **p1-supply-console** · `dffea8d` · vacation mode API + cabinet · `make test-api` 85 passed, lint ok
 - 2026-09-01 · **p1-event-day** · `bc72c59` · check-in/out API + Control Room day panel · `make test-api` 90 passed, lint ok
-- 2026-09-01 · **p0-prod-infra** · `a44d171` · Alembic baseline + psycopg, Postgres init via migrate · `make test-api` 92 passed, lint ok
+- 2026-09-01 · **p0-prod-infra** · `a8b8a5b` · journal Alembic baseline · `make test-api` 92 passed, lint ok
+- 2026-09-01 · **p1-analytics** · `53f6ddb` · cabinet/studio taxonomy + funnel/liquidity/leakage dashboards · `make test-api` 94 passed, lint ok
