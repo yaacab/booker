@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from booker_api.config import settings
@@ -17,6 +17,7 @@ from booker_api.models import (
     PaymentWebhookEvent,
     User,
 )
+from booker_api.rate_limit import client_key, webhook_limiter
 from booker_api.routers.deals import _transition
 from booker_api.schemas import PaymentIn, SignIn, WebhookIn
 from booker_api.security import audit, current_user, verify_webhook_signature
@@ -173,8 +174,7 @@ def create_payment(
     return {"id": pay.id, "status": pay.status, "amount_rub": pay.amount_rub}
 
 
-@router.post("/payments/webhook")
-def payment_webhook(body: WebhookIn, db: Session = Depends(get_db)):
+def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
     payload = f"{body.event_id}:{body.payment_id}:{body.status}"
     if not verify_webhook_signature(payload, body.signature):
         raise HTTPException(401, "Неверная подпись webhook")
@@ -231,6 +231,12 @@ def payment_webhook(body: WebhookIn, db: Session = Depends(get_db)):
     return response
 
 
+@router.post("/payments/webhook")
+def payment_webhook(body: WebhookIn, request: Request, db: Session = Depends(get_db)):
+    webhook_limiter.check(client_key(request, "webhook"))
+    return _apply_payment_webhook(body, db)
+
+
 @router.post("/payments/{payment_id}/stub-complete")
 def stub_complete(
     payment_id: str,
@@ -249,7 +255,7 @@ def stub_complete(
     signature = hmac.new(
         settings.webhook_secret.encode(), payload.encode(), hashlib.sha256
     ).hexdigest()
-    return payment_webhook(
+    return _apply_payment_webhook(
         WebhookIn(event_id=event_id, payment_id=payment_id, status=status, signature=signature),
         db,
     )

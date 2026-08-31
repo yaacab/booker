@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from booker_api.composition import ALLOWED_ORG_KINDS, ALLOWED_ROLES, normalize_kind
 from booker_api.db import get_db
 from booker_api.models import Organization, TeamMember, User
+from booker_api.rate_limit import auth_limiter, client_key
 from booker_api.schemas import LoginIn, MemberIn, OrgIn, RegisterIn
 from booker_api.security import (
     audit,
@@ -19,7 +20,8 @@ router = APIRouter(tags=["identity"])
 
 
 @router.post("/auth/register")
-def register(body: RegisterIn, db: Session = Depends(get_db)):
+def register(body: RegisterIn, request: Request, db: Session = Depends(get_db)):
+    auth_limiter.check(client_key(request, "register"))
     if db.query(User).filter(User.email == body.email.lower()).one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, "Email уже занят")
     user = User(
@@ -49,7 +51,8 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/login")
-def login(body: LoginIn, db: Session = Depends(get_db)):
+def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
+    auth_limiter.check(client_key(request, "login"))
     user = db.query(User).filter(User.email == body.email.lower()).one_or_none()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
@@ -59,7 +62,8 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/recover")
-def recover(body: dict):
+def recover(body: dict, request: Request):
+    auth_limiter.check(client_key(request, "recover"))
     _ = body.get("email")
     return {"ok": True, "message": "Если такой email есть, отправим ссылку. На пилоте письмо не уходит."}
 

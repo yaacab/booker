@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from booker_api.db import Base, get_db
 from booker_api.main import app
+from booker_api.rate_limit import auth_limiter, webhook_limiter
 
 
 @pytest.fixture()
@@ -28,6 +29,15 @@ def engine():
 @pytest.fixture()
 def SessionLocal(engine):
     return sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiters():
+    auth_limiter.reset()
+    webhook_limiter.reset()
+    yield
+    auth_limiter.reset()
+    webhook_limiter.reset()
 
 
 @pytest.fixture()

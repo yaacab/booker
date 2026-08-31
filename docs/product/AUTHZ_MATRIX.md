@@ -1,0 +1,43 @@
+# Матрица авторизации (object auth)
+
+Источник: CONTRACT v2, RBAC PR #4. Тесты: `test_idor_events.py`, `test_workspace.py`, `test_cabinet.py`.
+
+## Роли workspace
+
+| role | read org data | write (offers, services) | confirm offer | admin platform |
+|------|---------------|--------------------------|---------------|----------------|
+| owner | ✓ | ✓ | ✓ | — |
+| admin | ✓ | ✓ | ✓ | — |
+| manager | ✓ | ✓ | ✓* | — |
+| viewer | ✓ | — | — | — |
+| platform_admin | ✓ all | ✓ all | ✓ | ✓ |
+
+\* `can_confirm_offer` может быть снят на уровне TeamMember.
+
+## Объекты и проверки
+
+| Объект | Операция | Кто может | Guard |
+|--------|----------|-----------|-------|
+| Event | GET | member org заказчика | `organization_id` match |
+| Event | POST/PUT requirements | writer customer org | `require_org_writer` |
+| Request | POST | writer customer org | event belongs to org |
+| Request | POST offer | writer supplier org | request targets supplier resource |
+| Booking/Deal | GET | customer or supplier org on deal | membership on both sides |
+| Service | POST | writer artist/venue org | `organization_id` |
+| Hall | POST | writer venue org owns venue | `organization_id` on venue |
+| Admin audit/metrics | GET | `is_platform_admin` | `require_admin` |
+| Admin refund | POST | admin + optional 2FA | `require_admin_2fa` |
+| Payment webhook | POST | HMAC signature | `verify_webhook_signature` |
+
+## Negative tests (обязательные)
+
+- User A не читает Event org B (`test_idor_events`)
+- Viewer не создаёт offer/service
+- Non-admin не вызывает `/admin/*`
+- Invalid webhook signature → 401
+
+## Не реализовано (P0 gap)
+
+- File upload AV scan (нет загрузки файлов в MVP)
+- Prod 2FA для всех admin (opt-in через `totp_enabled`)
+- Rate limits: см. `booker_api/rate_limit.py` (auth + webhook)
