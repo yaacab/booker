@@ -34,7 +34,7 @@
 | p1-payment-adapter | Payment adapter после партнёра | **EXTERNAL_BLOCKED** | Зависит от p0-payment-partner |
 | p1-analytics | Taxonomy + dashboards + client events | **partial** | by_event in metrics, rate limit, studio.started tracking |
 | p1-supply-console | C1–C6 + iCal, completeness, templates | **done** | vacation mode `dffea8d`; iCal `071d5bc` |
-| p1-event-day | Critical path, replacement, offline pack | **partial** | replacement flow `4f3a4cb`; offline-pack done; check-in/out pending |
+| p1-event-day | Critical path, replacement, offline pack | **done** | check-in/out `bc72c59`; replacement `4f3a4cb`; offline-pack `88b2719` |
 | p1-founding-supply | 80–150 профилей + 10 площадок | **EXTERNAL_BLOCKED** | Операционная задача, не код |
 | p1-demand-pilots | 10→30→80 deals, case studies | **EXTERNAL_BLOCKED** | Операционная задача, не код |
 
@@ -90,3 +90,4 @@
 - 2026-09-01 · **p1-supply-console** · `071d5bc` · iCal busy import API + cabinet · `make test-api` 77 passed, lint ok
 - 2026-09-01 · **p1-event-day** · `4f3a4cb` · replacement plan API, booking cancel, catalog exclude, Control Room panel · `make test-api` 80 passed, lint ok
 - 2026-09-01 · **p1-supply-console** · `dffea8d` · vacation mode API + cabinet · `make test-api` 85 passed, lint ok
+- 2026-09-01 · **p1-event-day** · `bc72c59` · check-in/out API + Control Room day panel · `make test-api` 90 passed, lint ok
