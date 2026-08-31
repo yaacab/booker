@@ -20,8 +20,8 @@
 | ID | Задача | Статус | Доказательство |
 |----|--------|--------|----------------|
 | p0-contract-v2 | Product Contract v2 (ICP, state machines, monetization, «не строим») | **done** | `848c02a` — CONTRACT.md, BLUEPRINT.md |
-| p0-legal-289 | Юрпакет + 289-ФЗ, OPERATOR.md, РКН, гейт U5 | **BLOCKED** | Нужны реквизиты оператора и письмо юриста; см. [OPERATOR.md](legal/OPERATOR.md) |
-| p0-payment-partner | Платёжный партнёр (term sheet, 54-ФЗ, sandbox) | **BLOCKED** | Выбор партнёра — решение человека; см. [PAYMENTS_SHORTLIST.md](legal/PAYMENTS_SHORTLIST.md) |
+| p0-legal-289 | Юрпакет + 289-ФЗ, OPERATOR.md, РКН, гейт U5 | **EXTERNAL_BLOCKED** | Нужны реквизиты оператора и письмо юриста; см. [OPERATOR.md](legal/OPERATOR.md) |
+| p0-payment-partner | Платёжный партнёр (term sheet, 54-ФЗ, sandbox) | **EXTERNAL_BLOCKED** | Выбор партнёра — решение человека; см. [PAYMENTS_SHORTLIST.md](legal/PAYMENTS_SHORTLIST.md) |
 | p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **partial** | `85cc979`, restore-drill + cron example; VPS cron/restore drill manual |
 | p0-security | Authz matrix, rate limits, 2FA prod, file scan | **partial** | 2FA enforce env, `file_scan.py`, attachments API; ClamAV external |
 
@@ -31,12 +31,12 @@
 
 | ID | Задача | Статус | Доказательство |
 |----|--------|--------|----------------|
-| p1-payment-adapter | Payment adapter после партнёра | **BLOCKED** | Зависит от p0-payment-partner |
+| p1-payment-adapter | Payment adapter после партнёра | **EXTERNAL_BLOCKED** | Зависит от p0-payment-partner |
 | p1-analytics | Taxonomy + dashboards + client events | **partial** | client.event in `/admin/metrics`, search + Deal Room tracking |
-| p1-supply-console | C1–C6 + iCal, completeness, templates | **partial** | C1–C6 **done** (ROADMAP); polish pending |
-| p1-event-day | Critical path, replacement, offline pack | **partial** | MVP «Следующие шаги» PR #11 |
-| p1-founding-supply | 80–150 профилей + 10 площадок | **BLOCKED** | Операционная задача, не код |
-| p1-demand-pilots | 10→30→80 deals, case studies | **BLOCKED** | Операционная задача, не код |
+| p1-supply-console | C1–C6 + iCal, completeness, templates | **partial** | supply-completeness API + кабинет; iCal/templates pending |
+| p1-event-day | Critical path, replacement, offline pack | **partial** | offline-pack API + download; replacement flow pending |
+| p1-founding-supply | 80–150 профилей + 10 площадок | **EXTERNAL_BLOCKED** | Операционная задача, не код |
+| p1-demand-pilots | 10→30→80 deals, case studies | **EXTERNAL_BLOCKED** | Операционная задача, не код |
 
 ### UI-хвосты supply console (C1–C6)
 
