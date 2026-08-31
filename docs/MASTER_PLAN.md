@@ -22,7 +22,7 @@
 | p0-contract-v2 | Product Contract v2 (ICP, state machines, monetization, «не строим») | **done** | `848c02a` — CONTRACT.md, BLUEPRINT.md |
 | p0-legal-289 | Юрпакет + 289-ФЗ, OPERATOR.md, РКН, гейт U5 | **BLOCKED** | Нужны реквизиты оператора и письмо юриста; см. [OPERATOR.md](legal/OPERATOR.md) |
 | p0-payment-partner | Платёжный партнёр (term sheet, 54-ФЗ, sandbox) | **BLOCKED** | Выбор партнёра — решение человека; см. [PAYMENTS_SHORTLIST.md](legal/PAYMENTS_SHORTLIST.md) |
-| p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **pending** | — |
+| p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **partial** | `docs/ops/PROD_INFRA.md`, `infra/backup-booker.sh`; cron/restore/cutover pending |
 | p0-security | Authz matrix, rate limits, 2FA prod, file scan | **partial** | AUTHZ_MATRIX.md, rate_limit.py; 2FA prod + AV scan pending |
 
 ---
@@ -72,4 +72,5 @@
 ## Журнал выполнения
 
 - 2026-08-31 · **p0-contract-v2** · `848c02a` · `docs/product/CONTRACT.md`, `docs/product/BLUEPRINT.md`, `docs/MASTER_PLAN.md` · journal start
-- 2026-08-31 · **p0-security** · pending SHA · AUTHZ_MATRIX, rate_limit auth/webhook, tests · `make test-api` 56 passed, `make lint` ok
+- 2026-08-31 · **p0-security** · `1610998` · AUTHZ_MATRIX, rate_limit auth/webhook, tests · `make test-api` 56 passed, `make lint` ok
+- 2026-08-31 · **p0-prod-infra** · `4b4d554` · PROD_INFRA plan, backup-booker.sh · plan only
