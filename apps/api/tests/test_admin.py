@@ -62,3 +62,23 @@ def test_refund_requires_second_admin(client):
     logs = client.get("/admin/audit", headers=auth_header(admin["token"]))
     assert logs.status_code == 200
     assert len(logs.json()["items"]) > 0
+
+
+def test_list_verifications_includes_pending_venues(client):
+    admin = _promote_admin(client, "adm-ver@booker.test")
+    owner = register(client, "venue-ver@booker.test", "Venue Owner")
+    org = client.post(
+        "/orgs",
+        json={"name": "Площадка", "kind": "venue"},
+        headers=auth_header(owner["token"]),
+    ).json()
+    venue = client.post(
+        "/venues",
+        json={"organization_id": org["id"], "name": "Зал для проверки", "city": "Москва", "capacity": 80},
+        headers=auth_header(owner["token"]),
+    ).json()
+    res = client.get("/admin/verifications", headers=auth_header(admin["token"]))
+    assert res.status_code == 200
+    body = res.json()
+    venues = body.get("venues") or []
+    assert any(v["id"] == venue["id"] and v["status"] == "pending" for v in venues)
