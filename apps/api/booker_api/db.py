@@ -33,6 +33,9 @@ def ensure_missing_columns(bind) -> None:
     _add_column_if_missing(
         bind, "availability_slots", "buffer_after_min", "buffer_after_min INTEGER DEFAULT 0"
     )
+    _add_column_if_missing(
+        bind, "availability_slots", "external_uid", "external_uid VARCHAR(255)"
+    )
     _add_column_if_missing(bind, "requests", "requirement_id", "requirement_id VARCHAR(36)")
 
 

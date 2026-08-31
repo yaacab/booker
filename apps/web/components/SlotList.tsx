@@ -24,6 +24,7 @@ function statusCopy(status: string): { label: string; cls: string } {
   if (status === "open") return { label: "свободен", cls: "ok" };
   if (status === "held") return { label: "hold", cls: "wait" };
   if (status === "confirmed") return { label: "занят", cls: "live" };
+  if (status === "busy") return { label: "занят (iCal)", cls: "live" };
   return { label: status, cls: "live" };
 }
 

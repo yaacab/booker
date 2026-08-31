@@ -211,3 +211,19 @@ class TotpEnableIn(BaseModel):
 class ClientEventIn(BaseModel):
     name: str = Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_.-]*$")
     properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=20)
+
+
+class IcalImportIn(BaseModel):
+    organization_id: str
+    resource_type: str
+    resource_id: str
+    ical_url: str | None = None
+    ical_body: str | None = None
+
+    @model_validator(mode="after")
+    def source_required(self):
+        if not self.ical_url and not self.ical_body:
+            raise ValueError("Нужен ical_url или ical_body")
+        if self.resource_type not in {"artist", "hall"}:
+            raise ValueError("resource_type: artist|hall")
+        return self

@@ -140,9 +140,10 @@ class AvailabilitySlot(Base):
     resource_id: Mapped[str] = mapped_column(String(36), index=True)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    status: Mapped[str] = mapped_column(String(16), default="open")  # open|held|confirmed
+    status: Mapped[str] = mapped_column(String(16), default="open")  # open|held|confirmed|busy
     buffer_before_min: Mapped[int] = mapped_column(Integer, default=0)
     buffer_after_min: Mapped[int] = mapped_column(Integer, default=0)
+    external_uid: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
 
 class Event(Base):

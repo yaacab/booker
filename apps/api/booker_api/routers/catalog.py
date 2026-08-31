@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ from booker_api.models import (
     Booking,
     CatalogCategory,
     Offer,
+    Organization,
     Request,
     SessionToken,
     User,
@@ -35,7 +37,8 @@ def _supplier_deals_count(db: Session, org_id: str) -> int:
         )
         .count()
     )
-from booker_api.schemas import ArtistIn, SlotIn, TariffIn, VenueIn
+from booker_api.ical_import import calendar_targets, import_ical_source
+from booker_api.schemas import ArtistIn, IcalImportIn, SlotIn, TariffIn, VenueIn
 from booker_api.security import (
     audit,
     aware,
@@ -257,7 +260,7 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
         body.resource_id,
         body.starts_at,
         body.ends_at,
-        statuses=("open", "held", "confirmed"),
+        statuses=("open", "held", "confirmed", "busy"),
         buffer_before_min=before,
         buffer_after_min=after,
     ):
@@ -290,6 +293,42 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
         "buffer_before_min": getattr(slot, "buffer_before_min", 0) or 0,
         "buffer_after_min": getattr(slot, "buffer_after_min", 0) or 0,
     }
+
+
+@router.get("/organizations/{org_id}/calendar-targets")
+def list_calendar_targets(
+    org_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(404, "Организация не найдена")
+    require_org_member(db, user, org_id)
+    return {"items": calendar_targets(db, org_id, org.kind)}
+
+
+@router.post("/calendar/ical/import")
+async def import_ical_busy(
+    body: IcalImportIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    require_org_writer(db, user, body.organization_id)
+    try:
+        return await import_ical_source(
+            db,
+            org_id=body.organization_id,
+            resource_type=body.resource_type,
+            resource_id=body.resource_id,
+            ical_url=body.ical_url,
+            ical_body=body.ical_body,
+            actor_user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Не удалось загрузить iCal") from exc
 
 
 @router.get("/catalog/search")

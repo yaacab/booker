@@ -55,6 +55,14 @@ export default function CabinetPage() {
     items: { id: string; label: string; done: boolean }[];
     applicable?: boolean;
   } | null>(null);
+  const [calendarTargets, setCalendarTargets] = useState<
+    { resource_type: string; resource_id: string; label: string }[]
+  >([]);
+  const [calendarTargetId, setCalendarTargetId] = useState("");
+  const [icalUrl, setIcalUrl] = useState("");
+  const [icalBusy, setIcalBusy] = useState(false);
+  const [icalResult, setIcalResult] = useState("");
+  const [icalError, setIcalError] = useState("");
 
   async function load() {
     if (!getToken()) {
@@ -94,10 +102,17 @@ export default function CabinetPage() {
           api<{ score: number; items: { id: string; label: string; done: boolean }[]; applicable?: boolean }>(
             `/organizations/${encodeURIComponent(org.id)}/supply-completeness`,
           ).then((res) => setCompleteness(res)),
+          api<{ items: { resource_type: string; resource_id: string; label: string }[] }>(
+            `/organizations/${encodeURIComponent(org.id)}/calendar-targets`,
+          ).then((res) => {
+            setCalendarTargets(res.items);
+            if (res.items[0]) setCalendarTargetId(res.items[0].resource_id);
+          }),
         );
       } else {
         setServices([]);
         setCompleteness(null);
+        setCalendarTargets([]);
       }
       const [ev, rq, bk] = (await Promise.all(loads.slice(0, 3))) as [
         { items: EventItem[] },
@@ -190,6 +205,49 @@ export default function CabinetPage() {
       setServiceError(err instanceof Error ? err.message : "Не удалось создать из шаблона");
     } finally {
       setTemplateBusy(null);
+    }
+  }
+
+  async function importIcal(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!orgId || !isWriteRole(role)) return;
+    const target = calendarTargets.find((t) => t.resource_id === calendarTargetId);
+    if (!target) {
+      setIcalError("Выберите календарь");
+      return;
+    }
+    const url = icalUrl.trim();
+    if (!url) {
+      setIcalError("Укажите ссылку iCal");
+      return;
+    }
+    setIcalBusy(true);
+    setIcalError("");
+    setIcalResult("");
+    try {
+      const res = await api<{ imported: number; skipped: number; removed_open: number }>(
+        "/calendar/ical/import",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            organization_id: orgId,
+            resource_type: target.resource_type,
+            resource_id: target.resource_id,
+            ical_url: url,
+          }),
+        },
+      );
+      setIcalResult(
+        `Импортировано занятостей: ${res.imported}, пропущено: ${res.skipped}, закрыто открытых слотов: ${res.removed_open}`,
+      );
+      const refreshed = await api<{ score: number; items: { id: string; label: string; done: boolean }[] }>(
+        `/organizations/${encodeURIComponent(orgId)}/supply-completeness`,
+      );
+      setCompleteness(refreshed);
+    } catch (err) {
+      setIcalError(err instanceof Error ? err.message : "Не удалось импортировать iCal");
+    } finally {
+      setIcalBusy(false);
     }
   }
 
@@ -377,6 +435,46 @@ export default function CabinetPage() {
             </form>
           ) : showServices ? (
             <p className="timeline">Только просмотр: услуги добавляет менеджер.</p>
+          ) : null}
+          {canManageServices && calendarTargets.length > 0 ? (
+            <form
+              className="card"
+              style={{ display: "grid", gap: 12, maxWidth: 480, marginTop: 12 }}
+              onSubmit={importIcal}
+            >
+              <strong>Занятость из iCal</strong>
+              <p className="timeline">
+                Импорт busy-событий из Google Calendar или другого iCal-фида. Пересекающиеся открытые слоты будут
+                закрыты.
+              </p>
+              {calendarTargets.length > 1 ? (
+                <label>
+                  Календарь
+                  <select value={calendarTargetId} onChange={(e) => setCalendarTargetId(e.target.value)}>
+                    {calendarTargets.map((t) => (
+                      <option key={t.resource_id} value={t.resource_id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label>
+                Ссылка iCal
+                <input
+                  type="url"
+                  value={icalUrl}
+                  onChange={(e) => setIcalUrl(e.target.value)}
+                  placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"
+                  required
+                />
+              </label>
+              {icalError ? <p style={{ color: "var(--danger)" }}>{icalError}</p> : null}
+              {icalResult ? <p className="timeline">{icalResult}</p> : null}
+              <button type="submit" disabled={icalBusy}>
+                {icalBusy ? "Импортируем…" : "Импортировать занятость"}
+              </button>
+            </form>
           ) : null}
         </>
       ) : null}

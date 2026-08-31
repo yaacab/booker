@@ -686,10 +686,10 @@ def hold_booking(
         slot.resource_id,
         slot.starts_at,
         slot.ends_at,
-        statuses=("held", "confirmed"),
+        statuses=("held", "confirmed", "busy"),
         exclude_id=slot.id,
     )
-    if slot.status in {"held", "confirmed"} or busy:
+    if slot.status in {"held", "confirmed", "busy"} or busy:
         raise HTTPException(status.HTTP_409_CONFLICT, "Слот уже удерживается или подтверждён")
     slot.status = "held"
     hold = BookingHold(

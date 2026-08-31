@@ -27,7 +27,7 @@ def overlapping_slots(
     starts_at: datetime,
     ends_at: datetime,
     *,
-    statuses: tuple[str, ...] = ("open", "held", "confirmed"),
+    statuses: tuple[str, ...] = ("open", "held", "confirmed", "busy"),
     exclude_id: str | None = None,
     buffer_before_min: int = 0,
     buffer_after_min: int = 0,
