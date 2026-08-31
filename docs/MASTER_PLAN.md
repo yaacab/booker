@@ -23,7 +23,7 @@
 | p0-legal-289 | Юрпакет + 289-ФЗ, OPERATOR.md, РКН, гейт U5 | **EXTERNAL_BLOCKED** | Нужны реквизиты оператора и письмо юриста; см. [OPERATOR.md](legal/OPERATOR.md) |
 | p0-payment-partner | Платёжный партнёр (term sheet, 54-ФЗ, sandbox) | **EXTERNAL_BLOCKED** | Выбор партнёра — решение человека; см. [PAYMENTS_SHORTLIST.md](legal/PAYMENTS_SHORTLIST.md) |
 | p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **partial** | Alembic baseline `a44d171`; deploy cron + restore-drill test |
-| p0-security | Authz matrix, rate limits, 2FA prod, file scan | **partial** | `4c07316` TOTP enrollment; ClamAV external |
+| p0-security | Authz matrix, rate limits, 2FA prod, file scan | **done** | rate limits all surfaces; ClamAV → **EXTERNAL_BLOCKED** (prod object storage) |
 
 ---
 
@@ -93,3 +93,4 @@
 - 2026-09-01 · **p1-event-day** · `bc72c59` · check-in/out API + Control Room day panel · `make test-api` 90 passed, lint ok
 - 2026-09-01 · **p0-prod-infra** · `a8b8a5b` · journal Alembic baseline · `make test-api` 92 passed, lint ok
 - 2026-09-01 · **p1-analytics** · `53f6ddb` · cabinet/studio taxonomy + funnel/liquidity/leakage dashboards · `make test-api` 94 passed, lint ok
+- 2026-09-01 · **p0-security** · `a7ba5dc` · upload/admin/messaging rate limits; ClamAV EXTERNAL_BLOCKED · `make test-api` 95 passed, lint ok

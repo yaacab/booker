@@ -36,11 +36,20 @@
 - Non-admin не вызывает `/admin/*`
 - Invalid webhook signature → 401
 
-## Не реализовано (P0 gap)
+## Не реализовано (внешний блокер)
 
-- ClamAV / внешний AV (базовая проверка magic bytes — `file_scan.py`)
+- **ClamAV / внешний AV** — **EXTERNAL_BLOCKED**: нужен prod object storage + sidecar ClamAV; базовая проверка magic bytes — `file_scan.py`
+
+## Реализовано (P0 security)
+
 - Prod 2FA: `BOOKER_REQUIRE_ADMIN_2FA_ENFORCED=1` блокирует admin без TOTP
-- Rate limits: см. `booker_api/rate_limit.py` (auth + webhook)
+- Rate limits: см. `booker_api/rate_limit.py`
+  - auth (register/login/recover): 20 / 5 min
+  - webhook: 120 / min
+  - analytics events: 120 / min
+  - attachment upload: 30 / 5 min
+  - admin TOTP + refund: 10 / 5 min
+  - deal-room messages: 60 / min
 
 ## Upload (Deal Room)
 
