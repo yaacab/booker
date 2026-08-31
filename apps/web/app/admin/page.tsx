@@ -14,6 +14,10 @@ type Queue = {
   venues?: VerifyTarget[];
 };
 type Audit = { items: { id: string; action: string; entity_type: string; created_at: string }[] };
+type Metric = { count: number; unique_entities: number };
+type PaymentMetric = Metric & { by_action: Record<string, number> };
+type PeriodMetrics = Record<string, Metric | PaymentMetric>;
+type Metrics = { periods: { "7": PeriodMetrics; "30": PeriodMetrics } };
 
 const ACTION: Record<string, string> = {
   "slot.created": "слот",
@@ -30,10 +34,20 @@ const ACTION: Record<string, string> = {
   "hall.created": "зал",
 };
 
+const FUNNEL_LABELS: Record<string, string> = {
+  "request.created": "Заявки",
+  "offer.created": "Офферы",
+  "workspace.switched": "Смены workspace",
+  "service.created": "Услуги",
+  "hall.created": "Залы",
+  payment: "Платежи",
+};
+
 export default function AdminPage() {
   const [error, setError] = useState("");
   const [queue, setQueue] = useState<Queue | null>(null);
   const [audit, setAudit] = useState<Audit["items"]>([]);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   async function load() {
@@ -42,9 +56,14 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [q, a] = await Promise.all([api<Queue>("/admin/verifications"), api<Audit>("/admin/audit")]);
+      const [q, a, m] = await Promise.all([
+        api<Queue>("/admin/verifications"),
+        api<Audit>("/admin/audit"),
+        api<Metrics>("/admin/metrics"),
+      ]);
       setQueue(q);
       setAudit(a.items.slice(0, 20));
+      setMetrics(m);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Нет доступа");
@@ -126,6 +145,35 @@ export default function AdminPage() {
         <article className="card">
           <h2>Поддержка</h2>
           <p>Пилот: живой оператор, цель ответа в рабочее окно — 30 минут на срыв даты.</p>
+        </article>
+        <article className="card">
+          <h2>Воронка пилота</h2>
+          <p className="timeline">Агрегаты из журнала аудита за 7 и 30 дней.</p>
+          {metrics ? (
+            <div className="grid">
+              {(["7", "30"] as const).map((days) => (
+                <div key={days}>
+                  <h3>{days} дней</h3>
+                  <ul>
+                    {Object.entries(FUNNEL_LABELS).map(([key, label]) => {
+                      const row = metrics.periods[days][key];
+                      if (!row) return null;
+                      return (
+                        <li key={key}>
+                          {label}: {row.count}
+                          {"unique_entities" in row && row.unique_entities !== row.count
+                            ? ` · уник. ${row.unique_entities}`
+                            : ""}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>Загрузка метрик…</p>
+          )}
         </article>
         <article className="card">
           <h2>Аудит</h2>

@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
@@ -14,9 +17,61 @@ from booker_api.models import (
 )
 from booker_api.routers.deals import _transition
 from booker_api.schemas import DisputeIn, RefundIn, VerifyIn
-from booker_api.security import audit, current_user, require_admin, require_admin_2fa
+from booker_api.security import audit, current_user, now, require_admin, require_admin_2fa
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+PILOT_ACTIONS = (
+    "request.created",
+    "offer.created",
+    "workspace.switched",
+    "service.created",
+    "hall.created",
+)
+
+
+def _action_metrics(db: Session, since, action: str) -> dict:
+    base = db.query(AuditLog).filter(AuditLog.created_at >= since, AuditLog.action == action)
+    unique = (
+        db.query(func.count(func.distinct(AuditLog.entity_id)))
+        .filter(
+            AuditLog.created_at >= since,
+            AuditLog.action == action,
+            AuditLog.entity_id != "",
+        )
+        .scalar()
+        or 0
+    )
+    return {"count": base.count(), "unique_entities": unique}
+
+
+def _payment_metrics(db: Session, since) -> dict:
+    base = db.query(AuditLog).filter(AuditLog.created_at >= since, AuditLog.action.like("payment.%"))
+    unique = (
+        db.query(func.count(func.distinct(AuditLog.entity_id)))
+        .filter(
+            AuditLog.created_at >= since,
+            AuditLog.action.like("payment.%"),
+            AuditLog.entity_id != "",
+        )
+        .scalar()
+        or 0
+    )
+    by_action = {
+        action: count
+        for action, count in db.query(AuditLog.action, func.count(AuditLog.id))
+        .filter(AuditLog.created_at >= since, AuditLog.action.like("payment.%"))
+        .group_by(AuditLog.action)
+        .all()
+    }
+    return {"count": base.count(), "unique_entities": unique, "by_action": by_action}
+
+
+def _period_metrics(db: Session, days: int) -> dict:
+    since = now() - timedelta(days=days)
+    metrics = {action: _action_metrics(db, since, action) for action in PILOT_ACTIONS}
+    metrics["payment"] = _payment_metrics(db, since)
+    return metrics
 
 
 @router.get("/verifications")
@@ -117,6 +172,11 @@ def refund(
     )
     db.commit()
     return {"id": payment.id, "status": payment.status}
+
+
+@router.get("/metrics")
+def pilot_metrics(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return {"periods": {"7": _period_metrics(db, 7), "30": _period_metrics(db, 30)}}
 
 
 @router.get("/audit")
