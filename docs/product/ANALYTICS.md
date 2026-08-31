@@ -42,4 +42,4 @@
 | `verification.decided` | Решение по верификации | `artist` / `venue` |
 | `dispute.opened` | Открыт спор | `booking` |
 
-Просмотр: `GET /admin/audit` (platform admin). Дашборды и внешняя BI — после PMF.
+Просмотр: `GET /admin/audit` (platform admin). Агрегаты воронки: `GET /admin/metrics` — counts и unique_entities по action за 7/30 дней.

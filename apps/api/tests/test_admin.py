@@ -82,3 +82,59 @@ def test_list_verifications_includes_pending_venues(client):
     body = res.json()
     venues = body.get("venues") or []
     assert any(v["id"] == venue["id"] and v["status"] == "pending" for v in venues)
+
+
+def test_admin_metrics_requires_admin(client):
+    user = register(client, "metrics-deny@booker.test", "User")
+    res = client.get("/admin/metrics", headers=auth_header(user["token"]))
+    assert res.status_code == 403
+
+
+def test_admin_metrics_aggregates_audit(client):
+    admin = _promote_admin(client, "metrics@booker.test")
+    db = client.app.state.SessionLocal()
+    try:
+        from datetime import datetime, timedelta, timezone
+
+        from booker_api.models import AuditLog
+
+        ts = datetime.now(timezone.utc)
+        db.add_all(
+            [
+                AuditLog(action="request.created", entity_type="request", entity_id="r1", created_at=ts),
+                AuditLog(action="request.created", entity_type="request", entity_id="r1", created_at=ts),
+                AuditLog(
+                    action="request.created",
+                    entity_type="request",
+                    entity_id="r2",
+                    created_at=ts - timedelta(days=10),
+                ),
+                AuditLog(action="offer.created", entity_type="offer", entity_id="o1", created_at=ts),
+                AuditLog(action="service.created", entity_type="service", entity_id="s1", created_at=ts),
+                AuditLog(action="payment.created", entity_type="payment", entity_id="p1", created_at=ts),
+                AuditLog(action="payment.webhook", entity_type="payment", entity_id="p1", created_at=ts),
+                AuditLog(
+                    action="offer.created",
+                    entity_type="offer",
+                    entity_id="o-old",
+                    created_at=ts - timedelta(days=40),
+                ),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    res = client.get("/admin/metrics", headers=auth_header(admin["token"]))
+    assert res.status_code == 200
+    body = res.json()
+    assert body["periods"]["7"]["request.created"] == {"count": 2, "unique_entities": 1}
+    assert body["periods"]["30"]["request.created"] == {"count": 3, "unique_entities": 2}
+    assert body["periods"]["7"]["offer.created"] == {"count": 1, "unique_entities": 1}
+    assert body["periods"]["30"]["offer.created"] == {"count": 1, "unique_entities": 1}
+    assert body["periods"]["7"]["payment"]["count"] == 2
+    assert body["periods"]["7"]["payment"]["unique_entities"] == 1
+    assert body["periods"]["7"]["payment"]["by_action"] == {
+        "payment.created": 1,
+        "payment.webhook": 1,
+    }
