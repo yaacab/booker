@@ -1,4 +1,4 @@
-"""In-memory rate limiting for auth and webhook endpoints."""
+"""In-memory rate limiting for abuse-prone API endpoints."""
 
 from __future__ import annotations
 
@@ -44,3 +44,6 @@ def client_key(request: Request, prefix: str) -> str:
 auth_limiter = RateLimiter(max_requests=20, window_seconds=300)
 webhook_limiter = RateLimiter(max_requests=120, window_seconds=60)
 analytics_limiter = RateLimiter(max_requests=120, window_seconds=60)
+upload_limiter = RateLimiter(max_requests=30, window_seconds=300)
+admin_sensitive_limiter = RateLimiter(max_requests=10, window_seconds=300)
+messaging_limiter = RateLimiter(max_requests=60, window_seconds=60)

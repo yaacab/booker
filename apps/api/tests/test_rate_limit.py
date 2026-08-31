@@ -4,7 +4,13 @@ import hmac
 from fastapi import HTTPException
 
 from booker_api.config import settings
-from booker_api.rate_limit import RateLimiter, auth_limiter, client_key, webhook_limiter
+from booker_api.rate_limit import (
+    RateLimiter,
+    auth_limiter,
+    client_key,
+    upload_limiter,
+    webhook_limiter,
+)
 
 
 def test_rate_limiter_blocks_after_max():
@@ -62,3 +68,38 @@ def test_webhook_rate_limit(client):
     finally:
         webhook_limiter.max_requests = original
         webhook_limiter.reset()
+
+
+MINIMAL_PDF = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"
+
+
+def test_upload_rate_limit(client, tmp_path, monkeypatch):
+    from booker_api.config import settings
+    from tests.test_payments import _awaiting_payment
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    upload_limiter.reset()
+    original = upload_limiter.max_requests
+    upload_limiter.max_requests = 2
+    ctx = _awaiting_payment(client)
+    booking_id = ctx["booking_id"]
+    customer = ctx["customer"]
+    files = {"file": ("brief.pdf", MINIMAL_PDF, "application/pdf")}
+    headers = {"Authorization": f"Bearer {customer['token']}"}
+    try:
+        for _ in range(2):
+            res = client.post(
+                f"/bookings/{booking_id}/attachments",
+                files=files,
+                headers=headers,
+            )
+            assert res.status_code == 200, res.text
+        blocked = client.post(
+            f"/bookings/{booking_id}/attachments",
+            files=files,
+            headers=headers,
+        )
+        assert blocked.status_code == 429
+    finally:
+        upload_limiter.max_requests = original
+        upload_limiter.reset()

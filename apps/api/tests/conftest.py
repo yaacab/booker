@@ -8,7 +8,14 @@ from sqlalchemy.pool import StaticPool
 
 from booker_api.db import Base, get_db
 from booker_api.main import app
-from booker_api.rate_limit import analytics_limiter, auth_limiter, webhook_limiter
+from booker_api.rate_limit import (
+    admin_sensitive_limiter,
+    analytics_limiter,
+    auth_limiter,
+    messaging_limiter,
+    upload_limiter,
+    webhook_limiter,
+)
 
 
 @pytest.fixture()
@@ -36,10 +43,16 @@ def reset_rate_limiters():
     auth_limiter.reset()
     webhook_limiter.reset()
     analytics_limiter.reset()
+    upload_limiter.reset()
+    admin_sensitive_limiter.reset()
+    messaging_limiter.reset()
     yield
     auth_limiter.reset()
     webhook_limiter.reset()
     analytics_limiter.reset()
+    upload_limiter.reset()
+    admin_sensitive_limiter.reset()
+    messaging_limiter.reset()
 
 
 @pytest.fixture()

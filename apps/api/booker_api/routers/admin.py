@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,7 @@ from booker_api.models import (
     Venue,
     Verification,
 )
+from booker_api.rate_limit import admin_sensitive_limiter, client_key
 from booker_api.routers.deals import _transition
 from booker_api.schemas import DisputeIn, RefundIn, TotpEnableIn, VerifyIn
 from booker_api.security import audit, current_user, now, require_admin, require_admin_2fa
@@ -232,9 +233,11 @@ def open_dispute(
 @router.post("/refunds")
 def refund(
     body: RefundIn,
+    request: Request,
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
+    admin_sensitive_limiter.check(client_key(request, "admin-refund"))
     require_admin_2fa(user, body.totp)
     if body.approver_user_id == user.id:
         raise HTTPException(403, "Возврат требует второго администратора")
@@ -265,9 +268,11 @@ def pilot_metrics(_: User = Depends(require_admin), db: Session = Depends(get_db
 @router.post("/totp/enable")
 def enable_admin_totp(
     body: TotpEnableIn,
+    request: Request,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
+    admin_sensitive_limiter.check(client_key(request, "admin-totp"))
     if not user.is_platform_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")
     if user.totp_enabled:

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
+from starlette.requests import Request as HttpRequest
 
 from booker_api.calendar import overlapping_slots
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
@@ -41,6 +42,7 @@ from booker_api.models import (
     Venue,
 )
 from booker_api.pricing import first_deal_waive, price_breakdown
+from booker_api.rate_limit import client_key, messaging_limiter, upload_limiter
 from booker_api.replacement import build_replacement_plan
 from booker_api.schemas import DISPUTE_CATEGORIES
 from booker_api.security import (
@@ -945,10 +947,12 @@ def _booking_participant_orgs(db: Session, booking: Booking) -> tuple[str, str]:
 @router.post("/bookings/{booking_id}/attachments")
 async def upload_booking_attachment(
     booking_id: str,
+    request: HttpRequest,
     file: UploadFile = File(...),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
+    upload_limiter.check(client_key(request, "upload"))
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
@@ -1206,9 +1210,11 @@ def open_booking_dispute(
 def post_message(
     booking_id: str,
     body: dict,
+    request: HttpRequest,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
+    messaging_limiter.check(client_key(request, "message"))
     conv = db.query(Conversation).filter(Conversation.booking_id == booking_id).one_or_none()
     if not conv:
         raise HTTPException(404, "Deal Room не найден")
