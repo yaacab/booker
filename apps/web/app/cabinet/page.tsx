@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { api, getActiveOrg, getToken, setActiveOrg, setToken } from "@/lib/api";
-import { KIND_LABEL } from "@/lib/copy";
+import { FormEvent, useEffect, useState } from "react";
+import { api, getActiveOrg, getToken, isWriteRole, setActiveOrg, setToken } from "@/lib/api";
+import { CATEGORY, KIND_LABEL, categoryLabel } from "@/lib/copy";
 import { formatWhen, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { STATUS_LABEL } from "@/lib/status";
@@ -19,6 +19,15 @@ type RequestItem = {
   honorarium_rub: number;
 };
 type BookingItem = { id: string; status: string; event_title: string; event_date?: string };
+type ServiceItem = {
+  id: string;
+  title: string;
+  category_code: string;
+  description: string;
+  honorarium_rub: number | null;
+};
+
+const SERVICE_CATEGORIES = Object.keys(CATEGORY);
 
 export default function CabinetPage() {
   const [error, setError] = useState("");
@@ -31,6 +40,14 @@ export default function CabinetPage() {
   const [orgName, setOrgName] = useState("");
   const [ready, setReady] = useState(false);
   const [offerBusy, setOfferBusy] = useState<string | null>(null);
+  const [orgId, setOrgId] = useState("");
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [serviceTitle, setServiceTitle] = useState("");
+  const [serviceCategory, setServiceCategory] = useState("dj");
+  const [serviceDescription, setServiceDescription] = useState("");
+  const [serviceHonorarium, setServiceHonorarium] = useState("");
+  const [serviceBusy, setServiceBusy] = useState(false);
+  const [serviceError, setServiceError] = useState("");
 
   async function load() {
     if (!getToken()) {
@@ -47,20 +64,36 @@ export default function CabinetPage() {
       }>("/me");
       setEmail(me.email);
       if (me.is_platform_admin) localStorage.setItem("booker.admin", "1");
-      const orgId = getActiveOrg() || me.active_organization_id || me.organizations?.[0]?.id;
-      const org = me.organizations?.find((o) => o.id === orgId) || me.organizations?.[0];
+      const activeOrgId = getActiveOrg() || me.active_organization_id || me.organizations?.[0]?.id;
+      const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
       if (org) {
         setActiveOrg(org.id);
+        setOrgId(org.id);
         setKind(org.kind);
         setRole(org.role || "");
         setOrgName(org.name);
       }
       const q = org ? `?organization_id=${encodeURIComponent(org.id)}` : "";
-      const [ev, rq, bk] = await Promise.all([
+      const loads: Promise<unknown>[] = [
         api<{ items: EventItem[] }>("/events" + q),
         api<{ items: RequestItem[] }>("/requests" + q),
         api<{ items: BookingItem[] }>("/bookings" + q),
-      ]);
+      ];
+      if (org && (org.kind === "artist" || org.kind === "venue")) {
+        loads.push(
+          api<{ items: ServiceItem[] }>(`/services?organization_id=${encodeURIComponent(org.id)}`).then((res) => {
+            setServices(res.items);
+          }),
+        );
+      } else {
+        setServices([]);
+      }
+      const [ev, rq, bk] = (await Promise.all(loads.slice(0, 3))) as [
+        { items: EventItem[] },
+        { items: RequestItem[] },
+        { items: BookingItem[] },
+      ];
+      await Promise.all(loads.slice(3));
       setEvents(ev.items);
       setRequests(rq.items);
       setBookings(bk.items);
@@ -95,6 +128,42 @@ export default function CabinetPage() {
     }
   }
 
+  async function createService(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!orgId || !isWriteRole(role)) return;
+    const title = serviceTitle.trim();
+    if (!title) {
+      setServiceError("Укажите название");
+      return;
+    }
+    setServiceBusy(true);
+    setServiceError("");
+    try {
+      const body: Record<string, unknown> = {
+        organization_id: orgId,
+        category_code: serviceCategory,
+        title,
+        description: serviceDescription.trim(),
+      };
+      const honorarium = serviceHonorarium.trim();
+      if (honorarium) body.honorarium_rub = Number(honorarium);
+      const created = await api<ServiceItem>("/services", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      setServices((prev) => [...prev, created]);
+      setServiceTitle("");
+      setServiceDescription("");
+      setServiceHonorarium("");
+    } catch (err) {
+      setServiceError(err instanceof Error ? err.message : "Не удалось создать услугу");
+    } finally {
+      setServiceBusy(false);
+    }
+  }
+
+  const showServices = kind === "artist" || kind === "venue";
+  const canManageServices = showServices && isWriteRole(role);
   const empty = ready && !error && events.length === 0 && requests.length === 0 && bookings.length === 0;
 
   function chipCls(status: string): string {
@@ -196,6 +265,61 @@ export default function CabinetPage() {
               </Link>
             ))}
           </div>
+        </>
+      ) : null}
+      {showServices ? (
+        <>
+          <h2>Услуги</h2>
+          {services.length > 0 ? (
+            <ul>
+              {services.map((s) => (
+                <li key={s.id}>
+                  <strong>{s.title}</strong> · {categoryLabel(s.category_code)}
+                  {s.honorarium_rub != null ? ` · ${money(s.honorarium_rub)}` : ""}
+                  {s.description ? <span className="timeline"> — {s.description}</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="timeline">Пока нет услуг в каталоге организации.</p>
+          )}
+          {canManageServices ? (
+            <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420, marginTop: 12 }} onSubmit={createService}>
+              <label>
+                Название
+                <input value={serviceTitle} onChange={(e) => setServiceTitle(e.target.value)} required />
+              </label>
+              <label>
+                Категория
+                <select value={serviceCategory} onChange={(e) => setServiceCategory(e.target.value)}>
+                  {SERVICE_CATEGORIES.map((code) => (
+                    <option key={code} value={code}>
+                      {CATEGORY[code]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Описание
+                <textarea value={serviceDescription} onChange={(e) => setServiceDescription(e.target.value)} rows={3} />
+              </label>
+              <label>
+                Гонорар, ₽ <span className="timeline">(необязательно)</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={serviceHonorarium}
+                  onChange={(e) => setServiceHonorarium(e.target.value)}
+                />
+              </label>
+              {serviceError ? <p style={{ color: "var(--danger)" }}>{serviceError}</p> : null}
+              <button type="submit" disabled={serviceBusy}>
+                {serviceBusy ? "Сохраняем…" : "Добавить услугу"}
+              </button>
+            </form>
+          ) : showServices ? (
+            <p className="timeline">Только просмотр: услуги добавляет менеджер.</p>
+          ) : null}
         </>
       ) : null}
       <p>

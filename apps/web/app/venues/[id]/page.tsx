@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, getActiveOrg, getToken } from "@/lib/api";
+import { api, getActiveOrg, getToken, isWriteRole } from "@/lib/api";
 import { CHIP } from "@/lib/copy";
 import { formatWhen, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -11,6 +11,7 @@ import { SlotList } from "@/components/SlotList";
 
 type Venue = {
   id: string;
+  organization_id?: string;
   name: string;
   city: string;
   capacity: number;
@@ -21,6 +22,7 @@ type Venue = {
   halls?: { id?: string; name?: string; capacity?: number }[];
 };
 
+type HallItem = { id: string; name: string; capacity: number };
 type EventOption = { id: string; title: string; event_date: string; city?: string };
 type Requirement = { id?: string; category_code: string };
 
@@ -36,6 +38,12 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
   const [eventId, setEventId] = useState("");
   const [requirementId, setRequirementId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [canManageHalls, setCanManageHalls] = useState(false);
+  const [hallName, setHallName] = useState("");
+  const [hallCapacity, setHallCapacity] = useState("");
+  const [hallBusy, setHallBusy] = useState(false);
+  const [hallError, setHallError] = useState("");
+  const [halls, setHalls] = useState<HallItem[]>([]);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -47,7 +55,10 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       setVenueId(p.id);
       fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/venues/${p.id}`)
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найдена"))))
-        .then(setData)
+        .then((venue: Venue) => {
+          setData(venue);
+          setHalls((venue.halls || []) as HallItem[]);
+        })
         .catch((e: Error) => setError(e.message));
     });
   }, [params]);
@@ -85,8 +96,66 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
   }, [eventId]);
 
   useEffect(() => {
+    if (!getToken() || !data?.organization_id) {
+      setCanManageHalls(false);
+      return;
+    }
+    let cancelled = false;
+    api<{ organizations?: { id: string; kind: string; role?: string }[] }>("/me")
+      .then((me) => {
+        if (cancelled) return;
+        const orgId = getActiveOrg() || me.organizations?.[0]?.id;
+        const org = me.organizations?.find((o) => o.id === orgId) || me.organizations?.[0];
+        setCanManageHalls(
+          Boolean(
+            org &&
+              org.kind === "venue" &&
+              org.id === data.organization_id &&
+              isWriteRole(org.role),
+          ),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setCanManageHalls(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data?.organization_id]);
+
+  useEffect(() => {
     if (data?.name) document.title = `${data.name} · Букер`;
   }, [data]);
+
+  async function createHall(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const id = venueId || data?.id;
+    if (!id) return;
+    const name = hallName.trim();
+    if (!name) {
+      setHallError("Укажите название зала");
+      return;
+    }
+    if (!hallCapacity.trim()) {
+      setHallError("Укажите вместимость");
+      return;
+    }
+    setHallBusy(true);
+    setHallError("");
+    try {
+      const created = await api<HallItem>(`/venues/${id}/halls`, {
+        method: "POST",
+        body: JSON.stringify({ name, capacity: Number(hallCapacity) }),
+      });
+      setHalls((prev) => [...prev, created]);
+      setHallName("");
+      setHallCapacity("");
+    } catch (err) {
+      setHallError(err instanceof Error ? err.message : "Не удалось создать зал");
+    } finally {
+      setHallBusy(false);
+    }
+  }
 
   async function sendToEvent() {
     const id = venueId || data?.id;
@@ -146,11 +215,11 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
         {data.verified ? <span className="chip ok">{CHIP.verified}</span> : <span className="chip wait">{CHIP.pending}</span>}
       </p>
       <p>{data.facts.note}</p>
-      {data.halls?.length ? (
+      {halls.length ? (
         <>
           <h2>Залы</h2>
           <ul>
-            {data.halls.map((hall, i) => (
+            {halls.map((hall, i) => (
               <li key={hall.id || hall.name || i}>
                 {hall.name}
                 {hall.capacity != null ? ` · до ${hall.capacity} гостей` : ""}
@@ -158,6 +227,29 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
             ))}
           </ul>
         </>
+      ) : null}
+      {canManageHalls ? (
+        <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420, marginTop: 12 }} onSubmit={createHall}>
+          <h2>Добавить зал</h2>
+          <label>
+            Название
+            <input value={hallName} onChange={(e) => setHallName(e.target.value)} required />
+          </label>
+          <label>
+            Вместимость
+            <input
+              type="number"
+              min={1}
+              value={hallCapacity}
+              onChange={(e) => setHallCapacity(e.target.value)}
+              required
+            />
+          </label>
+          {hallError ? <p style={{ color: "var(--danger)" }}>{hallError}</p> : null}
+          <button type="submit" disabled={hallBusy}>
+            {hallBusy ? "Сохраняем…" : "Создать зал"}
+          </button>
+        </form>
       ) : null}
       <h2>Тарифы</h2>
       <ul>
