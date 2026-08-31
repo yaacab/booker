@@ -27,6 +27,7 @@ PILOT_ACTIONS = (
     "workspace.switched",
     "service.created",
     "hall.created",
+    "client.event",
 )
 
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { HoldCountdown } from "@/components/HoldCountdown";
-import { api } from "@/lib/api";
+import { api, trackClientEvent } from "@/lib/api";
 import { money } from "@/lib/format";
 import { nextAction, nextActionHint, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
 
@@ -72,6 +72,7 @@ export default function DealPage() {
 
   useEffect(() => {
     void load();
+    trackClientEvent("deal.room.opened", { booking_id: params.id });
   }, [params.id]);
 
   useEffect(() => {

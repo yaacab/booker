@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CATEGORY, categoryLabel } from "@/lib/copy";
 import { moscowToday } from "@/lib/format";
+import { trackClientEvent } from "@/lib/api";
 import { CityField } from "@/components/CityField";
 
 export type CategoryChip = { code: string; title: string };
@@ -85,7 +86,13 @@ export function CatalogFilters({
       </button>
       <div className={`filter-body${open ? " open" : ""}`}>
         <h2 className="filter-title">Сузить охоту</h2>
-        <form action="/search" method="get">
+        <form
+          action="/search"
+          method="get"
+          onSubmit={() => {
+            trackClientEvent("search.performed", { city, category: category || "all" });
+          }}
+        >
           <CityField name="city" defaultValue={city} />
           <label>
             Дата

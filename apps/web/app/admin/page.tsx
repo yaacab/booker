@@ -40,6 +40,7 @@ const FUNNEL_LABELS: Record<string, string> = {
   "workspace.switched": "Смены workspace",
   "service.created": "Услуги",
   "hall.created": "Залы",
+  "client.event": "Клиентские события",
   payment: "Платежи",
 };
 
