@@ -79,3 +79,5 @@
 - 2026-08-31 · **p0-security** · `4cdf7d8` · 2FA enforce, file_scan, attachments API · `make test-api` 66 passed, lint ok
 - 2026-08-31 · **p0-prod-infra** · `03ac1b1` · restore-drill.sh, cron example · script smoke via pytest suite
 - 2026-08-31 · **p1-analytics** · `f89ccf3` · client.event metrics + search/deal tracking · E2E 13 passed, web-build ok
+- 2026-08-31 · **p1-supply-console** · `eb96f43` · supply-completeness API + cabinet · `make test-api` 69 passed
+- 2026-08-31 · **p1-event-day** · `88b2719` · offline-pack export · test_offline_pack
