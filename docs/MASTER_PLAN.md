@@ -23,7 +23,7 @@
 | p0-legal-289 | Юрпакет + 289-ФЗ, OPERATOR.md, РКН, гейт U5 | **EXTERNAL_BLOCKED** | Нужны реквизиты оператора и письмо юриста; см. [OPERATOR.md](legal/OPERATOR.md) |
 | p0-payment-partner | Платёжный партнёр (term sheet, 54-ФЗ, sandbox) | **EXTERNAL_BLOCKED** | Выбор партнёра — решение человека; см. [PAYMENTS_SHORTLIST.md](legal/PAYMENTS_SHORTLIST.md) |
 | p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **partial** | deploy cron + restore-drill test (skip без sqlite3) |
-| p0-security | Authz matrix, rate limits, 2FA prod, file scan | **partial** | + analytics rate limit; ClamAV external |
+| p0-security | Authz matrix, rate limits, 2FA prod, file scan | **partial** | `4c07316` TOTP enrollment; ClamAV external |
 
 ---
 
@@ -86,4 +86,4 @@
 - 2026-09-01 · **p1-event-day** · `6a39426` · replacement CTA in Control Room
 - 2026-09-01 · **p1-supply-console** · `881626d` · service templates API + cabinet
 - 2026-09-01 · **p0-prod-infra** · `3a1e60f` · restore-drill smoke test
-- 2026-09-01 · **p0-security** · tick3 · admin TOTP enable + page.view · 73 tests
+- 2026-09-01 · **p0-security** · `4c07316` · admin TOTP enable + page.view · 73 tests
