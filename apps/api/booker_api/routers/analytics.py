@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
+from booker_api.analytics_taxonomy import ALLOWED_CLIENT_EVENTS
 from booker_api.db import get_db
 from booker_api.models import User
 from booker_api.rate_limit import analytics_limiter, client_key
@@ -8,16 +9,6 @@ from booker_api.schemas import ClientEventIn
 from booker_api.security import audit, current_user
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
-
-ALLOWED_CLIENT_EVENTS = frozenset(
-    {
-        "page.view",
-        "event.studio.started",
-        "event.studio.completed",
-        "search.performed",
-        "deal.room.opened",
-    }
-)
 
 
 @router.post("/events")

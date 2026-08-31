@@ -16,7 +16,25 @@ type Queue = {
 type Audit = { items: { id: string; action: string; entity_type: string; created_at: string }[] };
 type Metric = { count: number; unique_entities: number; by_event?: Record<string, number> };
 type PaymentMetric = Metric & { by_action: Record<string, number> };
-type PeriodMetrics = Record<string, Metric | PaymentMetric>;
+type FunnelStep = { step: string; count: number; conversion_from_prev_pct: number | null };
+type Dashboards = {
+  funnel: { steps: FunnelStep[] };
+  liquidity: {
+    search_to_deal_pct: number | null;
+    offer_response_pct: number | null;
+    searches: number;
+    deal_opens: number;
+    requests: number;
+    offers: number;
+  };
+  leakage: {
+    studio_abandoned: number;
+    unanswered_requests: number;
+    holds_expired: number;
+    holds_without_contract: number;
+  };
+};
+type PeriodMetrics = Record<string, Metric | PaymentMetric | Dashboards> & { dashboards?: Dashboards };
 type Metrics = { periods: { "7": PeriodMetrics; "30": PeriodMetrics } };
 
 const ACTION: Record<string, string> = {
@@ -42,6 +60,17 @@ const FUNNEL_LABELS: Record<string, string> = {
   "hall.created": "Залы",
   "client.event": "Клиентские события",
   payment: "Платежи",
+};
+
+const FUNNEL_STEP_LABELS: Record<string, string> = {
+  "event.studio.started": "Studio: старт",
+  "event.studio.completed": "Studio: завершение",
+  "requirement.created": "Позиции состава",
+  "request.created": "Заявки",
+  "offer.created": "Офферы",
+  "hold.created": "Hold",
+  "contract.signed": "Договор",
+  "payment.webhook": "Оплата",
 };
 
 export default function AdminPage() {
@@ -220,6 +249,60 @@ export default function AdminPage() {
             <p>Загрузка метрик…</p>
           )}
         </article>
+        {metrics?.periods["7"]?.dashboards ? (
+          <article className="card tint">
+            <h2>Дашборды пилота</h2>
+            <p className="timeline">Воронка, ликвидность и утечки за 7 дней.</p>
+            {(["funnel", "liquidity", "leakage"] as const).map((kind) => {
+              const dash = metrics.periods["7"].dashboards!;
+              if (kind === "funnel") {
+                return (
+                  <div key={kind}>
+                    <h3>Воронка</h3>
+                    <ul>
+                      {dash.funnel.steps.map((step) => (
+                        <li key={step.step}>
+                          {FUNNEL_STEP_LABELS[step.step] || step.step}: {step.count}
+                          {step.conversion_from_prev_pct != null ? ` · ${step.conversion_from_prev_pct}%` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (kind === "liquidity") {
+                const liq = dash.liquidity;
+                return (
+                  <div key={kind}>
+                    <h3>Ликвидность</h3>
+                    <ul>
+                      <li>
+                        Поиск → Deal Room: {liq.search_to_deal_pct != null ? `${liq.search_to_deal_pct}%` : "—"} (
+                        {liq.deal_opens}/{liq.searches})
+                      </li>
+                      <li>
+                        Заявка → оффер: {liq.offer_response_pct != null ? `${liq.offer_response_pct}%` : "—"} (
+                        {liq.offers}/{liq.requests})
+                      </li>
+                    </ul>
+                  </div>
+                );
+              }
+              const leak = dash.leakage;
+              return (
+                <div key={kind}>
+                  <h3>Утечки</h3>
+                  <ul>
+                    <li>Studio брошено: {leak.studio_abandoned}</li>
+                    <li>Заявки без оффера: {leak.unanswered_requests}</li>
+                    <li>Hold истёк: {leak.holds_expired}</li>
+                    <li>Hold без договора: {leak.holds_without_contract}</li>
+                  </ul>
+                </div>
+              );
+            })}
+          </article>
+        ) : null}
         <article className="card">
           <h2>Аудит</h2>
           <ul>

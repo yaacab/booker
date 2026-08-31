@@ -166,6 +166,61 @@ def test_admin_metrics_client_events_by_name(client):
     assert row["by_event"]["deal.room.opened"] == 1
 
 
+def test_admin_metrics_dashboards(client):
+    admin = _promote_admin(client, "metrics-dash@booker.test")
+    db = client.app.state.SessionLocal()
+    try:
+        from datetime import datetime, timezone
+
+        from booker_api.models import AuditLog
+
+        ts = datetime.now(timezone.utc)
+        db.add_all(
+            [
+                AuditLog(
+                    action="client.event",
+                    entity_type="client_event",
+                    entity_id="event.studio.started",
+                    created_at=ts,
+                ),
+                AuditLog(
+                    action="client.event",
+                    entity_type="client_event",
+                    entity_id="event.studio.completed",
+                    created_at=ts,
+                ),
+                AuditLog(action="request.created", entity_type="request", entity_id="r1", created_at=ts),
+                AuditLog(action="offer.created", entity_type="offer", entity_id="o1", created_at=ts),
+                AuditLog(action="hold.created", entity_type="booking", entity_id="b1", created_at=ts),
+                AuditLog(action="hold.expired", entity_type="booking", entity_id="b2", created_at=ts),
+                AuditLog(
+                    action="client.event",
+                    entity_type="client_event",
+                    entity_id="search.performed",
+                    created_at=ts,
+                ),
+                AuditLog(
+                    action="client.event",
+                    entity_type="client_event",
+                    entity_id="deal.room.opened",
+                    created_at=ts,
+                ),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    res = client.get("/admin/metrics", headers=auth_header(admin["token"]))
+    dash = res.json()["periods"]["7"]["dashboards"]
+    funnel_counts = {s["step"]: s["count"] for s in dash["funnel"]["steps"]}
+    assert funnel_counts["event.studio.started"] == 1
+    assert funnel_counts["request.created"] == 1
+    assert dash["liquidity"]["offer_response_pct"] == 100.0
+    assert dash["leakage"]["studio_abandoned"] == 0
+    assert dash["leakage"]["holds_expired"] == 1
+
+
 def test_admin_enable_totp(client):
     admin = _promote_admin(client, "totp-setup@booker.test")
     assert admin

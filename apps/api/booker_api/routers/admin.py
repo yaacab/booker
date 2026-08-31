@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from booker_api.analytics_taxonomy import FUNNEL_STEPS
 from booker_api.db import get_db
 from booker_api.models import (
     Artist,
@@ -90,11 +91,69 @@ def _client_event_metrics(db: Session, since) -> dict:
     return {"count": base.count(), "unique_entities": unique, "by_event": by_event}
 
 
+def _audit_count(db: Session, since, action: str, entity_id: str | None = None) -> int:
+    q = db.query(AuditLog).filter(AuditLog.created_at >= since, AuditLog.action == action)
+    if entity_id is not None:
+        q = q.filter(AuditLog.entity_id == entity_id)
+    return q.count()
+
+
+def _funnel_dashboard(db: Session, since) -> dict:
+    steps: list[dict] = []
+    prev_count: int | None = None
+    for key, action, entity_id in FUNNEL_STEPS:
+        count = _audit_count(db, since, action, entity_id)
+        conversion = round(count / prev_count * 100, 1) if prev_count and prev_count > 0 else None
+        steps.append({"step": key, "count": count, "conversion_from_prev_pct": conversion})
+        prev_count = count
+    return {"steps": steps}
+
+
+def _liquidity_dashboard(db: Session, since) -> dict:
+    searches = _audit_count(db, since, "client.event", "search.performed")
+    deal_opens = _audit_count(db, since, "client.event", "deal.room.opened")
+    requests = _audit_count(db, since, "request.created")
+    offers = _audit_count(db, since, "offer.created")
+    return {
+        "search_to_deal_pct": round(deal_opens / searches * 100, 1) if searches else None,
+        "offer_response_pct": round(offers / requests * 100, 1) if requests else None,
+        "searches": searches,
+        "deal_opens": deal_opens,
+        "requests": requests,
+        "offers": offers,
+    }
+
+
+def _leakage_dashboard(db: Session, since) -> dict:
+    studio_started = _audit_count(db, since, "client.event", "event.studio.started")
+    studio_completed = _audit_count(db, since, "client.event", "event.studio.completed")
+    requests = _audit_count(db, since, "request.created")
+    offers = _audit_count(db, since, "offer.created")
+    holds = _audit_count(db, since, "hold.created")
+    holds_expired = _audit_count(db, since, "hold.expired")
+    contracts = _audit_count(db, since, "contract.signed")
+    return {
+        "studio_abandoned": max(studio_started - studio_completed, 0),
+        "unanswered_requests": max(requests - offers, 0),
+        "holds_expired": holds_expired,
+        "holds_without_contract": max(holds - contracts, 0),
+    }
+
+
+def _dashboards(db: Session, since) -> dict:
+    return {
+        "funnel": _funnel_dashboard(db, since),
+        "liquidity": _liquidity_dashboard(db, since),
+        "leakage": _leakage_dashboard(db, since),
+    }
+
+
 def _period_metrics(db: Session, days: int) -> dict:
     since = now() - timedelta(days=days)
     metrics = {action: _action_metrics(db, since, action) for action in PILOT_ACTIONS if action != "client.event"}
     metrics["client.event"] = _client_event_metrics(db, since)
     metrics["payment"] = _payment_metrics(db, since)
+    metrics["dashboards"] = _dashboards(db, since)
     return metrics
 
 

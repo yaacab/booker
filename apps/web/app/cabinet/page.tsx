@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { api, getActiveOrg, getToken, isWriteRole, setActiveOrg, setToken } from "@/lib/api";
+import { api, getActiveOrg, getToken, isWriteRole, setActiveOrg, setToken, trackClientEvent } from "@/lib/api";
 import { CATEGORY, KIND_LABEL, categoryLabel } from "@/lib/copy";
 import { formatWhen, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -153,6 +153,7 @@ export default function CabinetPage() {
       setEvents(ev.items);
       setRequests(rq.items);
       setBookings(bk.items);
+      trackClientEvent("cabinet.viewed", { kind: kind || "unknown" });
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка");
@@ -179,6 +180,7 @@ export default function CabinetPage() {
         method: "POST",
         body: JSON.stringify({ honorarium_rub: item.honorarium_rub, slot_id: item.slot_id }),
       });
+      trackClientEvent("cabinet.offer_sent", { request_id: item.id });
       window.location.href = `/deals/${res.booking_id}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось ответить");
@@ -211,6 +213,7 @@ export default function CabinetPage() {
         body: JSON.stringify(body),
       });
       setServices((prev) => [...prev, created]);
+      trackClientEvent("cabinet.service_created", { category: serviceCategory });
       setServiceTitle("");
       setServiceDescription("");
       setServiceHonorarium("");
@@ -231,6 +234,7 @@ export default function CabinetPage() {
         body: JSON.stringify({ organization_id: orgId, template_id: templateId }),
       });
       setServices((prev) => [...prev, created]);
+      trackClientEvent("cabinet.service_created", { from_template: templateId });
     } catch (err) {
       setServiceError(err instanceof Error ? err.message : "Не удалось создать из шаблона");
     } finally {
@@ -270,6 +274,7 @@ export default function CabinetPage() {
       setIcalResult(
         `Импортировано занятостей: ${res.imported}, пропущено: ${res.skipped}, закрыто открытых слотов: ${res.removed_open}`,
       );
+      trackClientEvent("cabinet.ical_imported", { imported: res.imported });
       const refreshed = await api<{ score: number; items: { id: string; label: string; done: boolean }[] }>(
         `/organizations/${encodeURIComponent(orgId)}/supply-completeness`,
       );
@@ -310,6 +315,7 @@ export default function CabinetPage() {
       setVacationResult(
         `Отпуск включён. Закрыто открытых слотов: ${res.removed_open}. В этот период вас не увидят в каталоге.`,
       );
+      trackClientEvent("cabinet.vacation_set");
       const refreshed = await api<{
         items: {
           resource_type: string;
