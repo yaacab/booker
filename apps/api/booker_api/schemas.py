@@ -227,3 +227,29 @@ class IcalImportIn(BaseModel):
         if self.resource_type not in {"artist", "hall"}:
             raise ValueError("resource_type: artist|hall")
         return self
+
+
+class VacationIn(BaseModel):
+    organization_id: str
+    resource_type: str
+    resource_id: str
+    starts_at: datetime
+    ends_at: datetime
+
+    @model_validator(mode="after")
+    def resource_kind(self):
+        if self.resource_type not in {"artist", "hall"}:
+            raise ValueError("resource_type: artist|hall")
+        return self
+
+
+class VacationClearIn(BaseModel):
+    organization_id: str
+    resource_type: str
+    resource_id: str
+
+    @model_validator(mode="after")
+    def resource_kind(self):
+        if self.resource_type not in {"artist", "hall"}:
+            raise ValueError("resource_type: artist|hall")
+        return self

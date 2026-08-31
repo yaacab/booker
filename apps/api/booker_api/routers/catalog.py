@@ -38,7 +38,15 @@ def _supplier_deals_count(db: Session, org_id: str) -> int:
         .count()
     )
 from booker_api.ical_import import calendar_targets, import_ical_source
-from booker_api.schemas import ArtistIn, IcalImportIn, SlotIn, TariffIn, VenueIn
+from booker_api.schemas import (
+    ArtistIn,
+    IcalImportIn,
+    SlotIn,
+    TariffIn,
+    VacationClearIn,
+    VacationIn,
+    VenueIn,
+)
 from booker_api.security import (
     audit,
     aware,
@@ -49,12 +57,36 @@ from booker_api.security import (
     require_org_member,
     require_org_writer,
 )
+from booker_api.vacation import clear_vacation, set_vacation, vacation_status
 
 router = APIRouter(tags=["catalog"])
 
 
 def _hall_item(hall: VenueHall) -> dict:
     return {"id": hall.id, "name": hall.name, "capacity": hall.capacity}
+
+
+def _slot_item(slot: AvailabilitySlot, *, hall: str | None = None) -> dict:
+    uid = getattr(slot, "external_uid", None) or None
+    busy_source = None
+    if uid:
+        if uid.startswith("ical:"):
+            busy_source = "ical"
+        elif uid.startswith("vacation:"):
+            busy_source = "vacation"
+    item = {
+        "id": slot.id,
+        "starts_at": slot.starts_at.isoformat(),
+        "ends_at": slot.ends_at.isoformat(),
+        "status": slot.status,
+        "buffer_before_min": getattr(slot, "buffer_before_min", 0) or 0,
+        "buffer_after_min": getattr(slot, "buffer_after_min", 0) or 0,
+    }
+    if busy_source:
+        item["busy_source"] = busy_source
+    if hall:
+        item["hall"] = hall
+    return item
 
 
 def _halls_for_venue(db: Session, venue_id: str) -> list[VenueHall]:
@@ -331,6 +363,61 @@ async def import_ical_busy(
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Не удалось загрузить iCal") from exc
 
 
+@router.get("/organizations/{org_id}/vacation")
+def get_vacation(
+    org_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(404, "Организация не найдена")
+    require_org_member(db, user, org_id)
+    if org.kind not in {"artist", "venue"}:
+        return {"items": []}
+    return vacation_status(db, org_id, org.kind)
+
+
+@router.post("/calendar/vacation")
+def post_vacation(
+    body: VacationIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    require_org_writer(db, user, body.organization_id)
+    try:
+        return set_vacation(
+            db,
+            org_id=body.organization_id,
+            resource_type=body.resource_type,
+            resource_id=body.resource_id,
+            starts_at=body.starts_at,
+            ends_at=body.ends_at,
+            actor_user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
+@router.delete("/calendar/vacation")
+def delete_vacation(
+    body: VacationClearIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    require_org_writer(db, user, body.organization_id)
+    try:
+        return clear_vacation(
+            db,
+            org_id=body.organization_id,
+            resource_type=body.resource_type,
+            resource_id=body.resource_id,
+            actor_user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
 @router.get("/catalog/search")
 def search_catalog(
     city: str = Query("Москва"),
@@ -456,17 +543,7 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
             .order_by(AvailabilitySlot.starts_at)
             .all()
         ):
-            slots.append(
-                {
-                    "id": s.id,
-                    "hall": hall.name,
-                    "starts_at": s.starts_at.isoformat(),
-                    "ends_at": s.ends_at.isoformat(),
-                    "status": s.status,
-                    "buffer_before_min": getattr(s, "buffer_before_min", 0) or 0,
-                    "buffer_after_min": getattr(s, "buffer_after_min", 0) or 0,
-                }
-            )
+            slots.append(_slot_item(s, hall=hall.name))
     return {
         "id": venue.id,
         "organization_id": venue.organization_id,
@@ -517,15 +594,5 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
             "note": "Рейтинг из восьми факторов подождёт. Сначала десять живых отзывов, потом цирк.",
         },
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
-        "slots": [
-            {
-                "id": s.id,
-                "starts_at": s.starts_at.isoformat(),
-                "ends_at": s.ends_at.isoformat(),
-                "status": s.status,
-                "buffer_before_min": getattr(s, "buffer_before_min", 0) or 0,
-                "buffer_after_min": getattr(s, "buffer_after_min", 0) or 0,
-            }
-            for s in slots
-        ],
+        "slots": [_slot_item(s) for s in slots],
     }

@@ -63,6 +63,22 @@ export default function CabinetPage() {
   const [icalBusy, setIcalBusy] = useState(false);
   const [icalResult, setIcalResult] = useState("");
   const [icalError, setIcalError] = useState("");
+  const [vacationItems, setVacationItems] = useState<
+    {
+      resource_type: string;
+      resource_id: string;
+      label: string;
+      active: boolean;
+      starts_at: string | null;
+      ends_at: string | null;
+    }[]
+  >([]);
+  const [vacationTargetId, setVacationTargetId] = useState("");
+  const [vacationStart, setVacationStart] = useState("");
+  const [vacationEnd, setVacationEnd] = useState("");
+  const [vacationBusy, setVacationBusy] = useState(false);
+  const [vacationError, setVacationError] = useState("");
+  const [vacationResult, setVacationResult] = useState("");
 
   async function load() {
     if (!getToken()) {
@@ -106,13 +122,27 @@ export default function CabinetPage() {
             `/organizations/${encodeURIComponent(org.id)}/calendar-targets`,
           ).then((res) => {
             setCalendarTargets(res.items);
-            if (res.items[0]) setCalendarTargetId(res.items[0].resource_id);
+            if (res.items[0]) {
+              setCalendarTargetId(res.items[0].resource_id);
+              setVacationTargetId(res.items[0].resource_id);
+            }
           }),
+          api<{
+            items: {
+              resource_type: string;
+              resource_id: string;
+              label: string;
+              active: boolean;
+              starts_at: string | null;
+              ends_at: string | null;
+            }[];
+          }>(`/organizations/${encodeURIComponent(org.id)}/vacation`).then((res) => setVacationItems(res.items)),
         );
       } else {
         setServices([]);
         setCompleteness(null);
         setCalendarTargets([]);
+        setVacationItems([]);
       }
       const [ev, rq, bk] = (await Promise.all(loads.slice(0, 3))) as [
         { items: EventItem[] },
@@ -250,6 +280,94 @@ export default function CabinetPage() {
       setIcalBusy(false);
     }
   }
+
+  async function setVacation(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!orgId || !isWriteRole(role)) return;
+    const target = calendarTargets.find((t) => t.resource_id === vacationTargetId);
+    if (!target) {
+      setVacationError("Выберите календарь");
+      return;
+    }
+    if (!vacationStart || !vacationEnd) {
+      setVacationError("Укажите даты отпуска");
+      return;
+    }
+    setVacationBusy(true);
+    setVacationError("");
+    setVacationResult("");
+    try {
+      const res = await api<{ removed_open: number }>("/calendar/vacation", {
+        method: "POST",
+        body: JSON.stringify({
+          organization_id: orgId,
+          resource_type: target.resource_type,
+          resource_id: target.resource_id,
+          starts_at: new Date(vacationStart).toISOString(),
+          ends_at: new Date(vacationEnd).toISOString(),
+        }),
+      });
+      setVacationResult(
+        `Отпуск включён. Закрыто открытых слотов: ${res.removed_open}. В этот период вас не увидят в каталоге.`,
+      );
+      const refreshed = await api<{
+        items: {
+          resource_type: string;
+          resource_id: string;
+          label: string;
+          active: boolean;
+          starts_at: string | null;
+          ends_at: string | null;
+        }[];
+      }>(`/organizations/${encodeURIComponent(orgId)}/vacation`);
+      setVacationItems(refreshed.items);
+    } catch (err) {
+      setVacationError(err instanceof Error ? err.message : "Не удалось включить отпуск");
+    } finally {
+      setVacationBusy(false);
+    }
+  }
+
+  async function clearVacation() {
+    if (!orgId || !isWriteRole(role)) return;
+    const target = calendarTargets.find((t) => t.resource_id === vacationTargetId);
+    if (!target) return;
+    setVacationBusy(true);
+    setVacationError("");
+    setVacationResult("");
+    try {
+      await api("/calendar/vacation", {
+        method: "DELETE",
+        body: JSON.stringify({
+          organization_id: orgId,
+          resource_type: target.resource_type,
+          resource_id: target.resource_id,
+        }),
+      });
+      setVacationResult("Отпуск снят.");
+      setVacationStart("");
+      setVacationEnd("");
+      const refreshed = await api<{
+        items: {
+          resource_type: string;
+          resource_id: string;
+          label: string;
+          active: boolean;
+          starts_at: string | null;
+          ends_at: string | null;
+        }[];
+      }>(`/organizations/${encodeURIComponent(orgId)}/vacation`);
+      setVacationItems(refreshed.items);
+    } catch (err) {
+      setVacationError(err instanceof Error ? err.message : "Не удалось снять отпуск");
+    } finally {
+      setVacationBusy(false);
+    }
+  }
+
+  const activeVacation = vacationItems.find(
+    (v) => v.resource_id === vacationTargetId && v.active,
+  );
 
   const showServices = kind === "artist" || kind === "venue";
   const canManageServices = showServices && isWriteRole(role);
@@ -474,6 +592,66 @@ export default function CabinetPage() {
               <button type="submit" disabled={icalBusy}>
                 {icalBusy ? "Импортируем…" : "Импортировать занятость"}
               </button>
+            </form>
+          ) : null}
+          {canManageServices && calendarTargets.length > 0 ? (
+            <form
+              className="card"
+              style={{ display: "grid", gap: 12, maxWidth: 480, marginTop: 12 }}
+              onSubmit={setVacation}
+            >
+              <strong>Режим отпуска</strong>
+              <p className="timeline">
+                На период отпуска профиль скрывается из поиска по датам, пересекающиеся открытые слоты закрываются.
+              </p>
+              {activeVacation ? (
+                <p className="timeline">
+                  Сейчас активен отпуск до{" "}
+                  {activeVacation.ends_at ? formatWhen(activeVacation.ends_at) : "—"}
+                </p>
+              ) : null}
+              {calendarTargets.length > 1 ? (
+                <label>
+                  Календарь
+                  <select value={vacationTargetId} onChange={(e) => setVacationTargetId(e.target.value)}>
+                    {calendarTargets.map((t) => (
+                      <option key={t.resource_id} value={t.resource_id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label>
+                Начало
+                <input
+                  type="datetime-local"
+                  value={vacationStart}
+                  onChange={(e) => setVacationStart(e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                Окончание
+                <input
+                  type="datetime-local"
+                  value={vacationEnd}
+                  onChange={(e) => setVacationEnd(e.target.value)}
+                  required
+                />
+              </label>
+              {vacationError ? <p style={{ color: "var(--danger)" }}>{vacationError}</p> : null}
+              {vacationResult ? <p className="timeline">{vacationResult}</p> : null}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button type="submit" disabled={vacationBusy}>
+                  {vacationBusy ? "Сохраняем…" : activeVacation ? "Обновить отпуск" : "Включить отпуск"}
+                </button>
+                {activeVacation ? (
+                  <button type="button" className="secondary" disabled={vacationBusy} onClick={() => void clearVacation()}>
+                    Снять отпуск
+                  </button>
+                ) : null}
+              </div>
             </form>
           ) : null}
         </>
