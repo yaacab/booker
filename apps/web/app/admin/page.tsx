@@ -6,9 +6,12 @@ import { api, getToken } from "@/lib/api";
 import { formatWhen } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 
+type VerifyTarget = { id: string; name: string; status: string };
+
 type Queue = {
   queue: { id: string; target_type: string; target_id: string }[];
-  artists: { id: string; name: string; status: string }[];
+  artists: VerifyTarget[];
+  venues?: VerifyTarget[];
 };
 type Audit = { items: { id: string; action: string; entity_type: string; created_at: string }[] };
 
@@ -27,7 +30,7 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [queue, setQueue] = useState<Queue | null>(null);
   const [audit, setAudit] = useState<Audit["items"]>([]);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
 
   async function load() {
     if (!getToken()) {
@@ -48,19 +51,48 @@ export default function AdminPage() {
     void load();
   }, []);
 
-  async function decide(artistId: string, approve: boolean) {
-    setBusyId(artistId);
+  async function decide(targetType: "artist" | "venue", targetId: string, approve: boolean) {
+    const key = `${targetType}:${targetId}`;
+    setBusyKey(key);
     try {
       await api("/admin/verifications", {
         method: "POST",
-        body: JSON.stringify({ target_type: "artist", target_id: artistId, approve, notes: "" }),
+        body: JSON.stringify({ target_type: targetType, target_id: targetId, approve, notes: "" }),
       });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось решить");
     } finally {
-      setBusyId(null);
+      setBusyKey(null);
     }
+  }
+
+  function renderTargets(targetType: "artist" | "venue", title: string, items: VerifyTarget[]) {
+    return (
+      <>
+        <h3>{title}</h3>
+        {items.map((item) => {
+          const key = `${targetType}:${item.id}`;
+          return (
+            <p key={item.id}>
+              {item.name} · {item.status === "pending" ? "ожидает проверки" : item.status}{" "}
+              <button type="button" disabled={busyKey === key} onClick={() => void decide(targetType, item.id, true)}>
+                Подтвердить
+              </button>{" "}
+              <button
+                type="button"
+                className="secondary"
+                disabled={busyKey === key}
+                onClick={() => void decide(targetType, item.id, false)}
+              >
+                Отказать
+              </button>
+            </p>
+          );
+        })}
+        {items.length === 0 ? <p>Очередь пуста.</p> : null}
+      </>
+    );
   }
 
   return (
@@ -76,23 +108,8 @@ export default function AdminPage() {
       <div className="grid">
         <article className="card">
           <h2>Верификация</h2>
-          {(queue?.artists ?? []).map((a) => (
-            <p key={a.id}>
-              {a.name} · {a.status === "pending" ? "ожидает проверки" : a.status}{" "}
-              <button type="button" disabled={busyId === a.id} onClick={() => void decide(a.id, true)}>
-                Подтвердить
-              </button>{" "}
-              <button
-                type="button"
-                className="secondary"
-                disabled={busyId === a.id}
-                onClick={() => void decide(a.id, false)}
-              >
-                Отказать
-              </button>
-            </p>
-          ))}
-          {(queue?.artists.length ?? 0) === 0 ? <p>Очередь пуста.</p> : null}
+          {renderTargets("artist", "Артисты", queue?.artists ?? [])}
+          {renderTargets("venue", "Площадки", queue?.venues ?? [])}
         </article>
         <article className="card">
           <h2>Споры</h2>
