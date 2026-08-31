@@ -7,15 +7,20 @@ import { api, getToken } from "@/lib/api";
 import { CATEGORY, KIND_LABEL, categoryLabel } from "@/lib/copy";
 import { formatWhen, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
+import {
+  BLOCKER_LABEL,
+  buildNextSteps,
+  isClosedRequest,
+  openLooseRequests,
+  qtyOf,
+  requestsForRole,
+  unmatchedRequests,
+  type EventRequestLite,
+  type RequirementLite,
+} from "@/lib/eventDayOps";
 import { STATUS_LABEL } from "@/lib/status";
 
-type Requirement = {
-  id?: string;
-  category_code: string;
-  role_label?: string;
-  qty?: number;
-  notes?: string;
-};
+type Requirement = RequirementLite & { notes?: string };
 
 type DraftItem = {
   id?: string;
@@ -24,13 +29,9 @@ type DraftItem = {
   role_label: string;
 };
 
-type EventRequest = {
-  id: string;
-  status: string;
+type EventRequest = EventRequestLite & {
   resource_type?: string;
   resource_id?: string;
-  requirement_id?: string | null;
-  booking_id?: string | null;
 };
 
 type EventDetail = {
@@ -64,15 +65,6 @@ function searchHref(date: string, category: string, city?: string, eventId?: str
   return `/search?${q.toString()}`;
 }
 
-function requestsForRole(requests: EventRequest[], requirementId?: string): EventRequest[] {
-  if (!requirementId) return [];
-  return requests.filter((item) => item.requirement_id === requirementId);
-}
-
-function isClosedRequest(item: EventRequest): boolean {
-  return Boolean(item.booking_id) || item.status === "Confirmed";
-}
-
 function fillRate(requirements: Requirement[], requests: EventRequest[]): { closed: number; total: number } {
   let total = 0;
   let closed = 0;
@@ -85,14 +77,8 @@ function fillRate(requirements: Requirement[], requests: EventRequest[]): { clos
   return { closed, total };
 }
 
-function unmatchedRequests(requests: EventRequest[], requirements: Requirement[]): EventRequest[] {
-  const ids = new Set(requirements.map((r) => r.id).filter((id): id is string => Boolean(id)));
-  return requests.filter((item) => !item.requirement_id || !ids.has(item.requirement_id));
-}
-
-function qtyOf(n: number | undefined): number {
-  if (!Number.isFinite(n) || !n || n < 1) return 1;
-  return Math.min(20, Math.floor(n));
+function roleLabel(req: Requirement): string {
+  return categoryLabel(req.category_code) || req.role_label || req.category_code;
 }
 
 function toDraft(items: Requirement[]): DraftItem[] {
@@ -235,6 +221,8 @@ export default function EventPage() {
   const requirements = event.requirements ?? [];
   const requests = event.requests ?? [];
   const looseRequests = unmatchedRequests(requests, requirements);
+  const looseOpen = openLooseRequests(requests, requirements);
+  const nextSteps = buildNextSteps(requirements, requests, roleLabel);
   const { closed: filledPositions, total: totalPositions } = fillRate(requirements, requests);
   const date = moscowDate(event.event_date);
 
@@ -260,6 +248,61 @@ export default function EventPage() {
               : " — все роли в составе закрыты"}
           </p>
         </article>
+      ) : null}
+      {requirements.length > 0 || looseOpen.length > 0 ? (
+        <section className="reveal">
+          <h2>Следующие шаги</h2>
+          <article className="card tint">
+            {nextSteps.length === 0 && looseOpen.length === 0 ? (
+              <p className="timeline">Все роли в составе закрыты — можно сосредоточиться на дне события.</p>
+            ) : (
+              <>
+                {nextSteps.length > 0 ? (
+                  <ul className="timeline" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {nextSteps.map((step) => (
+                      <li key={step.requirement.id || step.label} style={{ marginBottom: "1rem" }}>
+                        <strong>{step.label}</strong>
+                        {step.openSlots > 1 ? (
+                          <span className="timeline"> — нужно ещё {step.openSlots}</span>
+                        ) : null}
+                        <p className="timeline">
+                          Блокирует: {BLOCKER_LABEL[step.blocker]}
+                          {step.filled > 0 ? ` (${step.filled} из ${step.need} закрыто)` : null}
+                        </p>
+                        {step.openRequests.map((item) => (
+                          <RequestDeal key={item.id} item={item} />
+                        ))}
+                        <p>
+                          <Link
+                            className="btn"
+                            href={searchHref(
+                              date,
+                              step.requirement.category_code,
+                              event.city,
+                              event.id,
+                              step.requirement.id,
+                            )}
+                          >
+                            Найти
+                          </Link>
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {looseOpen.length > 0 ? (
+                  <div>
+                    <strong>Заявки без роли</strong>
+                    <p className="timeline">Привяжите к позиции состава или закройте в Deal Room.</p>
+                    {looseOpen.map((item) => (
+                      <RequestDeal key={item.id} item={item} />
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            )}
+          </article>
+        </section>
       ) : null}
       <p className="timeline">Каждая позиция — своя сделка.</p>
       <h2>Роли</h2>
