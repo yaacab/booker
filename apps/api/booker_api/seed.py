@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from sqlalchemy.orm import Session
 
-from booker_api.db import Base, SessionLocal, engine
+from booker_api.db import SessionLocal, engine, init_schema
 from booker_api.models import (
     Artist,
     ArtistTariff,
@@ -215,7 +215,7 @@ def enrich_catalog(db: Session) -> int:
 
 
 def main() -> None:
-    Base.metadata.create_all(bind=engine)
+    init_schema(engine)
     db = SessionLocal()
     try:
         print(seed(db))

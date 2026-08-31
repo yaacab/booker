@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -49,12 +50,27 @@ def make_engine(url: str | None = None):
     return create_engine(db_url, connect_args=connect_args, future=True)
 
 
+def run_migrations(url: str | None = None) -> None:
+    """Apply Alembic revisions (Postgres prod path)."""
+    from alembic.config import Config
+
+    from alembic import command
+
+    ini = Path(__file__).resolve().parent.parent / "alembic.ini"
+    cfg = Config(str(ini))
+    cfg.set_main_option("sqlalchemy.url", url or settings.database_url)
+    command.upgrade(cfg, "head")
+
+
 engine = make_engine()
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 
 def init_schema(bind=None) -> None:
     target = bind or engine
+    if target.dialect.name == "postgresql":
+        run_migrations(str(target.url))
+        return
     Base.metadata.create_all(bind=target)
     ensure_missing_columns(target)
 

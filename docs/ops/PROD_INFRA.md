@@ -52,7 +52,17 @@ make test-api
 
 ### Alembic
 
-Сейчас схема через `Base.metadata.create_all` + `ensure_missing_columns`. Перед cutover: baseline Alembic из текущих моделей; дальнейшие изменения только через ревизии.
+Baseline: `apps/api/alembic/versions/*_baseline.py` — все ORM-таблицы из [models.py](../../apps/api/booker_api/models.py).
+
+```bash
+docker compose -f infra/docker-compose.yml up -d postgres
+export BOOKER_DATABASE_URL=postgresql+psycopg://booker:booker@127.0.0.1:5432/booker
+make migrate
+cd apps/api && python -m booker_api.seed
+make test-api
+```
+
+На Postgres API при старте вызывает `alembic upgrade head` ([db.py](../../apps/api/booker_api/db.py)). SQLite (локальные тесты) — по-прежнему `create_all` + `ensure_missing_columns`.
 
 ## Restore drill (чеклист)
 
@@ -91,4 +101,4 @@ make test-api
 - [ ] Первый успешный backup + verify
 - [ ] Restore drill (staging)
 - [ ] Postgres cutover
-- [ ] Alembic baseline
+- [x] Alembic baseline

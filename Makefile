@@ -1,4 +1,4 @@
-.PHONY: init test-api lint web-build web-lint check seed deploy wait-dns
+.PHONY: init test-api lint web-build web-lint check seed deploy wait-dns migrate
 
 PYTHON ?= $(CURDIR)/.venv/bin/python
 
@@ -23,6 +23,9 @@ check: test-api lint
 
 seed:
 	cd apps/api && $(PYTHON) -m booker_api.seed
+
+migrate:
+	cd apps/api && $(PYTHON) -m alembic upgrade head
 
 deploy:
 	bash infra/deploy-vps.sh
