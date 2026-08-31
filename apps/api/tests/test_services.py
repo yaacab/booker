@@ -82,3 +82,31 @@ def test_public_hides_unpublished(client):
     assert all(i["id"] != draft["id"] for i in public.json()["items"])
     internal = client.get(f"/services?organization_id={org['id']}", headers=h).json()["items"]
     assert any(i["id"] == draft["id"] for i in internal)
+
+
+def test_create_service_writes_audit(client):
+    user = register(client, "svcaudit@booker.test", "Audit")
+    h = auth_header(user["token"])
+    org = client.post("/orgs", json={"name": "Сцена", "kind": "artist"}, headers=h).json()
+    created = client.post(
+        "/services",
+        json={
+            "organization_id": org["id"],
+            "category_code": "dj",
+            "title": "DJ",
+        },
+        headers=h,
+    )
+    assert created.status_code == 200
+    db = client.app.state.SessionLocal()
+    try:
+        from booker_api.models import AuditLog
+
+        row = (
+            db.query(AuditLog)
+            .filter(AuditLog.action == "service.created", AuditLog.entity_id == created.json()["id"])
+            .one()
+        )
+        assert row.entity_type == "service"
+    finally:
+        db.close()

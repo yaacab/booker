@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from booker_api.db import get_db
 from booker_api.models import Service, User
 from booker_api.schemas import ServiceIn, ServiceOut
-from booker_api.security import current_user, require_org_member, require_org_writer
+from booker_api.security import audit, current_user, require_org_member, require_org_writer
 
 router = APIRouter(tags=["services"])
 
@@ -26,6 +26,15 @@ def create_service(body: ServiceIn, user: User = Depends(current_user), db: Sess
         honorarium_rub=body.honorarium_rub,
     )
     db.add(row)
+    db.flush()
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="service.created",
+        entity_type="service",
+        entity_id=row.id,
+        payload={"organization_id": body.organization_id, "category_code": body.category_code},
+    )
     db.commit()
     db.refresh(row)
     return _out(row)

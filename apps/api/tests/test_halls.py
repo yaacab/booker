@@ -107,3 +107,26 @@ def test_get_venue_includes_halls_without_dropping_fields(client):
         "name": "Основной зал",
         "capacity": 120,
     }
+
+
+def test_create_hall_writes_audit(client):
+    owner, _org, venue = _venue_owner(client)
+    created = client.post(
+        f"/venues/{venue['id']}/halls",
+        json={"name": "Терраса", "capacity": 30},
+        headers=auth_header(owner["token"]),
+    )
+    assert created.status_code == 200
+    hall_id = created.json()["id"]
+    db = client.app.state.SessionLocal()
+    try:
+        from booker_api.models import AuditLog
+
+        row = (
+            db.query(AuditLog)
+            .filter(AuditLog.action == "hall.created", AuditLog.entity_id == hall_id)
+            .one()
+        )
+        assert row.entity_type == "hall"
+    finally:
+        db.close()
