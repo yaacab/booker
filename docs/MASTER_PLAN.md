@@ -22,7 +22,7 @@
 | p0-contract-v2 | Product Contract v2 (ICP, state machines, monetization, «не строим») | **done** | `848c02a` — CONTRACT.md, BLUEPRINT.md |
 | p0-legal-289 | Юрпакет + 289-ФЗ, OPERATOR.md, РКН, гейт U5 | **EXTERNAL_BLOCKED** | Нужны реквизиты оператора и письмо юриста; см. [OPERATOR.md](legal/OPERATOR.md) |
 | p0-payment-partner | Платёжный партнёр (term sheet, 54-ФЗ, sandbox) | **EXTERNAL_BLOCKED** | Выбор партнёра — решение человека; см. [PAYMENTS_SHORTLIST.md](legal/PAYMENTS_SHORTLIST.md) |
-| p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **partial** | deploy cron + restore-drill test (skip без sqlite3) |
+| p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **partial** | Alembic baseline `a44d171`; deploy cron + restore-drill test |
 | p0-security | Authz matrix, rate limits, 2FA prod, file scan | **partial** | `4c07316` TOTP enrollment; ClamAV external |
 
 ---
@@ -91,3 +91,4 @@
 - 2026-09-01 · **p1-event-day** · `4f3a4cb` · replacement plan API, booking cancel, catalog exclude, Control Room panel · `make test-api` 80 passed, lint ok
 - 2026-09-01 · **p1-supply-console** · `dffea8d` · vacation mode API + cabinet · `make test-api` 85 passed, lint ok
 - 2026-09-01 · **p1-event-day** · `bc72c59` · check-in/out API + Control Room day panel · `make test-api` 90 passed, lint ok
+- 2026-09-01 · **p0-prod-infra** · `a44d171` · Alembic baseline + psycopg, Postgres init via migrate · `make test-api` 92 passed, lint ok
