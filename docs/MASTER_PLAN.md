@@ -86,3 +86,4 @@
 - 2026-09-01 · **p1-event-day** · `6a39426` · replacement CTA in Control Room
 - 2026-09-01 · **p1-supply-console** · `881626d` · service templates API + cabinet
 - 2026-09-01 · **p0-prod-infra** · `3a1e60f` · restore-drill smoke test
+- 2026-09-01 · **p0-security** · tick3 · admin TOTP enable + page.view · 73 tests
