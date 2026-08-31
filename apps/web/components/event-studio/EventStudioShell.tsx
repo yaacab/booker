@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CityField } from "@/components/CityField";
-import { getToken } from "@/lib/api";
+import { getToken, trackClientEvent } from "@/lib/api";
 import { categoryLabel } from "@/lib/copy";
 import { formatDay, moscowToday } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -42,6 +42,7 @@ export default function EventStudioShell() {
     const stored = loadStoredDraft();
     if (stored) setDraft(stored.draft);
     setHydrated(true);
+    trackClientEvent("event.studio.started");
   }, []);
 
   useEffect(() => {

@@ -68,9 +68,32 @@ def _payment_metrics(db: Session, since) -> dict:
     return {"count": base.count(), "unique_entities": unique, "by_action": by_action}
 
 
+def _client_event_metrics(db: Session, since) -> dict:
+    base = db.query(AuditLog).filter(AuditLog.created_at >= since, AuditLog.action == "client.event")
+    unique = (
+        db.query(func.count(func.distinct(AuditLog.entity_id)))
+        .filter(
+            AuditLog.created_at >= since,
+            AuditLog.action == "client.event",
+            AuditLog.entity_id != "",
+        )
+        .scalar()
+        or 0
+    )
+    by_event = {
+        event: count
+        for event, count in db.query(AuditLog.entity_id, func.count(AuditLog.id))
+        .filter(AuditLog.created_at >= since, AuditLog.action == "client.event")
+        .group_by(AuditLog.entity_id)
+        .all()
+    }
+    return {"count": base.count(), "unique_entities": unique, "by_event": by_event}
+
+
 def _period_metrics(db: Session, days: int) -> dict:
     since = now() - timedelta(days=days)
-    metrics = {action: _action_metrics(db, since, action) for action in PILOT_ACTIONS}
+    metrics = {action: _action_metrics(db, since, action) for action in PILOT_ACTIONS if action != "client.event"}
+    metrics["client.event"] = _client_event_metrics(db, since)
     metrics["payment"] = _payment_metrics(db, since)
     return metrics
 

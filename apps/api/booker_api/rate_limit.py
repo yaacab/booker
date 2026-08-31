@@ -43,3 +43,4 @@ def client_key(request: Request, prefix: str) -> str:
 # Auth: 20 attempts / 5 min per IP; webhooks: 120 / min per IP
 auth_limiter = RateLimiter(max_requests=20, window_seconds=300)
 webhook_limiter = RateLimiter(max_requests=120, window_seconds=60)
+analytics_limiter = RateLimiter(max_requests=120, window_seconds=60)

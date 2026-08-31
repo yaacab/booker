@@ -138,3 +138,29 @@ def test_admin_metrics_aggregates_audit(client):
         "payment.created": 1,
         "payment.webhook": 1,
     }
+
+
+def test_admin_metrics_client_events_by_name(client):
+    admin = _promote_admin(client, "metrics-client@booker.test")
+    db = client.app.state.SessionLocal()
+    try:
+        from datetime import datetime, timezone
+
+        from booker_api.models import AuditLog
+
+        ts = datetime.now(timezone.utc)
+        db.add_all(
+            [
+                AuditLog(action="client.event", entity_type="client_event", entity_id="search.performed", created_at=ts),
+                AuditLog(action="client.event", entity_type="client_event", entity_id="search.performed", created_at=ts),
+                AuditLog(action="client.event", entity_type="client_event", entity_id="deal.room.opened", created_at=ts),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+    res = client.get("/admin/metrics", headers=auth_header(admin["token"]))
+    row = res.json()["periods"]["7"]["client.event"]
+    assert row["count"] == 3
+    assert row["by_event"]["search.performed"] == 2
+    assert row["by_event"]["deal.room.opened"] == 1

@@ -14,7 +14,7 @@ type Queue = {
   venues?: VerifyTarget[];
 };
 type Audit = { items: { id: string; action: string; entity_type: string; created_at: string }[] };
-type Metric = { count: number; unique_entities: number };
+type Metric = { count: number; unique_entities: number; by_event?: Record<string, number> };
 type PaymentMetric = Metric & { by_action: Record<string, number> };
 type PeriodMetrics = Record<string, Metric | PaymentMetric>;
 type Metrics = { periods: { "7": PeriodMetrics; "30": PeriodMetrics } };
@@ -164,6 +164,11 @@ export default function AdminPage() {
                           {label}: {row.count}
                           {"unique_entities" in row && row.unique_entities !== row.count
                             ? ` · уник. ${row.unique_entities}`
+                            : ""}
+                          {"by_event" in row && row.by_event
+                            ? ` · ${Object.entries(row.by_event)
+                                .map(([ev, n]) => `${ev}:${n}`)
+                                .join(", ")}`
                             : ""}
                         </li>
                       );

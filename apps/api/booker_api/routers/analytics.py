@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
 from booker_api.models import User
+from booker_api.rate_limit import analytics_limiter, client_key
 from booker_api.schemas import ClientEventIn
 from booker_api.security import audit, current_user
 
@@ -22,9 +23,11 @@ ALLOWED_CLIENT_EVENTS = frozenset(
 @router.post("/events")
 def record_client_event(
     body: ClientEventIn,
+    request: Request,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
+    analytics_limiter.check(client_key(request, "analytics"))
     if body.name not in ALLOWED_CLIENT_EVENTS:
         return {"ok": False, "ignored": True}
     audit(
