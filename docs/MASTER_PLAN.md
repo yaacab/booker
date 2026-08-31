@@ -94,5 +94,5 @@
 - 2026-09-01 · **p0-prod-infra** · `a8b8a5b` · journal Alembic baseline · `make test-api` 92 passed, lint ok
 - 2026-09-01 · **p1-analytics** · `53f6ddb` · cabinet/studio taxonomy + funnel/liquidity/leakage dashboards · `make test-api` 94 passed, lint ok
 - 2026-09-01 · **p0-security** · `a7ba5dc` · upload/admin/messaging rate limits; ClamAV EXTERNAL_BLOCKED · `make test-api` 95 passed, lint ok
-- 2026-09-01 · **p0-prod-infra** · *(Tick 11)* · PROD_INFRA RU hosting audit + Postgres cutover checklists · ops/runtime only remains
+- 2026-09-01 · **p0-prod-infra** · `ed0be4f` · PROD_INFRA RU hosting audit + Postgres cutover checklists · test-api 95, lint ok, web-build ok, E2E 15 · ops/runtime only remains
 - 2026-09-01 · **web-build** · `d895b80` · admin funnel metric row type fix · web-build green
