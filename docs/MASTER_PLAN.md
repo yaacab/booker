@@ -11,7 +11,7 @@
 - [x] Все выполнимые P0/P1 закрыты или помечены BLOCKED с причиной (инженерия; ops/runtime p0-prod-infra — в [PROD_INFRA.md](ops/PROD_INFRA.md))
 - [x] `make lint`, `make test-api`, `make web-build`, E2E — зелёные (Tick 11: 95 passed, lint ok, web-build ok, E2E 15 passed)
 - [x] Нет критических mock/stub на основном пользовательском пути (stub-платежи допустимы до гейта U5)
-- [ ] Итоговый PR создан
+- [x] Итоговый PR создан — [#14](https://github.com/yaacab/booker/pull/14)
 
 ---
 
@@ -96,4 +96,4 @@
 - 2026-09-01 · **p0-security** · `a7ba5dc` · upload/admin/messaging rate limits; ClamAV EXTERNAL_BLOCKED · `make test-api` 95 passed, lint ok
 - 2026-09-01 · **p0-prod-infra** · `ed0be4f` · PROD_INFRA RU hosting audit + Postgres cutover checklists · test-api 95, lint ok, web-build ok, E2E 15 · ops/runtime only remains
 - 2026-09-01 · **web-build** · `d895b80` · admin funnel metric row type fix · web-build green
-- 2026-09-01 · **tick-12** · engineering complete · branch `feat/master-plan-execution` PR-ready (+27 commits); DoD 3/4 — остаётся итоговый PR · `make test-api` 95 passed (1 skipped), lint ok, web-build ok
+- 2026-09-01 · **tick-12** · engineering complete · branch `feat/master-plan-execution` PR-ready (+28 commits); DoD закрыт — PR [#14](https://github.com/yaacab/booker/pull/14) · pre-PR checks: test-api 95 passed (1 skipped), lint ok, web-lint ok, web-build ok, E2E 15 passed
