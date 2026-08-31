@@ -96,3 +96,4 @@
 - 2026-09-01 · **p0-security** · `a7ba5dc` · upload/admin/messaging rate limits; ClamAV EXTERNAL_BLOCKED · `make test-api` 95 passed, lint ok
 - 2026-09-01 · **p0-prod-infra** · `ed0be4f` · PROD_INFRA RU hosting audit + Postgres cutover checklists · test-api 95, lint ok, web-build ok, E2E 15 · ops/runtime only remains
 - 2026-09-01 · **web-build** · `d895b80` · admin funnel metric row type fix · web-build green
+- 2026-09-01 · **tick-12** · engineering complete · branch `feat/master-plan-execution` PR-ready (+27 commits); DoD 3/4 — остаётся итоговый PR · `make test-api` 95 passed (1 skipped), lint ok, web-build ok
