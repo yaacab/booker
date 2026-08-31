@@ -8,9 +8,9 @@
 
 ## Definition of Done
 
-- [ ] Все выполнимые P0/P1 закрыты или помечены BLOCKED с причиной
-- [ ] `make lint`, `make test-api`, `make web-build`, E2E — зелёные
-- [ ] Нет критических mock/stub на основном пользовательском пути (stub-платежи допустимы до гейта U5)
+- [x] Все выполнимые P0/P1 закрыты или помечены BLOCKED с причиной (инженерия; ops/runtime p0-prod-infra — в [PROD_INFRA.md](ops/PROD_INFRA.md))
+- [x] `make lint`, `make test-api`, `make web-build`, E2E — зелёные (Tick 11: 95 passed, lint ok, web-build ok, E2E 15 passed)
+- [x] Нет критических mock/stub на основном пользовательском пути (stub-платежи допустимы до гейта U5)
 - [ ] Итоговый PR создан
 
 ---
@@ -22,7 +22,7 @@
 | p0-contract-v2 | Product Contract v2 (ICP, state machines, monetization, «не строим») | **done** | `848c02a` — CONTRACT.md, BLUEPRINT.md |
 | p0-legal-289 | Юрпакет + 289-ФЗ, OPERATOR.md, РКН, гейт U5 | **EXTERNAL_BLOCKED** | Нужны реквизиты оператора и письмо юриста; см. [OPERATOR.md](legal/OPERATOR.md) |
 | p0-payment-partner | Платёжный партнёр (term sheet, 54-ФЗ, sandbox) | **EXTERNAL_BLOCKED** | Выбор партнёра — решение человека; см. [PAYMENTS_SHORTLIST.md](legal/PAYMENTS_SHORTLIST.md) |
-| p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **partial** | Alembic baseline `a44d171`; deploy cron + restore-drill test |
+| p0-prod-infra | Postgres, backups, restore drill, RU hosting audit | **done** | Alembic `a44d171`, backup/restore scripts, deploy cron; чеклисты RU audit + Postgres cutover в [PROD_INFRA.md](ops/PROD_INFRA.md). **Ops/runtime:** cron verify, prod backup, staging restore drill, cutover |
 | p0-security | Authz matrix, rate limits, 2FA prod, file scan | **done** | rate limits all surfaces; ClamAV → **EXTERNAL_BLOCKED** (prod object storage) |
 
 ---
@@ -94,3 +94,5 @@
 - 2026-09-01 · **p0-prod-infra** · `a8b8a5b` · journal Alembic baseline · `make test-api` 92 passed, lint ok
 - 2026-09-01 · **p1-analytics** · `53f6ddb` · cabinet/studio taxonomy + funnel/liquidity/leakage dashboards · `make test-api` 94 passed, lint ok
 - 2026-09-01 · **p0-security** · `a7ba5dc` · upload/admin/messaging rate limits; ClamAV EXTERNAL_BLOCKED · `make test-api` 95 passed, lint ok
+- 2026-09-01 · **p0-prod-infra** · *(Tick 11)* · PROD_INFRA RU hosting audit + Postgres cutover checklists · ops/runtime only remains
+- 2026-09-01 · **web-build** · `d895b80` · admin funnel metric row type fix · web-build green
