@@ -34,7 +34,7 @@ if [[ "${DB_URL}" == sqlite:* ]]; then
   sqlite3 "${SQLITE_PATH}" ".backup '${STAGING}/booker.db'"
   stage_uploads "${STAGING}"
   OUT="${BACKUP_ROOT}/booker-${STAMP}.tar.gz"
-  tar -czf "${OUT}" -C "${STAGING}" .
+  tar -czf "${OUT}" -C "${STAGING}" booker.db uploads
   rm -rf "${STAGING}"
   echo "sqlite backup: ${OUT} (db + uploads)"
 elif [[ "${DB_URL}" == postgres* ]]; then
@@ -43,7 +43,7 @@ elif [[ "${DB_URL}" == postgres* ]]; then
   pg_dump "$(pg_url_for_libpq "${DB_URL}")" > "${STAGING}/booker.dump"
   stage_uploads "${STAGING}"
   OUT="${BACKUP_ROOT}/booker-pg-${STAMP}.tar.gz"
-  tar -czf "${OUT}" -C "${STAGING}" .
+  tar -czf "${OUT}" -C "${STAGING}" booker.db uploads
   rm -rf "${STAGING}"
   echo "postgres backup: ${OUT} (dump + uploads)"
 else
