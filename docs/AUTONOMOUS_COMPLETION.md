@@ -10,7 +10,7 @@
 | AUTO-004 | P0 | backend | Payment adapter interface (fail-closed) | C | `apps/api/booker_api/payments/**` | **DONE** | test-api | `fbcc036` | — |
 | AUTO-005 | P0 | backend | Notification adapters (disabled transport) | C | `apps/api/booker_api/notifications/**` | **DONE** | test-api | `38583f9` | — |
 | AUTO-006 | P0 | backend | Race test двойного hold | D | `apps/api/tests/test_hold_race.py` | **DONE** | test-api | `fa2e7bb` | — |
-| AUTO-007 | P0 | backend | OfferVersion/quote invariant tests | D | `apps/api/tests/test_quote_versioning.py` | **READY** | test-api | — | — |
+| AUTO-007 | P0 | backend | OfferVersion/quote invariant tests | D | `apps/api/tests/test_quote_versioning.py` | **DONE** | test-api | `9e1d152` | — |
 | AUTO-008 | P0 | backend | Health/readiness feature flags | E | `routers/health.py`, `config.py` | **DONE** | test-api | `1388a74` | — |
 | AUTO-009 | P1 | frontend | Customer dashboard shell (виджеты §7.5.3) | A | `cabinet/customer/**` | **READY** | e2e | — | AUTO-002 |
 | AUTO-010 | P1 | frontend | Performer dashboard shell (§7.5.4) | A | `cabinet/performer/**` | **READY** | e2e | — | AUTO-002 |

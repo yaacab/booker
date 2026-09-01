@@ -872,6 +872,12 @@ def ack_offer(
     version = db.get(OfferVersion, offer.active_version_id)
     req = db.get(Request, offer.request_id)
     event = db.get(Event, req.event_id)
+    quote_id = body.get("quote_id")
+    if quote_id is not None and quote_id != version.id:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "quote_id устарел: подтверждается только активная версия предложения",
+        )
     side = body["side"]
     if side == "supplier":
         member = require_org_writer(db, user, req.supplier_org_id)

@@ -98,6 +98,7 @@ class OfferIn(BaseModel):
 
 class AckIn(BaseModel):
     side: str
+    quote_id: str | None = None
 
 
 class MessageIn(BaseModel):
