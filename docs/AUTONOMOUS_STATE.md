@@ -2,27 +2,28 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** `3c7c3fc`
+**HEAD:** `1d4eb1f`
   
 **PR:** https://github.com/yaacab/booker/pull/14
 
 ## Текущая фаза
 
-Волна 4 завершена (014–015). Все P0–P2 технические задачи **DONE**. Остаются только EXTERNAL_BLOCKED (016–017).
+**complete** — волны 1–4 (AUTO-001..015) завершены. Все P0–P2 технические задачи **DONE**. Остаются только EXTERNAL_BLOCKED (AUTO-016, AUTO-017).
 
 ## Следующая задача
 
-Нет автономных READY-задач. Ожидание OWNER_INPUTS для AUTO-016 (юрпакет).
+Нет автономных READY-задач. Ожидание **OWNER_INPUTS** для AUTO-016 (юрпакет U5) и AUTO-017 (live payment partner).
 
 ## Последние проверки
 
 | Команда | Результат | Когда |
 |---------|-----------|-------|
-| `make test-api` | ok | 2026-09-01 |
+| `make test-api` | 131 passed | 2026-09-01 |
 | `make web-lint` | ok | 2026-09-01 |
 | `make web-build` | ok | 2026-09-01 |
 | `npm run test:unit` | 15 passed | 2026-09-01 |
 | E2E (flow + cross-role + a11y) | 15 passed, 4 skipped | 2026-09-01 |
+| CI PR #14 (`api` + `web`) | **green** | 2026-09-01 |
 
 ## Решения
 
@@ -40,6 +41,10 @@
 - Seed `_ensure_cross_role_catalog`: replenishes open slots в горизонте 30д для DJ Nova и Клуб Сигнал после исчерпания demo-слотов.
 - CI: `.github/workflows/ci.yml` триггерит `main` (AUTO-015 уже выполнен).
 
+## Agent loop
+
+PID **156101** — активен (`/tmp/agent_loop_autonomous.log`). Оставлен по запросу владельца.
+
 ## Handoff
 
-При исчерпании контекста: прочитать этот файл + `docs/AUTONOMOUS_COMPLETION.md`. Автономная очередь P0–P2 исчерпана — ждём OWNER_INPUTS для юрпакета и live payments.
+При исчерпании контекста: прочитать этот файл + `docs/AUTONOMOUS_COMPLETION.md`. Автономная очередь P0–P2 исчерпана — ждём OWNER_INPUTS для юрпакета (AUTO-016) и live payments (AUTO-017).
