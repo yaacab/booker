@@ -2,7 +2,7 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** `a89d7e5`  
+**HEAD:** `067b267`  
 **PR:** https://github.com/yaacab/booker/pull/14
 
 ## Текущая фаза
