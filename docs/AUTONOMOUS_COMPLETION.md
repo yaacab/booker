@@ -8,7 +8,7 @@
 | AUTO-002 | P0 | frontend | Три маршрута кабинетов + redirect `/cabinet` | A | `apps/web/app/cabinet/**`, `lib/cabinetRoutes.ts` | **DONE** | web-lint, e2e | `3d88ac0` | — |
 | AUTO-003 | P0 | frontend | Workspace switcher → правильный кабинет | A | `WorkspaceSwitcher.tsx` | **DONE** | web-lint | `3d88ac0` | — |
 | AUTO-004 | P0 | backend | Payment adapter interface (fail-closed) | C | `apps/api/booker_api/payments/**` | **DONE** | test-api | — | — |
-| AUTO-005 | P0 | backend | Notification adapters (disabled transport) | C | `apps/api/booker_api/notifications/**` | **DONE** | test-api | `d05d47d` | — |
+| AUTO-005 | P0 | backend | Notification adapters (disabled transport) | C | `apps/api/booker_api/notifications/**` | **DONE** | test-api | `38583f9` | — |
 | AUTO-006 | P0 | backend | Race test двойного hold | D | `apps/api/tests/test_hold_race.py` | **DONE** | test-api | pending | — |
 | AUTO-007 | P0 | backend | OfferVersion/quote invariant tests | D | `apps/api/tests/test_quote_versioning.py` | **READY** | test-api | — | — |
 | AUTO-008 | P0 | backend | Health/readiness feature flags | E | `routers/health.py`, `config.py` | **READY** | test-api | — | — |
