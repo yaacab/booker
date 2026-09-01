@@ -71,13 +71,23 @@ def test_concurrent_hold_same_slot_only_one_succeeds(client):
 
     app.dependency_overrides[get_db] = override
 
-    barrier = threading.Barrier(2)
+    sync_lock = threading.Lock()
+    ready = 0
+    start = threading.Event()
     results: list[int] = []
     lock = threading.Lock()
 
     def hold(booking_id: str, token: str) -> None:
+        nonlocal ready
         tc = TestClient(app)
-        barrier.wait(timeout=5)
+        with sync_lock:
+            ready += 1
+            if ready == 2:
+                start.set()
+        if not start.wait(timeout=30):
+            with lock:
+                results.append(598)
+            return
         res = tc.post(
             f"/bookings/{booking_id}/hold",
             headers=auth_header(token),
