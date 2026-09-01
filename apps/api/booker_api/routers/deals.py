@@ -41,6 +41,8 @@ from booker_api.models import (
     TeamMember,
     User,
     Venue,
+    VenueHall,
+    VenueTariff,
 )
 from booker_api.notifications import on_offer_created, on_request_created
 from booker_api.pricing import first_deal_waive, price_breakdown
@@ -58,6 +60,58 @@ from booker_api.security import (
 )
 
 router = APIRouter(tags=["deals"])
+
+
+def _open_slot_for_request(db: Session, req: Request) -> AvailabilitySlot | None:
+    if req.resource_type == "artist":
+        return (
+            db.query(AvailabilitySlot)
+            .filter(
+                AvailabilitySlot.resource_type == "artist",
+                AvailabilitySlot.resource_id == req.resource_id,
+                AvailabilitySlot.status == "open",
+            )
+            .first()
+        )
+    if req.resource_type == "hall":
+        return (
+            db.query(AvailabilitySlot)
+            .filter(
+                AvailabilitySlot.resource_type == "hall",
+                AvailabilitySlot.resource_id == req.resource_id,
+                AvailabilitySlot.status == "open",
+            )
+            .first()
+        )
+    if req.resource_type == "venue":
+        halls = db.query(VenueHall).filter(VenueHall.venue_id == req.resource_id).all()
+        for hall in halls:
+            slot = (
+                db.query(AvailabilitySlot)
+                .filter(
+                    AvailabilitySlot.resource_type == "hall",
+                    AvailabilitySlot.resource_id == hall.id,
+                    AvailabilitySlot.status == "open",
+                )
+                .first()
+            )
+            if slot:
+                return slot
+    return None
+
+
+def _honorarium_for_request(db: Session, req: Request) -> int:
+    if req.resource_type == "artist":
+        tariff = db.query(ArtistTariff).filter(ArtistTariff.artist_id == req.resource_id).first()
+        return tariff.honorarium_rub if tariff else 100000
+    if req.resource_type in {"venue", "hall"}:
+        venue_id = req.resource_id
+        if req.resource_type == "hall":
+            hall = db.get(VenueHall, req.resource_id)
+            venue_id = hall.venue_id if hall else req.resource_id
+        tariff = db.query(VenueTariff).filter(VenueTariff.venue_id == venue_id).first()
+        return tariff.honorarium_rub if tariff else 220000
+    return 100000
 
 ALLOWED = {
     "Draft": {"RequestSent"},
@@ -508,22 +562,8 @@ def list_requests(
         booking = None
         if offer:
             booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none()
-        slot = (
-            db.query(AvailabilitySlot)
-            .filter(
-                AvailabilitySlot.resource_type == req.resource_type,
-                AvailabilitySlot.resource_id == req.resource_id,
-                AvailabilitySlot.status == "open",
-            )
-            .first()
-        )
-        honorarium = 100000
-        if req.resource_type == "artist":
-            tariff = (
-                db.query(ArtistTariff).filter(ArtistTariff.artist_id == req.resource_id).first()
-            )
-            if tariff:
-                honorarium = tariff.honorarium_rub
+        slot = _open_slot_for_request(db, req)
+        honorarium = _honorarium_for_request(db, req)
         items.append(
             {
                 "id": req.id,

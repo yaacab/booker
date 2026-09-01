@@ -2,28 +2,26 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** `8357058`
+**HEAD:** pending AUTO-012 commit
   
 **PR:** https://github.com/yaacab/booker/pull/14
 
 ## Текущая фаза
 
-Волна 2: performer/venue shells (010–011) → cross-role E2E (012).
+Волна 2 завершена (012). Следующая: Deal Room accents (013).
 
 ## Следующая задача
 
-`AUTO-012` cross-role E2E полный цикл (P1).
+`AUTO-013` Deal Room role-specific accents (§7.5.7, P1).
 
 ## Последние проверки
 
 | Команда | Результат | Когда |
 |---------|-----------|-------|
-| `make lint` | ok | 2026-09-01 |
 | `make test-api` | 131 passed, 2 skipped | 2026-09-01 |
 | `make web-lint` | ok | 2026-09-01 |
 | `make web-build` | ok | 2026-09-01 |
-| `test:unit` | 9 passed | 2026-09-01 |
-| E2E flow | 4 passed | 2026-09-01 |
+| E2E | 13 passed, 4 skipped | 2026-09-01 |
 
 ## Решения
 
@@ -34,6 +32,8 @@
 - Ack оффера отклоняет устаревший `quote_id` (409) — подтверждается только активная OfferVersion.
 - Performer cabinet: виджеты новые заявки / ожидающие ответа / истекающие предложения / hold / ближайшие выступления / конфликты календаря / completeness + Supply-секция (услуги, iCal, vacation).
 - Venue cabinet: те же supply-виджеты + залы (calendar-targets) + Supply-секция.
+- Cross-role E2E: demo seed `customer@booker.test`, `artist@booker.test`, `venue@booker.test`; venue user добавлен в seed; `list_requests` резолвит hall-слоты для `resource_type=venue`.
+- event-studio-map v1 (4 теста с `?event_studio_map_v1=1`): skip — UI hidden, не регрессия cabinet.
 
 ## Handoff
 

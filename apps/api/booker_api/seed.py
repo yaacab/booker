@@ -22,11 +22,48 @@ from booker_api.security import hash_password, now
 DEMO_PASSWORD = "password1"
 
 
+def _ensure_venue_user(db: Session) -> bool:
+    """Владелец площадки «Клуб Сигнал» для cross-role E2E."""
+    venue = db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none()
+    if not venue:
+        return False
+    user = db.query(User).filter(User.email == "venue@booker.test").one_or_none()
+    if not user:
+        user = User(
+            email="venue@booker.test",
+            full_name="Мария Площадка",
+            phone="+79003333333",
+            password_hash=hash_password(DEMO_PASSWORD),
+        )
+        db.add(user)
+        db.flush()
+    org = db.get(Organization, venue.organization_id)
+    if not org:
+        return False
+    member = (
+        db.query(TeamMember)
+        .filter(TeamMember.user_id == user.id, TeamMember.organization_id == org.id)
+        .one_or_none()
+    )
+    if not member:
+        db.add(
+            TeamMember(
+                user_id=user.id,
+                organization_id=org.id,
+                role="owner",
+                can_confirm_offer=True,
+            )
+        )
+        return True
+    return False
+
+
 def seed(db: Session) -> dict[str, str]:
     if db.query(User).filter(User.email == "customer@booker.test").one_or_none():
         added = enrich_catalog(db)
+        venue_user_added = _ensure_venue_user(db)
         db.commit()
-        return {"status": "already_seeded", "catalog_added": added}
+        return {"status": "already_seeded", "catalog_added": added, "venue_user_added": venue_user_added}
 
     customer = User(
         email="customer@booker.test",
@@ -98,10 +135,12 @@ def seed(db: Session) -> dict[str, str]:
     db.commit()
     enrich_catalog(db)
     db.commit()
+    _ensure_venue_user(db)
     return {
         "status": "ok",
         "customer": "customer@booker.test",
         "artist": "artist@booker.test",
+        "venue": "venue@booker.test",
         "admin": "admin@booker.test",
         "password": DEMO_PASSWORD,
         "artist_id": artist.id,
@@ -163,9 +202,27 @@ def enrich_catalog(db: Session) -> int:
             db.add(_slot("artist", artist.id, day, 18))
         added += 1
     if not db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none():
+        venue_user = db.query(User).filter(User.email == "venue@booker.test").one_or_none()
+        if not venue_user:
+            venue_user = User(
+                email="venue@booker.test",
+                full_name="Мария Площадка",
+                phone="+79003333333",
+                password_hash=hash_password(DEMO_PASSWORD),
+            )
+            db.add(venue_user)
+            db.flush()
         vorg = Organization(name="Сигнал", kind="venue", city="Москва")
         db.add(vorg)
         db.flush()
+        db.add(
+            TeamMember(
+                user_id=venue_user.id,
+                organization_id=vorg.id,
+                role="owner",
+                can_confirm_offer=True,
+            )
+        )
         venue = Venue(
             organization_id=vorg.id,
             name="Клуб Сигнал",
