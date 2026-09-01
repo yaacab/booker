@@ -1,4 +1,4 @@
-import { CabinetDashboard } from "@/components/cabinet/CabinetDashboard";
+import { CustomerCabinetDashboard } from "@/components/cabinet/customer/CustomerCabinetDashboard";
 
 export const metadata = {
   title: "Кабинет заказчика",
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function CustomerCabinetPage() {
-  return <CabinetDashboard cabinetMode="customer" />;
+  return <CustomerCabinetDashboard />;
 }

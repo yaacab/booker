@@ -2,16 +2,16 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** `9e1d152`  
+**HEAD:** `a89d7e5`  
 **PR:** https://github.com/yaacab/booker/pull/14
 
 ## Текущая фаза
 
-Волна 2: quote tests (007) → dashboard shells (009–011).
+Волна 2: customer dashboard (009) → performer/venue shells (010–011).
 
 ## Следующая задача
 
-`AUTO-009` customer dashboard shell (P1) → затем `AUTO-010` performer dashboard.
+`AUTO-010` performer dashboard shell (P1).
 
 ## Последние проверки
 
@@ -21,7 +21,8 @@
 | `make test-api` | 131 passed, 2 skipped | 2026-09-01 |
 | `make web-lint` | ok | 2026-09-01 |
 | `make web-build` | ok | 2026-09-01 |
-| E2E | 15 passed | 2026-09-01 |
+| `test:unit` | 9 passed | 2026-09-01 |
+| E2E flow | 4 passed | 2026-09-01 |
 
 ## Решения
 
@@ -30,6 +31,7 @@
 - `/health` и `/readiness` отражают feature flags, notification providers и missing OWNER_INPUTS для включённых возможностей.
 - `/readiness` → 503 только при недоступной БД или незаполненных OWNER_INPUTS для запрошенных live-фич.
 - Ack оффера отклоняет устаревший `quote_id` (409) — подтверждается только активная OfferVersion.
+- Customer cabinet: виджеты ближайшие события / черновики / новые предложения / истекающие hold (данные `/events`, `/bookings`, `/deal-room`).
 
 ## Handoff
 

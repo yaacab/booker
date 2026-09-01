@@ -181,6 +181,18 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
 .btn.secondary:hover, button.secondary:hover { background: var(--surface-2); }
 .linkish { padding: 10px 12px; border: 0; font-weight: 600; color: var(--brand-dark); background: transparent; min-height: 44px; }
 .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+.dashboard-grid {
+  display: grid; gap: 16px; grid-template-columns: 1fr; margin-top: 20px;
+}
+.dashboard-widget h2 { font-size: 18px; margin: 0 0 4px; }
+.dashboard-widget-head { margin-bottom: 12px; }
+.dashboard-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.dashboard-list li a {
+  display: grid; gap: 6px; padding: 12px; border-radius: calc(var(--radius) - 4px);
+  border: 1px solid var(--border); background: var(--surface-2); text-decoration: none; color: inherit;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+.dashboard-list li a:hover { border-color: #cec6ba; transform: translateY(-1px); }
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 18px; box-shadow: var(--shadow);
@@ -436,6 +448,7 @@ details.timeline summary { cursor: pointer; }
 @media (min-width: 768px) {
   .bottom-nav { display: none; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 900px) {
   .hero-grid { grid-template-columns: minmax(0, 1.45fr) minmax(320px, .72fr); align-items: center; gap: clamp(28px, 5vw, 72px); padding-top: 80px; }
