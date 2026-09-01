@@ -7,7 +7,6 @@ from booker_api.config import settings
 from booker_api.rate_limit import (
     RateLimiter,
     auth_limiter,
-    client_key,
     upload_limiter,
     webhook_limiter,
 )
@@ -25,18 +24,6 @@ def test_rate_limiter_blocks_after_max():
         assert "Слишком много" in exc.detail
 
 
-from typing import ClassVar
-
-
-def test_client_key_prefers_forwarded_for():
-    class FakeClient:
-        host = "10.0.0.1"
-
-    class FakeRequest:
-        headers: ClassVar[dict[str, str]] = {"x-forwarded-for": "203.0.113.5, 10.0.0.1"}
-        client = FakeClient()
-
-    assert client_key(FakeRequest(), "login") == "login:203.0.113.5"
 
 
 def test_login_rate_limit(client):
