@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cabinetWidgetHeadingId } from "@/lib/cabinetA11y";
 
 type DashboardWidgetProps = {
   title: string;
@@ -9,10 +10,12 @@ type DashboardWidgetProps = {
 };
 
 export function DashboardWidget({ title, hint, empty, isEmpty, children }: DashboardWidgetProps) {
+  const headingId = cabinetWidgetHeadingId(title);
+
   return (
-    <section className="card dashboard-widget">
+    <section className="card dashboard-widget" aria-labelledby={headingId}>
       <header className="dashboard-widget-head">
-        <h2>{title}</h2>
+        <h2 id={headingId}>{title}</h2>
         {hint ? <p className="timeline">{hint}</p> : null}
       </header>
       {isEmpty ? <p className="timeline">{empty || "Пока пусто"}</p> : children}

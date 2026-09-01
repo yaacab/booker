@@ -58,9 +58,42 @@ def _ensure_venue_user(db: Session) -> bool:
     return False
 
 
+def _open_in_horizon(db: Session, resource_type: str, resource_id: str) -> bool:
+    horizon_end = now() + timedelta(days=30)
+    return (
+        db.query(AvailabilitySlot)
+        .filter(
+            AvailabilitySlot.resource_type == resource_type,
+            AvailabilitySlot.resource_id == resource_id,
+            AvailabilitySlot.status == "open",
+            AvailabilitySlot.ends_at >= now(),
+            AvailabilitySlot.starts_at <= horizon_end,
+        )
+        .count()
+        > 0
+    )
+
+
+def _ensure_cross_role_catalog(db: Session) -> int:
+    """Open-слоты в горизонте 30д для cross-role E2E после исчерпания seed-слотов."""
+    added = 0
+    nova = db.query(Artist).filter(Artist.name == "DJ Nova").one_or_none()
+    if nova and not _open_in_horizon(db, "artist", nova.id):
+        db.add(_slot("artist", nova.id, 14, 18))
+        added += 1
+    venue = db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none()
+    if venue:
+        hall = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).first()
+        if hall and not _open_in_horizon(db, "hall", hall.id):
+            db.add(_slot("hall", hall.id, 14, 19))
+            added += 1
+    return added
+
+
 def seed(db: Session) -> dict[str, str]:
     if db.query(User).filter(User.email == "customer@booker.test").one_or_none():
         added = enrich_catalog(db)
+        added += _ensure_cross_role_catalog(db)
         venue_user_added = _ensure_venue_user(db)
         db.commit()
         return {"status": "already_seeded", "catalog_added": added, "venue_user_added": venue_user_added}
@@ -134,6 +167,7 @@ def seed(db: Session) -> dict[str, str]:
     )
     db.commit()
     enrich_catalog(db)
+    _ensure_cross_role_catalog(db)
     db.commit()
     _ensure_venue_user(db)
     return {

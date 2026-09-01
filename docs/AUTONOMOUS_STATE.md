@@ -2,27 +2,27 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** `8146ae9`
+**HEAD:** _(после push AUTO-014)_
   
 **PR:** https://github.com/yaacab/booker/pull/14
 
 ## Текущая фаза
 
-Волна 3 завершена (013). Следующая: a11y cabinets (014) или CI master→main (015).
+Волна 4 завершена (014–015). Все P0–P2 технические задачи **DONE**. Остаются только EXTERNAL_BLOCKED (016–017).
 
 ## Следующая задача
 
-`AUTO-014` a11y + reduced motion audit cabinets (P2).
+Нет автономных READY-задач. Ожидание OWNER_INPUTS для AUTO-016 (юрпакет).
 
 ## Последние проверки
 
 | Команда | Результат | Когда |
 |---------|-----------|-------|
-| `make test-api` | 131 passed, 2 skipped | 2026-09-01 |
+| `make test-api` | ok | 2026-09-01 |
 | `make web-lint` | ok | 2026-09-01 |
 | `make web-build` | ok | 2026-09-01 |
-| `npm run test:unit` | 13 passed | 2026-09-01 |
-| E2E flow + cross-role | 6 passed | 2026-09-01 |
+| `npm run test:unit` | 15 passed | 2026-09-01 |
+| E2E (flow + cross-role + a11y) | 15 passed, 4 skipped | 2026-09-01 |
 
 ## Решения
 
@@ -36,7 +36,10 @@
 - Cross-role E2E: demo seed `customer@booker.test`, `artist@booker.test`, `venue@booker.test`; venue user добавлен в seed; `list_requests` резолвит hall-слоты для `resource_type=venue`.
 - Deal Room accents: `workspace_kind` в `/deal-room/{id}`; UI-сетка акцентов customer/performer/venue на вкладке «Сводка»; booking_id и quote_id едины для всех ролей.
 - event-studio-map v1 (4 теста с `?event_studio_map_v1=1`): skip — UI hidden, не регрессия cabinet.
+- Cabinet a11y: `CabinetPageShell` (landmarks, skip-to-widgets, skeleton status); `DashboardWidget` с `aria-labelledby`; reduced-motion сброс hover-transform; e2e `cabinet-a11y.spec.ts`.
+- Seed `_ensure_cross_role_catalog`: replenishes open slots в горизонте 30д для DJ Nova и Клуб Сигнал после исчерпания demo-слотов.
+- CI: `.github/workflows/ci.yml` триггерит `main` (AUTO-015 уже выполнен).
 
 ## Handoff
 
-При исчерпании контекста: прочитать этот файл + `docs/AUTONOMOUS_COMPLETION.md`, продолжить с `Следующая задача`.
+При исчерпании контекста: прочитать этот файл + `docs/AUTONOMOUS_COMPLETION.md`. Автономная очередь P0–P2 исчерпана — ждём OWNER_INPUTS для юрпакета и live payments.

@@ -279,8 +279,8 @@ export function SupplyCabinetSection({ orgId, role, onCompletenessChange }: Supp
   if (!orgId) return null;
 
   return (
-    <section className="supply-section" style={{ marginTop: 28 }}>
-      <h2>Supply</h2>
+    <section className="supply-section" style={{ marginTop: 28 }} aria-labelledby="cabinet-supply-heading">
+      <h2 id="cabinet-supply-heading">Supply</h2>
       <p className="timeline">Услуги, занятость iCal и режим отпуска — ниже основных виджетов.</p>
       {services.length > 0 ? (
         <ul>

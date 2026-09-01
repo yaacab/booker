@@ -1,10 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { setToken } from "@/lib/api";
-import { cabinetHeadline, cabinetTitle } from "@/lib/cabinetRoutes";
-import { KIND_LABEL } from "@/lib/copy";
-import { loginHref } from "@/lib/next";
+import { CabinetPageShell } from "../CabinetPageShell";
 import { SupplyCabinetSection } from "../SupplyCabinetSection";
 import { usePerformerCabinetData } from "./usePerformerCabinetData";
 import { AwaitingResponseWidget } from "./widgets/AwaitingResponseWidget";
@@ -36,17 +33,15 @@ export function PerformerCabinetDashboard() {
   } = usePerformerCabinetData();
 
   return (
-    <main className="performer-cabinet">
-      <p className="kicker">{cabinetTitle("performer")} · {KIND_LABEL.artist || "Букер"}</p>
-      <h1>{cabinetHeadline("performer")}</h1>
-      {email ? <p className="timeline">{email}{orgName ? ` · ${orgName}` : ""}</p> : null}
-      {!ready ? <div className="skeleton" /> : null}
-      {error ? (
-        <p>
-          {error}. <Link href={loginHref("/cabinet/performer")}>Войти</Link>
-        </p>
-      ) : null}
-      {empty ? (
+    <CabinetPageShell
+      mode="performer"
+      kindKey="artist"
+      ready={ready}
+      error={error}
+      email={email}
+      orgName={orgName}
+      empty={empty}
+      emptyState={
         <article className="card empty">
           <h2>Пока нет входящих заявок</h2>
           <p>Когда заказчик отправит запрос на ваш слот, он появится здесь.</p>
@@ -57,36 +52,21 @@ export function PerformerCabinetDashboard() {
             </Link>
           </p>
         </article>
-      ) : (
-        <div className="dashboard-grid">
-          <NewRequestsWidget
-            requests={newRequests}
-            role={role}
-            offerBusy={offerBusy}
-            onSendOffer={(item) => void sendOffer(item)}
-          />
-          <AwaitingResponseWidget deals={awaitingResponse} />
-          <ExpiringOffersWidget deals={expiringOffers} />
-          <HoldsWidget holds={activeHolds} />
-          <UpcomingPerformancesWidget bookings={upcomingPerformances} />
-          <CalendarConflictsWidget conflicts={calendarConflicts} />
-          {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
-        </div>
-      )}
-      {orgId ? <SupplyCabinetSection orgId={orgId} role={role} /> : null}
-      <p style={{ marginTop: 24 }}>
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => {
-            setToken(null);
-            localStorage.removeItem("booker.admin");
-            window.location.href = "/login";
-          }}
-        >
-          Выйти
-        </button>
-      </p>
-    </main>
+      }
+      footer={orgId ? <SupplyCabinetSection orgId={orgId} role={role} /> : null}
+    >
+      <NewRequestsWidget
+        requests={newRequests}
+        role={role}
+        offerBusy={offerBusy}
+        onSendOffer={(item) => void sendOffer(item)}
+      />
+      <AwaitingResponseWidget deals={awaitingResponse} />
+      <ExpiringOffersWidget deals={expiringOffers} />
+      <HoldsWidget holds={activeHolds} />
+      <UpcomingPerformancesWidget bookings={upcomingPerformances} />
+      <CalendarConflictsWidget conflicts={calendarConflicts} />
+      {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
+    </CabinetPageShell>
   );
 }
