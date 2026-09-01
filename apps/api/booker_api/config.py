@@ -8,6 +8,17 @@ class Settings(BaseSettings):
     webhook_secret: str = "dev-webhook-secret"
     payment_provider: str = "stub"
     payment_merchant_id: str = ""
+    payment_public_key: str = ""
+    payment_secret_key: str = ""
+    lawyer_approval_date: str = ""
+    payment_flow_approval: str = ""
+    support_email: str = ""
+    email_api_key: str = ""
+    sms_api_key: str = ""
+    object_storage_provider: str = "local"
+    object_storage_bucket: str = ""
+    object_storage_access_key: str = ""
+    object_storage_secret_key: str = ""
     hold_ttl_hours: int = 24
     pilot_commission_rate: float = 0.10
     cors_origins: str = (
