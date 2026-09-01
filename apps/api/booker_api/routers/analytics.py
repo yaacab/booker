@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
@@ -26,7 +28,7 @@ def record_client_event(
         actor_user_id=user.id,
         action="client.event",
         entity_type="client_event",
-        entity_id=body.name,
+        entity_id=str(uuid4()),
         payload={"name": body.name, "properties": body.properties},
     )
     db.commit()
