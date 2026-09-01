@@ -2,17 +2,17 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** `6128282`
+**HEAD:** `251bdd9` (локально; CI зелёный на том же коммите)
 
 **PR:** https://github.com/yaacab/booker/pull/14
 
 ## Текущая фаза
 
-**launch-readiness audit (tick 0)** — Event Studio Map E2E unskipped, SiteChrome fullscreen bug fixed, полный зелёный прогон локально.
+**launch-readiness follow-up (tick 1)** — env gates документированы; restore-drill smoke через Python fallback; Postgres migrate через Docker wrapper.
 
 ## Agent loop (launch audit)
 
-PID **205543** — `AGENT_LOOP_TICK_launch_audit` (`/tmp/launch_audit_loop.pid`), интервал 5m.
+**Остановлен** (PID 205543, audit complete, CI green).
 
 ## Последние проверки (launch audit tick 0)
 
@@ -25,9 +25,9 @@ PID **205543** — `AGENT_LOOP_TICK_launch_audit` (`/tmp/launch_audit_loop.pid`)
 | `npm run test:unit` | 15 passed | 2026-09-01 |
 | E2E (`npm run test:e2e`) | **19 passed**, 0 skipped | 2026-09-01 |
 | Event Studio Map E2E | **5/5 passed** (0 skip) | 2026-09-01 |
-| Backup/restore drill | **BLOCKED** — `sqlite3` CLI отсутствует в PATH | 2026-09-01 |
-| Postgres migrate + subset | **PARTIAL** — `docker-compose up -d postgres` ok; `make migrate` fail: Python `ModuleNotFoundError: _ctypes` (psycopg) | 2026-09-01 |
-| CI PR #14 (`api` + `web`) | **green** (`6128282`) | 2026-09-01 |
+| Backup/restore drill | **OK (smoke)** — `infra/restore-drill.sh` с Python fallback (без `sqlite3` CLI); полные pytest backup-тесты всё ещё skip без CLI | 2026-09-01 |
+| Postgres migrate + subset | **OK (docker)** — `infra-postgres-1` up; `make migrate` fail (`_ctypes` в pyenv 3.11.6); **`make migrate-docker`** / `./infra/migrate-postgres-docker.sh` → alembic head | 2026-09-01 |
+| CI PR #14 (`api` + `web`) | **green** (`251bdd9`) | 2026-09-01 |
 
 ## Решения (launch audit)
 
@@ -43,4 +43,4 @@ PID **205543** — `AGENT_LOOP_TICK_launch_audit` (`/tmp/launch_audit_loop.pid`)
 
 ## Handoff
 
-Launch-readiness: merges не в `master`. Следующий tick loop: CI PR #14, ops backup drill на хосте с `sqlite3`, Postgres migrate на CI/хосте с рабочим psycopg.
+Launch-readiness: merges не в `master`. Ops: `sudo dnf install -y sqlite3` (или PATH к CLI) для полного backup pytest; пересборка pyenv Python с libffi для `make migrate`, либо `make migrate-docker` локально.

@@ -1,4 +1,4 @@
-.PHONY: init test-api lint web-build web-lint check seed deploy wait-dns migrate
+.PHONY: init test-api lint web-build web-lint check seed deploy wait-dns migrate migrate-docker
 
 PYTHON ?= $(CURDIR)/.venv/bin/python
 
@@ -26,6 +26,9 @@ seed:
 
 migrate:
 	cd apps/api && $(PYTHON) -m alembic upgrade head
+
+migrate-docker:
+	./infra/migrate-postgres-docker.sh
 
 deploy:
 	bash infra/deploy-vps.sh
