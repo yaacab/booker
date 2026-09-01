@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { DealRoomSummary } from "@/components/deal-room/DealRoomSummary";
 import { HoldCountdown } from "@/components/HoldCountdown";
 import { api, trackClientEvent } from "@/lib/api";
+import { orgKindToDealRoomAccentKind } from "@/lib/dealRoomAccents";
 import { money } from "@/lib/format";
-import { nextAction, nextActionHint, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
+import { nextAction, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
 
 const TABS = [
   { id: "summary", label: "Сводка" },
@@ -25,6 +27,7 @@ type Room = {
   requirement_id?: string | null;
   status: string;
   role: "customer" | "supplier";
+  workspace_kind?: string;
   next_step: string;
   event_title?: string;
   participants?: { role: string; name: string; duty: string }[];
@@ -116,6 +119,7 @@ export default function DealPage() {
 
   const current = room;
   const side = current.role;
+  const accentKind = orgKindToDealRoomAccentKind(current.workspace_kind ?? (side === "customer" ? "customer" : "artist"));
   const people = current.participants ?? [];
   const action = nextAction(current.status);
   const idx = STAGE_ORDER.indexOf(current.status);
@@ -204,7 +208,15 @@ export default function DealPage() {
           {room.booking_id} · {STATUS_LABEL[room.status] || room.status}
         </p>
         <h1>{room.event_title || "Deal Room"}</h1>
-        <p>Вы {side === "customer" ? "заказчик" : "исполнитель"}. {room.next_step}</p>
+        <p>
+          Вы{" "}
+          {accentKind === "customer"
+            ? "заказчик"
+            : accentKind === "venue"
+              ? "площадка"
+              : "исполнитель"}
+          . {room.next_step}
+        </p>
         {room.event_id ? (
           <p className="timeline">
             <Link href={`/events/${room.event_id}`}>Event Control Room</Link>
@@ -310,34 +322,7 @@ export default function DealPage() {
             ))}
           </div>
           {tab === "summary" && (
-            <section className="card">
-              <p className="kicker">Сводка сделки</p>
-              {room.event_id ? (
-                <p>
-                  <Link href={`/events/${room.event_id}`}>{room.event_title || "Событие"}</Link>
-                </p>
-              ) : (
-                <p className="timeline">Событие не привязано</p>
-              )}
-              {room.requirement_id ? (
-                <p className="mono">requirement_id: {room.requirement_id}</p>
-              ) : null}
-              <p>
-                Статус брони: <strong>{STATUS_LABEL[room.status] || room.status}</strong>
-              </p>
-              <p>
-                <span className="kicker">Следующее действие</span>
-                <br />
-                {room.next_step}
-                <br />
-                <span className="timeline">{nextActionHint(action.kind)}</span>
-              </p>
-              {room.event_id ? (
-                <p>
-                  <Link href={`/events/${room.event_id}`}>Event Control Room</Link>
-                </p>
-              ) : null}
-            </section>
+            <DealRoomSummary accentKind={accentKind} room={room} actionKind={action.kind} />
           )}
           {tab === "chat" && (
             <section className="card">

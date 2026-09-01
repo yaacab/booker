@@ -1159,6 +1159,7 @@ def deal_room(
     cust_org = db.get(Organization, event.organization_id)
     sup_org = db.get(Organization, req.supplier_org_id)
     role = "customer" if membership_ok(db, user, event.organization_id) else "supplier"
+    workspace_kind = "customer" if role == "customer" else (sup_org.kind if sup_org else "artist")
     return {
         "booking_id": booking.id,
         "offer_id": offer.id,
@@ -1166,6 +1167,7 @@ def deal_room(
         "requirement_id": getattr(req, "requirement_id", None),
         "status": booking.status,
         "role": role,
+        "workspace_kind": workspace_kind,
         "event_title": event.title,
         "tabs": ["chat", "terms", "documents", "payments", "dispute"],
         "dispute_categories": [

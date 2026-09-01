@@ -25,6 +25,7 @@ def test_deal_room_links_event_and_lists_documents(client):
     assert client.post(f"/bookings/{ctx['booking_id']}/hold", headers=ch).status_code == 200
     room = client.get(f"/deal-room/{ctx['booking_id']}", headers=ch).json()
     assert room["event_id"]
+    assert room["workspace_kind"] == "customer"
     assert room["documents"]
     assert room["documents"][0]["kind"] == "offer"
     assert room["documents"][0]["quote_id"]

@@ -37,6 +37,8 @@ test.describe("Cross-role E2E §7.5.11", () => {
       await expect(page).toHaveURL(/\/deals\//, { timeout: 15_000 });
       artistBookingId = page.url().split("/deals/")[1]?.split(/[?#]/)[0] ?? "";
       expect(artistBookingId).toBeTruthy();
+      await expect(page.getByTestId("deal-room-accents")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Райдер" })).toBeVisible();
       await expect(page.getByText("quote_id:").first()).toBeVisible();
       await page.getByRole("button", { name: "Подтвердить условия" }).click();
       await expect(page.getByText("подтвердил только исполнитель").first()).toBeVisible({ timeout: 10_000 });
@@ -62,6 +64,8 @@ test.describe("Cross-role E2E §7.5.11", () => {
       await expect(page).toHaveURL(/\/deals\//, { timeout: 15_000 });
       venueBookingId = page.url().split("/deals/")[1]?.split(/[?#]/)[0] ?? "";
       expect(venueBookingId).toBeTruthy();
+      await expect(page.getByTestId("deal-room-accents")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Зал" })).toBeVisible();
       await page.getByRole("button", { name: "Подтвердить условия" }).click();
       await expect(page.getByText("подтвердил только исполнитель").first()).toBeVisible({ timeout: 10_000 });
     });
@@ -106,6 +110,9 @@ test.describe("Cross-role E2E §7.5.11", () => {
 
       for (const bookingId of [artistBookingId, venueBookingId]) {
         await page.goto(`/deals/${bookingId}`);
+        await expect(page.getByTestId("deal-room-accents")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Состав" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Итог" })).toBeVisible();
         await page.getByRole("button", { name: "Подтвердить условия" }).click();
         await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
         await page.getByRole("button", { name: "Удержать дату" }).click();

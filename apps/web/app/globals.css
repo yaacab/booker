@@ -181,6 +181,20 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
 .btn.secondary:hover, button.secondary:hover { background: var(--surface-2); }
 .linkish { padding: 10px 12px; border: 0; font-weight: 600; color: var(--brand-dark); background: transparent; min-height: 44px; }
 .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+.deal-accent-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+@media (min-width: 640px) {
+  .deal-accent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 960px) {
+  .deal-accent-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.deal-accent-card { margin: 0; }
+.deal-accent-head h3 { margin: 0 0 4px; font-size: 15px; }
+.deal-summary .mono { margin: 8px 0; }
 .dashboard-grid {
   display: grid; gap: 16px; grid-template-columns: 1fr; margin-top: 20px;
 }
