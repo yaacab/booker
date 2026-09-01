@@ -11,6 +11,7 @@ test.describe("Event Studio Map v1", () => {
   test("feature flag включает карту события", async ({ page }) => {
     await page.goto("/events/new?event_studio_map_v1=1");
     await expect(page.getByRole("heading", { name: "Соберите событие" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Основное" })).toHaveCount(0);
     await expect(page.getByRole("status")).toContainText(/Сохран/i);
     await expect(page.getByLabel("Этапы создания события")).toBeVisible();
     await expect(page.getByLabel("Карта события")).toBeVisible();
@@ -32,6 +33,8 @@ test.describe("Event Studio Map v1", () => {
     await toggle.click();
     await expect(page.getByRole("complementary", { name: "Добавить исполнителя" })).toBeVisible();
     await expect(page.getByLabel("Поиск исполнителя")).toBeVisible();
+    await page.getByLabel("Закрыть каталог исполнителей").click();
+    await expect(toggle).toBeVisible();
   });
 
   test("screenshots desktop 1440 и mobile 390", async ({ page }) => {

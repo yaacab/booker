@@ -7,6 +7,7 @@ import { BrandLockup } from "@/components/BrandLockup";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { getToken, setToken, trackClientEvent } from "@/lib/api";
 import { loginHref } from "@/lib/next";
+import { isEventStudioMapV1 } from "@/lib/features";
 
 const ADMIN_KEY = "booker.admin";
 const DEFAULT_TITLE = "Букер — сделки с артистами и площадками";
@@ -38,12 +39,17 @@ function tabTitle(path: string): string {
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [admin, setAdmin] = useState(false);
+  const [fullScreenStudio, setFullScreenStudio] = useState(false);
   const path = usePathname();
 
   useEffect(() => {
     setAuthed(Boolean(getToken()));
     setAdmin(localStorage.getItem(ADMIN_KEY) === "1");
   }, []);
+
+  useEffect(() => {
+    setFullScreenStudio(path === "/events/new" && isEventStudioMapV1());
+  }, [path]);
 
   useEffect(() => {
     let title = tabTitle(path);
@@ -69,6 +75,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [path]);
+
+  if (fullScreenStudio) {
+    return <div id="content">{children}</div>;
+  }
 
   return (
     <>
