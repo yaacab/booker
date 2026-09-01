@@ -17,10 +17,11 @@ def test_admin_requires_totp_when_enforced(client, monkeypatch):
 
 def test_admin_with_totp_when_enforced(client, monkeypatch):
     from booker_api.config import settings
+    from tests.totp_helpers import TEST_TOTP_SECRET, admin_totp_headers
 
     monkeypatch.setattr(settings, "require_admin_2fa_enforced", True)
-    admin = _promote_admin(client, "2fa-ok@booker.test", totp="111111")
-    res = client.get("/admin/metrics", headers=auth_header(admin["token"]))
+    admin = _promote_admin(client, "2fa-ok@booker.test", totp=TEST_TOTP_SECRET)
+    res = client.get("/admin/metrics", headers=admin_totp_headers(admin["token"]))
     assert res.status_code == 200
 
 

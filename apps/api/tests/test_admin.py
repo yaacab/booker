@@ -1,5 +1,6 @@
 from tests.conftest import auth_header, register
 from tests.test_payments import _awaiting_payment, _sign
+from tests.totp_helpers import TEST_TOTP_SECRET, totp_code
 
 
 def _promote_admin(client, email: str, totp: str | None = None) -> dict:
@@ -36,13 +37,13 @@ def test_refund_requires_second_admin(client):
             "signature": _sign("evt-ref", ctx["payment_id"], "succeeded"),
         },
     )
-    admin = _promote_admin(client, "adm2@booker.test", totp="111111")
+    admin = _promote_admin(client, "adm2@booker.test", totp=TEST_TOTP_SECRET)
     same = client.post(
         "/admin/refunds",
         json={
             "payment_id": ctx["payment_id"],
             "approver_user_id": admin["user_id"],
-            "totp": "111111",
+            "totp": totp_code(),
         },
         headers=auth_header(admin["token"]),
     )
@@ -53,7 +54,7 @@ def test_refund_requires_second_admin(client):
         json={
             "payment_id": ctx["payment_id"],
             "approver_user_id": other["user_id"],
-            "totp": "111111",
+            "totp": totp_code(),
         },
         headers=auth_header(admin["token"]),
     )
@@ -144,6 +145,7 @@ def test_admin_metrics_client_events_by_name(client):
     admin = _promote_admin(client, "metrics-client@booker.test")
     db = client.app.state.SessionLocal()
     try:
+        import json
         from datetime import datetime, timezone
 
         from booker_api.models import AuditLog
@@ -151,9 +153,30 @@ def test_admin_metrics_client_events_by_name(client):
         ts = datetime.now(timezone.utc)
         db.add_all(
             [
-                AuditLog(action="client.event", entity_type="client_event", entity_id="search.performed", created_at=ts),
-                AuditLog(action="client.event", entity_type="client_event", entity_id="search.performed", created_at=ts),
-                AuditLog(action="client.event", entity_type="client_event", entity_id="deal.room.opened", created_at=ts),
+                AuditLog(
+                    action="client.event",
+                    entity_type="client_event",
+                    entity_id="evt-1",
+                    actor_user_id=admin["user_id"],
+                    payload=json.dumps({"name": "search.performed"}),
+                    created_at=ts,
+                ),
+                AuditLog(
+                    action="client.event",
+                    entity_type="client_event",
+                    entity_id="evt-2",
+                    actor_user_id=admin["user_id"],
+                    payload=json.dumps({"name": "search.performed"}),
+                    created_at=ts,
+                ),
+                AuditLog(
+                    action="client.event",
+                    entity_type="client_event",
+                    entity_id="evt-3",
+                    actor_user_id="other-user",
+                    payload=json.dumps({"name": "deal.room.opened"}),
+                    created_at=ts,
+                ),
             ]
         )
         db.commit()
@@ -162,8 +185,39 @@ def test_admin_metrics_client_events_by_name(client):
     res = client.get("/admin/metrics", headers=auth_header(admin["token"]))
     row = res.json()["periods"]["7"]["client.event"]
     assert row["count"] == 3
+    assert row["unique_entities"] == 2
     assert row["by_event"]["search.performed"] == 2
     assert row["by_event"]["deal.room.opened"] == 1
+
+
+def test_admin_metrics_client_events_unique_users(client):
+    admin = _promote_admin(client, "metrics-uniq@booker.test")
+    db = client.app.state.SessionLocal()
+    try:
+        import json
+        from datetime import datetime, timezone
+
+        from booker_api.models import AuditLog
+
+        ts = datetime.now(timezone.utc)
+        for idx, user_id in enumerate(["u1", "u2", "u3"]):
+            db.add(
+                AuditLog(
+                    action="client.event",
+                    entity_type="client_event",
+                    entity_id=f"evt-{idx}",
+                    actor_user_id=user_id,
+                    payload=json.dumps({"name": "search.performed"}),
+                    created_at=ts,
+                )
+            )
+        db.commit()
+    finally:
+        db.close()
+    res = client.get("/admin/metrics", headers=auth_header(admin["token"]))
+    row = res.json()["periods"]["7"]["client.event"]
+    assert row["count"] == 3
+    assert row["unique_entities"] == 3
 
 
 def test_admin_metrics_dashboards(client):
@@ -180,13 +234,15 @@ def test_admin_metrics_dashboards(client):
                 AuditLog(
                     action="client.event",
                     entity_type="client_event",
-                    entity_id="event.studio.started",
+                    entity_id="evt-studio-1",
+                    payload='{"name": "event.studio.started"}',
                     created_at=ts,
                 ),
                 AuditLog(
                     action="client.event",
                     entity_type="client_event",
-                    entity_id="event.studio.completed",
+                    entity_id="evt-studio-2",
+                    payload='{"name": "event.studio.completed"}',
                     created_at=ts,
                 ),
                 AuditLog(action="request.created", entity_type="request", entity_id="r1", created_at=ts),
@@ -196,13 +252,15 @@ def test_admin_metrics_dashboards(client):
                 AuditLog(
                     action="client.event",
                     entity_type="client_event",
-                    entity_id="search.performed",
+                    entity_id="evt-search-1",
+                    payload='{"name": "search.performed"}',
                     created_at=ts,
                 ),
                 AuditLog(
                     action="client.event",
                     entity_type="client_event",
-                    entity_id="deal.room.opened",
+                    entity_id="evt-deal-1",
+                    payload='{"name": "deal.room.opened"}',
                     created_at=ts,
                 ),
             ]
@@ -226,7 +284,7 @@ def test_admin_enable_totp(client):
     assert admin
     res = client.post(
         "/admin/totp/enable",
-        json={"secret": "654321"},
+        json={"secret": "JBSWY3DPEHPK3PXP"},
         headers=auth_header(admin["token"]),
     )
     assert res.status_code == 200

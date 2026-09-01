@@ -38,6 +38,13 @@ def ensure_missing_columns(bind) -> None:
         bind, "availability_slots", "external_uid", "external_uid VARCHAR(255)"
     )
     _add_column_if_missing(bind, "requests", "requirement_id", "requirement_id VARCHAR(36)")
+    ts_type = "TIMESTAMPTZ" if dialect == "postgresql" else "DATETIME"
+    _add_column_if_missing(
+        bind,
+        "session_tokens",
+        "admin_2fa_verified_at",
+        f"admin_2fa_verified_at {ts_type}",
+    )
 
 
 def ensure_sqlite_columns(bind) -> None:

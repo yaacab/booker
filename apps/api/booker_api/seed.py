@@ -46,7 +46,7 @@ def seed(db: Session) -> dict[str, str]:
         password_hash=hash_password(DEMO_PASSWORD),
         is_platform_admin=True,
         totp_enabled=True,
-        totp_secret="111111",
+        totp_secret="JBSWY3DPEHPK3PXP",
     )
     db.add_all([customer, artist_user, admin])
     db.flush()

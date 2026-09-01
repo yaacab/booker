@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     composition_v2: bool = True
     workspace_switcher: bool = True
     require_admin_2fa_enforced: bool = False
+    admin_2fa_step_up_minutes: int = 15
+    rate_limit_max_keys: int = 10_000
     upload_dir: str = "./data/uploads"
     max_upload_bytes: int = 5_242_880  # 5 MiB
 

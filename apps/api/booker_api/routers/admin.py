@@ -1,5 +1,7 @@
+import json
 from datetime import timedelta
 
+import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -73,28 +75,39 @@ def _payment_metrics(db: Session, since) -> dict:
 def _client_event_metrics(db: Session, since) -> dict:
     base = db.query(AuditLog).filter(AuditLog.created_at >= since, AuditLog.action == "client.event")
     unique = (
-        db.query(func.count(func.distinct(AuditLog.entity_id)))
+        db.query(func.count(func.distinct(AuditLog.actor_user_id)))
         .filter(
             AuditLog.created_at >= since,
             AuditLog.action == "client.event",
-            AuditLog.entity_id != "",
+            AuditLog.actor_user_id.isnot(None),
         )
         .scalar()
         or 0
     )
-    by_event = {
-        event: count
-        for event, count in db.query(AuditLog.entity_id, func.count(AuditLog.id))
-        .filter(AuditLog.created_at >= since, AuditLog.action == "client.event")
-        .group_by(AuditLog.entity_id)
-        .all()
-    }
+    by_event: dict[str, int] = {}
+    for row in base.all():
+        try:
+            payload = json.loads(row.payload or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        name = str(payload.get("name") or "unknown")
+        by_event[name] = by_event.get(name, 0) + 1
     return {"count": base.count(), "unique_entities": unique, "by_event": by_event}
+
+
+def _client_event_name(row: AuditLog) -> str:
+    try:
+        payload = json.loads(row.payload or "{}")
+    except json.JSONDecodeError:
+        return ""
+    return str(payload.get("name") or "")
 
 
 def _audit_count(db: Session, since, action: str, entity_id: str | None = None) -> int:
     q = db.query(AuditLog).filter(AuditLog.created_at >= since, AuditLog.action == action)
     if entity_id is not None:
+        if action == "client.event":
+            return sum(1 for row in q.all() if _client_event_name(row) == entity_id)
         q = q.filter(AuditLog.entity_id == entity_id)
     return q.count()
 
@@ -238,7 +251,7 @@ def refund(
     db: Session = Depends(get_db),
 ):
     admin_sensitive_limiter.check(client_key(request, "admin-refund"))
-    require_admin_2fa(user, body.totp)
+    require_admin_2fa(user, body.totp, request)
     if body.approver_user_id == user.id:
         raise HTTPException(403, "Возврат требует второго администратора")
     approver = db.get(User, body.approver_user_id)
@@ -277,7 +290,12 @@ def enable_admin_totp(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")
     if user.totp_enabled:
         raise HTTPException(400, "Второй фактор уже включён")
-    user.totp_secret = body.secret.strip()
+    secret = body.secret.strip()
+    try:
+        pyotp.TOTP(secret)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(400, "Секрет TOTP должен быть в формате Base32") from exc
+    user.totp_secret = secret
     user.totp_enabled = True
     audit(
         db,

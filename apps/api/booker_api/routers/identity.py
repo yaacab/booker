@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from booker_api.composition import ALLOWED_ORG_KINDS, ALLOWED_ROLES, normalize_kind
+from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import Organization, TeamMember, User
 from booker_api.rate_limit import auth_limiter, client_key
@@ -9,12 +10,15 @@ from booker_api.schemas import LoginIn, MemberIn, OrgIn, RegisterIn
 from booker_api.security import (
     audit,
     current_user,
+    ensure_admin_2fa_configured,
     hash_password,
     issue_token,
+    mark_admin_2fa_verified,
     membership,
     require_org_member,
     verify_password,
 )
+from booker_api.totp import verify_totp_code
 
 router = APIRouter(tags=["identity"])
 
@@ -56,7 +60,13 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email.lower()).one_or_none()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
+    if user.is_platform_admin and settings.require_admin_2fa_enforced:
+        ensure_admin_2fa_configured(user)
+        if not verify_totp_code(user.totp_secret, body.totp):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Нужен код второго фактора")
     token = issue_token(db, user)
+    if user.is_platform_admin and settings.require_admin_2fa_enforced:
+        mark_admin_2fa_verified(db, token)
     db.commit()
     return {"token": token, "user_id": user.id, "is_platform_admin": user.is_platform_admin}
 

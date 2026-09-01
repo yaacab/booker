@@ -22,6 +22,7 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: str
     password: str
+    totp: str | None = None
 
 
 class TokenOut(BaseModel):
