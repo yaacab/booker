@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./booker.db"
     webhook_secret: str = "dev-webhook-secret"
     payment_provider: str = "stub"
+    payment_merchant_id: str = ""
     hold_ttl_hours: int = 24
     pilot_commission_rate: float = 0.10
     cors_origins: str = (
@@ -22,6 +23,10 @@ class Settings(BaseSettings):
     rate_limit_max_keys: int = 10_000
     upload_dir: str = "./data/uploads"
     max_upload_bytes: int = 5_242_880  # 5 MiB
+    email_provider: str = "disabled"
+    sms_provider: str = "disabled"
+    push_provider: str = "disabled"
+    in_app_provider: str = "dev"
 
 
 settings = Settings()

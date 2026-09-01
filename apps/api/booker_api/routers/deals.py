@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from starlette.requests import Request as HttpRequest
 
@@ -41,6 +42,7 @@ from booker_api.models import (
     User,
     Venue,
 )
+from booker_api.notifications import on_offer_created, on_request_created
 from booker_api.pricing import first_deal_waive, price_breakdown
 from booker_api.rate_limit import client_key, messaging_limiter, upload_limiter
 from booker_api.replacement import build_replacement_plan
@@ -641,6 +643,13 @@ def quick_request(body: dict, user: User = Depends(current_user), db: Session = 
         entity_type="request",
         entity_id=req.id,
     )
+    on_request_created(
+        db,
+        actor_user_id=user.id,
+        request_id=req.id,
+        supplier_org_id=req.supplier_org_id,
+        event_title=event.title,
+    )
     db.commit()
     return {"event_id": event.id, "request_id": req.id, "status": req.status}
 
@@ -691,6 +700,13 @@ def create_request(
         action="request.created",
         entity_type="request",
         entity_id=req.id,
+    )
+    on_request_created(
+        db,
+        actor_user_id=user.id,
+        request_id=req.id,
+        supplier_org_id=supplier_org_id,
+        event_title=event.title,
     )
     db.commit()
     db.refresh(req)
@@ -762,6 +778,14 @@ def create_offer(
         entity_id=offer.id,
         payload=breakdown,
     )
+    if event:
+        on_offer_created(
+            db,
+            actor_user_id=user.id,
+            offer_id=offer.id,
+            customer_org_id=event.organization_id,
+            event_title=event.title,
+        )
     db.commit()
     db.refresh(offer)
     db.refresh(version)
@@ -895,7 +919,9 @@ def hold_booking(
     version = db.get(OfferVersion, offer.active_version_id) if offer else None
     if not version or not (version.customer_ack and version.supplier_ack):
         raise HTTPException(409, "Оффер не подтверждён обеими сторонами")
-    slot = db.get(AvailabilitySlot, booking.slot_id)
+    slot = db.execute(
+        select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).with_for_update()
+    ).scalar_one()
     busy = overlapping_slots(
         db,
         slot.resource_type,
@@ -907,7 +933,14 @@ def hold_booking(
     )
     if slot.status in {"held", "confirmed", "busy"} or busy:
         raise HTTPException(status.HTTP_409_CONFLICT, "Слот уже удерживается или подтверждён")
-    slot.status = "held"
+    claimed = db.execute(
+        update(AvailabilitySlot)
+        .where(AvailabilitySlot.id == slot.id, AvailabilitySlot.status == "open")
+        .values(status="held")
+    )
+    if claimed.rowcount != 1:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Слот уже удерживается или подтверждён")
+    db.refresh(slot)
     hold = BookingHold(
         booking_id=booking.id,
         slot_id=slot.id,
