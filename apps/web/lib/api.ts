@@ -90,7 +90,21 @@ export function trackClientEvent(
     method: "POST",
     headers,
     body: JSON.stringify({ name, properties: properties ?? {} }),
+    keepalive: true,
   }).catch(() => {});
+}
+
+/** @internal test hook */
+export function clientEventFetchInit(
+  body: string,
+  headers: Record<string, string>,
+): RequestInit {
+  return {
+    method: "POST",
+    headers,
+    body,
+    keepalive: true,
+  };
 }
 
 type OrgCreateBody = {
