@@ -25,7 +25,7 @@ test("заявка → оффер: API seed, artist cabinet, Deal Room", async (
   await injectSession(page, ctx.ownerToken, ctx.artistOrgId);
 
   await page.goto("/cabinet");
-  await expect(page.getByRole("heading", { name: "Входящие заявки" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Новые заявки" })).toBeVisible();
   await expect(page.getByText(ctx.eventTitle)).toBeVisible();
   await page.getByRole("button", { name: "Отправить предложение" }).click();
 

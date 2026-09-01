@@ -2,13 +2,13 @@ import Link from "next/link";
 import { HoldCountdown } from "@/components/HoldCountdown";
 import { formatWhen } from "@/lib/format";
 import { DashboardWidget } from "../../DashboardWidget";
-import type { CustomerDealRoom } from "../types";
+import type { PerformerDealRoom } from "../types";
 
-export function ExpiringHoldsWidget({ holds }: { holds: CustomerDealRoom[] }) {
+export function HoldsWidget({ holds }: { holds: PerformerDealRoom[] }) {
   return (
     <DashboardWidget
-      title="Истекающие hold"
-      hint="Дата удерживается до оплаты — успейте подписать договор"
+      title="Hold"
+      hint="Даты удерживаются до оплаты"
       isEmpty={holds.length === 0}
       empty="Нет активных hold."
     >

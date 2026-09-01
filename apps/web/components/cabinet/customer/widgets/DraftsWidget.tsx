@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatWhen } from "@/lib/format";
-import { DashboardWidget } from "../DashboardWidget";
+import { DashboardWidget } from "../../DashboardWidget";
 import type { CustomerEvent } from "../types";
 
 export function DraftsWidget({ drafts }: { drafts: CustomerEvent[] }) {

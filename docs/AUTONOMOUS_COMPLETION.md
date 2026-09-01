@@ -13,8 +13,8 @@
 | AUTO-007 | P0 | backend | OfferVersion/quote invariant tests | D | `apps/api/tests/test_quote_versioning.py` | **DONE** | test-api | `a89d7e5` | — |
 | AUTO-008 | P0 | backend | Health/readiness feature flags | E | `routers/health.py`, `config.py` | **DONE** | test-api | `1388a74` | — |
 | AUTO-009 | P1 | frontend | Customer dashboard shell (виджеты §7.5.3) | A | `cabinet/customer/**` | **DONE** | e2e | `067b267` | — |
-| AUTO-010 | P1 | frontend | Performer dashboard shell (§7.5.4) | A | `cabinet/performer/**` | **READY** | e2e | — | AUTO-002 |
-| AUTO-011 | P1 | frontend | Venue dashboard shell + залы (§7.5.5) | A | `cabinet/venue/**` | **READY** | e2e | — | AUTO-002 |
+| AUTO-010 | P1 | frontend | Performer dashboard shell (§7.5.4) | A | `cabinet/performer/**` | **DONE** | e2e | _(pending)_ | AUTO-002 |
+| AUTO-011 | P1 | frontend | Venue dashboard shell + залы (§7.5.5) | A | `cabinet/venue/**` | **DONE** | e2e | _(pending)_ | AUTO-002 |
 | AUTO-012 | P1 | qa | Cross-role E2E полный цикл (§7.5.11) | D | `apps/web/e2e/cabinets-cross-role.spec.ts` | **READY** | e2e | — | AUTO-009–011 |
 | AUTO-013 | P1 | frontend | Deal Room role-specific accents (§7.5.7) | A | `deals/[id]/**` | **READY** | e2e | — | — |
 | AUTO-014 | P2 | frontend | a11y + reduced motion audit cabinets | A | `apps/web/**` | **READY** | e2e | — | AUTO-009 |

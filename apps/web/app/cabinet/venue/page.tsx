@@ -1,4 +1,4 @@
-import { CabinetDashboard } from "@/components/cabinet/CabinetDashboard";
+import { VenueCabinetDashboard } from "@/components/cabinet/venue/VenueCabinetDashboard";
 
 export const metadata = {
   title: "Кабинет площадки",
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function VenueCabinetPage() {
-  return <CabinetDashboard cabinetMode="venue" />;
+  return <VenueCabinetDashboard />;
 }

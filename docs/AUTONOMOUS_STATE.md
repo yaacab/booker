@@ -2,16 +2,17 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** `88d068e`  
+**HEAD:** _(pending commit)_
+  
 **PR:** https://github.com/yaacab/booker/pull/14
 
 ## Текущая фаза
 
-Волна 2: customer dashboard (009) → performer/venue shells (010–011).
+Волна 2: performer/venue shells (010–011) → cross-role E2E (012).
 
 ## Следующая задача
 
-`AUTO-010` performer dashboard shell (P1).
+`AUTO-012` cross-role E2E полный цикл (P1).
 
 ## Последние проверки
 
@@ -31,7 +32,8 @@
 - `/health` и `/readiness` отражают feature flags, notification providers и missing OWNER_INPUTS для включённых возможностей.
 - `/readiness` → 503 только при недоступной БД или незаполненных OWNER_INPUTS для запрошенных live-фич.
 - Ack оффера отклоняет устаревший `quote_id` (409) — подтверждается только активная OfferVersion.
-- Customer cabinet: виджеты ближайшие события / черновики / новые предложения / истекающие hold (данные `/events`, `/bookings`, `/deal-room`).
+- Performer cabinet: виджеты новые заявки / ожидающие ответа / истекающие предложения / hold / ближайшие выступления / конфликты календаря / completeness + Supply-секция (услуги, iCal, vacation).
+- Venue cabinet: те же supply-виджеты + залы (calendar-targets) + Supply-секция.
 
 ## Handoff
 

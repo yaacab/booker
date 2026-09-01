@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatWhen } from "@/lib/format";
 import { STATUS_LABEL } from "@/lib/status";
-import { DashboardWidget } from "../DashboardWidget";
+import { DashboardWidget } from "../../DashboardWidget";
 import type { CustomerEvent } from "../types";
 
 function chipCls(status: string): string {
