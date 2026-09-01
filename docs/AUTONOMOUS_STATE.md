@@ -2,7 +2,7 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** _(после push launch-readiness commit)_
+**HEAD:** `6128282`
 
 **PR:** https://github.com/yaacab/booker/pull/14
 
@@ -27,7 +27,7 @@ PID **205543** — `AGENT_LOOP_TICK_launch_audit` (`/tmp/launch_audit_loop.pid`)
 | Event Studio Map E2E | **5/5 passed** (0 skip) | 2026-09-01 |
 | Backup/restore drill | **BLOCKED** — `sqlite3` CLI отсутствует в PATH | 2026-09-01 |
 | Postgres migrate + subset | **PARTIAL** — `docker-compose up -d postgres` ok; `make migrate` fail: Python `ModuleNotFoundError: _ctypes` (psycopg) | 2026-09-01 |
-| Staging smoke (local E2E proxy) | login/search/studio/deal room/cabinets/admin paths covered by E2E suite | 2026-09-01 |
+| CI PR #14 (`api` + `web`) | **green** (`6128282`) | 2026-09-01 |
 
 ## Решения (launch audit)
 
