@@ -260,14 +260,32 @@ def refund(
     payment = db.get(Payment, body.payment_id)
     if not payment:
         raise HTTPException(404, "Платёж не найден")
-    payment.status = "refunded"
+    from booker_api.payments.adapter import PaymentAdapterError, get_payment_adapter
+
+    adapter = get_payment_adapter()
+    try:
+        outcome = adapter.refund(
+            payment_id=payment.id,
+            amount_rub=payment.amount_rub,
+            total_rub=payment.amount_rub,
+            idempotency_key=f"refund-{payment.id}",
+        )
+    except PaymentAdapterError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    payment.status = "refunded" if outcome.kind == "full" else "partially_refunded"
     audit(
         db,
         actor_user_id=user.id,
         action="payment.refunded",
         entity_type="payment",
         entity_id=payment.id,
-        payload={"approver_user_id": approver.id, "reason": body.reason},
+        payload={
+            "approver_user_id": approver.id,
+            "reason": body.reason,
+            "refund_id": outcome.refund_id,
+            "amount_rub": outcome.amount_rub,
+            "kind": outcome.kind,
+        },
     )
     db.commit()
     return {"id": payment.id, "status": payment.status}
