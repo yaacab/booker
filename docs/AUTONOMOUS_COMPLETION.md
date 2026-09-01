@@ -16,7 +16,7 @@
 | AUTO-010 | P1 | frontend | Performer dashboard shell (§7.5.4) | A | `cabinet/performer/**` | **DONE** | e2e | `8357058` | AUTO-002 |
 | AUTO-011 | P1 | frontend | Venue dashboard shell + залы (§7.5.5) | A | `cabinet/venue/**` | **DONE** | e2e | `8357058` | AUTO-002 |
 | AUTO-012 | P1 | qa | Cross-role E2E полный цикл (§7.5.11) | D | `apps/web/e2e/cabinets-cross-role.spec.ts` | **DONE** | e2e | `e0d1a32` | AUTO-009–011 |
-| AUTO-013 | P1 | frontend | Deal Room role-specific accents (§7.5.7) | A | `deals/[id]/**` | **DONE** | e2e | — | — |
+| AUTO-013 | P1 | frontend | Deal Room role-specific accents (§7.5.7) | A | `deals/[id]/**` | **DONE** | e2e | `8146ae9` | — |
 | AUTO-014 | P2 | frontend | a11y + reduced motion audit cabinets | A | `apps/web/**` | **READY** | e2e | — | AUTO-009 |
 | AUTO-015 | P2 | ops | CI branch master→main fix | E | `.github/workflows/ci.yml` | **READY** | CI | — | — |
 | AUTO-016 | — | legal | Юрпакет U5 | — | `docs/legal/**` | **EXTERNAL_BLOCKED** | — | — | OWNER_INPUTS |
