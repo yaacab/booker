@@ -2,49 +2,45 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** `1d4eb1f`
-  
+**HEAD:** _(после push launch-readiness commit)_
+
 **PR:** https://github.com/yaacab/booker/pull/14
 
 ## Текущая фаза
 
-**complete** — волны 1–4 (AUTO-001..015) завершены. Все P0–P2 технические задачи **DONE**. Остаются только EXTERNAL_BLOCKED (AUTO-016, AUTO-017).
+**launch-readiness audit (tick 0)** — Event Studio Map E2E unskipped, SiteChrome fullscreen bug fixed, полный зелёный прогон локально.
 
-## Следующая задача
+## Agent loop (launch audit)
 
-Нет автономных READY-задач. Ожидание **OWNER_INPUTS** для AUTO-016 (юрпакет U5) и AUTO-017 (live payment partner).
+PID **205543** — `AGENT_LOOP_TICK_launch_audit` (`/tmp/launch_audit_loop.pid`), интервал 5m.
 
-## Последние проверки
+## Последние проверки (launch audit tick 0)
 
 | Команда | Результат | Когда |
 |---------|-----------|-------|
-| `make test-api` | 131 passed | 2026-09-01 |
 | `make web-lint` | ok | 2026-09-01 |
+| `make lint` | ok | 2026-09-01 |
+| `make test-api` | 131 passed, 2 skipped | 2026-09-01 |
 | `make web-build` | ok | 2026-09-01 |
 | `npm run test:unit` | 15 passed | 2026-09-01 |
-| E2E (flow + cross-role + a11y) | 15 passed, 4 skipped | 2026-09-01 |
-| CI PR #14 (`api` + `web`) | **green** | 2026-09-01 |
+| E2E (`npm run test:e2e`) | **19 passed**, 0 skipped | 2026-09-01 |
+| Event Studio Map E2E | **5/5 passed** (0 skip) | 2026-09-01 |
+| Backup/restore drill | **BLOCKED** — `sqlite3` CLI отсутствует в PATH | 2026-09-01 |
+| Postgres migrate + subset | **PARTIAL** — `docker-compose up -d postgres` ok; `make migrate` fail: Python `ModuleNotFoundError: _ctypes` (psycopg) | 2026-09-01 |
+| Staging smoke (local E2E proxy) | login/search/studio/deal room/cabinets/admin paths covered by E2E suite | 2026-09-01 |
 
-## Решения
+## Решения (launch audit)
 
-- `design-qa.md` в репозитории отсутствует — опираемся на CONTRACT + BLUEPRINT + MASTER_PLAN.
-- Org kind API: `customer` | `artist` | `venue`; UI маршрут исполнителя: `/cabinet/performer` (alias для `artist`).
-- `/health` и `/readiness` отражают feature flags, notification providers и missing OWNER_INPUTS для включённых возможностей.
-- `/readiness` → 503 только при недоступной БД или незаполненных OWNER_INPUTS для запрошенных live-фич.
-- Ack оффера отклоняет устаревший `quote_id` (409) — подтверждается только активная OfferVersion.
-- Performer cabinet: виджеты новые заявки / ожидающие ответа / истекающие предложения / hold / ближайшие выступления / конфликты календаря / completeness + Supply-секция (услуги, iCal, vacation).
-- Venue cabinet: те же supply-виджеты + залы (calendar-targets) + Supply-секция.
-- Cross-role E2E: demo seed `customer@booker.test`, `artist@booker.test`, `venue@booker.test`; venue user добавлен в seed; `list_requests` резолвит hall-слоты для `resource_type=venue`.
-- Deal Room accents: `workspace_kind` в `/deal-room/{id}`; UI-сетка акцентов customer/performer/venue на вкладке «Сводка»; booking_id и quote_id едины для всех ролей.
-- event-studio-map v1 (4 теста с `?event_studio_map_v1=1`): skip — UI hidden, не регрессия cabinet.
-- Cabinet a11y: `CabinetPageShell` (landmarks, skip-to-widgets, skeleton status); `DashboardWidget` с `aria-labelledby`; reduced-motion сброс hover-transform; e2e `cabinet-a11y.spec.ts`.
-- Seed `_ensure_cross_role_catalog`: replenishes open slots в горизонте 30д для DJ Nova и Клуб Сигнал после исчерпания demo-слотов.
-- CI: `.github/workflows/ci.yml` триггерит `main` (AUTO-015 уже выполнен).
+- **Event Studio Map skip root cause:** React переиспользовал DOM `#scroll-progress` как `#content` при переключении `fullScreenStudio`; inline `transform: scaleX(0)` схлопывал UI (Playwright: hidden, width 0). Fix: sync init флага, `key` на fullscreen root, scroll handler только вне fullscreen, `.studio-fullscreen-root { transform: none !important }`.
+- **design-qa.md** — актуален в корне репо; screenshots обновлены в `docs/screenshots/event-studio-map-v1/`.
+- **Cross-role E2E flake:** retry слотов при 409 + randomised slot window в `e2e/helpers.ts`.
+- **Mobile map E2E:** закрытие bottom sheet через `Закрыть панель` (backdrop под sheet).
 
-## Agent loop
+## EXTERNAL_BLOCKED (без изменений)
 
-PID **156101** — активен (`/tmp/agent_loop_autonomous.log`). Оставлен по запросу владельца.
+- AUTO-016 / AUTO-017 — OWNER_INPUTS (юрпакет U5, live payments).
+- Postgres cutover prod — ops runtime; локально migrate заблокирован `_ctypes` в pyenv Python.
 
 ## Handoff
 
-При исчерпании контекста: прочитать этот файл + `docs/AUTONOMOUS_COMPLETION.md`. Автономная очередь P0–P2 исчерпана — ждём OWNER_INPUTS для юрпакета (AUTO-016) и live payments (AUTO-017).
+Launch-readiness: merges не в `master`. Следующий tick loop: CI PR #14, ops backup drill на хосте с `sqlite3`, Postgres migrate на CI/хосте с рабочим psycopg.

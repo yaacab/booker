@@ -243,26 +243,38 @@ export async function seedCrossRoleEvent(request: APIRequestContext): Promise<Cr
   const hallId = venueDetail.halls[0]?.id;
   if (!hallId) throw new Error("Venue has no halls");
 
-  const unique = Date.now();
-  const slotStart = new Date(unique + (30 + (unique % 40)) * 86_400_000);
-  slotStart.setUTCHours(10 + (unique % 8), (unique % 4) * 15, 0, 0);
-  const slotEnd = new Date(slotStart.getTime() + 4 * 3600_000);
-  const startsAt = slotStart.toISOString();
-  const endsAt = slotEnd.toISOString();
-
-  const artistSlot = await postJson<{ id: string }>(request, "/slots", artist.token, {
-    resource_type: "artist",
-    resource_id: artistProfile.id,
-    starts_at: startsAt,
-    ends_at: endsAt,
-  }, artistOrg.id);
-
-  const venueSlot = await postJson<{ id: string }>(request, "/slots", venueUser.token, {
-    resource_type: "hall",
-    resource_id: hallId,
-    starts_at: startsAt,
-    ends_at: endsAt,
-  }, venueOrg.id);
+  let artistSlot: { id: string };
+  let venueSlot: { id: string };
+  let startsAt = "";
+  let endsAt = "";
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const dayOffset = 30 + ((Date.now() + attempt * 97_123) % 40);
+    const slotStart = new Date(
+      Date.now() + dayOffset * 86_400_000 + Math.floor(Math.random() * 3600_000 * 20) + attempt * 3 * 86_400_000,
+    );
+    slotStart.setUTCHours(10 + (slotStart.getUTCMinutes() % 8), (slotStart.getUTCSeconds() % 4) * 15, 0, 0);
+    const slotEnd = new Date(slotStart.getTime() + 4 * 3600_000);
+    startsAt = slotStart.toISOString();
+    endsAt = slotEnd.toISOString();
+    try {
+      artistSlot = await postJson<{ id: string }>(request, "/slots", artist.token, {
+        resource_type: "artist",
+        resource_id: artistProfile.id,
+        starts_at: startsAt,
+        ends_at: endsAt,
+      }, artistOrg.id);
+      venueSlot = await postJson<{ id: string }>(request, "/slots", venueUser.token, {
+        resource_type: "hall",
+        resource_id: hallId,
+        starts_at: startsAt,
+        ends_at: endsAt,
+      }, venueOrg.id);
+      break;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (!message.includes("(409)") || attempt === 5) throw err;
+    }
+  }
 
   const eventTitle = `E2E Cross-Role ${Date.now()}`;
   const event = await postJson<{

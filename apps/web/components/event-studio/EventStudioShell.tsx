@@ -123,9 +123,9 @@ export default function EventStudioShell() {
 
   if (!hydrated) {
     return (
-      <main>
+      <main className="event-studio-shell">
         <p className="kicker">Event Studio Map</p>
-        <h1>Соберите событие</h1>
+        <h1 className="event-studio-loading-title">Загрузка карты события</h1>
         <div className="skeleton" style={{ minHeight: 240 }} />
       </main>
     );

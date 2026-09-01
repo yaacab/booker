@@ -8,25 +8,26 @@ test.describe("Event Studio Map v1", () => {
     await expect(page.getByRole("heading", { name: "Соберите событие" })).toHaveCount(0);
   });
 
-  // event_studio_map_v1=1: UI рендерится hidden (не регрессия cabinet) — ждёт rollout флага.
-  test.skip("feature flag включает карту события", async ({ page }) => {
+  test("feature flag включает карту события", async ({ page }) => {
     await page.goto("/events/new?event_studio_map_v1=1");
-    await expect(page.getByRole("heading", { name: "Соберите событие" })).toBeVisible();
+    await expect(page.locator(".event-studio-shell")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Соберите событие", exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Основное" })).toHaveCount(0);
     await expect(page.getByRole("status")).toContainText(/Сохран/i);
     await expect(page.getByLabel("Этапы создания события")).toBeVisible();
     await expect(page.getByLabel("Карта события")).toBeVisible();
   });
 
-  test.skip("навигация по этапам и черновик", async ({ page }) => {
+  test("навигация по этапам и черновик", async ({ page }) => {
     await page.goto("/events/new?event_studio_map_v1=1");
+    await expect(page.locator(".event-studio-shell")).toBeVisible();
     await page.getByLabel("Название события").fill("E2E Studio Map");
     await page.getByRole("button", { name: "Проверка" }).click();
     await expect(page.getByRole("button", { name: /Продолжить/ })).toBeVisible();
     await expect(page.getByText("Ориентир бюджета")).toBeVisible();
   });
 
-  test.skip("mobile: sticky summary и bottom sheet toggle", async ({ page }) => {
+  test("mobile: sticky summary и bottom sheet toggle", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/events/new?event_studio_map_v1=1");
     const toggle = page.locator(".mobile-panel-toggle");
@@ -34,13 +35,14 @@ test.describe("Event Studio Map v1", () => {
     await toggle.click();
     await expect(page.getByRole("complementary", { name: "Добавить исполнителя" })).toBeVisible();
     await expect(page.getByLabel("Поиск исполнителя")).toBeVisible();
-    await page.getByLabel("Закрыть каталог исполнителей").click();
+    await page.getByLabel("Закрыть панель").click();
     await expect(toggle).toBeVisible();
   });
 
-  test.skip("screenshots desktop 1440 и mobile 390", async ({ page }) => {
+  test("screenshots desktop 1440 и mobile 390", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/events/new?event_studio_map_v1=1");
+    await expect(page.locator(".event-studio-shell")).toBeVisible();
     await page.getByLabel("Название события").fill("Свадьба · демо");
     await page.screenshot({ path: "../../docs/screenshots/event-studio-map-v1/desktop-1440.png", fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });

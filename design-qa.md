@@ -21,4 +21,4 @@
 
 ## Screenshot status
 
-The Playwright screenshot test remains in `apps/web/e2e/event-studio-map.spec.ts` and writes the required desktop and mobile files. Local capture in this workspace is blocked because the Chromium binary is not installed; CI or a normal developer workstation with `npx playwright install chromium` will refresh both screenshots.
+Desktop `1440 × 900` and mobile `390 × 844` captures live in `docs/screenshots/event-studio-map-v1/` and are refreshed by `apps/web/e2e/event-studio-map.spec.ts`.

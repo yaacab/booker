@@ -39,8 +39,10 @@ function tabTitle(path: string): string {
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [admin, setAdmin] = useState(false);
-  const [fullScreenStudio, setFullScreenStudio] = useState(false);
   const path = usePathname();
+  const [fullScreenStudio, setFullScreenStudio] = useState(
+    () => path === "/events/new" && isEventStudioMapV1(),
+  );
 
   useEffect(() => {
     setAuthed(Boolean(getToken()));
@@ -64,20 +66,30 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   }, [path]);
 
   useEffect(() => {
-    const bar = document.getElementById("scroll-progress");
+    if (fullScreenStudio) return;
     const onScroll = () => {
+      const bar = document.getElementById("scroll-progress");
+      if (!bar) return;
       const h = document.documentElement;
       const max = h.scrollHeight - h.clientHeight;
       const p = max > 0 ? Math.min(1, h.scrollTop / max) : 0;
-      if (bar) bar.style.transform = `scaleX(${p})`;
+      bar.style.transform = `scaleX(${p})`;
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [path]);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      const bar = document.getElementById("scroll-progress");
+      bar?.style.removeProperty("transform");
+    };
+  }, [path, fullScreenStudio]);
 
   if (fullScreenStudio) {
-    return <div id="content">{children}</div>;
+    return (
+      <div id="content" key="event-studio-fullscreen" className="studio-fullscreen-root">
+        {children}
+      </div>
+    );
   }
 
   return (
