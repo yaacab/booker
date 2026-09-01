@@ -6,7 +6,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "test:unit": "node --import tsx --test components/event-studio/adapter.test.ts lib/api.test.ts",
+    "test:unit": "node --import tsx --test components/event-studio/adapter.test.ts lib/api.test.ts lib/cabinetRoutes.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

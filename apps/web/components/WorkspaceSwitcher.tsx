@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, getActiveOrg, getToken, setActiveOrg } from "@/lib/api";
+import { cabinetPathForKind } from "@/lib/cabinetRoutes";
 import { KIND_LABEL } from "@/lib/copy";
 
 type Org = { id: string; name: string; kind: string };
@@ -40,7 +41,13 @@ export function WorkspaceSwitcher() {
             method: "POST",
             body: JSON.stringify({ organization_id: id }),
           }).finally(() => {
-            window.location.reload();
+            const org = orgs.find((o) => o.id === id);
+            const path = window.location.pathname;
+            if (path.startsWith("/cabinet")) {
+              window.location.href = cabinetPathForKind(org?.kind || "customer");
+            } else {
+              window.location.reload();
+            }
           });
         }}
       >
