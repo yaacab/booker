@@ -4,9 +4,9 @@
 
 | ID | Приоритет | Область | Задача | Агент | Файлы | Статус | Проверки | Commit | Blocker |
 |----|-----------|---------|--------|-------|-------|--------|----------|--------|---------|
-| AUTO-001 | P0 | docs | OWNER_INPUTS + AUTONOMOUS_STATE + .env.example | E | `docs/**`, `.env.example` | **DONE** | manual | pending | — |
-| AUTO-002 | P0 | frontend | Три маршрута кабинетов + redirect `/cabinet` | A | `apps/web/app/cabinet/**`, `lib/cabinetRoutes.ts` | **IN_PROGRESS** | web-lint, e2e | pending | — |
-| AUTO-003 | P0 | frontend | Workspace switcher → правильный кабинет | A | `WorkspaceSwitcher.tsx` | **READY** | web-lint | — | AUTO-002 |
+| AUTO-001 | P0 | docs | OWNER_INPUTS + AUTONOMOUS_STATE + .env.example | E | `docs/**`, `.env.example` | **DONE** | manual | `8f7b1ff` | — |
+| AUTO-002 | P0 | frontend | Три маршрута кабинетов + redirect `/cabinet` | A | `apps/web/app/cabinet/**`, `lib/cabinetRoutes.ts` | **DONE** | web-lint, e2e | `3d88ac0` | — |
+| AUTO-003 | P0 | frontend | Workspace switcher → правильный кабинет | A | `WorkspaceSwitcher.tsx` | **DONE** | web-lint | `3d88ac0` | — |
 | AUTO-004 | P0 | backend | Payment adapter interface (fail-closed) | C | `apps/api/booker_api/payments/**` | **READY** | test-api | — | — |
 | AUTO-005 | P0 | backend | Notification adapters (disabled transport) | C | `apps/api/booker_api/notifications/**` | **READY** | test-api | — | — |
 | AUTO-006 | P0 | backend | Race test двойного hold | D | `apps/api/tests/test_hold_race.py` | **READY** | test-api | — | — |

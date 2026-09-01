@@ -2,7 +2,7 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** _(обновляется после каждой волны)_  
+**HEAD:** `3d88ac0`  
 **PR:** https://github.com/yaacab/booker/pull/14
 
 ## Текущая фаза
@@ -11,17 +11,18 @@
 
 ## Следующая задача
 
-`AUTO-002` — три маршрута кабинетов + redirect `/cabinet`.
+`AUTO-003` (done in 3d88ac0) → `AUTO-004` payment adapter interface.
 
 ## Последние проверки
 
 | Команда | Результат | Когда |
 |---------|-----------|-------|
-| `make web-lint` | pending | — |
-| `make lint` | pending | — |
-| `make test-api` | pending | — |
-| `make web-build` | pending | — |
-| E2E | pending | — |
+| `make web-lint` | ok | 2026-09-01 |
+| `make lint` | ok | 2026-09-01 |
+| `make test-api` | 105 passed, 2 skipped | 2026-09-01 |
+| `make web-build` | ok | 2026-09-01 |
+| `npm run test:unit` | 9 passed | 2026-09-01 |
+| E2E | 15 passed | 2026-09-01 |
 
 ## Решения
 
