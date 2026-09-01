@@ -2,7 +2,7 @@
 
 **Обновлено:** 2026-09-01  
 **Ветка:** `feat/master-plan-execution`  
-**HEAD:** _(после push AUTO-014)_
+**HEAD:** `3c7c3fc`
   
 **PR:** https://github.com/yaacab/booker/pull/14
 
