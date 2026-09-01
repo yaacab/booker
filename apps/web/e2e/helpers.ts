@@ -243,8 +243,8 @@ export async function seedCrossRoleEvent(request: APIRequestContext): Promise<Cr
   const hallId = venueDetail.halls[0]?.id;
   if (!hallId) throw new Error("Venue has no halls");
 
-  let artistSlot: { id: string };
-  let venueSlot: { id: string };
+  let artistSlot: { id: string } | undefined;
+  let venueSlot: { id: string } | undefined;
   let startsAt = "";
   let endsAt = "";
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -274,6 +274,9 @@ export async function seedCrossRoleEvent(request: APIRequestContext): Promise<Cr
       const message = err instanceof Error ? err.message : String(err);
       if (!message.includes("(409)") || attempt === 5) throw err;
     }
+  }
+  if (!artistSlot || !venueSlot) {
+    throw new Error("Failed to create cross-role slots after retries");
   }
 
   const eventTitle = `E2E Cross-Role ${Date.now()}`;
