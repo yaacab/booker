@@ -154,21 +154,20 @@ export default function EventStudioMap({
     return `${money(budgetHint.minRub).replace(" ₽", "")}–${money(budgetHint.maxRub)}`;
   }, [budgetHint]);
 
-  const puzzleSlots = useMemo(
-    () =>
-      slotsFromDraft({
-        date: draft.date,
-        dateLabel,
-        venueName: venue?.name,
-        hasVenue: Boolean(venue),
-        talents: selected.map((item) => ({
-          id: item.id,
-          roleLabel: item.roleLabel,
-          name: item.name,
-        })),
-      }),
-    [draft.date, dateLabel, venue, selected],
-  );
+  const puzzleSlots = useMemo(() => {
+    const selectedTalents = talents.filter((item) => draft.talentIds.includes(item.id));
+    return slotsFromDraft({
+      date: draft.date,
+      dateLabel,
+      venueName: venue?.name,
+      hasVenue: Boolean(venue),
+      talents: selectedTalents.map((item) => ({
+        id: item.id,
+        roleLabel: item.roleLabel,
+        name: item.name,
+      })),
+    });
+  }, [draft.date, draft.talentIds, dateLabel, venue, talents]);
 
   return (
     <main className={`event-studio-shell${panelOpen ? " panel-open" : ""}`}>

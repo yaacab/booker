@@ -79,9 +79,8 @@
   gap: 10px;
   pointer-events: none;
 }
-.puzzle-stage.map-card-focus {
-  filter: drop-shadow(0 0 0 transparent);
-  outline: none;
+.puzzle-stage.map-card-focus .puzzle-board-svg {
+  filter: drop-shadow(0 0 10px rgba(201, 154, 60, .28));
 }
 .puzzle-stage .puzzle-event-meta,
 .puzzle-stage .puzzle-event-meta input,
@@ -94,7 +93,7 @@
 .puzzle-board-stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 606 / 412;
+  aspect-ratio: 636 / 408;
 }
 .puzzle-board-svg {
   display: block;
@@ -158,8 +157,8 @@
   text-overflow: ellipsis;
 }
 .puzzle-label.is-filled strong { color: var(--chrome-lo, #6e7582); }
-.puzzle-label--left { transform: translate(-100%, -50%); text-align: right; padding-right: 6px; }
-.puzzle-label--right { transform: translate(0, -50%); text-align: left; padding-left: 6px; }
+.puzzle-label--left { transform: translate(-50%, -50%); text-align: right; }
+.puzzle-label--right { transform: translate(-50%, -50%); text-align: left; }
 .puzzle-label--center { transform: translate(-50%, -50%); }
 .puzzle-event-meta {
   width: min(240px, 100%);
@@ -191,7 +190,7 @@
 }
 .guests-field { width: 72px; margin-top: 8px; text-align: left; }
 
-.team-card { left: 5%; top: 54%; width: 370px; }
+.team-card { left: 5%; top: 58%; width: 370px; }
 .team-faces { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
 .talent-face, .add-face { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; border: 3px solid white; box-shadow: 0 0 0 1px var(--es-border); color: white; }
 .add-face { border: 1px dashed #bbb6ad; background: white; color: #7b7c78; cursor: pointer; }

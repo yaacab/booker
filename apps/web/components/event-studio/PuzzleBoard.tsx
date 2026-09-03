@@ -90,11 +90,11 @@ function labelPosition(index: number): { left: string; top: string } {
   const cx = OX + col * W + W / 2;
   const cy = OY + row * H + H / 2;
 
-  // Labels sit beside pieces (never overlaid on chrome fill).
-  if (col === 0) return { left: `${((OX - 6) / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
-  if (col === 2) return { left: `${((OX + COLS * W + 6) / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
-  if (row === 0) return { left: `${(cx / vbW) * 100}%`, top: `${((OY - 10) / vbH) * 100}%` };
-  return { left: `${(cx / vbW) * 100}%`, top: `${((OY + ROWS * H + 12) / vbH) * 100}%` };
+  // Labels sit in gutters beside pieces — never drawn on chrome surfaces.
+  if (col === 0) return { left: `${((OX * 0.48) / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
+  if (col === 2) return { left: `${((vbW - OX * 0.48) / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
+  if (row === 0) return { left: `${(cx / vbW) * 100}%`, top: `${((OY * 0.42) / vbH) * 100}%` };
+  return { left: `${(cx / vbW) * 100}%`, top: `${((vbH - OY * 0.42) / vbH) * 100}%` };
 }
 
 export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoardProps) {
