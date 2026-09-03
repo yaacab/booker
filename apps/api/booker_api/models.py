@@ -105,6 +105,14 @@ class Venue(Base):
     capacity: Mapped[int] = mapped_column(Integer, default=100)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
     verified_status: Mapped[str] = mapped_column(String(32), default="pending")
+    address: Mapped[str] = mapped_column(String(512), default="")
+    district: Mapped[str] = mapped_column(String(128), default="")
+    metro: Mapped[str] = mapped_column(String(128), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    source_url: Mapped[str] = mapped_column(String(512), default="")
+    source_attribution: Mapped[str] = mapped_column(String(128), default="")
+    listing_origin: Mapped[str] = mapped_column(String(32), default="owner")  # open_data|owner|seed
+    availability_mode: Mapped[str] = mapped_column(String(32), default="owner")  # synthetic|owner
 
 
 class VenueHall(Base):

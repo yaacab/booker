@@ -45,6 +45,20 @@ def ensure_missing_columns(bind) -> None:
         "admin_2fa_verified_at",
         f"admin_2fa_verified_at {ts_type}",
     )
+    _add_column_if_missing(bind, "venues", "address", "address VARCHAR(512) DEFAULT ''")
+    _add_column_if_missing(bind, "venues", "district", "district VARCHAR(128) DEFAULT ''")
+    _add_column_if_missing(bind, "venues", "metro", "metro VARCHAR(128) DEFAULT ''")
+    _add_column_if_missing(bind, "venues", "description", "description TEXT DEFAULT ''")
+    _add_column_if_missing(bind, "venues", "source_url", "source_url VARCHAR(512) DEFAULT ''")
+    _add_column_if_missing(
+        bind, "venues", "source_attribution", "source_attribution VARCHAR(128) DEFAULT ''"
+    )
+    _add_column_if_missing(
+        bind, "venues", "listing_origin", "listing_origin VARCHAR(32) DEFAULT 'owner'"
+    )
+    _add_column_if_missing(
+        bind, "venues", "availability_mode", "availability_mode VARCHAR(32) DEFAULT 'owner'"
+    )
 
 
 def ensure_sqlite_columns(bind) -> None:

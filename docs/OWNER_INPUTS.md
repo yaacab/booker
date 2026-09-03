@@ -43,6 +43,8 @@
 | `PAYMENT_FLOW_APPROVAL` | `{{PAYMENT_FLOW_APPROVAL}}` | legal | live payments | **pending** |
 | `AI_PROVIDER` | `BOOKER_AI_PROVIDER` | AI features | AI assist | **optional** |
 | `AI_API_KEY` | `BOOKER_AI_API_KEY` (systemd) | AI features | AI assist | **optional** |
+| `VENUE_OUTREACH_CONTACT` | `{{VENUE_OUTREACH_CONTACT}}` | перевод open-data площадок на owner calendar | founding supply | **optional** |
+| `VENUE_OPEN_IMPORT_NOTES` | см. `docs/ops/VENUE_OPEN_IMPORT.md` | курация `data/moscow_venues_open.json` | каталог Москва | **known** |
 
 ## Как заполнить
 

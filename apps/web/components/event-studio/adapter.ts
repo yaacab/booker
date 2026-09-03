@@ -22,6 +22,7 @@ type CatalogItem = {
   open_slots?: number;
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
+  availability_mode?: string;
 };
 
 type CatalogResponse = {
@@ -81,11 +82,13 @@ export function mapCatalogTalent(item: CatalogItem, date?: string): TalentItem {
 }
 
 export function mapCatalogVenue(item: CatalogItem): VenueItem {
+  const synthetic = item.availability_mode === "synthetic";
   return {
     id: item.id,
     name: item.name,
     city: item.city,
     honorariumFrom: minHonorarium(item.tariffs),
+    availabilityLabel: synthetic ? "Календарь ориентировочный" : undefined,
   };
 }
 

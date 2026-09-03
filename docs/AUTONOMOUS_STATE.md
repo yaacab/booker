@@ -9,7 +9,11 @@
 
 ## Текущая фаза
 
-**launch-readiness complete** — все инженерные гейты закрыты; env workarounds документированы.
+**launch-readiness complete** + **Moscow open venues import** (`data/moscow_venues_open.json`, synthetic 30d slots).
+
+## Следующая задача
+
+OWNER_INPUTS AUTO-016/017; outreach площадок (`VENUE_OUTREACH_CONTACT`) для перевода на `availability_mode=owner`.
 
 ## Agent loop (launch audit)
 

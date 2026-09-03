@@ -28,10 +28,13 @@ type SearchItem = {
   city: string;
   category: string;
   verified: boolean;
-  has_calendar: boolean;
+  has_calendar?: boolean;
   open_slots?: number;
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
+  address?: string;
+  metro?: string;
+  availability_mode?: string;
 };
 
 function fallbackCategories(): CategoryChip[] {
@@ -198,6 +201,7 @@ export default async function SearchPage({
               <div className="grid">
                 {venues.map((item) => {
                   const st = slotState(item);
+                  const synthetic = item.availability_mode === "synthetic";
                   return (
                     <Link className="card" key={item.id} href={`/venues/${item.id}${itemQs ? `?${itemQs}` : ""}`}>
                       <div className="card-head">
@@ -208,10 +212,14 @@ export default async function SearchPage({
                       </div>
                       <div>
                         {item.city} · площадка
+                        {item.metro ? ` · м. ${item.metro}` : ""}
                       </div>
+                      {item.address ? <p className="timeline">{item.address}</p> : null}
                       <p>
                         <span className={`chip ${st.cls}`}>{st.label}</span>{" "}
-                        {item.verified ? (
+                        {synthetic ? (
+                          <span className="chip wait">{CHIP.syntheticCalendar}</span>
+                        ) : item.verified ? (
                           <span className="chip ok">{CHIP.verified}</span>
                         ) : (
                           <span className="chip wait">{CHIP.pending}</span>
@@ -222,7 +230,9 @@ export default async function SearchPage({
                       </p>
                       {item.tariffs?.[0] ? (
                         <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
-                      ) : null}
+                      ) : (
+                        <p className="timeline">цена по запросу</p>
+                      )}
                     </Link>
                   );
                 })}

@@ -1,0 +1,293 @@
+{
+  "version": 1,
+  "city": "Москва",
+  "license_note": "Кураторская выборка публичных сведений. Адреса и названия — из открытых источников (OSM / публичные сайты). Не живой скрейп в проде.",
+  "venues": [
+    {
+      "name": "Artplay",
+      "address": "ул. Нижняя Сыромятническая, 10",
+      "district": "Басманный",
+      "metro": "Курская",
+      "capacity": 800,
+      "description": "Дизайн-завод и event-площадки на территории бывшей мануфактуры.",
+      "source_url": "https://www.openstreetmap.org/search?query=Artplay%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 150000
+    },
+    {
+      "name": "Flacon Design Factory",
+      "address": "ул. Большая Новодмитровская, 36",
+      "district": "Бутырский",
+      "metro": "Дмитровская",
+      "capacity": 600,
+      "description": "Креативный кластер с залами под конференции, вечеринки и презентации.",
+      "source_url": "https://www.openstreetmap.org/search?query=Flacon%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 120000
+    },
+    {
+      "name": "Музеон",
+      "address": "Крымский Вал, 2",
+      "district": "Якиманка",
+      "metro": "Октябрьская",
+      "capacity": 1500,
+      "description": "Парк искусств у ЦДХ — open-air и павильоны для событий.",
+      "source_url": "https://www.openstreetmap.org/search?query=Muzeon%20Park",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 200000
+    },
+    {
+      "name": "Центральный дом художника",
+      "address": "Крымский Вал, 10",
+      "district": "Якиманка",
+      "metro": "Октябрьская",
+      "capacity": 900,
+      "description": "Выставочные залы и пространства для приёмов у Парка Горького.",
+      "source_url": "https://www.openstreetmap.org/search?query=Central%20House%20of%20Artists%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 180000
+    },
+    {
+      "name": "Гостиный Двор",
+      "address": "ул. Ильинка, 4",
+      "district": "Тверской",
+      "metro": "Китай-город",
+      "capacity": 2500,
+      "description": "Крупный исторический комплекс в центре для выставок и корпоративов.",
+      "source_url": "https://www.openstreetmap.org/search?query=Gostiny%20Dvor%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 350000
+    },
+    {
+      "name": "Loft Hall",
+      "address": "ул. Нижняя Красносельская, 35с48",
+      "district": "Басманный",
+      "metro": "Красносельская",
+      "capacity": 700,
+      "description": "Лофт-залы под банкеты, концерты и частные вечеринки.",
+      "source_url": "https://www.openstreetmap.org/search?query=Loft%20Hall%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 160000
+    },
+    {
+      "name": "Stereo Hall",
+      "address": "ул. Ленинская Слобода, 19",
+      "district": "Даниловский",
+      "metro": "Автозаводская",
+      "capacity": 1200,
+      "description": "Клубно-концертная площадка на юге центра.",
+      "source_url": "https://www.openstreetmap.org/search?query=Stereo%20Hall%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 250000
+    },
+    {
+      "name": "Известия Hall",
+      "address": "Пушкинская пл., 5",
+      "district": "Тверской",
+      "metro": "Пушкинская",
+      "capacity": 1500,
+      "description": "Концертный зал у Пушкинской площади.",
+      "source_url": "https://www.openstreetmap.org/search?query=Izvestia%20Hall",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 280000
+    },
+    {
+      "name": "Adrenaline Stadium",
+      "address": "Ленинградский пр-т, 80к17",
+      "district": "Сокол",
+      "metro": "Сокол",
+      "capacity": 3500,
+      "description": "Крупная концертная арена на Ленинградском проспекте.",
+      "source_url": "https://www.openstreetmap.org/search?query=Adrenaline%20Stadium%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 500000
+    },
+    {
+      "name": "Stadium Live",
+      "address": "Ленинградский пр-т, 80с17",
+      "district": "Сокол",
+      "metro": "Сокол",
+      "capacity": 2000,
+      "description": "Клубно-концертная площадка рядом с Adrenaline Stadium.",
+      "source_url": "https://www.openstreetmap.org/search?query=Stadium%20Live%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 300000
+    },
+    {
+      "name": "Vegas City Hall",
+      "address": "Международная ул., 12",
+      "district": "Коммунарка",
+      "metro": "Саларьево",
+      "capacity": 3500,
+      "description": "Концертный зал при ТРЦ Vegas.",
+      "source_url": "https://www.openstreetmap.org/search?query=Vegas%20City%20Hall",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 450000
+    },
+    {
+      "name": "Crocus City Hall",
+      "address": "65–66 км МКАД",
+      "district": "Красногорск",
+      "metro": "Мякинино",
+      "capacity": 7000,
+      "description": "Одна из крупнейших концертных площадок агломерации Москвы.",
+      "source_url": "https://www.openstreetmap.org/search?query=Crocus%20City%20Hall",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 800000
+    },
+    {
+      "name": "Московский международный Дом музыки",
+      "address": "Космодамианская наб., 52с8",
+      "district": "Замоскворечье",
+      "metro": "Павелецкая",
+      "capacity": 1700,
+      "description": "Концертный комплекс с несколькими залами у Павелецкой.",
+      "source_url": "https://www.openstreetmap.org/search?query=Moscow%20International%20House%20of%20Music",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 220000
+    },
+    {
+      "name": "Театр Эстрады",
+      "address": "Берсеневская наб., 20/2",
+      "district": "Якиманка",
+      "metro": "Кропоткинская",
+      "capacity": 1300,
+      "description": "Исторический зал на Берсеневской набережной.",
+      "source_url": "https://www.openstreetmap.org/search?query=Moscow%20Estrada%20Theatre",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 200000
+    },
+    {
+      "name": "ВДнх · павильон 75",
+      "address": "пр-т Мира, 119",
+      "district": "Останкинский",
+      "metro": "ВДНХ",
+      "capacity": 1000,
+      "description": "Павильонный формат на территории ВДНХ для выставок и конференций.",
+      "source_url": "https://www.openstreetmap.org/search?query=VDNKh%20pavilion%2075",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 180000
+    },
+    {
+      "name": "Экспоцентр",
+      "address": "Краснопресненская наб., 14",
+      "district": "Пресненский",
+      "metro": "Выставочная",
+      "capacity": 5000,
+      "description": "Выставочный комплекс на Красной Пресне.",
+      "source_url": "https://www.openstreetmap.org/search?query=Expocentre%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 400000
+    },
+    {
+      "name": "Сколково · Технопарк",
+      "address": "Большой бульвар, 42с1",
+      "district": "Сколково",
+      "metro": "Сколково",
+      "capacity": 800,
+      "description": "Конференц-пространства технопарка Сколково.",
+      "source_url": "https://www.openstreetmap.org/search?query=Skolkovo%20Technopark",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 170000
+    },
+    {
+      "name": "Digital October",
+      "address": "Берсеневская наб., 6с3",
+      "district": "Якиманка",
+      "metro": "Кропоткинская",
+      "capacity": 500,
+      "description": "ИТ-хаб и event-залы на Красном Октябре.",
+      "source_url": "https://www.openstreetmap.org/search?query=Digital%20October%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 140000
+    },
+    {
+      "name": "Красный Октябрь · площадки",
+      "address": "Берсеневская наб., 6",
+      "district": "Якиманка",
+      "metro": "Кропоткинская",
+      "capacity": 400,
+      "description": "Креативные лофты на территории бывшей фабрики.",
+      "source_url": "https://www.openstreetmap.org/search?query=Krasny%20Oktyabr%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 130000
+    },
+    {
+      "name": "Winzavod",
+      "address": "4-й Сыромятнический пер., 1с6",
+      "district": "Басманный",
+      "metro": "Курская",
+      "capacity": 600,
+      "description": "Центр современного искусства с залами под события.",
+      "source_url": "https://www.openstreetmap.org/search?query=Winzavod%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 150000
+    },
+    {
+      "name": "Garage Museum · event spaces",
+      "address": "ул. Крымский Вал, 9с32",
+      "district": "Якиманка",
+      "metro": "Октябрьская",
+      "capacity": 700,
+      "description": "Пространства музея современного искусства в Парке Горького.",
+      "source_url": "https://www.openstreetmap.org/search?query=Garage%20Museum%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 210000
+    },
+    {
+      "name": "Центральный Манеж",
+      "address": "Манежная пл., 1",
+      "district": "Тверской",
+      "metro": "Охотный Ряд",
+      "capacity": 2000,
+      "description": "Выставочный зал в центре у Кремля.",
+      "source_url": "https://www.openstreetmap.org/search?query=Moscow%20Manege",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 320000
+    },
+    {
+      "name": "Лужники · Малая спортивная арена",
+      "address": "ул. Лужники, 24",
+      "district": "Хамовники",
+      "metro": "Воробьёвы горы",
+      "capacity": 8000,
+      "description": "Спортивно-концертная площадка олимпийского комплекса.",
+      "source_url": "https://www.openstreetmap.org/search?query=Luzhniki%20Small%20Arena",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 600000
+    },
+    {
+      "name": "Хлебозавод №9",
+      "address": "Новодмитровская ул., 1с1",
+      "district": "Бутырский",
+      "metro": "Дмитровская",
+      "capacity": 500,
+      "description": "Креативное пространство с залами для вечеринок и презентаций.",
+      "source_url": "https://www.openstreetmap.org/search?query=Khlebozavod%209%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 110000
+    },
+    {
+      "name": "Дом Союзов · Колонный зал",
+      "address": "ул. Большая Дмитровка, 1",
+      "district": "Тверской",
+      "metro": "Охотный Ряд",
+      "capacity": 1600,
+      "description": "Исторический колонный зал в центре Москвы для торжественных событий.",
+      "source_url": "https://www.openstreetmap.org/search?query=House%20of%20Unions%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 350000
+    },
+    {
+      "name": "Дом культуры ГЭС-2",
+      "address": "Болотная наб., 15",
+      "district": "Якиманка",
+      "metro": "Боровицкая",
+      "capacity": 900,
+      "description": "Культурный центр на Болотной набережной с залами для программ и приёмов.",
+      "source_url": "https://www.openstreetmap.org/search?query=GES-2%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 240000
+    }
+  ]
+}

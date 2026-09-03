@@ -310,6 +310,9 @@ def main() -> None:
     db = SessionLocal()
     try:
         print(seed(db))
+        from booker_api.seed_venues_moscow import import_moscow_venues
+
+        print(import_moscow_venues(db))
     finally:
         db.close()
 

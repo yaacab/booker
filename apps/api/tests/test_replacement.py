@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from booker_api.security import now
 from tests.conftest import auth_header, register
 
 
@@ -13,13 +16,16 @@ def _setup_event_with_requirement(client):
         json={"organization_id": artist_org["id"], "name": "DJ Nova", "category": "dj"},
         headers=oh,
     ).json()
+    day = (now() + timedelta(days=14)).astimezone().replace(hour=18, minute=0, second=0, microsecond=0)
+    starts = day.isoformat()
+    ends = (day + timedelta(hours=4)).isoformat()
     slot = client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-09-01T18:00:00+00:00",
-            "ends_at": "2026-09-01T22:00:00+00:00",
+            "starts_at": starts,
+            "ends_at": ends,
         },
         headers=oh,
     ).json()
@@ -28,7 +34,7 @@ def _setup_event_with_requirement(client):
         json={
             "organization_id": cust_org["id"],
             "title": "Свадьба",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": starts,
             "requirements": [{"category_code": "dj", "qty": 1}],
         },
         headers=ch,

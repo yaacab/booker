@@ -520,6 +520,10 @@ def search_catalog(
                     "city": venue.city,
                     "category": "venue",
                     "verified": venue.verified,
+                    "address": getattr(venue, "address", "") or "",
+                    "metro": getattr(venue, "metro", "") or "",
+                    "availability_mode": getattr(venue, "availability_mode", "owner") or "owner",
+                    "listing_origin": getattr(venue, "listing_origin", "owner") or "owner",
                     "open_slots": len(pool),
                     "next_open_at": nxt.starts_at.isoformat(),
                     "tariffs": [{"honorarium_rub": t.honorarium_rub} for t in tariffs],
@@ -551,7 +555,21 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
         "city": venue.city,
         "capacity": venue.capacity,
         "verified": venue.verified,
-        "facts": {"note": "Звёзды повесим после десяти закрытых вечеров. Пока — факты, не магия."},
+        "address": getattr(venue, "address", "") or "",
+        "district": getattr(venue, "district", "") or "",
+        "metro": getattr(venue, "metro", "") or "",
+        "description": getattr(venue, "description", "") or "",
+        "source_url": getattr(venue, "source_url", "") or "",
+        "source_attribution": getattr(venue, "source_attribution", "") or "",
+        "listing_origin": getattr(venue, "listing_origin", "owner") or "owner",
+        "availability_mode": getattr(venue, "availability_mode", "owner") or "owner",
+        "facts": {
+            "note": (
+                "Календарь ориентировочный: слоты синтетические, доступность не подтверждена владельцем."
+                if (getattr(venue, "availability_mode", "owner") or "owner") == "synthetic"
+                else "Звёзды повесим после десяти закрытых вечеров. Пока — факты, не магия."
+            )
+        },
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
         "halls": [_hall_item(h) for h in halls],
         "slots": slots,

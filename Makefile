@@ -1,4 +1,4 @@
-.PHONY: init test-api lint web-build web-lint check seed deploy wait-dns migrate migrate-docker
+.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow deploy wait-dns migrate migrate-docker
 
 PYTHON ?= $(CURDIR)/.venv/bin/python
 
@@ -23,6 +23,9 @@ check: test-api lint
 
 seed:
 	cd apps/api && $(PYTHON) -m booker_api.seed
+
+seed-venues-moscow:
+	cd apps/api && $(PYTHON) -m booker_api.seed_venues_moscow
 
 migrate:
 	cd apps/api && $(PYTHON) -m alembic upgrade head

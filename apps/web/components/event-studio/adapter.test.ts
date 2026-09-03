@@ -78,3 +78,15 @@ test("mapCatalogVenue preserves venue id", () => {
   assert.equal(venue.id, "v1");
   assert.equal(venue.honorariumFrom, 250000);
 });
+
+test("mapCatalogVenue marks synthetic availability", () => {
+  const venue = mapCatalogVenue({
+    id: "v2",
+    name: "Artplay",
+    city: "Москва",
+    category: "venue",
+    availability_mode: "synthetic",
+    tariffs: [{ honorarium_rub: 150000 }],
+  });
+  assert.equal(venue.availabilityLabel, "Календарь ориентировочный");
+});
