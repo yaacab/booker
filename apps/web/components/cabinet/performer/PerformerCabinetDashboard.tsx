@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CabinetPageShell } from "../CabinetPageShell";
 import { SupplyCabinetSection } from "../SupplyCabinetSection";
 import { usePerformerCabinetData } from "./usePerformerCabinetData";
@@ -9,6 +8,7 @@ import { CalendarConflictsWidget } from "./widgets/CalendarConflictsWidget";
 import { ExpiringOffersWidget } from "./widgets/ExpiringOffersWidget";
 import { HoldsWidget } from "./widgets/HoldsWidget";
 import { NewRequestsWidget } from "./widgets/NewRequestsWidget";
+import { OpenSlotsWidget } from "./widgets/OpenSlotsWidget";
 import { ProfileCompletenessWidget } from "./widgets/ProfileCompletenessWidget";
 import { UpcomingPerformancesWidget } from "./widgets/UpcomingPerformancesWidget";
 
@@ -27,10 +27,18 @@ export function PerformerCabinetDashboard() {
     upcomingPerformances,
     calendarConflicts,
     profileIncomplete,
-    empty,
     offerBusy,
     sendOffer,
   } = usePerformerCabinetData();
+
+  const noDeals =
+    ready &&
+    !error &&
+    newRequests.length === 0 &&
+    awaitingResponse.length === 0 &&
+    expiringOffers.length === 0 &&
+    activeHolds.length === 0 &&
+    upcomingPerformances.length === 0;
 
   return (
     <CabinetPageShell
@@ -40,21 +48,21 @@ export function PerformerCabinetDashboard() {
       error={error}
       email={email}
       orgName={orgName}
-      empty={empty}
-      emptyState={
-        <article className="card empty">
-          <h2>Пока нет входящих заявок</h2>
-          <p>Когда заказчик отправит запрос на ваш слот, он появится здесь.</p>
-          <p className="timeline">Условия и итоговая сумма появятся в Deal Room после серверного предложения.</p>
-          <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link className="btn secondary" href="/search">
-              Открыть каталог
-            </Link>
-          </p>
-        </article>
-      }
+      empty={false}
+      emptyState={null}
       footer={orgId ? <SupplyCabinetSection orgId={orgId} role={role} /> : null}
     >
+      {orgId ? <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} /> : null}
+      {noDeals ? (
+        <article className="card empty">
+          <h2>Заявок пока нет — это нормально</h2>
+          <p>
+            Вы не собираете события. Откройте свободные вечера выше: заказчик найдёт вас в каталоге и пришлёт запрос на
+            ваш слот.
+          </p>
+          <p className="timeline">Цена и условия появятся в Deal Room после вашего предложения с сервера.</p>
+        </article>
+      ) : null}
       <NewRequestsWidget
         requests={newRequests}
         role={role}

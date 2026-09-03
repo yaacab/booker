@@ -57,9 +57,10 @@ test.describe("Cabinet a11y §7.5", () => {
     await injectSession(page, session.token, org.id);
     await page.goto("/cabinet/performer");
 
-    await expect(page.getByRole("heading", { level: 1, name: "Входящие и сделки" })).toBeVisible({
+    await expect(page.getByRole("heading", { level: 1, name: "Ваши даты и заявки" })).toBeVisible({
       timeout: 15_000,
     });
+    await expect(page.getByRole("heading", { level: 2, name: "Свободные слоты" })).toBeVisible();
 
     const widget = page.locator("section.dashboard-widget").first();
     if (await widget.count()) {

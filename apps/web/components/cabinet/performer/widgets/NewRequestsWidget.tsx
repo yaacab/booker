@@ -24,7 +24,7 @@ export function NewRequestsWidget({ requests, role, offerBusy, onSendOffer }: Ne
       title="Новые заявки"
       hint="Входящие запросы без оффера"
       isEmpty={requests.length === 0}
-      empty="Нет новых заявок — проверьте каталог и открытые слоты."
+      empty="Нет новых заявок — откройте свободные слоты и дождитесь запроса заказчика."
     >
       <ul className="dashboard-list">
         {requests.map((r) => (

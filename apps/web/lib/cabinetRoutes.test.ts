@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  cabinetHeadline,
   cabinetPathForKind,
   cabinetPathForMode,
   isSupplyCabinet,
@@ -25,6 +26,8 @@ test("isSupplyCabinet", () => {
   assert.equal(isSupplyCabinet("customer"), false);
 });
 
-test("cabinetPathForMode", () => {
-  assert.equal(cabinetPathForMode("venue"), "/cabinet/venue");
+test("cabinetHeadline", () => {
+  assert.equal(cabinetHeadline("customer"), "Мои события");
+  assert.equal(cabinetHeadline("performer"), "Ваши даты и заявки");
+  assert.equal(cabinetHeadline("venue"), "Залы, даты и заявки");
 });

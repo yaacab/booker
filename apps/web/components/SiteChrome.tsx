@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
-import { getToken, setToken, trackClientEvent } from "@/lib/api";
+import { api, getActiveOrg, getToken, setToken, trackClientEvent } from "@/lib/api";
+import { orgKindToCabinetMode, type CabinetMode } from "@/lib/cabinetRoutes";
 import { loginHref } from "@/lib/next";
 import { isEventStudioMapV1 } from "@/lib/features";
 
@@ -39,6 +40,7 @@ function tabTitle(path: string): string {
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [admin, setAdmin] = useState(false);
+  const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
   const path = usePathname();
   const [fullScreenStudio, setFullScreenStudio] = useState(
     () => path === "/events/new" && isEventStudioMapV1(),
@@ -47,7 +49,24 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setAuthed(Boolean(getToken()));
     setAdmin(localStorage.getItem(ADMIN_KEY) === "1");
-  }, []);
+  }, [path]);
+
+  useEffect(() => {
+    if (!getToken()) {
+      setCabinetMode(null);
+      return;
+    }
+    void api<{
+      organizations?: { id: string; kind: string }[];
+      active_organization_id?: string;
+    }>("/me")
+      .then((me) => {
+        const activeOrgId = getActiveOrg() || me.active_organization_id || me.organizations?.[0]?.id;
+        const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
+        setCabinetMode(org ? orgKindToCabinetMode(org.kind) : null);
+      })
+      .catch(() => setCabinetMode(null));
+  }, [path, authed]);
 
   useEffect(() => {
     setFullScreenStudio(path === "/events/new" && isEventStudioMapV1());
@@ -84,6 +103,11 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
     };
   }, [path, fullScreenStudio]);
 
+  const isSupply = cabinetMode === "performer" || cabinetMode === "venue";
+  const cabinetHref = cabinetMode ? `/cabinet/${cabinetMode}` : "/cabinet";
+  const primaryWorkHref = isSupply ? cabinetHref : "/events/new";
+  const primaryWorkLabel = isSupply ? "Мой календарь" : "Создать заявку";
+
   if (fullScreenStudio) {
     return (
       <div id="content" key="event-studio-fullscreen" className="studio-fullscreen-root">
@@ -104,11 +128,49 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             <BrandLockup />
           </Link>
           <nav className="nav-public" aria-label="Основное">
-            <Link href="/search" aria-current={path.startsWith("/search") ? "page" : undefined}>Каталог</Link>
-            <Link href="/events/new" aria-current={path.startsWith("/events/new") ? "page" : undefined}>Создать заявку</Link>
-            {authed ? <Link href="/cabinet" aria-current={path.startsWith("/cabinet") || path.startsWith("/deals") ? "page" : undefined}>Сделки</Link> : null}
-            {authed ? <Link href="/profile" aria-current={path.startsWith("/profile") ? "page" : undefined}>Профиль</Link> : null}
-            {admin ? <Link href="/admin" aria-current={path.startsWith("/admin") ? "page" : undefined}>Оператор</Link> : null}
+            {!isSupply ? (
+              <Link href="/search" aria-current={path.startsWith("/search") ? "page" : undefined}>
+                Каталог
+              </Link>
+            ) : null}
+            {authed ? (
+              <Link
+                href={primaryWorkHref}
+                aria-current={
+                  isSupply
+                    ? path.startsWith("/cabinet")
+                      ? "page"
+                      : undefined
+                    : path.startsWith("/events/new")
+                      ? "page"
+                      : undefined
+                }
+              >
+                {primaryWorkLabel}
+              </Link>
+            ) : (
+              <Link href="/events/new" aria-current={path.startsWith("/events/new") ? "page" : undefined}>
+                Создать заявку
+              </Link>
+            )}
+            {authed ? (
+              <Link
+                href={cabinetHref}
+                aria-current={path.startsWith("/cabinet") || path.startsWith("/deals") ? "page" : undefined}
+              >
+                {isSupply ? "Заявки" : "Сделки"}
+              </Link>
+            ) : null}
+            {authed ? (
+              <Link href="/profile" aria-current={path.startsWith("/profile") ? "page" : undefined}>
+                Профиль
+              </Link>
+            ) : null}
+            {admin ? (
+              <Link href="/admin" aria-current={path.startsWith("/admin") ? "page" : undefined}>
+                Оператор
+              </Link>
+            ) : null}
             {authed ? <WorkspaceSwitcher /> : null}
             {authed ? (
               <button
@@ -167,18 +229,24 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           Главная
         </Link>
         <Link
-          href="/search"
+          href={isSupply ? cabinetHref : "/search"}
           className={
-            path.startsWith("/search") || path.startsWith("/artists") || path.startsWith("/venues") ? "on" : ""
+            isSupply
+              ? path.startsWith("/cabinet")
+                ? "on"
+                : ""
+              : path.startsWith("/search") || path.startsWith("/artists") || path.startsWith("/venues")
+                ? "on"
+                : ""
           }
         >
-          Каталог
+          {isSupply ? "Календарь" : "Каталог"}
         </Link>
         <Link
-          href={authed ? "/cabinet" : loginHref("/cabinet")}
+          href={authed ? cabinetHref : loginHref("/cabinet")}
           className={path.startsWith("/cabinet") || path.startsWith("/deals") ? "on" : ""}
         >
-          Сделки
+          {isSupply ? "Заявки" : "Сделки"}
         </Link>
         <Link href={authed ? "/profile" : loginHref("/profile")} className={path.startsWith("/profile") ? "on" : ""}>
           Профиль

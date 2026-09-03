@@ -280,8 +280,8 @@ export function SupplyCabinetSection({ orgId, role, onCompletenessChange }: Supp
 
   return (
     <section className="supply-section" style={{ marginTop: 28 }} aria-labelledby="cabinet-supply-heading">
-      <h2 id="cabinet-supply-heading">Supply</h2>
-      <p className="timeline">Услуги, занятость iCal и режим отпуска — ниже основных виджетов.</p>
+      <h2 id="cabinet-supply-heading">Услуги и занятость</h2>
+      <p className="timeline">Прайс в каталоге, импорт занятости из календаря и отпуск. Свободные слоты открываются блоком выше.</p>
       {services.length > 0 ? (
         <ul>
           {services.map((s) => (

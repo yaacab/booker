@@ -31,5 +31,6 @@ export function cabinetTitle(mode: CabinetMode): string {
 
 export function cabinetHeadline(mode: CabinetMode): string {
   if (mode === "customer") return "Мои события";
-  return "Входящие и сделки";
+  if (mode === "performer") return "Ваши даты и заявки";
+  return "Залы, даты и заявки";
 }

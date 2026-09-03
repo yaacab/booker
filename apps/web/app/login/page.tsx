@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
 import { api, createOrgWithConfirm, setActiveOrg, setToken } from "@/lib/api";
+import { cabinetPathForKind } from "@/lib/cabinetRoutes";
 import { safeNext } from "@/lib/next";
 
 export default function LoginPage() {
@@ -55,11 +56,23 @@ export default function LoginPage() {
           city: "Москва",
         });
         setActiveOrg(org.id);
-      } else {
-        const me = await api<{ active_organization_id?: string }>("/me");
-        if (me.active_organization_id) setActiveOrg(me.active_organization_id);
+        router.push(cabinetPathForKind(kind));
+        return;
       }
-      router.push(safeNext(new URLSearchParams(window.location.search).get("next")));
+      const me = await api<{
+        organizations?: { id: string; kind: string }[];
+        active_organization_id?: string;
+      }>("/me");
+      const activeOrgId = me.active_organization_id || me.organizations?.[0]?.id;
+      if (activeOrgId) setActiveOrg(activeOrgId);
+      const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
+      const rawNext = new URLSearchParams(window.location.search).get("next");
+      const next = safeNext(rawNext);
+      if (!rawNext || next === "/cabinet") {
+        router.push(cabinetPathForKind(org?.kind || "customer"));
+      } else {
+        router.push(next);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка входа");
     } finally {
