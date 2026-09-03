@@ -98,7 +98,7 @@ export default function LoginPage() {
       {mode === "login" ? (
         <details className="timeline">
           <summary>Демонстрационные аккаунты</summary>
-          <p>Пароль для демовхода: password1. Код подтверждения в Deal Room: 123456.</p>
+          <p>Пароль для демовхода: password1. Код подтверждения показывается в Deal Room при создании договора.</p>
           <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
             {(
               [
@@ -163,19 +163,35 @@ export default function LoginPage() {
         {mode !== "recover" ? (
           <label>
             Пароль
-            <input name="password" type="password" autoComplete="current-password" required minLength={8} />
+            <input
+              name="password"
+              type="password"
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
+              required
+              minLength={8}
+            />
           </label>
         ) : null}
         {mode === "register" ? (
           <>
-            <label className="unknown">
-              <input name="accept_offer" type="checkbox" required />
-              Принимаю <a href="/legal/offer">оферту</a> и правила использования сервиса.
-            </label>
-            <label className="unknown">
-              <input name="accept_privacy" type="checkbox" required />
-              Согласен с <a href="/legal/privacy">политикой обработки персональных данных</a>.
-            </label>
+            <div className="unknown">
+              <input id="accept_offer" name="accept_offer" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_offer" className="inline-label">
+                  Принимаю
+                </label>{" "}
+                <a href="/legal/offer">оферту</a> и правила использования сервиса.
+              </span>
+            </div>
+            <div className="unknown">
+              <input id="accept_privacy" name="accept_privacy" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_privacy" className="inline-label">
+                  Согласен
+                </label>{" "}
+                с <a href="/legal/privacy">политикой обработки персональных данных</a>.
+              </span>
+            </div>
             <label className="unknown">
               <input name="marketing_opt_in" type="checkbox" />
               Получать новости продукта и специальные предложения. Необязательно.

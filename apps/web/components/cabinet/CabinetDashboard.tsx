@@ -124,28 +124,41 @@ export function CabinetDashboard({ cabinetMode }: CabinetDashboardProps) {
         }
       }
       const q = org ? `?organization_id=${encodeURIComponent(org.id)}` : "";
-      const loads: Promise<unknown>[] = [
+      // Первичные данные дашборда — показываем сразу после первого Promise.all.
+      const [ev, rq, bk] = await Promise.all([
         api<{ items: EventItem[] }>("/events" + q),
         api<{ items: RequestItem[] }>("/requests" + q),
         api<{ items: BookingItem[] }>("/bookings" + q),
-      ];
+      ]);
+      setEvents(ev.items);
+      setRequests(rq.items);
+      setBookings(bk.items);
+      // Вторичные блоки грузим независимо: падение одного (например, /vacation)
+      // не должно обнулять дашборд.
       if (org && (org.kind === "artist" || org.kind === "venue")) {
-        loads.push(
-          api<{ items: ServiceItem[] }>(`/services?organization_id=${encodeURIComponent(org.id)}`).then((res) => {
-            setServices(res.items);
-          }),
+        const orgParam = encodeURIComponent(org.id);
+        await Promise.all([
+          api<{ items: ServiceItem[] }>(`/services?organization_id=${orgParam}`)
+            .then((res) => {
+              setServices(res.items);
+            })
+            .catch(() => {}),
           api<{ score: number; items: { id: string; label: string; done: boolean }[]; applicable?: boolean }>(
-            `/organizations/${encodeURIComponent(org.id)}/supply-completeness`,
-          ).then((res) => setCompleteness(res)),
+            `/organizations/${orgParam}/supply-completeness`,
+          )
+            .then((res) => setCompleteness(res))
+            .catch(() => {}),
           api<{ items: { resource_type: string; resource_id: string; label: string }[] }>(
-            `/organizations/${encodeURIComponent(org.id)}/calendar-targets`,
-          ).then((res) => {
-            setCalendarTargets(res.items);
-            if (res.items[0]) {
-              setCalendarTargetId(res.items[0].resource_id);
-              setVacationTargetId(res.items[0].resource_id);
-            }
-          }),
+            `/organizations/${orgParam}/calendar-targets`,
+          )
+            .then((res) => {
+              setCalendarTargets(res.items);
+              if (res.items[0]) {
+                setCalendarTargetId(res.items[0].resource_id);
+                setVacationTargetId(res.items[0].resource_id);
+              }
+            })
+            .catch(() => {}),
           api<{
             items: {
               resource_type: string;
@@ -155,23 +168,16 @@ export function CabinetDashboard({ cabinetMode }: CabinetDashboardProps) {
               starts_at: string | null;
               ends_at: string | null;
             }[];
-          }>(`/organizations/${encodeURIComponent(org.id)}/vacation`).then((res) => setVacationItems(res.items)),
-        );
+          }>(`/organizations/${orgParam}/vacation`)
+            .then((res) => setVacationItems(res.items))
+            .catch(() => {}),
+        ]);
       } else {
         setServices([]);
         setCompleteness(null);
         setCalendarTargets([]);
         setVacationItems([]);
       }
-      const [ev, rq, bk] = (await Promise.all(loads.slice(0, 3))) as [
-        { items: EventItem[] },
-        { items: RequestItem[] },
-        { items: BookingItem[] },
-      ];
-      await Promise.all(loads.slice(3));
-      setEvents(ev.items);
-      setRequests(rq.items);
-      setBookings(bk.items);
       trackClientEvent("cabinet.viewed", { kind: cabinetMode });
       setError("");
     } catch (err) {
@@ -291,7 +297,7 @@ export function CabinetDashboard({ cabinetMode }: CabinetDashboardProps) {
         },
       );
       setIcalResult(
-        `Импортировано занятостей: ${res.imported}, пропущено: ${res.skipped}, закрыто открытых слотов: ${res.removed_open}`,
+        `Импортировано занятых интервалов: ${res.imported}, пропущено: ${res.skipped}, закрыто открытых слотов: ${res.removed_open}`,
       );
       trackClientEvent("cabinet.ical_imported", { imported: res.imported });
       const refreshed = await api<{ score: number; items: { id: string; label: string; done: boolean }[] }>(

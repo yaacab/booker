@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CityField } from "@/components/CityField";
-import { moscowToday } from "@/lib/format";
+import { HeroDateField } from "@/components/HeroDateField";
 
 export const metadata = {
   alternates: { canonical: "/" },
@@ -48,10 +48,7 @@ export default function HomePage() {
           <p className="timeline">Сначала дата и формат — затем доступные участники.</p>
           <form className="search search-vertical" action="/search" method="get">
             <CityField name="city" defaultValue="Москва" />
-            <label>
-              Дата
-              <input name="date" type="date" min={moscowToday()} />
-            </label>
+            <HeroDateField />
             <label>
               Кто нужен
               <select name="category" defaultValue="dj">

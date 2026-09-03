@@ -29,6 +29,7 @@ export function VenueCabinetDashboard() {
     calendarConflicts,
     profileIncomplete,
     halls,
+    empty,
     offerBusy,
     sendOffer,
     reload,
@@ -47,8 +48,13 @@ export function VenueCabinetDashboard() {
       error={error}
       email={email}
       orgName={orgName}
-      empty={false}
-      emptyState={null}
+      empty={empty}
+      emptyState={
+        <article className="card empty">
+          <h2>Пока тихо</h2>
+          <p>Добавьте зал и держите календарь открытым — новые заявки и удержания появятся здесь.</p>
+        </article>
+      }
       subtitle="Залы, календарь и ответы на бронирования — рабочий стол площадки."
       metrics={[
         {

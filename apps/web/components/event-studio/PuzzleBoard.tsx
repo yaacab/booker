@@ -142,12 +142,12 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
   const vbH = OY * 2 + ROWS * H;
 
   return (
-    <div
-      className={`puzzle-board${reducedMotion ? " puzzle-board--reduced" : ""}`}
-      role="img"
-      aria-label="Сборка события: хромированный пазл из даты, площадки и ролей"
-    >
-      <div className="puzzle-board-stage">
+    <div className={`puzzle-board${reducedMotion ? " puzzle-board--reduced" : ""}`}>
+      <div
+        className="puzzle-board-stage"
+        role="img"
+        aria-label="Сборка события: хромированный пазл из даты, площадки и ролей"
+      >
         <svg
           className="puzzle-board-svg"
           viewBox={`0 0 ${vbW} ${vbH}`}
@@ -242,6 +242,14 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
           })}
         </ul>
       </div>
+      {/* Текстовая версия для скринридеров: визуальные подписи скрыты под role="img". */}
+      <ul className="sr-only">
+        {padded.map((slot) => (
+          <li key={`sr-${slot.id}`}>
+            {slot.label}: {slot.filled ? `заполнено${slot.detail ? ` — ${slot.detail}` : ""}` : "пусто"}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

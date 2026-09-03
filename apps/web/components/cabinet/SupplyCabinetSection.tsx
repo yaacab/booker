@@ -177,7 +177,7 @@ export function SupplyCabinetSection({ orgId, role, onCompletenessChange }: Supp
         },
       );
       setIcalResult(
-        `Импортировано занятостей: ${res.imported}, пропущено: ${res.skipped}, закрыто открытых слотов: ${res.removed_open}`,
+        `Импортировано занятых интервалов: ${res.imported}, пропущено: ${res.skipped}, закрыто открытых слотов: ${res.removed_open}`,
       );
       trackClientEvent("cabinet.ical_imported", { imported: res.imported });
       const refreshed = await api<{ score: number }>(

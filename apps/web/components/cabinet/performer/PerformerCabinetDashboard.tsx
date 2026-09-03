@@ -27,6 +27,7 @@ export function PerformerCabinetDashboard() {
     upcomingPerformances,
     calendarConflicts,
     profileIncomplete,
+    empty,
     offerBusy,
     sendOffer,
   } = usePerformerCabinetData();
@@ -41,8 +42,16 @@ export function PerformerCabinetDashboard() {
       error={error}
       email={email}
       orgName={orgName}
-      empty={false}
-      emptyState={null}
+      empty={empty}
+      emptyState={
+        <article className="card empty">
+          <h2>Пока тихо</h2>
+          <p>
+            Новые запросы, удержания и ближайшие даты появятся здесь. Держите календарь открытым — так вас чаще
+            бронируют.
+          </p>
+        </article>
+      }
       subtitle="Календарь, гонорар и ответы на запросы. Вы не собираете события — вас бронируют."
       metrics={[
         { label: "Новые запросы", value: newRequests.length, tone: newRequests.length ? "wait" : "default" },

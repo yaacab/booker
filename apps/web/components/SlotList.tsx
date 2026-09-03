@@ -65,12 +65,18 @@ export function SlotList({
   selectable?: boolean;
   highlightDay?: string | null;
 }) {
-  const hitRef = useRef<HTMLElement | null>(null);
+  const hitRef = useRef<{ el: HTMLElement; day: string } | null>(null);
 
   useEffect(() => {
-    if (!hitRef.current) return;
+    const hit = hitRef.current;
+    if (!hit) return;
+    // highlightDay больше не совпадает с подсвеченной секцией — сбрасываем ссылку.
+    if (!highlightDay || hit.day !== highlightDay) {
+      hitRef.current = null;
+      return;
+    }
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    hitRef.current.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    hit.el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
   }, [highlightDay, slots]);
   if (!slots.length) {
     return (
@@ -92,11 +98,18 @@ export function SlotList({
   return (
     <div className="slot-groups">
       {days.map((g) => {
-        const hit = Boolean(highlightDay && g.items.some((s) => moscowDate(s.starts_at) === highlightDay));
+        const day = highlightDay ?? "";
+        const hit = Boolean(day && g.items.some((s) => moscowDate(s.starts_at) === day));
         return (
         <section
           key={g.day}
-          ref={hit ? (el) => { hitRef.current = el; } : undefined}
+          ref={
+            hit
+              ? (el) => {
+                  hitRef.current = el ? { el, day } : null;
+                }
+              : undefined
+          }
           className={hit ? "slot-day-hit" : undefined}
         >
           <h3 className="slot-day">{g.day}{hit ? " · эта дата" : ""}</h3>

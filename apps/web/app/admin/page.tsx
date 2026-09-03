@@ -200,8 +200,14 @@ export default function AdminPage() {
         </article>
         <article className="card">
           <h2>Верификация</h2>
-          {renderTargets("artist", "Артисты", queue?.artists ?? [])}
-          {renderTargets("venue", "Площадки", queue?.venues ?? [])}
+          {queue ? (
+            <>
+              {renderTargets("artist", "Артисты", queue.artists ?? [])}
+              {renderTargets("venue", "Площадки", queue.venues ?? [])}
+            </>
+          ) : !error ? (
+            <p className="timeline">Загрузка очереди…</p>
+          ) : null}
         </article>
         <article className="card">
           <h2>Споры</h2>

@@ -114,12 +114,11 @@ export function useVenueCabinetData() {
   const expiringOffers = useMemo(
     () =>
       dealRooms
-        .filter(
-          (d) =>
-            d.hold?.status === "active" &&
-            d.hold.expires_at &&
-            new Date(d.hold.expires_at).getTime() - now <= HOLD_SOON_MS,
-        )
+        .filter((d) => {
+          if (d.hold?.status !== "active" || !d.hold.expires_at) return false;
+          const diff = new Date(d.hold.expires_at).getTime() - now;
+          return diff > 0 && diff <= HOLD_SOON_MS;
+        })
         .sort(
           (a, b) =>
             new Date(a.hold!.expires_at).getTime() - new Date(b.hold!.expires_at).getTime(),

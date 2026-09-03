@@ -13,17 +13,21 @@ export function WorkspaceSwitcher() {
 
   useEffect(() => {
     if (!getToken()) return;
-    void api<{ flags?: { workspace_switcher?: boolean } }>("/health").then((health) => {
-      if (health.flags && health.flags.workspace_switcher === false) {
-        setOrgs([]);
-      }
-    });
-    void api<{ organizations: Org[]; active_organization_id?: string }>("/me").then((me) => {
-      setOrgs(me.organizations || []);
-      const next = getActiveOrg() || me.active_organization_id || me.organizations[0]?.id || "";
-      setCurrent(next);
-      if (next) setActiveOrg(next);
-    });
+    void api<{ flags?: { workspace_switcher?: boolean } }>("/health")
+      .then((health) => {
+        if (health.flags && health.flags.workspace_switcher === false) {
+          setOrgs([]);
+        }
+      })
+      .catch(() => {});
+    void api<{ organizations: Org[]; active_organization_id?: string }>("/me")
+      .then((me) => {
+        setOrgs(me.organizations || []);
+        const next = getActiveOrg() || me.active_organization_id || me.organizations[0]?.id || "";
+        setCurrent(next);
+        if (next) setActiveOrg(next);
+      })
+      .catch(() => {});
   }, []);
 
   if (orgs.length < 2) return null;
@@ -35,20 +39,25 @@ export function WorkspaceSwitcher() {
         value={current}
         onChange={(e) => {
           const id = e.target.value;
+          const prev = current;
           setCurrent(id);
-          setActiveOrg(id);
           void api("/me/active-org", {
             method: "POST",
             body: JSON.stringify({ organization_id: id }),
-          }).finally(() => {
-            const org = orgs.find((o) => o.id === id);
-            const path = window.location.pathname;
-            if (path.startsWith("/cabinet")) {
-              window.location.href = cabinetPathForKind(org?.kind || "customer");
-            } else {
-              window.location.reload();
-            }
-          });
+          })
+            .then(() => {
+              setActiveOrg(id);
+              const org = orgs.find((o) => o.id === id);
+              const path = window.location.pathname;
+              if (path.startsWith("/cabinet")) {
+                window.location.href = cabinetPathForKind(org?.kind || "customer");
+              } else {
+                window.location.reload();
+              }
+            })
+            .catch(() => {
+              setCurrent(prev);
+            });
         }}
       >
         {orgs.map((org) => (

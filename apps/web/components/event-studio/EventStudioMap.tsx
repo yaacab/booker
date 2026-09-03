@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CityField } from "@/components/CityField";
 import { categoryLabel } from "@/lib/copy";
-import { formatDay, money } from "@/lib/format";
+import { formatDay, guestsLabel, money } from "@/lib/format";
 import type {
   BudgetHint,
   EventStudioDraft,
@@ -238,7 +238,7 @@ export default function EventStudioMap({
                 onChange={(e) => update({ ...draft, title: e.target.value })}
               />
               <small>
-                {dateLabel} · {draft.city || "город"} · {draft.guests} гостей
+                {dateLabel} · {draft.city || "город"} · {guestsLabel(draft.guests)}
               </small>
               <label className="field-inline guests-field">
                 Гостей
@@ -261,7 +261,7 @@ export default function EventStudioMap({
             <h3>{venue?.name || "Площадка не выбрана"}</h3>
             <p>{venue ? `${venue.city}` : "Можно выбрать позже"}</p>
             <div className="card-meta">
-              <span>{draft.guests} гостей</span>
+              <span>{guestsLabel(draft.guests)}</span>
               <span>{venue ? "из каталога" : "подбор позже"}</span>
             </div>
             {venues.length && editingVenue ? (

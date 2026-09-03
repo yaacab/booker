@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, getActiveOrg, getToken, isWriteRole } from "@/lib/api";
 import { CHIP } from "@/lib/copy";
-import { formatWhen, money } from "@/lib/format";
+import { formatWhen, guestsLabel, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { SlotList } from "@/components/SlotList";
 
@@ -220,7 +220,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       <p className="kicker">Профиль площадки</p>
       <h1>{data.name}</h1>
       <p>
-        {data.city} · до {data.capacity} гостей{" "}
+        {data.city} · до {guestsLabel(data.capacity)}{" "}
         {synthetic ? (
           <span className="chip wait">{CHIP.syntheticCalendar}</span>
         ) : data.verified ? (

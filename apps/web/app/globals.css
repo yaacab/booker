@@ -730,6 +730,17 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.2);
   z-index: 20;
 }
+/* Липким панелям с surface-glass оставляем только разделительную границу,
+   иначе .surface-glass рисует border со всех сторон поверх .top/.site-footer/.bottom-nav. */
+.top.surface-glass,
+.site-footer.surface-glass,
+.bottom-nav.surface-glass {
+  border-left: 0;
+  border-right: 0;
+}
+.top.surface-glass { border-top: 0; }
+.site-footer.surface-glass,
+.bottom-nav.surface-glass { border-bottom: 0; }
 .bottom-nav a {
   color: var(--ink); font-size: 12px; font-weight: 600;
   min-height: 44px; min-width: 0; flex: 1; padding: 0 2px;
@@ -759,6 +770,7 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
 .legal-index { display: grid; gap: 10px; padding: 0; list-style: none; }
 .legal-index a { display: block; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .unknown input { width: 20px; height: 20px; min-height: 20px; margin: 0; }
+.inline-label { display: inline; font-size: inherit; color: inherit; }
 .catalog-layout { display: grid; gap: 20px; }
 @media (min-width: 900px) {
   .catalog-layout { grid-template-columns: 260px 1fr; align-items: start; }

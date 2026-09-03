@@ -42,9 +42,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState(false);
   const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
   const path = usePathname();
-  const [fullScreenStudio, setFullScreenStudio] = useState(
-    () => path === "/events/new" && isEventStudioMapV1(),
-  );
+  // Флаг студии зависит от window.location.search — считаем только после маунта,
+  // иначе SSR и первая клиентская отрисовка расходятся (hydration mismatch).
+  const [fullScreenStudio, setFullScreenStudio] = useState(false);
 
   useEffect(() => {
     setAuthed(Boolean(getToken()));

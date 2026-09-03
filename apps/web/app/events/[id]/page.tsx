@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import { CATEGORY, KIND_LABEL, categoryLabel } from "@/lib/copy";
-import { formatWhen, moscowDate } from "@/lib/format";
+import { formatWhen, guestsLabel, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import {
   BLOCKER_LABEL,
@@ -356,6 +356,7 @@ export default function EventPage() {
   const [draft, setDraft] = useState<DraftItem[]>([]);
   const [editError, setEditError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [packError, setPackError] = useState("");
 
   async function loadEvent(id: string) {
     const [data, me] = await Promise.all([
@@ -476,27 +477,37 @@ export default function EventPage() {
       <p className="mono">
         {formatWhen(event.event_date)}
         {event.city ? ` · ${event.city}` : ""}
-        {event.guest_count ? ` · ${event.guest_count} гостей` : ""}
+        {event.guest_count ? ` · ${guestsLabel(event.guest_count)}` : ""}
       </p>
       <p>
         <button
           type="button"
           className="secondary"
           onClick={() => {
-            void api<Record<string, unknown>>(`/events/${event.id}/offline-pack`).then((pack) => {
-              const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `event-${event.id.slice(0, 8)}-offline-pack.json`;
-              a.click();
-              URL.revokeObjectURL(url);
-            });
+            setPackError("");
+            void api<Record<string, unknown>>(`/events/${event.id}/offline-pack`)
+              .then((pack) => {
+                const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `event-${event.id.slice(0, 8)}-offline-pack.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              })
+              .catch((err: unknown) => {
+                setPackError(err instanceof Error ? err.message : "Не удалось скачать offline-pack");
+              });
           }}
         >
           Скачать offline-pack
         </button>
       </p>
+      {packError ? (
+        <p className="timeline" role="alert">
+          {packError}
+        </p>
+      ) : null}
       {totalPositions > 0 ? (
         <article className="card tint reveal">
           <strong>Закрытие состава</strong>

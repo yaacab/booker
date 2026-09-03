@@ -7,6 +7,7 @@ import { cabinetPathForKind } from "@/lib/cabinetRoutes";
 import type { CustomerBooking, CustomerDealRoom, CustomerEvent } from "./types";
 
 const DEAL_ROOM_STATUSES = new Set(["Negotiation", "DateHeld", "AwaitingContract", "AwaitingPayment"]);
+const HOLD_SOON_MS = 48 * 3600_000;
 
 export function useCustomerCabinetData() {
   const router = useRouter();
@@ -101,12 +102,16 @@ export function useCustomerCabinetData() {
   const expiringHolds = useMemo(
     () =>
       dealRooms
-        .filter((d) => d.hold?.status === "active" && d.hold.expires_at)
+        .filter((d) => {
+          if (d.hold?.status !== "active" || !d.hold.expires_at) return false;
+          const diff = new Date(d.hold.expires_at).getTime() - now;
+          return diff > 0 && diff <= HOLD_SOON_MS;
+        })
         .sort(
           (a, b) =>
             new Date(a.hold!.expires_at).getTime() - new Date(b.hold!.expires_at).getTime(),
         ),
-    [dealRooms],
+    [dealRooms, now],
   );
 
   const empty =

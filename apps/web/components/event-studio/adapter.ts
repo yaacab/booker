@@ -48,7 +48,7 @@ function availabilityOf(item: CatalogItem, date?: string): { state: Availability
   const slots = item.open_slots ?? 0;
   if (slots > 0 && item.verified) {
     const day = date ? formatDay(`${date}T12:00:00+03:00`) : "на дату";
-    return { state: "available", label: `● Свободен ${day.split(",")[0]}` };
+    return { state: "available", label: `Свободен: ${day.split(",")[0]}` };
   }
   if (slots > 0 && !item.verified) {
     return { state: "tentative", label: "● Нужно уточнить слот" };
@@ -92,12 +92,17 @@ export function mapCatalogVenue(item: CatalogItem): VenueItem {
   };
 }
 
-export async function loadCatalog(city: string, date: string, category?: string): Promise<CatalogResponse> {
+export async function loadCatalog(
+  city: string,
+  date: string,
+  category?: string,
+  signal?: AbortSignal,
+): Promise<CatalogResponse> {
   const params = new URLSearchParams({ city });
   const iso = catalogDateParam(date);
   if (iso) params.set("date", iso);
   if (category) params.set("category", category);
-  return api<CatalogResponse>(`/catalog/search?${params.toString()}`);
+  return api<CatalogResponse>(`/catalog/search?${params.toString()}`, { signal });
 }
 
 export function budgetHintFromSelection(
@@ -214,6 +219,12 @@ export async function submitEventStudioDraft(
     }),
   });
 
+  // Сохраняем ключ идемпотентности сразу после создания события:
+  // повторный сабмит с тем же ключом переиспользует eventId и не плодит дубли,
+  // даже если цикл /requests ниже упадёт на середине.
+  sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
+  sessionStorage.setItem(`${IDEMPOTENCY_KEY}:result`, created.id);
+
   const reqByCategory = new Map((created.requirements || []).map((r) => [r.category_code, r.id]));
   for (const talentId of draft.talentIds) {
     const talent = talents.find((t) => t.id === talentId);
@@ -238,8 +249,6 @@ export async function submitEventStudioDraft(
     });
   }
 
-  sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
-  sessionStorage.setItem(`${IDEMPOTENCY_KEY}:result`, created.id);
   clearStoredDraft();
   return { eventId: created.id, reused: false };
 }
