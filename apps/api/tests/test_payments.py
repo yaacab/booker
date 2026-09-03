@@ -31,7 +31,7 @@ def _awaiting_payment(client):
     ):
         signed = client.post(
             f"/contracts/{contract['id']}/sign",
-            json={"side": side, "otp": "123456"},
+            json={"side": side, "otp": contract[f"otp_{side}"]},
             headers=auth_header(token),
         )
         assert signed.status_code == 200, signed.text

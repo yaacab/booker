@@ -1,4 +1,5 @@
 import json
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -17,6 +18,9 @@ from booker_api.models import (
     Payment,
     PaymentWebhookEvent,
     User,
+)
+from booker_api.models import (
+    Request as DealRequest,
 )
 from booker_api.payments.adapter import PaymentAdapterError, get_payment_adapter
 from booker_api.rate_limit import client_key, webhook_limiter
@@ -38,6 +42,13 @@ quote_id={quote_id}
 """
 
 
+def _new_otp(exclude: str | None = None) -> str:
+    code = f"{secrets.randbelow(900000) + 100000}"
+    while exclude is not None and code == exclude:
+        code = f"{secrets.randbelow(900000) + 100000}"
+    return code
+
+
 @router.post("/bookings/{booking_id}/contract")
 def create_contract(
     booking_id: str,
@@ -47,13 +58,24 @@ def create_contract(
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
+    event = db.get(Event, booking.event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
     if booking.status not in {"DateHeld", "AwaitingContract"}:
         raise HTTPException(409, "Сначала удержите дату")
     offer = db.get(Offer, booking.offer_id)
     version = db.get(OfferVersion, offer.active_version_id)
     existing = db.query(Contract).filter(Contract.booking_id == booking.id).one_or_none()
     if existing:
-        return {"id": existing.id, "status": booking.status}
+        return {
+            "id": existing.id,
+            "status": booking.status,
+            "otp_customer": existing.otp_customer,
+            "otp_supplier": existing.otp_supplier,
+        }
+    otp_customer = _new_otp()
+    otp_supplier = _new_otp(exclude=otp_customer)
     body = CONTRACT_TEMPLATE.format(
         honorarium=version.honorarium_rub,
         commission=version.commission_rub,
@@ -63,8 +85,8 @@ def create_contract(
     contract = Contract(
         booking_id=booking.id,
         body=body,
-        otp_customer="123456",
-        otp_supplier="123456",
+        otp_customer=otp_customer,
+        otp_supplier=otp_supplier,
     )
     db.add(contract)
     db.flush()
@@ -80,7 +102,13 @@ def create_contract(
     )
     db.commit()
     db.refresh(contract)
-    return {"id": contract.id, "body": contract.body, "status": booking.status}
+    return {
+        "id": contract.id,
+        "body": contract.body,
+        "status": booking.status,
+        "otp_customer": otp_customer,
+        "otp_supplier": otp_supplier,
+    }
 
 
 @router.post("/contracts/{contract_id}/sign")
@@ -93,16 +121,23 @@ def sign_contract(
     contract = db.get(Contract, contract_id)
     if not contract:
         raise HTTPException(404, "Договор не найден")
+    booking = db.get(Booking, contract.booking_id)
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(DealRequest, offer.request_id)
+    event = db.get(Event, booking.event_id)
+    if body.side == "customer":
+        require_org_member(db, user, event.organization_id)
+    elif body.side == "supplier":
+        require_org_member(db, user, req.supplier_org_id)
+    else:
+        raise HTTPException(400, "side: customer|supplier")
     expected = contract.otp_customer if body.side == "customer" else contract.otp_supplier
     if body.otp != expected:
         raise HTTPException(403, "Неверный OTP")
     if body.side == "customer":
         contract.customer_signed = True
-    elif body.side == "supplier":
-        contract.supplier_signed = True
     else:
-        raise HTTPException(400, "side: customer|supplier")
-    booking = db.get(Booking, contract.booking_id)
+        contract.supplier_signed = True
     if contract.customer_signed and contract.supplier_signed and booking.status == "AwaitingContract":
         _transition(booking, "AwaitingPayment")
         conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one()

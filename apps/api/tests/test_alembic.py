@@ -17,6 +17,15 @@ def test_alembic_baseline_matches_models(tmp_path):
     assert actual == set(Base.metadata.tables.keys())
 
 
+def test_alembic_session_token_columns(tmp_path):
+    db_url = f"sqlite:///{tmp_path / 'migrate.db'}"
+    run_migrations(db_url)
+
+    eng = create_engine(db_url)
+    cols = {c["name"] for c in inspect(eng).get_columns("session_tokens")}
+    assert {"token", "user_id", "created_at", "admin_2fa_verified_at", "expires_at"} <= cols
+
+
 def test_alembic_baseline_revision_exists():
     versions = Path(__file__).resolve().parents[1] / "alembic" / "versions"
     files = list(versions.glob("*_baseline.py"))

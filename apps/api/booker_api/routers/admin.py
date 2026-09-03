@@ -219,12 +219,17 @@ def decide_verification(
 def open_dispute(
     booking_id: str,
     body: DisputeIn,
-    user: User = Depends(current_user),
+    user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
+    if booking.status not in {"Confirmed", "InProgress", "Completed", "Dispute"}:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Спор доступен после подтверждения брони",
+        )
     if booking.status in {"Confirmed", "InProgress"}:
         _transition(booking, "Dispute")
     dispute = Dispute(booking_id=booking_id, category=body.category, body=body.notes)
@@ -260,6 +265,13 @@ def refund(
     payment = db.get(Payment, body.payment_id)
     if not payment:
         raise HTTPException(404, "Платёж не найден")
+    if payment.status in {"refunded", "partially_refunded"}:
+        return {"id": payment.id, "status": payment.status, "idempotent": True}
+    if payment.status != "succeeded":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Возврат возможен только для успешного платежа",
+        )
     from booker_api.payments.adapter import PaymentAdapterError, get_payment_adapter
 
     adapter = get_payment_adapter()

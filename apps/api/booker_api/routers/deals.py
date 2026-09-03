@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 from datetime import datetime
 from pathlib import Path
@@ -51,6 +52,7 @@ from booker_api.replacement import build_replacement_plan
 from booker_api.schemas import DISPUTE_CATEGORIES
 from booker_api.security import (
     audit,
+    authenticate_token,
     aware,
     current_user,
     hold_deadline,
@@ -173,14 +175,19 @@ def expire_holds(db: Session) -> int:
 
 @router.post("/events")
 def create_event(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    require_org_writer(db, user, body["organization_id"])
+    organization_id = body.get("organization_id")
+    title = body.get("title")
+    event_date = body.get("event_date")
+    if not organization_id or not title or not event_date:
+        raise HTTPException(400, "organization_id, title и event_date обязательны")
+    require_org_writer(db, user, organization_id)
     event = Event(
-        organization_id=body["organization_id"],
-        title=body["title"],
+        organization_id=organization_id,
+        title=title,
         city=body.get("city", "Москва"),
-        event_date=datetime.fromisoformat(body["event_date"])
-        if isinstance(body["event_date"], str)
-        else body["event_date"],
+        event_date=datetime.fromisoformat(event_date)
+        if isinstance(event_date, str)
+        else event_date,
         guest_count=body.get("guest_count", 50),
         budget_rub=body.get("budget_rub"),
         notes=body.get("notes", ""),
@@ -614,12 +621,18 @@ def list_bookings(
 
 @router.post("/quick-request")
 def quick_request(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    artist = db.get(Artist, body["artist_id"])
+    artist_id = body.get("artist_id")
+    slot_id = body.get("slot_id")
+    if not artist_id or not slot_id:
+        raise HTTPException(400, "artist_id и slot_id обязательны")
+    artist = db.get(Artist, artist_id)
     if not artist:
         raise HTTPException(404, "Артист не найден")
-    slot = db.get(AvailabilitySlot, body["slot_id"])
+    slot = db.get(AvailabilitySlot, slot_id)
     if not slot or slot.status != "open":
         raise HTTPException(409, "Слот недоступен")
+    if slot.resource_type != "artist" or slot.resource_id != artist.id:
+        raise HTTPException(400, "Слот не относится к этому артисту")
     event_id = body.get("event_id")
     requirement_id = body.get("requirement_id")
     if event_id:
@@ -767,14 +780,26 @@ def create_offer(
     member = require_org_writer(db, user, req.supplier_org_id)
     if not member.can_confirm_offer and not user.is_platform_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет права подтверждать оффер")
-    honorarium = int(body["honorarium_rub"])
+    raw_honorarium = body.get("honorarium_rub")
+    if raw_honorarium is None:
+        raise HTTPException(400, "honorarium_rub обязателен")
+    try:
+        honorarium = int(raw_honorarium)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "honorarium_rub должен быть числом") from None
+    if honorarium <= 0:
+        raise HTTPException(400, "honorarium_rub должен быть больше нуля")
     event = db.get(Event, req.event_id)
     waive = bool(event and first_deal_waive(db, event.organization_id))
     breakdown = price_breakdown(honorarium, waive_commission=waive)
-    slot_id = body["slot_id"]
+    slot_id = body.get("slot_id")
+    if not slot_id:
+        raise HTTPException(400, "slot_id обязателен")
     slot = db.get(AvailabilitySlot, slot_id)
     if not slot:
         raise HTTPException(404, "Слот не найден")
+    if slot.resource_type != req.resource_type or slot.resource_id != req.resource_id:
+        raise HTTPException(400, "Слот не относится к ресурсу заявки")
     offer = Offer(request_id=req.id)
     db.add(offer)
     db.flush()
@@ -861,8 +886,21 @@ def new_version(
         require_org_writer(db, user, event.organization_id)
     else:
         raise HTTPException(403, "Нет доступа")
-    honorarium = int(body["honorarium_rub"])
+    raw_honorarium = body.get("honorarium_rub")
+    if raw_honorarium is None:
+        raise HTTPException(400, "honorarium_rub обязателен")
+    try:
+        honorarium = int(raw_honorarium)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "honorarium_rub должен быть числом") from None
+    if honorarium <= 0:
+        raise HTTPException(400, "honorarium_rub должен быть больше нуля")
     booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none()
+    if booking and booking.status in {"AwaitingPayment", "Confirmed", "InProgress", "Completed"}:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Менять цену после перехода к оплате нельзя",
+        )
     waive = bool(
         event
         and first_deal_waive(db, event.organization_id, exclude_booking_id=booking.id if booking else None)
@@ -918,7 +956,9 @@ def ack_offer(
             status.HTTP_409_CONFLICT,
             "quote_id устарел: подтверждается только активная версия предложения",
         )
-    side = body["side"]
+    side = body.get("side")
+    if side not in {"supplier", "customer"}:
+        raise HTTPException(400, "side: customer|supplier")
     if side == "supplier":
         member = require_org_writer(db, user, req.supplier_org_id)
         if not member.can_confirm_offer:
@@ -961,6 +1001,15 @@ def hold_booking(
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
+    cust_org, sup_org = _booking_participant_orgs(db, booking)
+    if user.is_platform_admin:
+        pass
+    elif membership_ok(db, user, cust_org):
+        require_org_writer(db, user, cust_org)
+    elif membership_ok(db, user, sup_org):
+        require_org_member(db, user, sup_org)
+    else:
+        raise HTTPException(403, "Нет доступа")
     offer = db.get(Offer, booking.offer_id)
     version = db.get(OfferVersion, offer.active_version_id) if offer else None
     if not version or not (version.customer_ack and version.supplier_ack):
@@ -1010,7 +1059,16 @@ def hold_booking(
 
 
 @router.post("/holds/expire")
-def run_expire(db: Session = Depends(get_db)):
+def run_expire(request: HttpRequest, db: Session = Depends(get_db)):
+    internal = request.headers.get("x-internal-token", "")
+    if not (internal and hmac.compare_digest(internal, settings.webhook_secret)):
+        auth = request.headers.get("authorization") or ""
+        raw = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+        user = None
+        if raw:
+            user, _session = authenticate_token(db, raw)
+        if not user or not user.is_platform_admin:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")
     count = expire_holds(db)
     db.commit()
     return {"expired": count}
@@ -1032,6 +1090,9 @@ async def upload_booking_attachment(
     db: Session = Depends(get_db),
 ):
     upload_limiter.check(client_key(request, "upload"))
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > settings.max_upload_bytes:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Файл слишком большой")
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
@@ -1044,7 +1105,9 @@ async def upload_booking_attachment(
         require_org_writer(db, user, cust_org)
     else:
         require_org_writer(db, user, sup_org)
-    raw = await file.read()
+    raw = await file.read(settings.max_upload_bytes + 1)
+    if len(raw) > settings.max_upload_bytes:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Файл слишком большой")
     safe_name = scan_upload(raw, file.filename or "file.bin", max_bytes=settings.max_upload_bytes)
     digest = hashlib.sha256(raw).hexdigest()
     root = Path(settings.upload_dir)
@@ -1193,6 +1256,8 @@ def deal_room(
             "customer_signed": contract.customer_signed,
             "supplier_signed": contract.supplier_signed,
             "body": contract.body,
+            "otp_customer": contract.otp_customer,
+            "otp_supplier": contract.otp_supplier,
         },
         "documents": _deal_documents(version, contract, attachments),
         "payment": None
@@ -1299,11 +1364,20 @@ def post_message(
     conv = db.query(Conversation).filter(Conversation.booking_id == booking_id).one_or_none()
     if not conv:
         raise HTTPException(404, "Deal Room не найден")
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    cust_org, sup_org = _booking_participant_orgs(db, booking)
+    if not (membership_ok(db, user, cust_org) or membership_ok(db, user, sup_org)):
+        raise HTTPException(403, "Нет доступа")
+    text = body.get("body")
+    if not text or not str(text).strip():
+        raise HTTPException(400, "body обязателен")
     msg = Message(
         conversation_id=conv.id,
         author_user_id=user.id,
         kind="chat",
-        body=body["body"],
+        body=str(text),
     )
     db.add(msg)
     db.commit()
@@ -1311,12 +1385,28 @@ def post_message(
 
 
 @router.get("/sse/bookings/{booking_id}")
-def sse_status(booking_id: str, db: Session = Depends(get_db)):
+def sse_status(
+    booking_id: str,
+    request: HttpRequest,
+    token: str | None = None,
+    db: Session = Depends(get_db),
+):
     from fastapi.responses import StreamingResponse
 
+    raw = token
+    if not raw:
+        auth = request.headers.get("authorization") or ""
+        if auth.lower().startswith("bearer "):
+            raw = auth[7:].strip()
+    if not raw:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Нужна авторизация")
+    user, _session = authenticate_token(db, raw)
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
+    cust_org, sup_org = _booking_participant_orgs(db, booking)
+    if not (membership_ok(db, user, cust_org) or membership_ok(db, user, sup_org)):
+        raise HTTPException(403, "Нет доступа")
 
     def gen():
         yield f"data: {json.dumps({'status': booking.status})}\n\n"

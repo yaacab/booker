@@ -36,11 +36,34 @@ def verify_password(password: str, stored: str) -> bool:
     return hmac.compare_digest(check, digest)
 
 
+SESSION_TTL_DAYS = 30
+
+
 def issue_token(db: Session, user: User) -> str:
     token = secrets.token_urlsafe(32)
-    db.add(SessionToken(token=token, user_id=user.id))
+    db.add(
+        SessionToken(
+            token=token,
+            user_id=user.id,
+            expires_at=now() + timedelta(days=SESSION_TTL_DAYS),
+        )
+    )
     db.flush()
     return token
+
+
+def authenticate_token(db: Session, raw: str) -> tuple[User, SessionToken]:
+    row = db.get(SessionToken, raw)
+    if not row:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Сессия недействительна")
+    if row.expires_at is not None and aware(row.expires_at) <= now():
+        db.delete(row)
+        db.commit()
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Сессия истекла")
+    user = db.get(User, row.user_id)
+    if not user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Пользователь не найден")
+    return user, row
 
 
 def auth_context(
@@ -49,12 +72,7 @@ def auth_context(
 ) -> AuthContext:
     if creds is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Нужна авторизация")
-    row = db.get(SessionToken, creds.credentials)
-    if not row:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Сессия недействительна")
-    user = db.get(User, row.user_id)
-    if not user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Пользователь не найден")
+    user, row = authenticate_token(db, creds.credentials)
     return AuthContext(user, row)
 
 

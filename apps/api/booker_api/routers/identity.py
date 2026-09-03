@@ -8,7 +8,9 @@ from booker_api.models import Organization, TeamMember, User
 from booker_api.rate_limit import auth_limiter, client_key
 from booker_api.schemas import LoginIn, MemberIn, OrgIn, RegisterIn
 from booker_api.security import (
+    AuthContext,
     audit,
+    auth_context,
     current_user,
     ensure_admin_2fa_configured,
     hash_password,
@@ -69,6 +71,13 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
         mark_admin_2fa_verified(db, token)
     db.commit()
     return {"token": token, "user_id": user.id, "is_platform_admin": user.is_platform_admin}
+
+
+@router.post("/auth/logout")
+def logout(ctx: AuthContext = Depends(auth_context), db: Session = Depends(get_db)):
+    db.delete(ctx.session)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/auth/recover")
@@ -186,6 +195,8 @@ def add_member(
         raise HTTPException(400, "role: owner|admin|manager|viewer")
     if not db.get(User, body.user_id):
         raise HTTPException(404, "Пользователь не найден")
+    if membership(db, body.user_id, org_id):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Пользователь уже в команде")
     confirm = False if body.role == "viewer" else body.can_confirm_offer
     member = TeamMember(
         user_id=body.user_id,

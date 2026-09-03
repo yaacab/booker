@@ -141,7 +141,7 @@ def list_categories(db: Session = Depends(get_db)):
 
 @router.post("/artists")
 def create_artist(body: ArtistIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    require_org_member(db, user, body.organization_id)
+    require_org_writer(db, user, body.organization_id)
     artist = Artist(
         organization_id=body.organization_id,
         name=body.name,
@@ -158,7 +158,7 @@ def create_artist(body: ArtistIn, user: User = Depends(current_user), db: Sessio
 
 @router.post("/venues")
 def create_venue(body: VenueIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    require_org_member(db, user, body.organization_id)
+    require_org_writer(db, user, body.organization_id)
     venue = Venue(
         organization_id=body.organization_id,
         name=body.name,
@@ -240,7 +240,7 @@ def add_tariff(
     artist = db.get(Artist, artist_id)
     if not artist:
         raise HTTPException(404, "Артист не найден")
-    require_org_member(db, user, artist.organization_id)
+    require_org_writer(db, user, artist.organization_id)
     row = ArtistTariff(
         artist_id=artist_id,
         title=body.title,
@@ -262,7 +262,7 @@ def add_venue_tariff(
     venue = db.get(Venue, venue_id)
     if not venue:
         raise HTTPException(404, "Площадка не найдена")
-    require_org_member(db, user, venue.organization_id)
+    require_org_writer(db, user, venue.organization_id)
     row = VenueTariff(venue_id=venue_id, title=body.title, honorarium_rub=body.honorarium_rub)
     db.add(row)
     db.commit()
@@ -275,13 +275,13 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
         artist = db.get(Artist, body.resource_id)
         if not artist:
             raise HTTPException(404, "Артист не найден")
-        require_org_member(db, user, artist.organization_id)
+        require_org_writer(db, user, artist.organization_id)
     elif body.resource_type == "hall":
         hall = db.get(VenueHall, body.resource_id)
         if not hall:
             raise HTTPException(404, "Зал не найден")
         venue = db.get(Venue, hall.venue_id)
-        require_org_member(db, user, venue.organization_id)
+        require_org_writer(db, user, venue.organization_id)
     else:
         raise HTTPException(400, "resource_type: artist|hall")
     before = max(0, getattr(body, "buffer_before_min", 0) or 0)

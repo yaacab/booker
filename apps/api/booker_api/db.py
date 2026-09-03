@@ -45,6 +45,12 @@ def ensure_missing_columns(bind) -> None:
         "admin_2fa_verified_at",
         f"admin_2fa_verified_at {ts_type}",
     )
+    _add_column_if_missing(
+        bind,
+        "session_tokens",
+        "expires_at",
+        f"expires_at {ts_type}",
+    )
     _add_column_if_missing(bind, "venues", "address", "address VARCHAR(512) DEFAULT ''")
     _add_column_if_missing(bind, "venues", "district", "district VARCHAR(128) DEFAULT ''")
     _add_column_if_missing(bind, "venues", "metro", "metro VARCHAR(128) DEFAULT ''")
