@@ -1,7 +1,8 @@
 """Idempotent import of curated Moscow open-data venues into the catalog.
 
 Creates shared org «Букер · открытый каталог Москва», venues with halls,
-optional tariff hints, and synthetic open slots for the next 30 calendar days.
+optional tariff hints, and synthetic open slots (30d for curated tariff rows,
+14d for bulk open-data).
 """
 
 from __future__ import annotations
@@ -211,7 +212,9 @@ def import_moscow_venues(db: Session) -> dict:
 
         hall = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).order_by(VenueHall.name).first()
         assert hall is not None
-        slots_created += _synthetic_slots(db, hall.id, days=30)
+        # Curated wave-1 (with tariff hint) keeps 30d; OSM/mos bulk uses 14d to limit DB size.
+        slot_days = 30 if row.get("tariff_from_rub") is not None else 14
+        slots_created += _synthetic_slots(db, hall.id, days=slot_days)
 
     db.commit()
     return {

@@ -10,10 +10,10 @@ test("каталог площадок: open-data импорт виден с бе
   expect(catalog.ok()).toBeTruthy();
   const body = await catalog.json();
   const venues = body.venues || [];
-  expect(venues.length).toBeGreaterThanOrEqual(2);
+  expect(venues.length).toBeGreaterThanOrEqual(280);
   const syntheticCount = venues.filter((v: { availability_mode?: string }) => v.availability_mode === "synthetic")
     .length;
-  expect(syntheticCount).toBeGreaterThanOrEqual(1);
+  expect(syntheticCount).toBeGreaterThanOrEqual(280);
 
   await page.goto("/search?city=Москва&category=venue");
   await expect(page.getByText("календарь ориентировочный").first()).toBeVisible();

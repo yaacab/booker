@@ -19,6 +19,12 @@ rsync -az --delete \
   -e "ssh -i ${KEY} -p ${PORT} -o ForwardX11=no -o StrictHostKeyChecking=accept-new" \
   "${ROOT}/" "${REMOTE}:/opt/booker/"
 
+# Open-venues seed JSON (parent data/ is excluded above — sync explicitly)
+ssh -i "${KEY}" -p "${PORT}" -o ForwardX11=no "${REMOTE}" 'mkdir -p /opt/booker/data'
+rsync -az \
+  -e "ssh -i ${KEY} -p ${PORT} -o ForwardX11=no -o StrictHostKeyChecking=accept-new" \
+  "${ROOT}/data/moscow_venues_open.json" "${REMOTE}:/opt/booker/data/moscow_venues_open.json"
+
 ssh -i "${KEY}" -p "${PORT}" -o ForwardX11=no "${REMOTE}" 'bash -s' << 'REMOTE_SCRIPT'
 set -euo pipefail
 mkdir -p /opt/booker/data /var/www/letsencrypt /var/backups/booker
