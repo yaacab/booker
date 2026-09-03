@@ -31,14 +31,7 @@ export function PerformerCabinetDashboard() {
     sendOffer,
   } = usePerformerCabinetData();
 
-  const noDeals =
-    ready &&
-    !error &&
-    newRequests.length === 0 &&
-    awaitingResponse.length === 0 &&
-    expiringOffers.length === 0 &&
-    activeHolds.length === 0 &&
-    upcomingPerformances.length === 0;
+  const completenessScore = profileIncomplete?.score;
 
   return (
     <CabinetPageShell
@@ -50,31 +43,44 @@ export function PerformerCabinetDashboard() {
       orgName={orgName}
       empty={false}
       emptyState={null}
+      subtitle="Календарь, гонорар и ответы на запросы. Вы не собираете события — вас бронируют."
+      metrics={[
+        { label: "Новые запросы", value: newRequests.length, tone: newRequests.length ? "wait" : "default" },
+        { label: "Ждут заказчика", value: awaitingResponse.length, tone: awaitingResponse.length ? "live" : "default" },
+        { label: "Ближайшие даты", value: upcomingPerformances.length, tone: "ok" },
+        {
+          label: "Профиль",
+          value: completenessScore != null ? `${completenessScore}%` : "—",
+          tone: completenessScore != null && completenessScore >= 80 ? "ok" : "wait",
+        },
+      ]}
+      actions={[{ href: "#cabinet-widgets", label: "К заявкам", primary: true }]}
+      lead={orgId ? <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="artist" /> : null}
       footer={orgId ? <SupplyCabinetSection orgId={orgId} role={role} /> : null}
     >
-      {orgId ? <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} /> : null}
-      {noDeals ? (
-        <article className="card empty">
-          <h2>Заявок пока нет — это нормально</h2>
-          <p>
-            Вы не собираете события. Откройте свободные вечера выше: заказчик найдёт вас в каталоге и пришлёт запрос на
-            ваш слот.
-          </p>
-          <p className="timeline">Цена и условия появятся в Deal Room после вашего предложения с сервера.</p>
-        </article>
-      ) : null}
-      <NewRequestsWidget
-        requests={newRequests}
-        role={role}
-        offerBusy={offerBusy}
-        onSendOffer={(item) => void sendOffer(item)}
-      />
-      <AwaitingResponseWidget deals={awaitingResponse} />
-      <ExpiringOffersWidget deals={expiringOffers} />
-      <HoldsWidget holds={activeHolds} />
-      <UpcomingPerformancesWidget bookings={upcomingPerformances} />
-      <CalendarConflictsWidget conflicts={calendarConflicts} />
-      {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
+      <section className="cabinet-zone" aria-label="Входящие">
+        <h2 className="cabinet-zone-title">Входящие</h2>
+        <div className="cabinet-zone-grid">
+          <NewRequestsWidget
+            requests={newRequests}
+            role={role}
+            offerBusy={offerBusy}
+            onSendOffer={(item) => void sendOffer(item)}
+          />
+          <AwaitingResponseWidget deals={awaitingResponse} />
+          <ExpiringOffersWidget deals={expiringOffers} />
+          <HoldsWidget holds={activeHolds} />
+        </div>
+      </section>
+
+      <section className="cabinet-zone" aria-label="Расписание">
+        <h2 className="cabinet-zone-title">Расписание</h2>
+        <div className="cabinet-zone-grid">
+          <UpcomingPerformancesWidget bookings={upcomingPerformances} />
+          <CalendarConflictsWidget conflicts={calendarConflicts} />
+          {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
+        </div>
+      </section>
     </CabinetPageShell>
   );
 }

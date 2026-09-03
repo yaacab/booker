@@ -27,7 +27,7 @@ test("isSupplyCabinet", () => {
 });
 
 test("cabinetHeadline", () => {
-  assert.equal(cabinetHeadline("customer"), "Мои события");
-  assert.equal(cabinetHeadline("performer"), "Ваши даты и заявки");
-  assert.equal(cabinetHeadline("venue"), "Залы, даты и заявки");
+  assert.equal(cabinetHeadline("customer"), "Студия событий");
+  assert.equal(cabinetHeadline("performer"), "Календарь исполнителя");
+  assert.equal(cabinetHeadline("venue"), "Пульт площадки");
 });

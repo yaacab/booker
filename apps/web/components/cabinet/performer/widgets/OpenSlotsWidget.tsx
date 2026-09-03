@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api, isWriteRole, trackClientEvent } from "@/lib/api";
 import { DashboardWidget } from "../../DashboardWidget";
 
@@ -10,11 +10,9 @@ type OpenSlotsWidgetProps = {
   orgId: string;
   role: string;
   orgName?: string;
-  /** artist → POST /artists; venue → POST /venues (+ hall) */
   supplyKind?: "artist" | "venue";
 };
 
-/** Moscow evening window as ISO with +03:00 (API stores aware datetimes). */
 function eveningIso(day: string, hour: number, minute = 0): string {
   const hh = String(hour).padStart(2, "0");
   const mm = String(minute).padStart(2, "0");
@@ -38,21 +36,26 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
 
+  const slotTargets = useMemo(
+    () => targets.filter((t) => t.resource_type === "artist" || t.resource_type === "hall"),
+    [targets],
+  );
+  const target = slotTargets.find((t) => t.resource_id === targetId) || slotTargets[0] || null;
+  const canManage = isWriteRole(role);
+
   async function reloadTargets() {
     const res = await api<{ items: CalendarTarget[] }>(
       `/organizations/${encodeURIComponent(orgId)}/calendar-targets`,
     );
     setTargets(res.items);
-    if (res.items[0]) setTargetId(res.items[0].resource_id);
+    const firstSlot = res.items.find((t) => t.resource_type === "artist" || t.resource_type === "hall");
+    if (firstSlot) setTargetId(firstSlot.resource_id);
   }
 
   useEffect(() => {
     if (!orgId) return;
     void reloadTargets().catch(() => setTargets([]));
   }, [orgId]);
-
-  const canManage = isWriteRole(role);
-  const target = targets.find((t) => t.resource_id === targetId) || targets[0];
 
   async function ensureCatalogProfile() {
     setBusy(true);
@@ -91,7 +94,7 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
   async function openSlots(e: FormEvent) {
     e.preventDefault();
     if (!canManage || !target) {
-      setError("Нет календаря исполнителя — сначала создайте профиль в каталоге (услуга / артист).");
+      setError("Сначала создайте профиль в каталоге.");
       return;
     }
     setBusy(true);
@@ -103,16 +106,14 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
     try {
       for (let i = 1; i <= days; i++) {
         const day = addDaysIso(today, i);
-        const starts_at = eveningIso(day, 18);
-        const ends_at = eveningIso(day, 22);
         try {
           await api("/slots", {
             method: "POST",
             body: JSON.stringify({
               resource_type: target.resource_type,
               resource_id: target.resource_id,
-              starts_at,
-              ends_at,
+              starts_at: eveningIso(day, 18),
+              ends_at: eveningIso(day, 22),
             }),
           });
           created += 1;
@@ -123,9 +124,9 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
       trackClientEvent("cabinet.slots_opened", { created, skipped, days });
       setResult(
         created > 0
-          ? `Открыто свободных вечеров: ${created}${skipped ? ` · пропущено (уже занято): ${skipped}` : ""}. Вас увидят в каталоге на эти даты.`
+          ? `Открыто свободных вечеров: ${created}${skipped ? ` · уже занято: ${skipped}` : ""}.`
           : skipped
-            ? "На выбранный период слоты уже есть или пересекаются — новые не добавлены."
+            ? "На этот период слоты уже есть."
             : "Не удалось открыть слоты.",
       );
     } catch (err) {
@@ -140,30 +141,36 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
   return (
     <DashboardWidget
       title="Свободные слоты"
-      hint="Без открытых дат вас нет в поиске. Заказчик бронирует ваш вечер — не вы ищете событие."
-      isEmpty={!canManage && targets.length === 0}
-      empty="Календарь настраивает владелец или менеджер профиля."
+      hint={
+        supplyKind === "venue"
+          ? "Залы без открытых дат не попадают в поиск заказчика."
+          : "Без открытых дат вас нет в поиске. Заказчик бронирует ваш вечер."
+      }
+      accent={supplyKind === "venue" ? "venue" : "performer"}
+      span="full"
+      isEmpty={!canManage && slotTargets.length === 0}
+      empty="Календарь настраивает владелец или менеджер."
     >
       {!canManage ? (
         <p className="timeline">Только просмотр: слоты открывает менеджер.</p>
-      ) : targets.length === 0 ? (
-        <div style={{ display: "grid", gap: 12 }}>
+      ) : slotTargets.length === 0 ? (
+        <div className="cabinet-inline-form">
           <p className="timeline">
-            Чтобы открыть даты, нужен профиль в каталоге. Создайте его одним шагом — потом откроете свободные вечера.
+            Чтобы открыть даты, нужен профиль в каталоге. Один шаг — и можно публиковать свободные вечера.
           </p>
           {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
           {result ? <p className="timeline">{result}</p> : null}
           <button type="button" disabled={busy} onClick={() => void ensureCatalogProfile()}>
-            {busy ? "Создаём…" : "Создать профиль в каталоге"}
+            {busy ? "Создаём…" : supplyKind === "venue" ? "Создать площадку в каталоге" : "Создать профиль в каталоге"}
           </button>
         </div>
       ) : (
-        <form className="dashboard-list" style={{ display: "grid", gap: 12 }} onSubmit={(e) => void openSlots(e)}>
-          {targets.length > 1 ? (
+        <form className="cabinet-inline-form" onSubmit={(e) => void openSlots(e)}>
+          {slotTargets.length > 1 ? (
             <label>
-              Кому открыть даты
-              <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-                {targets.map((t) => (
+              Календарь
+              <select value={target?.resource_id || ""} onChange={(e) => setTargetId(e.target.value)}>
+                {slotTargets.map((t) => (
                   <option key={t.resource_id} value={t.resource_id}>
                     {t.label}
                   </option>
@@ -174,7 +181,7 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
             <p className="timeline">Календарь: {target?.label}</p>
           )}
           <label>
-            Открыть ближайшие вечера (18:00–22:00 МСК)
+            Ближайшие вечера 18:00–22:00 МСК
             <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
               <option value={7}>7 дней</option>
               <option value={14}>14 дней</option>

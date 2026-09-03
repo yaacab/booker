@@ -48,4 +48,5 @@ export type VenueHallTarget = {
   resource_type: string;
   resource_id: string;
   label: string;
+  venue_id?: string;
 };

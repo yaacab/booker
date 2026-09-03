@@ -16,7 +16,7 @@ test.describe("Cabinet a11y §7.5", () => {
     await injectSession(page, session.token, org.id);
     await page.goto("/cabinet/customer");
 
-    await expect(page.getByRole("heading", { level: 1, name: "Мои события" })).toBeVisible({
+    await expect(page.getByRole("heading", { level: 1, name: "Студия событий" })).toBeVisible({
       timeout: 15_000,
     });
 
@@ -57,7 +57,7 @@ test.describe("Cabinet a11y §7.5", () => {
     await injectSession(page, session.token, org.id);
     await page.goto("/cabinet/performer");
 
-    await expect(page.getByRole("heading", { level: 1, name: "Ваши даты и заявки" })).toBeVisible({
+    await expect(page.getByRole("heading", { level: 1, name: "Календарь исполнителя" })).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByRole("heading", { level: 2, name: "Свободные слоты" })).toBeVisible();

@@ -32,6 +32,16 @@ def calendar_targets(db: Session, org_id: str, kind: str) -> list[dict]:
                         "resource_type": "hall",
                         "resource_id": hall.id,
                         "label": f"{venue.name} · {hall.name}",
+                        "venue_id": venue.id,
+                    }
+                )
+            if not halls:
+                items.append(
+                    {
+                        "resource_type": "venue",
+                        "resource_id": venue.id,
+                        "label": venue.name,
+                        "venue_id": venue.id,
                     }
                 )
     return items
