@@ -33,7 +33,7 @@ export function DealRoomSummary({ accentKind, room, actionKind }: DealRoomSummar
   const accents = buildDealRoomAccents(accentKind, room);
 
   return (
-    <section className="card deal-summary">
+    <section className="card deal-summary surface-glass">
       <p className="kicker">Сводка сделки</p>
       <p className="mono" data-testid="deal-room-ids">
         {room.booking_id} · quote_id: {room.quote.quote_id}

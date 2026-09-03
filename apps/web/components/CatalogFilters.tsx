@@ -90,7 +90,7 @@ export function CatalogFilters({
   const closedLabel = [city, date || "без даты", categoryLabel(category) || "все"].join(" · ");
 
   return (
-    <aside className="filters card">
+    <aside className="filters card surface-glass">
       <button type="button" className="filter-toggle" onClick={() => setOpen((v) => !v)}>
         {open ? "Спрятать фильтр" : closedLabel}
       </button>

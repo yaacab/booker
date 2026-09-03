@@ -127,7 +127,7 @@ export default function LoginPage() {
       ) : (
         <p className="timeline">Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи.</p>
       )}
-      <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420 }} onSubmit={onSubmit}>
+      <form className="card surface-glass" style={{ display: "grid", gap: 12, maxWidth: 420 }} onSubmit={onSubmit}>
         {mode === "register" ? (
           <>
             <label>

@@ -42,7 +42,7 @@ export default function HomePage() {
             <li>История сделки сохраняется в Deal Room</li>
           </ul>
         </div>
-        <aside className="hero-search card">
+        <aside className="hero-search card surface-glass">
           <p className="kicker">Поиск по календарю</p>
           <h2>Найдите свободный слот</h2>
           <p className="timeline">Сначала дата и формат — затем доступные участники.</p>
@@ -89,10 +89,10 @@ export default function HomePage() {
         </article>
       </div>
       <p style={{ marginTop: 28, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Link className="btn" href="/events/new">
+        <Link className="btn btn-glass" href="/events/new">
           Создать заявку
         </Link>
-        <Link className="btn secondary" href="/deals/demo">
+        <Link className="btn secondary btn-glass" href="/deals/demo">
           Посмотреть Deal Room
         </Link>
       </p>

@@ -35,6 +35,7 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
+  const [constellationDays, setConstellationDays] = useState(0);
 
   const slotTargets = useMemo(
     () => targets.filter((t) => t.resource_type === "artist" || t.resource_type === "hall"),
@@ -100,6 +101,7 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
     setBusy(true);
     setError("");
     setResult("");
+    setConstellationDays(0);
     const today = new Date();
     let created = 0;
     let skipped = 0;
@@ -122,6 +124,7 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
         }
       }
       trackClientEvent("cabinet.slots_opened", { created, skipped, days });
+      if (created > 0) setConstellationDays(created);
       setResult(
         created > 0
           ? `Открыто свободных вечеров: ${created}${skipped ? ` · уже занято: ${skipped}` : ""}.`
@@ -189,7 +192,22 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
             </select>
           </label>
           {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
-          {result ? <p className="timeline">{result}</p> : null}
+          {result ? (
+            <div className="slot-success">
+              <p className="timeline">{result}</p>
+              {constellationDays > 0 ? (
+                <div className="slot-constellation" aria-hidden="true">
+                  {Array.from({ length: Math.min(constellationDays, 30) }, (_, i) => (
+                    <span
+                      key={i}
+                      className="slot-constellation-dot"
+                      style={{ animationDelay: `${i * 45}ms` }}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <button type="submit" disabled={busy}>
             {busy ? "Открываем…" : "Открыть свободные слоты"}
           </button>

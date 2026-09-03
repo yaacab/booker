@@ -13,6 +13,7 @@ import type {
   VenueItem,
 } from "./types";
 import { STUDIO_STAGES } from "./types";
+import PuzzleBoard, { slotsFromDraft } from "./PuzzleBoard";
 import "./event-studio-map.css";
 
 type IconName = "home" | "calendar" | "users" | "place" | "check" | "search" | "plus" | "arrow";
@@ -153,6 +154,22 @@ export default function EventStudioMap({
     return `${money(budgetHint.minRub).replace(" ₽", "")}–${money(budgetHint.maxRub)}`;
   }, [budgetHint]);
 
+  const puzzleSlots = useMemo(
+    () =>
+      slotsFromDraft({
+        date: draft.date,
+        dateLabel,
+        venueName: venue?.name,
+        hasVenue: Boolean(venue),
+        talents: selected.map((item) => ({
+          id: item.id,
+          roleLabel: item.roleLabel,
+          name: item.name,
+        })),
+      }),
+    [draft.date, dateLabel, venue, selected],
+  );
+
   return (
     <main className={`event-studio-shell${panelOpen ? " panel-open" : ""}`}>
       <header className="event-studio-header">
@@ -206,6 +223,35 @@ export default function EventStudioMap({
             <i className="line time-line" />
             <i className="line team-line" />
             <i className="line terms-line" />
+          </div>
+
+          <div className={`puzzle-stage${stage === "Основа" || stage === "Команда" || stage === "Место" ? " map-card-focus" : ""}`}>
+            <PuzzleBoard slots={puzzleSlots} reducedMotion={reducedMotion} />
+            <div className="puzzle-event-meta">
+              <label className="sr-only" htmlFor="event-title">
+                Название события
+              </label>
+              <input
+                id="event-title"
+                className="event-core-title"
+                value={draft.title}
+                placeholder="Название события"
+                onChange={(e) => update({ ...draft, title: e.target.value })}
+              />
+              <small>
+                {dateLabel} · {draft.city || "город"} · {draft.guests} гостей
+              </small>
+              <label className="field-inline guests-field">
+                Гостей
+                <input
+                  type="number"
+                  min={1}
+                  max={5000}
+                  value={draft.guests}
+                  onChange={(e) => update({ ...draft, guests: Number(e.target.value) || 0 })}
+                />
+              </label>
+            </div>
           </div>
 
           <article className={`map-card venue-card${stage === "Место" ? " map-card-focus" : ""}`}>
@@ -288,35 +334,6 @@ export default function EventStudioMap({
               <button type="button" className="card-button" onClick={() => setEditingTime(true)}>Изменить</button>
             )}
           </article>
-
-          <div className={`event-core${stage === "Основа" ? " map-card-focus" : ""}`}>
-            <span className="event-symbol" aria-hidden="true">
-              ◎
-            </span>
-            <label className="sr-only" htmlFor="event-title">
-              Название события
-            </label>
-            <input
-              id="event-title"
-              className="event-core-title"
-              value={draft.title}
-              placeholder="Название события"
-              onChange={(e) => update({ ...draft, title: e.target.value })}
-            />
-            <small>
-              {dateLabel} · {draft.city || "город"} · {draft.guests} гостей
-            </small>
-            <label className="field-inline guests-field">
-              Гостей
-              <input
-                type="number"
-                min={1}
-                max={5000}
-                value={draft.guests}
-                onChange={(e) => update({ ...draft, guests: Number(e.target.value) || 0 })}
-              />
-            </label>
-          </div>
 
           <article className={`map-card team-card${stage === "Команда" ? " map-card-focus" : ""}`}>
             <h2>

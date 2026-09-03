@@ -230,7 +230,7 @@ export default function DealPage() {
       </div>
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       <div className="deal-shell">
-        <aside className="deal-rail">
+        <aside className="deal-rail surface-glass">
           <h2>Журнал</h2>
           {journalBlock}
           <h2>Участники</h2>
@@ -448,7 +448,7 @@ export default function DealPage() {
           )}
           {tab === "stages" && <section className="card">{journalBlock}</section>}
         </section>
-        <aside className="deal-aside">
+        <aside className="deal-aside surface-glass">
           <p className="kicker">Следующий шаг</p>
           <p>{room.next_step}</p>
           <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>

@@ -12,6 +12,8 @@ export type CabinetMetric = {
   value: string | number;
   hint?: string;
   tone?: "default" | "ok" | "wait" | "live" | "bad";
+  /** Soft occupancy glow (venue halls / slot activity). */
+  glow?: boolean;
 };
 
 export type CabinetAction = {
@@ -117,7 +119,10 @@ export function CabinetPageShell({
       {ready && metrics && metrics.length > 0 ? (
         <section className="cabinet-metrics" aria-label="Сводка кабинета">
           {metrics.map((m) => (
-            <article key={m.label} className={`cabinet-metric tone-${m.tone || "default"}`}>
+            <article
+              key={m.label}
+              className={`cabinet-metric tone-${m.tone || "default"}${m.glow ? " is-glow" : ""}`}
+            >
               <p className="cabinet-metric-value">{m.value}</p>
               <p className="cabinet-metric-label">{m.label}</p>
               {m.hint ? <p className="cabinet-metric-hint">{m.hint}</p> : null}

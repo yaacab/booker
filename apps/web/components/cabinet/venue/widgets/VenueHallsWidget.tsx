@@ -74,7 +74,7 @@ export function VenueHallsWidget({ halls, role, onChanged }: Props) {
                   <strong>{h.label}</strong>
                   <p className="timeline">Отдельный ресурс для бронирования</p>
                 </div>
-                <span className="chip live">Зал</span>
+                <span className="chip chip-glass">Зал</span>
               </article>
             </li>
           ))}

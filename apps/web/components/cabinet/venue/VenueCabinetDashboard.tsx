@@ -36,6 +36,9 @@ export function VenueCabinetDashboard() {
 
   const hallCount = halls.filter((h) => h.resource_type === "hall").length;
   const completenessScore = profileIncomplete?.score;
+  const hallsActive = hallCount > 0;
+  const slotsActive =
+    newRequests.length > 0 || activeHolds.length > 0 || upcomingEvents.length > 0;
 
   return (
     <CabinetPageShell
@@ -48,14 +51,31 @@ export function VenueCabinetDashboard() {
       emptyState={null}
       subtitle="Залы, календарь и ответы на бронирования — рабочий стол площадки."
       metrics={[
-        { label: "Залы", value: hallCount, tone: hallCount ? "live" : "wait", hint: "ресурсы календаря" },
-        { label: "Новые заявки", value: newRequests.length, tone: newRequests.length ? "wait" : "default" },
-        { label: "Удержания", value: activeHolds.length, tone: activeHolds.length ? "wait" : "default" },
+        {
+          label: "Залы",
+          value: hallCount,
+          tone: hallCount ? "live" : "wait",
+          hint: "ресурсы календаря",
+          glow: hallsActive,
+        },
+        {
+          label: "Новые заявки",
+          value: newRequests.length,
+          tone: newRequests.length ? "wait" : "default",
+          glow: slotsActive && newRequests.length > 0,
+        },
+        {
+          label: "Удержания",
+          value: activeHolds.length,
+          tone: activeHolds.length ? "wait" : "default",
+          glow: slotsActive && activeHolds.length > 0,
+        },
         {
           label: "Профиль",
           value: completenessScore != null ? `${completenessScore}%` : "—",
           tone: completenessScore != null && completenessScore >= 80 ? "ok" : "wait",
           hint: "готовность к выдаче",
+          glow: hallsActive || slotsActive,
         },
       ]}
       actions={[{ href: "#cabinet-widgets", label: "К календарю", primary: true }]}

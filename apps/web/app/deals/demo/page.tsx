@@ -60,7 +60,7 @@ export default function DealRoomDemoPage() {
         <p className="deal-rail-mobile timeline">Студия события · Nova Show · Букер</p>
       </div>
       <div className="deal-shell">
-        <aside className="deal-rail">
+        <aside className="deal-rail surface-glass">
           <h2>Этапы</h2>
           <ul className="journal">
             <li className="done">
@@ -185,7 +185,7 @@ export default function DealRoomDemoPage() {
             </div>
           )}
         </section>
-        <aside className="deal-aside">
+        <aside className="deal-aside surface-glass">
           <p className="kicker">Следующий шаг</p>
           <button type="button">Подтвердить условия</button>
           <div className="quote card">

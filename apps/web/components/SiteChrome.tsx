@@ -123,7 +123,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         К содержанию
       </a>
       <div className="wrap">
-        <header className="top">
+        <header className="top surface-glass">
           <Link className="brand" href="/" aria-label="Букер">
             <BrandLockup />
           </Link>
@@ -207,7 +207,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <div id="content">{children}</div>
-        <footer className="site-footer">
+        <footer className="site-footer surface-glass">
           <p>Букер объединяет заявку, свободный слот, предложение и подтверждения в одном рабочем пространстве.</p>
           <p>
             <Link href="/legal/offer">Оферта</Link>
@@ -224,7 +224,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </p>
         </footer>
       </div>
-      <nav className="bottom-nav" aria-label="Мобильная навигация">
+      <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">
         <Link href="/" aria-label="Главная" className={path === "/" ? "on" : ""}>
           Главная
         </Link>
