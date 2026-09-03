@@ -14,7 +14,8 @@ EnvironmentFile=-/etc/booker/booker-api.env
 ExecStart=/opt/booker/.venv/bin/uvicorn booker_api.main:app --host 127.0.0.1 --port 8030
 Restart=always
 RestartSec=3
-User=root
+User=booker
+Group=booker
 
 [Install]
 WantedBy=multi-user.target

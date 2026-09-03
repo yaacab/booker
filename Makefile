@@ -29,9 +29,9 @@ seed-venues-moscow:
 
 fetch-venues-moscow:
 	mkdir -p /tmp/booker-venues
-	$(PYTHON) scripts/fetch_osm_venues_moscow.py --out /tmp/booker-venues/osm_venues_raw.json || true
-	$(PYTHON) scripts/fetch_wikidata_venues_moscow.py --out /tmp/booker-venues/wikidata_venues_raw.json
-	-$(PYTHON) scripts/fetch_datamos_culture_venues.py --out /tmp/booker-venues/datamos_culture_raw.json
+	$(PYTHON) scripts/fetch_osm_venues_moscow.py --out /tmp/booker-venues/osm_venues_raw.json || echo "warning: OSM venues fetch failed, continuing"
+	$(PYTHON) scripts/fetch_wikidata_venues_moscow.py --out /tmp/booker-venues/wikidata_venues_raw.json || echo "warning: Wikidata venues fetch failed, continuing"
+	$(PYTHON) scripts/fetch_datamos_culture_venues.py --out /tmp/booker-venues/datamos_culture_raw.json || echo "warning: data.mos culture venues fetch failed, continuing"
 
 merge-venues-moscow:
 	$(PYTHON) scripts/merge_moscow_venues_open.py \

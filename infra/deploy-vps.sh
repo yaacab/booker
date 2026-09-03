@@ -46,6 +46,12 @@ export NEXT_PUBLIC_API_URL=/api
 export NEXT_PUBLIC_SITE_URL=https://bukergo.ru
 export BOOKER_INTERNAL_API_URL=http://127.0.0.1:8030
 npm run build
+# Dedicated service user for systemd units (idempotent)
+if ! id -u booker >/dev/null 2>&1; then
+  useradd --system --home /var/lib/booker --create-home --shell /usr/sbin/nologin booker
+fi
+chown -R booker:booker /opt/booker/data /opt/booker/apps/web/.next
+[[ ! -d /opt/booker/apps/api/data ]] || chown -R booker:booker /opt/booker/apps/api/data
 cp /opt/booker/infra/systemd/booker-api.service /etc/systemd/system/
 cp /opt/booker/infra/systemd/booker-web.service /etc/systemd/system/
 cp /opt/booker/infra/nginx/bukergo.ru.conf /etc/nginx/sites-available/bukergo.ru.conf
@@ -61,4 +67,6 @@ echo
 cd /opt/booker/apps/api
 BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
   /opt/booker/.venv/bin/python -m booker_api.seed_venues_moscow
+# Seed runs as root; re-assert booker ownership of data afterwards
+chown -R booker:booker /opt/booker/data
 REMOTE_SCRIPT
