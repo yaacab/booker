@@ -43,7 +43,7 @@ elif [[ "${DB_URL}" == postgres* ]]; then
   pg_dump "$(pg_url_for_libpq "${DB_URL}")" > "${STAGING}/booker.dump"
   stage_uploads "${STAGING}"
   OUT="${BACKUP_ROOT}/booker-pg-${STAMP}.tar.gz"
-  tar -czf "${OUT}" -C "${STAGING}" booker.db uploads
+  tar -czf "${OUT}" -C "${STAGING}" booker.dump uploads
   rm -rf "${STAGING}"
   echo "postgres backup: ${OUT} (dump + uploads)"
 else

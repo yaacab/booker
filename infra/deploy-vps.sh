@@ -3,7 +3,7 @@ set -euo pipefail
 # Повторный деплой Букера на VPS (тот же хост, что Белый Путь).
 REMOTE="${BOOKER_REMOTE:-root@5.45.112.180}"
 PORT="${BOOKER_SSH_PORT:-2222}"
-KEY="${BOOKER_SSH_KEY:-/home/art67/theaiv/cursor_key}"
+KEY="${BOOKER_SSH_KEY:-$HOME/.ssh/booker_deploy_key}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 rsync -az --delete \
@@ -35,13 +35,13 @@ if [[ ! -f /etc/cron.d/booker-backup ]]; then
 fi
 BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
   /opt/booker/infra/backup-booker.sh || echo "backup skipped (non-fatal)"
-/opt/booker/.venv/bin/pip install -e "/opt/booker/apps/api[dev]" -q
+/opt/booker/.venv/bin/pip install -e "/opt/booker/apps/api" -q
 systemctl stop booker-web || true
 pkill -f "/opt/booker/apps/web/node_modules/.bin/next" || true
 sleep 1
 cd /opt/booker/apps/web
 rm -rf .next
-npm install --silent
+npm ci --silent
 export NEXT_PUBLIC_API_URL=/api
 export NEXT_PUBLIC_SITE_URL=https://bukergo.ru
 export BOOKER_INTERNAL_API_URL=http://127.0.0.1:8030
@@ -60,5 +60,5 @@ curl -sS --retry 5 --retry-delay 1 --retry-connrefused http://127.0.0.1:8030/hea
 echo
 cd /opt/booker/apps/api
 BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
-  /opt/booker/.venv/bin/python -m booker_api.seed
+  /opt/booker/.venv/bin/python -m booker_api.seed_venues_moscow
 REMOTE_SCRIPT

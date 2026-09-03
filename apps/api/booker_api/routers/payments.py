@@ -10,6 +10,7 @@ from booker_api.models import (
     Booking,
     Contract,
     Conversation,
+    Event,
     Message,
     Offer,
     OfferVersion,
@@ -21,7 +22,7 @@ from booker_api.payments.adapter import PaymentAdapterError, get_payment_adapter
 from booker_api.rate_limit import client_key, webhook_limiter
 from booker_api.routers.deals import _transition
 from booker_api.schemas import PaymentIn, SignIn, WebhookIn
-from booker_api.security import audit, current_user
+from booker_api.security import audit, current_user, require_org_member
 
 router = APIRouter(tags=["payments"])
 
@@ -239,6 +240,11 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
 @router.post("/payments/webhook")
 def payment_webhook(body: WebhookIn, request: Request, db: Session = Depends(get_db)):
     webhook_limiter.check(client_key(request, "webhook"))
+    if (
+        not settings.allow_default_webhook_secret
+        and settings.webhook_secret == "dev-webhook-secret"
+    ):
+        raise HTTPException(503, "Webhook-секрет не настроен")
     return _apply_payment_webhook(body, db)
 
 
@@ -246,11 +252,19 @@ def payment_webhook(body: WebhookIn, request: Request, db: Session = Depends(get
 def stub_complete(
     payment_id: str,
     body: dict,
-    _user: User = Depends(current_user),
+    user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
     if settings.payment_provider.strip().lower() not in {"", "stub"}:
         raise HTTPException(403, "Только stub-провайдер")
+    payment = db.get(Payment, payment_id)
+    if not payment:
+        raise HTTPException(404, "Платёж не найден")
+    booking = db.get(Booking, payment.booking_id)
+    event = db.get(Event, booking.event_id) if booking else None
+    if not event:
+        raise HTTPException(404, "Событие платежа не найдено")
+    require_org_member(db, user, event.organization_id)
     status = body.get("status") or "succeeded"
     import hashlib
     import hmac

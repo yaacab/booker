@@ -15,6 +15,9 @@ out/
 *.tsbuildinfo
 .env
 .env.local
+.env.*
+!*.example
+.cursor/
 *.db
 *.sqlite
 .DS_Store

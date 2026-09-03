@@ -22,7 +22,7 @@ web-build:
 check: test-api lint
 
 seed:
-	cd apps/api && $(PYTHON) -m booker_api.seed
+	cd apps/api && BOOKER_ALLOW_DEMO_SEED=1 $(PYTHON) -m booker_api.seed
 
 seed-venues-moscow:
 	cd apps/api && $(PYTHON) -m booker_api.seed_venues_moscow

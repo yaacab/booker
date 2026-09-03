@@ -8,6 +8,7 @@ optional tariff hints, and synthetic open slots (30d for curated tariff rows,
 from __future__ import annotations
 
 import json
+import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -28,7 +29,6 @@ from booker_api.security import audit, hash_password, now
 MSK = timezone(timedelta(hours=3))
 OPEN_CATALOG_ORG = "Букер · открытый каталог Москва"
 IMPORT_USER_EMAIL = "open-catalog@booker.local"
-DEMO_PASSWORD = "password1"
 DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "moscow_venues_open.json"
 # Fallback when running from apps/api cwd
 _ALT_DATA = Path(__file__).resolve().parents[2].parent / "data" / "moscow_venues_open.json"
@@ -59,7 +59,8 @@ def _ensure_shared_org(db: Session) -> tuple[Organization, User]:
             email=IMPORT_USER_EMAIL,
             full_name="Букер Open Catalog",
             phone="+79000000000",
-            password_hash=hash_password(DEMO_PASSWORD),
+            # Сервисная учётка без интерактивного логина: случайный пароль.
+            password_hash=hash_password(secrets.token_urlsafe(32)),
         )
         db.add(user)
         db.flush()

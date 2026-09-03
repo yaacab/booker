@@ -6,6 +6,9 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./booker.db"
     webhook_secret: str = "dev-webhook-secret"
+    # Dev/test only: allow the well-known default webhook secret.
+    # Prod must set BOOKER_ALLOW_DEFAULT_WEBHOOK_SECRET=false + BOOKER_WEBHOOK_SECRET.
+    allow_default_webhook_secret: bool = True
     payment_provider: str = "stub"
     payment_merchant_id: str = ""
     payment_public_key: str = ""

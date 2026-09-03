@@ -1,5 +1,6 @@
 """Демо-данные для локального контура Букер."""
 
+import os
 from datetime import timedelta
 
 from sqlalchemy.orm import Session
@@ -306,6 +307,9 @@ def enrich_catalog(db: Session) -> int:
 
 
 def main() -> None:
+    if os.environ.get("BOOKER_ALLOW_DEMO_SEED") != "1":
+        print("demo seed отключён: задайте BOOKER_ALLOW_DEMO_SEED=1 (только локальный контур)")
+        return
     init_schema(engine)
     db = SessionLocal()
     try:

@@ -2,7 +2,7 @@ import hashlib
 import hmac
 
 from booker_api.config import settings
-from tests.conftest import auth_header
+from tests.conftest import auth_header, register
 from tests.test_offers import ack_both, setup_negotiation
 
 
@@ -106,3 +106,34 @@ def test_stub_complete_confirms(client):
     )
     assert res.status_code == 200
     assert res.json()["booking_status"] == "Confirmed"
+
+
+def test_stub_complete_forbidden_for_outsider(client):
+    ctx = _awaiting_payment(client)
+    outsider = register(client, "outsider@booker.test", "Outsider")
+    res = client.post(
+        f"/payments/{ctx['payment_id']}/stub-complete",
+        json={"status": "succeeded"},
+        headers=auth_header(outsider["token"]),
+    )
+    assert res.status_code == 403
+    room = client.get(
+        f"/deal-room/{ctx['booking_id']}",
+        headers=auth_header(ctx["customer"]["token"]),
+    ).json()
+    assert room["status"] == "AwaitingPayment"
+
+
+def test_webhook_rejected_when_default_secret_disallowed(client, monkeypatch):
+    monkeypatch.setattr(settings, "allow_default_webhook_secret", False)
+    ctx = _awaiting_payment(client)
+    res = client.post(
+        "/payments/webhook",
+        json={
+            "event_id": "evt-guard",
+            "payment_id": ctx["payment_id"],
+            "status": "succeeded",
+            "signature": _sign("evt-guard", ctx["payment_id"], "succeeded"),
+        },
+    )
+    assert res.status_code == 503

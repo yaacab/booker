@@ -8,6 +8,9 @@ WorkingDirectory=/opt/booker/apps/api
 Environment=BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db
 Environment=BOOKER_CORS_ORIGINS=https://bukergo.ru,https://www.bukergo.ru,http://localhost:3000
 Environment=BOOKER_PUBLIC_URL=https://bukergo.ru
+Environment=BOOKER_UPLOAD_DIR=/opt/booker/data/uploads
+Environment=BOOKER_ALLOW_DEFAULT_WEBHOOK_SECRET=false
+EnvironmentFile=-/etc/booker/booker-api.env
 ExecStart=/opt/booker/.venv/bin/uvicorn booker_api.main:app --host 127.0.0.1 --port 8030
 Restart=always
 RestartSec=3
