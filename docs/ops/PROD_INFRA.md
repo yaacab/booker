@@ -96,20 +96,37 @@ A1–A8: pass / fail / n/a (по строкам)
 
 **Подготовка миграции данных (одноразово)**
 
+Предпочтительный порядок (избегает `relation already exists` на baseline):
+
+1. Пустой Postgres → `alembic upgrade head` (создаёт схему + `alembic_version`)
+2. Затем перенос данных **в уже существующие таблицы** (pgloader с `--with "including only table names …"` / data-only, или ручной import)
+3. Сверить row counts
+
 ```bash
 # на VPS, после stop API
 export SRC=sqlite:////opt/booker/data/booker.db
 export DST=postgresql+psycopg://USER:PASS@HOST:5432/booker
 
-# вариант: pgloader (установить на VPS)
-pgloader "${SRC}" "${DST}"
+# 1) схема сначала
+BOOKER_DATABASE_URL="${DST}" alembic -c apps/api/alembic.ini upgrade head
 
-# альтернатива: экспорт через API seed на пустой Postgres + ручной перенос критичных таблиц
-# (для пилота с малым объёмом допустим seed + ручной import deals/users)
+# 2) данные во существующие таблицы (не create schema заново)
+# пример: pgloader data-only / согласованный скрипт — не вызывать create_table baseline повторно
+
+# альтернатива для пилота: seed на пустой Postgres + ручной перенос критичных таблиц
+```
+
+Если таблицы уже залиты pgloader **без** `alembic_version` (legacy path): **не** запускать `upgrade` baseline. Вместо этого stamp текущей головы схемы и догнать только последующие ревизии:
+
+```bash
+# только если schema уже совпадает с baseline+промежуточными — иначе сверить колонки вручную
+BOOKER_DATABASE_URL="${DST}" alembic -c apps/api/alembic.ini stamp ad7ec0cd0ee2
+BOOKER_DATABASE_URL="${DST}" alembic -c apps/api/alembic.ini upgrade head
 ```
 
 - [ ] Row counts сверены: `users`, `deals`, `events`, `bookings` (±0 или документированный delta)
 - [ ] FK / unique constraints без ошибок в логе миграции
+- [ ] `alembic_version` = head (`c7a9f0e1d2b3` или актуальный) **до** старта API
 
 **Cutover (окно обслуживания)**
 
@@ -118,8 +135,8 @@ pgloader "${SRC}" "${DST}"
 | C1 | Maintenance page (опционально) | nginx return 503 или статическая заглушка |
 | C2 | Stop services | `systemctl stop booker-web booker-api` |
 | C3 | Final SQLite backup | `BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db /opt/booker/infra/backup-booker.sh` |
-| C4 | Migrate data | pgloader или согласованный скрипт → C5 |
-| C5 | Alembic on prod DB | `BOOKER_DATABASE_URL=... alembic upgrade head` (или auto на старте API) |
+| C4 | Schema + data | Пустой PG → `alembic upgrade head` → data load (см. выше); **не** `upgrade` поверх сырого pgloader-schema без stamp |
+| C5 | Alembic verify | `alembic current` = head; при stamp-path — только post-baseline ревизии |
 | C6 | Update systemd | `Environment=BOOKER_DATABASE_URL=postgresql+psycopg://...` в `booker-api.service` |
 | C7 | Start API | `systemctl daemon-reload && systemctl start booker-api` |
 | C8 | Health | `curl -sS http://127.0.0.1:8030/health` → 200 |

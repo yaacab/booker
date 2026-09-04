@@ -81,3 +81,26 @@ def test_check_in_forbidden_for_stranger(client):
         headers=auth_header(stranger["token"]),
     )
     assert res.status_code in {403, 404}
+
+
+def test_check_out_event_preserves_in_progress_when_confirmed_remain(monkeypatch):
+    """Event must not become Completed while a Confirmed booking is still open."""
+    from types import SimpleNamespace
+
+    from booker_api import event_day
+
+    event = SimpleNamespace(id="evt-1", status="InProgress")
+    in_progress = SimpleNamespace(id="b-ip", status="InProgress")
+    confirmed = SimpleNamespace(id="b-cf", status="Confirmed")
+
+    def fake_bookings(_db, _event_id):
+        return [(None, in_progress), (None, confirmed)]
+
+    monkeypatch.setattr(event_day, "event_bookings", fake_bookings)
+    result = event_day.check_out_event(db=None, event=event)
+    assert result["checked_out_bookings"] == ["b-ip"]
+    assert result["remaining_active_bookings"] == ["b-cf"]
+    assert result["event_status"] == "InProgress"
+    assert event.status == "InProgress"
+    assert in_progress.status == "Completed"
+    assert confirmed.status == "Confirmed"

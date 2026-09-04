@@ -116,5 +116,17 @@ def check_out_event(db: Session, event: Event) -> dict:
             checked.append(booking.id)
     if not checked:
         raise ValueError("Нет сделок в работе для check-out")
-    event.status = "Completed"
-    return {"event_status": event.status, "checked_out_bookings": checked}
+    # Keep InProgress while Confirmed (or leftover InProgress) bookings remain;
+    # Completing the event with open deals breaks the authoritative lifecycle.
+    remaining_active = [
+        booking.id
+        for _req, booking in event_bookings(db, event.id)
+        if booking and booking.status in {"Confirmed", "InProgress"}
+    ]
+    if not remaining_active:
+        event.status = "Completed"
+    return {
+        "event_status": event.status,
+        "checked_out_bookings": checked,
+        "remaining_active_bookings": remaining_active,
+    }
