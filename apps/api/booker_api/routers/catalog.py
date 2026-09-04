@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from booker_api.calendar import calendar_day_bounds, overlapping_slots, ranges_overlap
+from booker_api.calendar import calendar_day_bounds, open_slots_unmasked, overlapping_slots
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
 from booker_api.models import (
@@ -286,13 +286,14 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
         raise HTTPException(400, "resource_type: artist|hall")
     before = max(0, getattr(body, "buffer_before_min", 0) or 0)
     after = max(0, getattr(body, "buffer_after_min", 0) or 0)
+    # Local open/held/confirmed conflict; busy is an overlay and may coexist.
     if overlapping_slots(
         db,
         body.resource_type,
         body.resource_id,
         body.starts_at,
         body.ends_at,
-        statuses=("open", "held", "confirmed", "busy"),
+        statuses=("open", "held", "confirmed"),
         buffer_before_min=before,
         buffer_after_min=after,
     ):
@@ -446,18 +447,12 @@ def search_catalog(
         )
         if not slots:
             continue
-        open_future = [
-            s
-            for s in slots
-            if s.status == "open" and aware(s.ends_at) >= now() and aware(s.starts_at) <= horizon_end
-        ]
+        open_future = open_slots_unmasked(
+            slots, horizon_start=now(), horizon_end=horizon_end
+        )
         if date:
             day_start, day_end = calendar_day_bounds(date)
-            free = [
-                s
-                for s in slots
-                if s.status == "open" and ranges_overlap(s.starts_at, s.ends_at, day_start, day_end)
-            ]
+            free = open_slots_unmasked(slots, day_start=day_start, day_end=day_end)
             if not free:
                 continue
         elif not open_future:
@@ -494,19 +489,13 @@ def search_catalog(
                 )
             if not hall_slots:
                 continue
-            open_future = [
-                s
-                for s in hall_slots
-                if s.status == "open" and aware(s.ends_at) >= now() and aware(s.starts_at) <= now() + timedelta(days=30)
-            ]
+            open_future = open_slots_unmasked(
+                hall_slots, horizon_start=now(), horizon_end=now() + timedelta(days=30)
+            )
             pool = open_future
             if date:
                 day_start, day_end = calendar_day_bounds(date)
-                pool = [
-                    s
-                    for s in hall_slots
-                    if s.status == "open" and ranges_overlap(s.starts_at, s.ends_at, day_start, day_end)
-                ]
+                pool = open_slots_unmasked(hall_slots, day_start=day_start, day_end=day_end)
                 if not pool:
                     continue
             elif not open_future:

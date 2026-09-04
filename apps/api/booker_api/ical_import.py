@@ -1,4 +1,9 @@
-"""Import busy intervals from iCal into availability slots."""
+"""Import busy intervals from iCal into availability slots.
+
+Busy iCal rows are an overlay: they sit on top of local open slots without
+deleting them. Clearing/reimporting busy restores catalog visibility for the
+underlying opens. Search and holds treat overlapping busy as unavailable.
+"""
 
 from __future__ import annotations
 
@@ -80,14 +85,15 @@ def _clear_previous_ical(db: Session, resource_type: str, resource_id: str) -> i
     return len(rows)
 
 
-def _remove_open_overlaps(
+def _count_open_overlaps(
     db: Session,
     resource_type: str,
     resource_id: str,
     starts_at,
     ends_at,
 ) -> int:
-    removed = 0
+    """How many local open slots this busy interval will mask (overlay, no delete)."""
+    overlaid = 0
     open_rows = (
         db.query(AvailabilitySlot)
         .filter(
@@ -99,9 +105,8 @@ def _remove_open_overlaps(
     )
     for row in open_rows:
         if ranges_overlap(row.starts_at, row.ends_at, starts_at, ends_at):
-            db.delete(row)
-            removed += 1
-    return removed
+            overlaid += 1
+    return overlaid
 
 
 def import_busy_events(
@@ -117,7 +122,7 @@ def import_busy_events(
     replaced = _clear_previous_ical(db, resource_type, resource_id)
     imported = 0
     skipped = 0
-    removed_open = 0
+    overlaid_open = 0
     current = now()
 
     for event in events:
@@ -130,7 +135,7 @@ def import_busy_events(
         if aware(event.starts_at) >= aware(event.ends_at):
             skipped += 1
             continue
-        removed_open += _remove_open_overlaps(
+        overlaid_open += _count_open_overlaps(
             db, resource_type, resource_id, event.starts_at, event.ends_at
         )
         slot = AvailabilitySlot(
@@ -155,7 +160,9 @@ def import_busy_events(
             "imported": imported,
             "skipped": skipped,
             "replaced": replaced,
-            "removed_open": removed_open,
+            "overlaid_open": overlaid_open,
+            # legacy alias: opens were never deleted under overlay semantics
+            "removed_open": overlaid_open,
         },
     )
     db.commit()
@@ -163,7 +170,8 @@ def import_busy_events(
         "imported": imported,
         "skipped": skipped,
         "replaced": replaced,
-        "removed_open": removed_open,
+        "overlaid_open": overlaid_open,
+        "removed_open": overlaid_open,
     }
 
 

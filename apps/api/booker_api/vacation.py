@@ -1,4 +1,8 @@
-"""Vacation mode: mark artist/hall unavailable for a date range."""
+"""Vacation mode: mark artist/hall unavailable for a date range.
+
+Vacation is a busy overlay over local open slots (same semantics as iCal busy):
+open rows are preserved and become visible again after clear.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from booker_api.ical_import import _remove_open_overlaps, _resolve_resource, calendar_targets
+from booker_api.ical_import import _count_open_overlaps, _resolve_resource, calendar_targets
 from booker_api.models import AvailabilitySlot
 from booker_api.security import audit, aware, now
 
@@ -53,7 +57,7 @@ def set_vacation(
     if previous:
         db.delete(previous)
 
-    removed_open = _remove_open_overlaps(db, resource_type, resource_id, start, end)
+    overlaid_open = _count_open_overlaps(db, resource_type, resource_id, start, end)
     slot = AvailabilitySlot(
         resource_type=resource_type,
         resource_id=resource_id,
@@ -73,7 +77,8 @@ def set_vacation(
             "resource_type": resource_type,
             "starts_at": start.isoformat(),
             "ends_at": end.isoformat(),
-            "removed_open": removed_open,
+            "overlaid_open": overlaid_open,
+            "removed_open": overlaid_open,
         },
     )
     db.commit()
@@ -82,7 +87,8 @@ def set_vacation(
         "resource_id": resource_id,
         "starts_at": start.isoformat(),
         "ends_at": end.isoformat(),
-        "removed_open": removed_open,
+        "overlaid_open": overlaid_open,
+        "removed_open": overlaid_open,
     }
 
 

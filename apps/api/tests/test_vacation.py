@@ -57,12 +57,14 @@ def test_vacation_creates_busy_and_hides_from_search(client):
     )
     assert res.status_code == 200, res.text
     body = res.json()
-    assert body["removed_open"] >= 1
+    assert body["overlaid_open"] >= 1
+    assert body["removed_open"] == body["overlaid_open"]
 
     page = client.get(f"/artists/{artist['id']}").json()
     vacation_slots = [s for s in page["slots"] if s.get("busy_source") == "vacation"]
     assert len(vacation_slots) == 1
     assert vacation_slots[0]["status"] == "busy"
+    assert any(s["status"] == "open" for s in page["slots"])
 
     missing = client.get(
         "/catalog/search",
@@ -72,6 +74,69 @@ def test_vacation_creates_busy_and_hides_from_search(client):
 
     status = client.get(f"/organizations/{org['id']}/vacation", headers=headers).json()
     assert status["items"][0]["active"] is True
+
+
+def test_vacation_clear_restores_search_via_overlay(client):
+    owner, org, artist = _artist_ctx(client)
+    headers = auth_header(owner["token"])
+    assert (
+        client.post(
+            "/slots",
+            json={
+                "resource_type": "artist",
+                "resource_id": artist["id"],
+                "starts_at": "2026-12-05T18:00:00+00:00",
+                "ends_at": "2026-12-05T22:00:00+00:00",
+            },
+            headers=headers,
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/calendar/vacation",
+            json={
+                "organization_id": org["id"],
+                "resource_type": "artist",
+                "resource_id": artist["id"],
+                "starts_at": "2026-12-01T00:00:00+00:00",
+                "ends_at": "2026-12-15T00:00:00+00:00",
+            },
+            headers=headers,
+        ).status_code
+        == 200
+    )
+    masked = client.get(
+        "/catalog/search",
+        params={"city": "Москва", "category": "dj", "date": "2026-12-05T12:00:00+00:00"},
+    )
+    assert masked.json()["items"] == []
+
+    cleared = client.request(
+        "DELETE",
+        "/calendar/vacation",
+        json={
+            "organization_id": org["id"],
+            "resource_type": "artist",
+            "resource_id": artist["id"],
+        },
+        headers=headers,
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["cleared"] is True
+
+    page = client.get(f"/artists/{artist['id']}").json()
+    assert not any(s.get("busy_source") == "vacation" for s in page["slots"])
+    assert any(s["status"] == "open" for s in page["slots"])
+
+    found = client.get(
+        "/catalog/search",
+        params={"city": "Москва", "category": "dj", "date": "2026-12-05T12:00:00+00:00"},
+    )
+    assert len(found.json()["items"]) == 1
+
+    status = client.get(f"/organizations/{org['id']}/vacation", headers=headers).json()
+    assert status["items"][0]["active"] is False
 
 
 def test_vacation_clear(client):

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import ipaddress
 import re
+import socket
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from urllib.parse import urljoin, urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
@@ -14,6 +17,21 @@ from booker_api.security import aware
 MSK = ZoneInfo("Europe/Moscow")
 MAX_ICAL_BYTES = 512_000
 ICAL_FETCH_TIMEOUT = 10.0
+ICAL_MAX_REDIRECTS = 5
+
+# Extra reserved / special-use nets beyond ipaddress "is_*" helpers.
+_BLOCKED_NETWORKS = (
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("100.64.0.0/10"),  # CGNAT
+    ipaddress.ip_network("192.0.0.0/24"),
+    ipaddress.ip_network("192.0.2.0/24"),
+    ipaddress.ip_network("198.18.0.0/15"),
+    ipaddress.ip_network("198.51.100.0/24"),
+    ipaddress.ip_network("203.0.113.0/24"),
+    ipaddress.ip_network("240.0.0.0/4"),
+    ipaddress.ip_network("255.255.255.255/32"),
+    ipaddress.ip_network("2001:db8::/32"),
+)
 
 
 @dataclass(frozen=True)
@@ -154,11 +172,75 @@ def parse_ical_events(body: str) -> list[IcalEvent]:
     return events
 
 
+def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        return _is_blocked_ip(ip.ipv4_mapped)
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    ):
+        return True
+    return any(ip in net for net in _BLOCKED_NETWORKS)
+
+
+def validate_ical_fetch_url(url: str) -> None:
+    """HTTPS-only fetch target; reject private/loopback/link-local/metadata/reserved IPs.
+
+    Re-run on every redirect hop. DNS is resolved here so literal and hostname
+    targets that point at internal addresses fail closed before the request.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        raise ValueError("iCal URL должен быть https://")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("Некорректный iCal URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("iCal URL не должен содержать credentials")
+    if parsed.port is not None and parsed.port not in (443,):
+        raise ValueError("iCal URL: разрешён только порт 443")
+
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        if _is_blocked_ip(literal):
+            raise ValueError("iCal URL указывает на недоступный/приватный адрес")
+        return
+
+    port = parsed.port or 443
+    try:
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        raise ValueError("Не удалось разрешить хост iCal") from exc
+    if not infos:
+        raise ValueError("Не удалось разрешить хост iCal")
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if _is_blocked_ip(ip):
+            raise ValueError("iCal URL указывает на недоступный/приватный адрес")
+
+
 async def fetch_ical(url: str) -> str:
-    async with httpx.AsyncClient(timeout=ICAL_FETCH_TIMEOUT, follow_redirects=True) as client:
-        res = await client.get(url)
-        res.raise_for_status()
-        body = res.content
-        if len(body) > MAX_ICAL_BYTES:
-            raise ValueError("iCal слишком большой")
-        return body.decode("utf-8", errors="replace")
+    current = url.strip()
+    async with httpx.AsyncClient(timeout=ICAL_FETCH_TIMEOUT, follow_redirects=False) as client:
+        for _ in range(ICAL_MAX_REDIRECTS + 1):
+            validate_ical_fetch_url(current)
+            res = await client.get(current)
+            if res.is_redirect:
+                location = res.headers.get("location")
+                if not location:
+                    raise ValueError("iCal редирект без Location")
+                current = urljoin(str(res.url), location)
+                continue
+            res.raise_for_status()
+            body = res.content
+            if len(body) > MAX_ICAL_BYTES:
+                raise ValueError("iCal слишком большой")
+            return body.decode("utf-8", errors="replace")
+    raise ValueError("Слишком много редиректов iCal")

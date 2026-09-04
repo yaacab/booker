@@ -297,7 +297,7 @@ export function CabinetDashboard({ cabinetMode }: CabinetDashboardProps) {
         },
       );
       setIcalResult(
-        `Импортировано занятых интервалов: ${res.imported}, пропущено: ${res.skipped}, закрыто открытых слотов: ${res.removed_open}`,
+        `Импортировано занятых интервалов: ${res.imported}, пропущено: ${res.skipped}, перекрыто открытых слотов: ${res.removed_open}`,
       );
       trackClientEvent("cabinet.ical_imported", { imported: res.imported });
       const refreshed = await api<{ score: number; items: { id: string; label: string; done: boolean }[] }>(
@@ -338,7 +338,7 @@ export function CabinetDashboard({ cabinetMode }: CabinetDashboardProps) {
         }),
       });
       setVacationResult(
-        `Отпуск включён. Закрыто открытых слотов: ${res.removed_open}. В этот период вас не увидят в каталоге.`,
+        `Отпуск включён. Перекрыто открытых слотов (overlay): ${res.removed_open}. В этот период вас не увидят в каталоге; после снятия отпуска слоты вернутся.`,
       );
       trackClientEvent("cabinet.vacation_set");
       const refreshed = await api<{

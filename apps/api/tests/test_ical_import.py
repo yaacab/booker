@@ -82,12 +82,13 @@ def test_ical_import_creates_busy_slots(client):
     body = res.json()
     assert body["imported"] == 2
     assert body["skipped"] == 1
-    assert body["removed_open"] >= 1
+    assert body["overlaid_open"] >= 1
+    assert body["removed_open"] == body["overlaid_open"]
 
     page = client.get(f"/artists/{artist['id']}").json()
     statuses = {s["status"] for s in page["slots"]}
     assert "busy" in statuses
-    assert "open" not in statuses
+    assert "open" in statuses  # overlay keeps local open slots
 
     missing = client.get(
         "/catalog/search",
@@ -96,21 +97,35 @@ def test_ical_import_creates_busy_slots(client):
     assert missing.json()["items"] == []
 
 
-def test_ical_reimport_replaces_previous_busy(client):
+def test_ical_reimport_preserves_open_under_overlay(client):
     owner, org, artist = _artist_ctx(client)
     headers = auth_header(owner["token"])
+    open_slot = client.post(
+        "/slots",
+        json={
+            "resource_type": "artist",
+            "resource_id": artist["id"],
+            "starts_at": "2026-10-05T19:00:00+00:00",
+            "ends_at": "2026-10-05T21:00:00+00:00",
+        },
+        headers=headers,
+    )
+    assert open_slot.status_code == 200
+    open_id = open_slot.json()["id"]
     payload = {
         "organization_id": org["id"],
         "resource_type": "artist",
         "resource_id": artist["id"],
         "ical_body": SAMPLE_ICAL,
     }
-    first = client.post("/calendar/ical/import", json=payload, headers=headers)
-    assert first.status_code == 200
-    second = client.post("/calendar/ical/import", json=payload, headers=headers)
-    assert second.status_code == 200
+    assert client.post("/calendar/ical/import", json=payload, headers=headers).status_code == 200
     page = client.get(f"/artists/{artist['id']}").json()
-    busy = [s for s in page["slots"] if s["status"] == "busy"]
+    assert any(s["id"] == open_id and s["status"] == "open" for s in page["slots"])
+    # Reimport replaces only ical:* busy rows
+    assert client.post("/calendar/ical/import", json=payload, headers=headers).status_code == 200
+    page2 = client.get(f"/artists/{artist['id']}").json()
+    assert any(s["id"] == open_id and s["status"] == "open" for s in page2["slots"])
+    busy = [s for s in page2["slots"] if s["status"] == "busy"]
     assert len(busy) == 2
 
 
