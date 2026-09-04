@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+from booker_api.config import settings
 from tests.conftest import auth_header
 from tests.test_offers import ack_both, setup_negotiation
 
@@ -37,7 +38,11 @@ def test_expired_hold_frees_slot(client):
         db.commit()
     finally:
         db.close()
-    expired = client.post("/holds/expire")
+    expired = client.post(
+        "/holds/expire",
+        headers={"X-Internal-Token": settings.webhook_secret},
+    )
+    assert expired.status_code == 200
     assert expired.json()["expired"] == 1
     artist = client.get(f"/artists/{ctx['artist']['id']}").json()
     assert artist["slots"][0]["status"] == "open"

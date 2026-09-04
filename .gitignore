@@ -15,9 +15,13 @@ out/
 *.tsbuildinfo
 .env
 .env.local
+.env.*
+!*.example
+.cursor/
 *.db
 *.sqlite
 .DS_Store
 apps/api/.data/
 apps/web/test-results/
 apps/web/playwright-report/
+apps/web/e2e/.demo-tokens.json

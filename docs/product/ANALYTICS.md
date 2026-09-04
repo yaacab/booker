@@ -41,5 +41,23 @@
 |--------|-------|-------------|
 | `verification.decided` | Решение по верификации | `artist` / `venue` |
 | `dispute.opened` | Открыт спор | `booking` |
+| `client.event` | Клиентское событие UI (allowlist) | `client_event` |
 
-Просмотр: `GET /admin/audit` (platform admin). Агрегаты воронки: `GET /admin/metrics` — counts и unique_entities по action за 7/30 дней.
+### Клиентские события (allowlist)
+
+| name | Когда | Группа |
+|------|-------|--------|
+| `page.view` | Переход по страницам | discovery |
+| `search.performed` | Поиск в каталоге | discovery |
+| `deal.room.opened` | Открыт Deal Room | discovery |
+| `event.studio.started` | Вход в Event Studio | studio |
+| `event.studio.completed` | Отправка заявки из Studio | studio |
+| `cabinet.viewed` | Загрузка кабинета | cabinet |
+| `cabinet.offer_sent` | Supply отправил оффер | cabinet |
+| `cabinet.service_created` | Создана услуга | cabinet |
+| `cabinet.ical_imported` | Импорт iCal | cabinet |
+| `cabinet.vacation_set` | Включён отпуск | cabinet |
+
+Клиент: `POST /analytics/events` (auth). Web: `trackClientEvent()` в `apps/web/lib/api.ts`.
+
+Просмотр: `GET /admin/audit` (platform admin). Агрегаты воронки: `GET /admin/metrics` — counts и unique_entities по action за 7/30 дней; блок `dashboards` — воронка (конверсия по шагам), ликвидность (поиск→сделка, заявка→оффер), утечки (брошенный Studio, заявки без оффера, истёкшие hold).

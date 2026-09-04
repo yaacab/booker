@@ -5,16 +5,23 @@ import hmac
 import json
 import secrets
 from datetime import datetime, timedelta, timezone
+from typing import NamedTuple
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import AuditLog, SessionToken, TeamMember, User
+from booker_api.totp import verify_totp_code
 
 bearer = HTTPBearer(auto_error=False)
+
+
+class AuthContext(NamedTuple):
+    user: User
+    session: SessionToken
 
 
 def hash_password(password: str) -> str:
@@ -29,26 +36,48 @@ def verify_password(password: str, stored: str) -> bool:
     return hmac.compare_digest(check, digest)
 
 
+SESSION_TTL_DAYS = 30
+
+
 def issue_token(db: Session, user: User) -> str:
     token = secrets.token_urlsafe(32)
-    db.add(SessionToken(token=token, user_id=user.id))
+    db.add(
+        SessionToken(
+            token=token,
+            user_id=user.id,
+            expires_at=now() + timedelta(days=SESSION_TTL_DAYS),
+        )
+    )
     db.flush()
     return token
 
 
-def current_user(
-    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
-    db: Session = Depends(get_db),
-) -> User:
-    if creds is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Нужна авторизация")
-    row = db.get(SessionToken, creds.credentials)
+def authenticate_token(db: Session, raw: str) -> tuple[User, SessionToken]:
+    row = db.get(SessionToken, raw)
     if not row:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Сессия недействительна")
+    if row.expires_at is not None and aware(row.expires_at) <= now():
+        db.delete(row)
+        db.commit()
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Сессия истекла")
     user = db.get(User, row.user_id)
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Пользователь не найден")
-    return user
+    return user, row
+
+
+def auth_context(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: Session = Depends(get_db),
+) -> AuthContext:
+    if creds is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Нужна авторизация")
+    user, row = authenticate_token(db, creds.credentials)
+    return AuthContext(user, row)
+
+
+def current_user(ctx: AuthContext = Depends(auth_context)) -> User:
+    return ctx.user
 
 
 def membership(db: Session, user_id: str, org_id: str) -> TeamMember | None:
@@ -83,17 +112,76 @@ def require_org_writer(db: Session, user: User, org_id: str) -> TeamMember:
     return member
 
 
-def require_admin(user: User = Depends(current_user)) -> User:
+def ensure_admin_2fa_configured(user: User) -> None:
+    if settings.require_admin_2fa_enforced and not user.totp_enabled:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Администратору нужен включённый второй фактор (TOTP)",
+        )
+
+
+def _totp_from_request(request: Request | None, code: str | None) -> str | None:
+    if code:
+        return code.strip()
+    if request is None:
+        return None
+    header = request.headers.get("x-booker-totp") or request.headers.get("X-Booker-TOTP")
+    return header.strip() if header else None
+
+
+def require_admin_2fa(user: User, code: str | None, request: Request | None = None) -> None:
+    """Step-up: always verify a fresh TOTP code for sensitive admin mutations."""
+    if not user.totp_enabled:
+        if settings.require_admin_2fa_enforced:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Нужен включённый второй фактор")
+        return
+    totp = _totp_from_request(request, code)
+    if not verify_totp_code(user.totp_secret, totp):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Нужен второй фактор")
+
+
+def ensure_admin_2fa_session(
+    request: Request,
+    db: Session,
+    user: User,
+    session: SessionToken,
+) -> None:
+    """When 2FA is enforced, admin reads/writes need a verified step-up session or header."""
+    ensure_admin_2fa_configured(user)
+    if not settings.require_admin_2fa_enforced:
+        return
+    header_code = _totp_from_request(request, None)
+    if header_code and verify_totp_code(user.totp_secret, header_code):
+        session.admin_2fa_verified_at = now()
+        db.commit()
+        return
+    verified_at = session.admin_2fa_verified_at
+    if verified_at is not None:
+        age = (now() - aware(verified_at)).total_seconds()
+        if age <= settings.admin_2fa_step_up_minutes * 60:
+            return
+    raise HTTPException(
+        status.HTTP_403_FORBIDDEN,
+        "Нужен код второго фактора (X-Booker-TOTP или вход с TOTP)",
+    )
+
+
+def require_admin(
+    request: Request,
+    ctx: AuthContext = Depends(auth_context),
+    db: Session = Depends(get_db),
+) -> User:
+    user = ctx.user
     if not user.is_platform_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")
+    ensure_admin_2fa_session(request, db, user, ctx.session)
     return user
 
 
-def require_admin_2fa(user: User, code: str | None) -> None:
-    if not user.totp_enabled:
-        return
-    if not code or code != user.totp_secret:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Нужен второй фактор")
+def mark_admin_2fa_verified(db: Session, token: str) -> None:
+    row = db.get(SessionToken, token)
+    if row:
+        row.admin_2fa_verified_at = now()
 
 
 def audit(

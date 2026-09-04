@@ -33,6 +33,7 @@ export type VenueItem = {
   name: string;
   city: string;
   honorariumFrom: number | null;
+  availabilityLabel?: string;
 };
 
 export type BudgetHint = {

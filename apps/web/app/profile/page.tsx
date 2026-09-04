@@ -132,7 +132,7 @@ export default function ProfilePage() {
       ) : null}
       {error ? <p className="timeline">{error}</p> : null}
       {orgs.map((o) => (
-        <article className="card" key={o.id}>
+        <article className="card surface-glass" key={o.id}>
           <strong>{o.name}</strong>
           <div>
             {KIND_LABEL[o.kind] || o.kind} · {ROLE[o.role] || o.role}
@@ -140,7 +140,7 @@ export default function ProfilePage() {
           </div>
         </article>
       ))}
-      <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420, marginTop: 16 }} onSubmit={addOrg}>
+      <form className="card surface-glass" style={{ display: "grid", gap: 12, maxWidth: 420, marginTop: 16 }} onSubmit={addOrg}>
         <h2>Добавить пространство</h2>
         <label>
           Название

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, getActiveOrg, getToken, isWriteRole } from "@/lib/api";
 import { CHIP } from "@/lib/copy";
-import { formatWhen, money } from "@/lib/format";
+import { formatWhen, guestsLabel, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { SlotList } from "@/components/SlotList";
 
@@ -16,6 +16,14 @@ type Venue = {
   city: string;
   capacity: number;
   verified: boolean;
+  address?: string;
+  district?: string;
+  metro?: string;
+  description?: string;
+  source_url?: string;
+  source_attribution?: string;
+  listing_origin?: string;
+  availability_mode?: string;
   facts: { note: string };
   tariffs: { id: string; title: string; honorarium_rub: number }[];
   slots: { id: string; hall: string; starts_at: string; ends_at?: string; status: string }[];
@@ -205,16 +213,49 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
   const newEventHref = `/events/new?venue=need&roof=${encodeURIComponent(data.name)}`;
   const canSend = authed && Boolean(eventId);
   const sendLabel = busy ? "Отправляем…" : "Отправить в событие";
+  const synthetic = data.availability_mode === "synthetic";
 
   return (
     <main>
       <p className="kicker">Профиль площадки</p>
       <h1>{data.name}</h1>
       <p>
-        {data.city} · до {data.capacity} гостей{" "}
-        {data.verified ? <span className="chip ok">{CHIP.verified}</span> : <span className="chip wait">{CHIP.pending}</span>}
+        {data.city} · до {guestsLabel(data.capacity)}{" "}
+        {synthetic ? (
+          <span className="chip wait">{CHIP.syntheticCalendar}</span>
+        ) : data.verified ? (
+          <span className="chip ok">{CHIP.verified}</span>
+        ) : (
+          <span className="chip wait">{CHIP.pending}</span>
+        )}
       </p>
-      <p>{data.facts.note}</p>
+      {data.address ? (
+        <p className="timeline">
+          {data.address}
+          {data.metro ? ` · м. ${data.metro}` : ""}
+          {data.district ? ` · ${data.district}` : ""}
+        </p>
+      ) : null}
+      {data.description ? <p>{data.description}</p> : null}
+      {synthetic ? (
+        <article className="card tint" role="note">
+          <strong>Календарь ориентировочный</strong>
+          <p>
+            Слоты на 30 дней созданы автоматически для отображения в каталоге. Доступность не подтверждена владельцем
+            площадки — перед сделкой оператор уточнит даты.
+          </p>
+          {data.source_url ? (
+            <p className="timeline">
+              Источник:{" "}
+              <a href={data.source_url} target="_blank" rel="noreferrer noopener">
+                {data.source_attribution || "открытые данные"}
+              </a>
+            </p>
+          ) : null}
+        </article>
+      ) : (
+        <p>{data.facts.note}</p>
+      )}
       {halls.length ? (
         <>
           <h2>Залы</h2>
@@ -252,13 +293,18 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
         </form>
       ) : null}
       <h2>Тарифы</h2>
-      <ul>
-        {data.tariffs.map((t) => (
-          <li key={t.id}>
-            {t.title}: {money(t.honorarium_rub)}
-          </li>
-        ))}
-      </ul>
+      {data.tariffs.length ? (
+        <ul>
+          {data.tariffs.map((t) => (
+            <li key={t.id}>
+              {t.title}: {money(t.honorarium_rub)}
+              {synthetic ? " · ориентир" : ""}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="timeline">Цена по запросу — итог только в OfferVersion на сервере.</p>
+      )}
       <h2>Календарь</h2>
       <SlotList slots={data.slots} highlightDay={day} />
       {authed && events.length > 0 ? (

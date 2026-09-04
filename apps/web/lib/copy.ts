@@ -6,6 +6,7 @@ export const CHIP = {
   slotOk: "можно брать",
   slotWait: "надо уточнить",
   slotNone: "календарь молчит",
+  syntheticCalendar: "календарь ориентировочный",
 };
 
 export const KIND_LABEL: Record<string, string> = {

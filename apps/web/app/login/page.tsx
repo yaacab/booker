@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
 import { api, createOrgWithConfirm, setActiveOrg, setToken } from "@/lib/api";
+import { cabinetPathForKind } from "@/lib/cabinetRoutes";
 import { safeNext } from "@/lib/next";
 
 export default function LoginPage() {
@@ -55,11 +56,23 @@ export default function LoginPage() {
           city: "Москва",
         });
         setActiveOrg(org.id);
-      } else {
-        const me = await api<{ active_organization_id?: string }>("/me");
-        if (me.active_organization_id) setActiveOrg(me.active_organization_id);
+        router.push(cabinetPathForKind(kind));
+        return;
       }
-      router.push(safeNext(new URLSearchParams(window.location.search).get("next")));
+      const me = await api<{
+        organizations?: { id: string; kind: string }[];
+        active_organization_id?: string;
+      }>("/me");
+      const activeOrgId = me.active_organization_id || me.organizations?.[0]?.id;
+      if (activeOrgId) setActiveOrg(activeOrgId);
+      const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
+      const rawNext = new URLSearchParams(window.location.search).get("next");
+      const next = safeNext(rawNext);
+      if (!rawNext || next === "/cabinet") {
+        router.push(cabinetPathForKind(org?.kind || "customer"));
+      } else {
+        router.push(next);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка входа");
     } finally {
@@ -85,7 +98,7 @@ export default function LoginPage() {
       {mode === "login" ? (
         <details className="timeline">
           <summary>Демонстрационные аккаунты</summary>
-          <p>Пароль для демовхода: password1. Код подтверждения в Deal Room: 123456.</p>
+          <p>Пароль для демовхода: password1. Код подтверждения показывается в Deal Room при создании договора.</p>
           <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
             {(
               [
@@ -114,7 +127,7 @@ export default function LoginPage() {
       ) : (
         <p className="timeline">Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи.</p>
       )}
-      <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420 }} onSubmit={onSubmit}>
+      <form className="card surface-glass" style={{ display: "grid", gap: 12, maxWidth: 420 }} onSubmit={onSubmit}>
         {mode === "register" ? (
           <>
             <label>
@@ -150,19 +163,35 @@ export default function LoginPage() {
         {mode !== "recover" ? (
           <label>
             Пароль
-            <input name="password" type="password" autoComplete="current-password" required minLength={8} />
+            <input
+              name="password"
+              type="password"
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
+              required
+              minLength={8}
+            />
           </label>
         ) : null}
         {mode === "register" ? (
           <>
-            <label className="unknown">
-              <input name="accept_offer" type="checkbox" required />
-              Принимаю <a href="/legal/offer">оферту</a> и правила использования сервиса.
-            </label>
-            <label className="unknown">
-              <input name="accept_privacy" type="checkbox" required />
-              Согласен с <a href="/legal/privacy">политикой обработки персональных данных</a>.
-            </label>
+            <div className="unknown">
+              <input id="accept_offer" name="accept_offer" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_offer" className="inline-label">
+                  Принимаю
+                </label>{" "}
+                <a href="/legal/offer">оферту</a> и правила использования сервиса.
+              </span>
+            </div>
+            <div className="unknown">
+              <input id="accept_privacy" name="accept_privacy" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_privacy" className="inline-label">
+                  Согласен
+                </label>{" "}
+                с <a href="/legal/privacy">политикой обработки персональных данных</a>.
+              </span>
+            </div>
             <label className="unknown">
               <input name="marketing_opt_in" type="checkbox" />
               Получать новости продукта и специальные предложения. Необязательно.

@@ -14,9 +14,27 @@ type Queue = {
   venues?: VerifyTarget[];
 };
 type Audit = { items: { id: string; action: string; entity_type: string; created_at: string }[] };
-type Metric = { count: number; unique_entities: number };
+type Metric = { count: number; unique_entities: number; by_event?: Record<string, number> };
 type PaymentMetric = Metric & { by_action: Record<string, number> };
-type PeriodMetrics = Record<string, Metric | PaymentMetric>;
+type FunnelStep = { step: string; count: number; conversion_from_prev_pct: number | null };
+type Dashboards = {
+  funnel: { steps: FunnelStep[] };
+  liquidity: {
+    search_to_deal_pct: number | null;
+    offer_response_pct: number | null;
+    searches: number;
+    deal_opens: number;
+    requests: number;
+    offers: number;
+  };
+  leakage: {
+    studio_abandoned: number;
+    unanswered_requests: number;
+    holds_expired: number;
+    holds_without_contract: number;
+  };
+};
+type PeriodMetrics = Record<string, Metric | PaymentMetric | Dashboards> & { dashboards?: Dashboards };
 type Metrics = { periods: { "7": PeriodMetrics; "30": PeriodMetrics } };
 
 const ACTION: Record<string, string> = {
@@ -40,7 +58,19 @@ const FUNNEL_LABELS: Record<string, string> = {
   "workspace.switched": "Смены workspace",
   "service.created": "Услуги",
   "hall.created": "Залы",
+  "client.event": "Клиентские события",
   payment: "Платежи",
+};
+
+const FUNNEL_STEP_LABELS: Record<string, string> = {
+  "event.studio.started": "Studio: старт",
+  "event.studio.completed": "Studio: завершение",
+  "requirement.created": "Позиции состава",
+  "request.created": "Заявки",
+  "offer.created": "Офферы",
+  "hold.created": "Hold",
+  "contract.signed": "Договор",
+  "payment.webhook": "Оплата",
 };
 
 export default function AdminPage() {
@@ -49,6 +79,9 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<Audit["items"]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpSecret, setTotpSecret] = useState("");
+  const [totpBusy, setTotpBusy] = useState(false);
 
   async function load() {
     if (!getToken()) {
@@ -56,11 +89,13 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [q, a, m] = await Promise.all([
+      const [me, q, a, m] = await Promise.all([
+        api<{ totp_enabled?: boolean }>("/me"),
         api<Queue>("/admin/verifications"),
         api<Audit>("/admin/audit"),
         api<Metrics>("/admin/metrics"),
       ]);
+      setTotpEnabled(Boolean(me.totp_enabled));
       setQueue(q);
       setAudit(a.items.slice(0, 20));
       setMetrics(m);
@@ -87,6 +122,23 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : "Не удалось решить");
     } finally {
       setBusyKey(null);
+    }
+  }
+
+  async function enableTotp(e: React.FormEvent) {
+    e.preventDefault();
+    const secret = totpSecret.trim();
+    if (secret.length < 6) return;
+    setTotpBusy(true);
+    try {
+      await api("/admin/totp/enable", { method: "POST", body: JSON.stringify({ secret }) });
+      setTotpEnabled(true);
+      setTotpSecret("");
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось включить 2FA");
+    } finally {
+      setTotpBusy(false);
     }
   }
 
@@ -129,10 +181,33 @@ export default function AdminPage() {
         </p>
       ) : null}
       <div className="grid">
+        <article className="card tint">
+          <h2>Второй фактор</h2>
+          {totpEnabled ? (
+            <p className="timeline">TOTP включён. Для возвратов укажите код в запросе.</p>
+          ) : (
+            <form onSubmit={enableTotp} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
+              <p className="timeline">Пилот: задайте 6+ символов как код второго фактора.</p>
+              <label>
+                Код TOTP
+                <input value={totpSecret} onChange={(e) => setTotpSecret(e.target.value)} minLength={6} required />
+              </label>
+              <button type="submit" disabled={totpBusy}>
+                {totpBusy ? "Сохраняем…" : "Включить 2FA"}
+              </button>
+            </form>
+          )}
+        </article>
         <article className="card">
           <h2>Верификация</h2>
-          {renderTargets("artist", "Артисты", queue?.artists ?? [])}
-          {renderTargets("venue", "Площадки", queue?.venues ?? [])}
+          {queue ? (
+            <>
+              {renderTargets("artist", "Артисты", queue.artists ?? [])}
+              {renderTargets("venue", "Площадки", queue.venues ?? [])}
+            </>
+          ) : !error ? (
+            <p className="timeline">Загрузка очереди…</p>
+          ) : null}
         </article>
         <article className="card">
           <h2>Споры</h2>
@@ -157,12 +232,17 @@ export default function AdminPage() {
                   <ul>
                     {Object.entries(FUNNEL_LABELS).map(([key, label]) => {
                       const row = metrics.periods[days][key];
-                      if (!row) return null;
+                      if (!row || !("count" in row)) return null;
                       return (
                         <li key={key}>
                           {label}: {row.count}
                           {"unique_entities" in row && row.unique_entities !== row.count
                             ? ` · уник. ${row.unique_entities}`
+                            : ""}
+                          {"by_event" in row && row.by_event
+                            ? ` · ${Object.entries(row.by_event)
+                                .map(([ev, n]) => `${ev}:${n}`)
+                                .join(", ")}`
                             : ""}
                         </li>
                       );
@@ -175,6 +255,60 @@ export default function AdminPage() {
             <p>Загрузка метрик…</p>
           )}
         </article>
+        {metrics?.periods["7"]?.dashboards ? (
+          <article className="card tint">
+            <h2>Дашборды пилота</h2>
+            <p className="timeline">Воронка, ликвидность и утечки за 7 дней.</p>
+            {(["funnel", "liquidity", "leakage"] as const).map((kind) => {
+              const dash = metrics.periods["7"].dashboards!;
+              if (kind === "funnel") {
+                return (
+                  <div key={kind}>
+                    <h3>Воронка</h3>
+                    <ul>
+                      {dash.funnel.steps.map((step) => (
+                        <li key={step.step}>
+                          {FUNNEL_STEP_LABELS[step.step] || step.step}: {step.count}
+                          {step.conversion_from_prev_pct != null ? ` · ${step.conversion_from_prev_pct}%` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (kind === "liquidity") {
+                const liq = dash.liquidity;
+                return (
+                  <div key={kind}>
+                    <h3>Ликвидность</h3>
+                    <ul>
+                      <li>
+                        Поиск → Deal Room: {liq.search_to_deal_pct != null ? `${liq.search_to_deal_pct}%` : "—"} (
+                        {liq.deal_opens}/{liq.searches})
+                      </li>
+                      <li>
+                        Заявка → оффер: {liq.offer_response_pct != null ? `${liq.offer_response_pct}%` : "—"} (
+                        {liq.offers}/{liq.requests})
+                      </li>
+                    </ul>
+                  </div>
+                );
+              }
+              const leak = dash.leakage;
+              return (
+                <div key={kind}>
+                  <h3>Утечки</h3>
+                  <ul>
+                    <li>Studio брошено: {leak.studio_abandoned}</li>
+                    <li>Заявки без оффера: {leak.unanswered_requests}</li>
+                    <li>Hold истёк: {leak.holds_expired}</li>
+                    <li>Hold без договора: {leak.holds_without_contract}</li>
+                  </ul>
+                </div>
+              );
+            })}
+          </article>
+        ) : null}
         <article className="card">
           <h2>Аудит</h2>
           <ul>

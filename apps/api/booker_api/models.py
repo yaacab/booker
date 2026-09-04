@@ -48,6 +48,10 @@ class SessionToken(Base):
     token: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    admin_2fa_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="sessions")
 
@@ -102,6 +106,14 @@ class Venue(Base):
     capacity: Mapped[int] = mapped_column(Integer, default=100)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
     verified_status: Mapped[str] = mapped_column(String(32), default="pending")
+    address: Mapped[str] = mapped_column(String(512), default="")
+    district: Mapped[str] = mapped_column(String(128), default="")
+    metro: Mapped[str] = mapped_column(String(128), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    source_url: Mapped[str] = mapped_column(String(512), default="")
+    source_attribution: Mapped[str] = mapped_column(String(128), default="")
+    listing_origin: Mapped[str] = mapped_column(String(32), default="owner")  # open_data|owner|seed
+    availability_mode: Mapped[str] = mapped_column(String(32), default="owner")  # synthetic|owner
 
 
 class VenueHall(Base):
@@ -140,9 +152,10 @@ class AvailabilitySlot(Base):
     resource_id: Mapped[str] = mapped_column(String(36), index=True)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    status: Mapped[str] = mapped_column(String(16), default="open")  # open|held|confirmed
+    status: Mapped[str] = mapped_column(String(16), default="open")  # open|held|confirmed|busy
     buffer_before_min: Mapped[int] = mapped_column(Integer, default=0)
     buffer_after_min: Mapped[int] = mapped_column(Integer, default=0)
+    external_uid: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
 
 class Event(Base):
@@ -332,6 +345,20 @@ class Dispute(Base):
     body: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(16), default="open")
     decision: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DealAttachment(Base):
+    __tablename__ = "deal_attachments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(128))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64))
+    storage_key: Mapped[str] = mapped_column(String(512))
+    uploaded_by_user_id: Mapped[str] = mapped_column(String(36))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

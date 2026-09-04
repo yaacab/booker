@@ -35,6 +35,21 @@ export function isClosedRequest(item: EventRequestLite): boolean {
   return Boolean(item.booking_id) || item.status === "Confirmed";
 }
 
+export function isCancelledRequest(item: EventRequestLite): boolean {
+  return item.status === "Cancelled" || item.status === "Declined" || item.status === "Expired";
+}
+
+export function cancelledRequestsForRole(
+  requests: EventRequestLite[],
+  requirementId?: string,
+): EventRequestLite[] {
+  return requestsForRole(requests, requirementId).filter(isCancelledRequest);
+}
+
+export function needsReplacement(step: NextStepRole): boolean {
+  return step.openSlots > 0 && step.openRequests.some(isCancelledRequest);
+}
+
 export function roleBlocker(requests: EventRequestLite[], need: number): RoleBlocker {
   const closed = requests.filter(isClosedRequest).length;
   const openSlots = Math.max(0, need - closed);
@@ -92,4 +107,25 @@ export function openLooseRequests<T extends EventRequestLite>(
   requirements: RequirementLite[],
 ): T[] {
   return unmatchedRequests(requests, requirements).filter((item) => !isClosedRequest(item));
+}
+
+export type DayBooking = {
+  booking_id: string;
+  resource_name?: string | null;
+  booking_status: string;
+  can_check_in: boolean;
+  can_check_out: boolean;
+};
+
+export type DayStatus = {
+  event_status: string;
+  can_event_check_in: boolean;
+  can_event_check_out: boolean;
+  bookings: DayBooking[];
+  summary: { confirmed: number; in_progress: number; completed: number; total: number };
+};
+
+export function dayOpsVisible(status: DayStatus | null): boolean {
+  if (!status) return false;
+  return status.summary.total > 0;
 }

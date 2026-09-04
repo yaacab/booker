@@ -28,10 +28,13 @@ type SearchItem = {
   city: string;
   category: string;
   verified: boolean;
-  has_calendar: boolean;
+  has_calendar?: boolean;
   open_slots?: number;
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
+  address?: string;
+  metro?: string;
+  availability_mode?: string;
 };
 
 function fallbackCategories(): CategoryChip[] {
@@ -65,7 +68,7 @@ function slotState(item: SearchItem): { label: string; cls: string } {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ city?: string; date?: string; category?: string; event?: string; requirement?: string }>;
+  searchParams: Promise<{ city?: string; date?: string; category?: string; event?: string; requirement?: string; exclude?: string }>;
 }) {
   const q = await searchParams;
   const city = q.city || "Москва";
@@ -73,11 +76,13 @@ export default async function SearchPage({
   if (q.date) extra.set("date", q.date);
   if (q.event) extra.set("event", q.event);
   if (q.requirement) extra.set("requirement", q.requirement);
+  if (q.exclude) extra.set("exclude", q.exclude);
   const itemQs = extra.toString();
   const params = new URLSearchParams();
   params.set("city", city);
   if (q.category) params.set("category", q.category);
   if (q.date) params.set("date", `${q.date}T00:00:00+03:00`);
+  if (q.exclude) params.set("exclude", q.exclude);
   let items: SearchItem[] = [];
   let venues: SearchItem[] = [];
   let error: string | null = null;
@@ -107,6 +112,7 @@ export default async function SearchPage({
           categories={categories}
           event={q.event}
           requirement={q.requirement}
+          exclude={q.exclude}
         />
         <div>
           <p className="timeline">
@@ -115,6 +121,7 @@ export default async function SearchPage({
             {q.category
               ? ` · ${categories.find((c) => c.code === q.category)?.title || categoryLabel(q.category)}`
               : ""}
+            {q.exclude ? " · без ранее отменённых" : ""}
           </p>
           {!(PILOT_CITIES as readonly string[]).includes(city) ? (
             <article className="card empty">
@@ -194,6 +201,7 @@ export default async function SearchPage({
               <div className="grid">
                 {venues.map((item) => {
                   const st = slotState(item);
+                  const synthetic = item.availability_mode === "synthetic";
                   return (
                     <Link className="card" key={item.id} href={`/venues/${item.id}${itemQs ? `?${itemQs}` : ""}`}>
                       <div className="card-head">
@@ -204,10 +212,14 @@ export default async function SearchPage({
                       </div>
                       <div>
                         {item.city} · площадка
+                        {item.metro ? ` · м. ${item.metro}` : ""}
                       </div>
+                      {item.address ? <p className="timeline">{item.address}</p> : null}
                       <p>
                         <span className={`chip ${st.cls}`}>{st.label}</span>{" "}
-                        {item.verified ? (
+                        {synthetic ? (
+                          <span className="chip wait">{CHIP.syntheticCalendar}</span>
+                        ) : item.verified ? (
                           <span className="chip ok">{CHIP.verified}</span>
                         ) : (
                           <span className="chip wait">{CHIP.pending}</span>
@@ -218,7 +230,9 @@ export default async function SearchPage({
                       </p>
                       {item.tariffs?.[0] ? (
                         <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
-                      ) : null}
+                      ) : (
+                        <p className="timeline">цена по запросу</p>
+                      )}
                     </Link>
                   );
                 })}

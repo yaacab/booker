@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { DealRoomSummary } from "@/components/deal-room/DealRoomSummary";
 import { HoldCountdown } from "@/components/HoldCountdown";
-import { api } from "@/lib/api";
+import { api, trackClientEvent } from "@/lib/api";
+import { orgKindToDealRoomAccentKind } from "@/lib/dealRoomAccents";
 import { money } from "@/lib/format";
-import { nextAction, nextActionHint, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
+import { nextAction, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
 
 const TABS = [
   { id: "summary", label: "Сводка" },
@@ -25,6 +27,7 @@ type Room = {
   requirement_id?: string | null;
   status: string;
   role: "customer" | "supplier";
+  workspace_kind?: string;
   next_step: string;
   event_title?: string;
   participants?: { role: string; name: string; duty: string }[];
@@ -60,6 +63,9 @@ export default function DealPage() {
   const [disputeCategory, setDisputeCategory] = useState("no_show");
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [otpCodes, setOtpCodes] = useState<{ customer?: string; supplier?: string } | null>(null);
+  const [otpInput, setOtpInput] = useState("");
 
   async function load() {
     try {
@@ -72,11 +78,28 @@ export default function DealPage() {
 
   useEffect(() => {
     void load();
+    trackClientEvent("deal.room.opened", { booking_id: params.id });
   }, [params.id]);
 
   useEffect(() => {
     if (room?.event_title) document.title = `${room.event_title} · Deal Room · Букер`;
   }, [room?.event_title]);
+
+  // Пилот: коды подписи приходят в ответе POST /bookings/{id}/contract.
+  // Восстанавливаем их из sessionStorage, если страницу перезагрузили.
+  useEffect(() => {
+    const contractId = room?.contract?.id;
+    if (!contractId) {
+      setOtpCodes(null);
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(`booker.contractOtp.${contractId}`);
+      setOtpCodes(raw ? (JSON.parse(raw) as { customer?: string; supplier?: string }) : null);
+    } catch {
+      setOtpCodes(null);
+    }
+  }, [room?.contract?.id]);
 
   useEffect(() => {
     if (!quoteOpen) return;
@@ -94,6 +117,7 @@ export default function DealPage() {
 
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
+    setNotice("");
     try {
       await fn();
       await load();
@@ -115,15 +139,52 @@ export default function DealPage() {
 
   const current = room;
   const side = current.role;
+  const accentKind = orgKindToDealRoomAccentKind(current.workspace_kind ?? (side === "customer" ? "customer" : "artist"));
   const people = current.participants ?? [];
   const action = nextAction(current.status);
   const idx = STAGE_ORDER.indexOf(current.status);
-  const journal = STAGE_ORDER.map((s: string, i: number) => ({
-    s,
-    cls: i < idx ? "done" : i === idx ? "now" : "",
-    who: i < idx ? "стороны" : i === idx ? "сейчас" : "дальше",
-    result: STATUS_LABEL[s],
-  }));
+  const inPipeline = idx >= 0;
+  const journal = STAGE_ORDER.map((s: string, i: number) => {
+    const cls = !inPipeline ? "" : i < idx ? "done" : i === idx ? "now" : "";
+    return {
+      s,
+      cls,
+      who: !inPipeline ? "—" : i < idx ? "стороны" : i === idx ? "сейчас" : "дальше",
+      result: STATUS_LABEL[s],
+      state: !inPipeline ? "не применимо" : iLabel(cls),
+    };
+  });
+  // Пилотный код подписи текущей стороны — только если его вернул сервер при создании договора.
+  const pilotOtp = side === "customer" ? otpCodes?.customer : otpCodes?.supplier;
+
+  async function createContract() {
+    const res = await api<{ id: string; otp_customer?: string; otp_supplier?: string }>(
+      `/bookings/${current.booking_id}/contract`,
+      { method: "POST" },
+    );
+    if (res.otp_customer || res.otp_supplier) {
+      const codes = { customer: res.otp_customer, supplier: res.otp_supplier };
+      setOtpCodes(codes);
+      try {
+        sessionStorage.setItem(`booker.contractOtp.${res.id}`, JSON.stringify(codes));
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  async function signContract() {
+    if (!current.contract) return;
+    const otp = pilotOtp || otpInput.trim();
+    if (!otp) {
+      setError("Введите код подписи — он показывается при создании договора.");
+      return;
+    }
+    await act(() =>
+      api(`/contracts/${current.contract!.id}/sign`, { method: "POST", body: JSON.stringify({ side, otp }) })
+    );
+    setOtpInput("");
+  }
 
   async function runNext() {
     if (action.kind === "ack") {
@@ -132,11 +193,9 @@ export default function DealPage() {
     }
     if (action.kind === "contract") {
       if (current.contract) {
-        await act(() =>
-          api(`/contracts/${current.contract!.id}/sign`, { method: "POST", body: JSON.stringify({ side, otp: "123456" }) })
-        );
+        await signContract();
       } else {
-        await act(() => api(`/bookings/${current.booking_id}/contract`, { method: "POST" }));
+        await act(() => createContract());
       }
       return;
     }
@@ -147,10 +206,17 @@ export default function DealPage() {
           body: JSON.stringify({ idempotency_key: `web-${current.booking_id}` }),
         })
       );
+      return;
+    }
+    if (action.kind === "receive") {
+      setNotice("Чек-ин откроется в день события — в кабинете и на странице события.");
+      return;
     }
     if (action.kind === "operator") {
       window.location.href = "mailto:hello@bukergo.ru?subject=Оператор";
+      return;
     }
+    setNotice("Действие для этого статуса не требуется. Если что-то пошло не так — напишите оператору: hello@bukergo.ru.");
   }
 
   function iLabel(cls: string) {
@@ -179,16 +245,23 @@ export default function DealPage() {
   );
 
   const journalBlock = (
-    <ul className="journal">
-      {journal.map((row: { s: string; cls: string; who: string; result: string }) => (
-        <li key={row.s} className={row.cls}>
-          <strong>{row.result}</strong>
-          <div className="timeline">
-            {row.who} · результат: {iLabel(row.cls)}
-          </div>
-        </li>
-      ))}
-    </ul>
+    <>
+      {!inPipeline ? (
+        <p className="timeline">
+          Статус «{STATUS_LABEL[current.status] || current.status}» — вне стандартной цепочки этапов.
+        </p>
+      ) : null}
+      <ul className="journal">
+        {journal.map((row: { s: string; cls: string; who: string; result: string; state: string }) => (
+          <li key={row.s} className={row.cls}>
+            <strong>{row.result}</strong>
+            <div className="timeline">
+              {row.who} · результат: {row.state}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 
   return (
@@ -203,7 +276,15 @@ export default function DealPage() {
           {room.booking_id} · {STATUS_LABEL[room.status] || room.status}
         </p>
         <h1>{room.event_title || "Deal Room"}</h1>
-        <p>Вы {side === "customer" ? "заказчик" : "исполнитель"}. {room.next_step}</p>
+        <p>
+          Вы{" "}
+          {accentKind === "customer"
+            ? "заказчик"
+            : accentKind === "venue"
+              ? "площадка"
+              : "исполнитель"}
+          . {room.next_step}
+        </p>
         {room.event_id ? (
           <p className="timeline">
             <Link href={`/events/${room.event_id}`}>Event Control Room</Link>
@@ -216,8 +297,13 @@ export default function DealPage() {
         ) : null}
       </div>
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
+      {notice ? (
+        <p className="timeline" role="status">
+          {notice}
+        </p>
+      ) : null}
       <div className="deal-shell">
-        <aside className="deal-rail">
+        <aside className="deal-rail surface-glass">
           <h2>Журнал</h2>
           {journalBlock}
           <h2>Участники</h2>
@@ -245,21 +331,14 @@ export default function DealPage() {
             <button type="button" className="secondary" onClick={() => void act(() => api(`/bookings/${room.booking_id}/hold`, { method: "POST" }))}>
               Удержать дату
             </button>
-            <button type="button" className="secondary" onClick={() => void act(() => api(`/bookings/${room.booking_id}/contract`, { method: "POST" }))}>
+            <button type="button" className="secondary" onClick={() => void act(() => createContract())}>
               Договор
             </button>
             {room.contract ? (
               <button
                 type="button"
                 className="secondary"
-                onClick={() =>
-                  void act(() =>
-                    api(`/contracts/${room.contract!.id}/sign`, {
-                      method: "POST",
-                      body: JSON.stringify({ side, otp: "123456" }),
-                    })
-                  )
-                }
+                onClick={() => void signContract()}
               >
                 Подписать OTP
               </button>
@@ -301,7 +380,9 @@ export default function DealPage() {
                 key={item.id}
                 type="button"
                 role="tab"
+                id={`deal-tab-${item.id}`}
                 aria-selected={tab === item.id}
+                aria-controls={`deal-panel-${item.id}`}
                 onClick={() => setTab(item.id)}
               >
                 {item.label}
@@ -309,37 +390,12 @@ export default function DealPage() {
             ))}
           </div>
           {tab === "summary" && (
-            <section className="card">
-              <p className="kicker">Сводка сделки</p>
-              {room.event_id ? (
-                <p>
-                  <Link href={`/events/${room.event_id}`}>{room.event_title || "Событие"}</Link>
-                </p>
-              ) : (
-                <p className="timeline">Событие не привязано</p>
-              )}
-              {room.requirement_id ? (
-                <p className="mono">requirement_id: {room.requirement_id}</p>
-              ) : null}
-              <p>
-                Статус брони: <strong>{STATUS_LABEL[room.status] || room.status}</strong>
-              </p>
-              <p>
-                <span className="kicker">Следующее действие</span>
-                <br />
-                {room.next_step}
-                <br />
-                <span className="timeline">{nextActionHint(action.kind)}</span>
-              </p>
-              {room.event_id ? (
-                <p>
-                  <Link href={`/events/${room.event_id}`}>Event Control Room</Link>
-                </p>
-              ) : null}
-            </section>
+            <div role="tabpanel" id="deal-panel-summary" aria-labelledby="deal-tab-summary">
+              <DealRoomSummary accentKind={accentKind} room={room} actionKind={action.kind} />
+            </div>
           )}
           {tab === "chat" && (
-            <section className="card">
+            <section className="card" role="tabpanel" id="deal-panel-chat" aria-labelledby="deal-tab-chat">
               {room.messages.length === 0 ? (
                 <p className="timeline">Сообщений пока нет. Условия предложения доступны справа.</p>
               ) : null}
@@ -369,6 +425,7 @@ export default function DealPage() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Напишите сообщение участникам сделки"
+                  aria-label="Сообщение участникам сделки"
                   disabled={busy}
                 />
                 <button type="submit" disabled={busy || !message.trim()}>
@@ -389,7 +446,7 @@ export default function DealPage() {
             </section>
           )}
           {tab === "terms" && (
-            <section className="card">
+            <section className="card" role="tabpanel" id="deal-panel-terms" aria-labelledby="deal-tab-terms">
               <p>
                 Заказчик: {room.quote.customer_ack ? "подтвердил" : "ожидается подтверждение"}. Исполнитель:{" "}
                 {room.quote.supplier_ack ? "подтвердил" : "ожидается подтверждение"}.
@@ -398,7 +455,14 @@ export default function DealPage() {
             </section>
           )}
           {tab === "documents" && (
-            <section className="card">
+            <section className="card" role="tabpanel" id="deal-panel-documents" aria-labelledby="deal-tab-documents">
+              {otpCodes?.customer || otpCodes?.supplier ? (
+                <p className="timeline">
+                  <span className="chip wait">код для теста</span> заказчик:{" "}
+                  <span className="mono">{otpCodes?.customer ?? "—"}</span>
+                  {" · "}исполнитель: <span className="mono">{otpCodes?.supplier ?? "—"}</span>
+                </p>
+              ) : null}
               {room.documents?.length ? (
                 <ul className="timeline">
                   {room.documents.map((doc) => (
@@ -415,7 +479,7 @@ export default function DealPage() {
             </section>
           )}
           {tab === "payments" && (
-            <section className="card">
+            <section className="card" role="tabpanel" id="deal-panel-payments" aria-labelledby="deal-tab-payments">
               <p>
                 {room.payment
                   ? `${room.payment.status} · ${money(room.payment.amount_rub)}`
@@ -433,7 +497,7 @@ export default function DealPage() {
             </section>
           )}
           {tab === "dispute" && (
-            <section className="card">
+            <section className="card" role="tabpanel" id="deal-panel-dispute" aria-labelledby="deal-tab-dispute">
               <p>Спор рассматривает оператор. ИИ только помогает сформулировать категорию.</p>
               <form
                 onSubmit={(e) => {
@@ -460,14 +524,35 @@ export default function DealPage() {
               </form>
             </section>
           )}
-          {tab === "stages" && <section className="card">{journalBlock}</section>}
+          {tab === "stages" && (
+            <section className="card" role="tabpanel" id="deal-panel-stages" aria-labelledby="deal-tab-stages">
+              {journalBlock}
+            </section>
+          )}
         </section>
-        <aside className="deal-aside">
+        <aside className="deal-aside surface-glass">
           <p className="kicker">Следующий шаг</p>
           <p>{room.next_step}</p>
           <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
             {action.label}
           </button>
+          {room.contract && action.kind === "contract" ? (
+            pilotOtp ? (
+              <p className="timeline">
+                <span className="chip wait">код для теста</span> <span className="mono">{pilotOtp}</span>
+              </p>
+            ) : (
+              <label>
+                Код подписи договора
+                <input
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value)}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                />
+              </label>
+            )
+          ) : null}
           {quoteBlock}
         </aside>
       </div>

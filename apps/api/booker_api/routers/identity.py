@@ -1,25 +1,33 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from booker_api.composition import ALLOWED_ORG_KINDS, ALLOWED_ROLES, normalize_kind
+from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import Organization, TeamMember, User
+from booker_api.rate_limit import auth_limiter, client_key
 from booker_api.schemas import LoginIn, MemberIn, OrgIn, RegisterIn
 from booker_api.security import (
+    AuthContext,
     audit,
+    auth_context,
     current_user,
+    ensure_admin_2fa_configured,
     hash_password,
     issue_token,
+    mark_admin_2fa_verified,
     membership,
     require_org_member,
     verify_password,
 )
+from booker_api.totp import verify_totp_code
 
 router = APIRouter(tags=["identity"])
 
 
 @router.post("/auth/register")
-def register(body: RegisterIn, db: Session = Depends(get_db)):
+def register(body: RegisterIn, request: Request, db: Session = Depends(get_db)):
+    auth_limiter.check(client_key(request, "register"))
     if db.query(User).filter(User.email == body.email.lower()).one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, "Email уже занят")
     user = User(
@@ -49,17 +57,32 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/login")
-def login(body: LoginIn, db: Session = Depends(get_db)):
+def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
+    auth_limiter.check(client_key(request, "login"))
     user = db.query(User).filter(User.email == body.email.lower()).one_or_none()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
+    if user.is_platform_admin and settings.require_admin_2fa_enforced:
+        ensure_admin_2fa_configured(user)
+        if not verify_totp_code(user.totp_secret, body.totp):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Нужен код второго фактора")
     token = issue_token(db, user)
+    if user.is_platform_admin and settings.require_admin_2fa_enforced:
+        mark_admin_2fa_verified(db, token)
     db.commit()
     return {"token": token, "user_id": user.id, "is_platform_admin": user.is_platform_admin}
 
 
+@router.post("/auth/logout")
+def logout(ctx: AuthContext = Depends(auth_context), db: Session = Depends(get_db)):
+    db.delete(ctx.session)
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/auth/recover")
-def recover(body: dict):
+def recover(body: dict, request: Request):
+    auth_limiter.check(client_key(request, "recover"))
     _ = body.get("email")
     return {"ok": True, "message": "Если такой email есть, отправим ссылку. На пилоте письмо не уходит."}
 
@@ -91,6 +114,7 @@ def me(
         "email": user.email,
         "full_name": user.full_name,
         "is_platform_admin": user.is_platform_admin,
+        "totp_enabled": user.totp_enabled,
         "organizations": orgs,
         "active_organization_id": active,
     }
@@ -171,6 +195,8 @@ def add_member(
         raise HTTPException(400, "role: owner|admin|manager|viewer")
     if not db.get(User, body.user_id):
         raise HTTPException(404, "Пользователь не найден")
+    if membership(db, body.user_id, org_id):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Пользователь уже в команде")
     confirm = False if body.role == "viewer" else body.can_confirm_offer
     member = TeamMember(
         user_id=body.user_id,

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CityField } from "@/components/CityField";
 import { categoryLabel } from "@/lib/copy";
-import { formatDay, money } from "@/lib/format";
+import { formatDay, guestsLabel, money } from "@/lib/format";
 import type {
   BudgetHint,
   EventStudioDraft,
@@ -13,6 +13,7 @@ import type {
   VenueItem,
 } from "./types";
 import { STUDIO_STAGES } from "./types";
+import PuzzleBoard, { slotsFromDraft } from "./PuzzleBoard";
 import "./event-studio-map.css";
 
 type IconName = "home" | "calendar" | "users" | "place" | "check" | "search" | "plus" | "arrow";
@@ -112,6 +113,8 @@ export default function EventStudioMap({
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<(typeof ROLE_FILTERS)[number]>("Все");
   const [panelOpen, setPanelOpen] = useState(false);
+  const [editingTime, setEditingTime] = useState(false);
+  const [editingVenue, setEditingVenue] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
@@ -150,6 +153,21 @@ export default function EventStudioMap({
     if (!budgetHint) return "уточним после предложений";
     return `${money(budgetHint.minRub).replace(" ₽", "")}–${money(budgetHint.maxRub)}`;
   }, [budgetHint]);
+
+  const puzzleSlots = useMemo(() => {
+    const selectedTalents = talents.filter((item) => draft.talentIds.includes(item.id));
+    return slotsFromDraft({
+      date: draft.date,
+      dateLabel,
+      venueName: venue?.name,
+      hasVenue: Boolean(venue),
+      talents: selectedTalents.map((item) => ({
+        id: item.id,
+        roleLabel: item.roleLabel,
+        name: item.name,
+      })),
+    });
+  }, [draft.date, draft.talentIds, dateLabel, venue, talents]);
 
   return (
     <main className={`event-studio-shell${panelOpen ? " panel-open" : ""}`}>
@@ -206,43 +224,73 @@ export default function EventStudioMap({
             <i className="line terms-line" />
           </div>
 
+          <div className={`puzzle-stage${stage === "Основа" || stage === "Команда" || stage === "Место" ? " map-card-focus" : ""}`}>
+            <PuzzleBoard slots={puzzleSlots} reducedMotion={reducedMotion} />
+            <div className="puzzle-event-meta">
+              <label className="sr-only" htmlFor="event-title">
+                Название события
+              </label>
+              <input
+                id="event-title"
+                className="event-core-title"
+                value={draft.title}
+                placeholder="Название события"
+                onChange={(e) => update({ ...draft, title: e.target.value })}
+              />
+              <small>
+                {dateLabel} · {draft.city || "город"} · {guestsLabel(draft.guests)}
+              </small>
+              <label className="field-inline guests-field">
+                Гостей
+                <input
+                  type="number"
+                  min={1}
+                  max={5000}
+                  value={draft.guests}
+                  onChange={(e) => update({ ...draft, guests: Number(e.target.value) || 0 })}
+                />
+              </label>
+            </div>
+          </div>
+
           <article className={`map-card venue-card${stage === "Место" ? " map-card-focus" : ""}`}>
             <h2>
               <Icon name="place" /> Площадка
             </h2>
-            <div className="venue-visual">
-              <div className="venue-sun" />
-              <div className="venue-building">
-                <i />
-                <i />
-                <i />
-              </div>
-            </div>
+            <div className="venue-visual" role="img" aria-label="Загородная площадка у воды" />
             <h3>{venue?.name || "Площадка не выбрана"}</h3>
             <p>{venue ? `${venue.city}` : "Можно выбрать позже"}</p>
             <div className="card-meta">
-              <span>{draft.guests} гостей</span>
+              <span>{guestsLabel(draft.guests)}</span>
               <span>{venue ? "из каталога" : "подбор позже"}</span>
             </div>
-            {venues.length ? (
+            {venues.length && editingVenue ? (
               <label className="sr-only" htmlFor="venue-select">
                 Площадка
               </label>
             ) : null}
-            {venues.length ? (
+            {venues.length && editingVenue ? (
               <select
                 id="venue-select"
                 className="card-button"
                 value={draft.venueId || ""}
-                onChange={(e) => setVenue(e.target.value)}
+                onChange={(e) => {
+                  setVenue(e.target.value);
+                  setEditingVenue(false);
+                }}
               >
                 <option value="">Выберите площадку</option>
                 {venues.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
+                    {item.availabilityLabel ? ` · ${item.availabilityLabel}` : ""}
                   </option>
                 ))}
               </select>
+            ) : venues.length ? (
+              <button type="button" className="card-button" onClick={() => setEditingVenue(true)}>
+                {venue ? "Изменить" : "Выбрать площадку"}
+              </button>
             ) : (
               <button type="button" className="card-button" onClick={onReloadCatalog}>
                 Обновить каталог
@@ -264,70 +312,36 @@ export default function EventStudioMap({
               </strong>
               <small>Europe/Moscow</small>
             </div>
-            <label className="field-inline">
-              Дата
-              <input
-                type="date"
-                value={draft.date}
-                onChange={(e) => update({ ...draft, date: e.target.value })}
-              />
-            </label>
-            <label className="field-inline">
-              Начало
-              <input
-                type="time"
-                value={draft.startsAt}
-                onChange={(e) => update({ ...draft, startsAt: e.target.value })}
-              />
-            </label>
-            <label className="field-inline">
-              Конец
-              <input
-                type="time"
-                value={draft.endsAt}
-                onChange={(e) => update({ ...draft, endsAt: e.target.value })}
-              />
-            </label>
-            <CityField value={draft.city} onChange={(city) => update({ ...draft, city })} />
+            {editingTime ? (
+              <div className="time-editor">
+                <label className="field-inline">
+                  Дата
+                  <input type="date" value={draft.date} onChange={(e) => update({ ...draft, date: e.target.value })} />
+                </label>
+                <label className="field-inline">
+                  Начало
+                  <input type="time" value={draft.startsAt} onChange={(e) => update({ ...draft, startsAt: e.target.value })} />
+                </label>
+                <label className="field-inline">
+                  Конец
+                  <input type="time" value={draft.endsAt} onChange={(e) => update({ ...draft, endsAt: e.target.value })} />
+                </label>
+                <CityField value={draft.city} onChange={(city) => update({ ...draft, city })} />
+                <button type="button" className="card-button" onClick={() => setEditingTime(false)}>Готово</button>
+              </div>
+            ) : (
+              <button type="button" className="card-button" onClick={() => setEditingTime(true)}>Изменить</button>
+            )}
           </article>
-
-          <div className={`event-core${stage === "Основа" ? " map-card-focus" : ""}`}>
-            <span className="event-symbol" aria-hidden="true">
-              ◎
-            </span>
-            <label className="sr-only" htmlFor="event-title">
-              Название события
-            </label>
-            <input
-              id="event-title"
-              className="event-core-title"
-              value={draft.title}
-              placeholder="Название события"
-              onChange={(e) => update({ ...draft, title: e.target.value })}
-            />
-            <small>
-              {dateLabel} · {draft.city || "город"} · {draft.guests} гостей
-            </small>
-            <label className="field-inline guests-field">
-              Гостей
-              <input
-                type="number"
-                min={1}
-                max={5000}
-                value={draft.guests}
-                onChange={(e) => update({ ...draft, guests: Number(e.target.value) || 0 })}
-              />
-            </label>
-          </div>
 
           <article className={`map-card team-card${stage === "Команда" ? " map-card-focus" : ""}`}>
             <h2>
               <Icon name="users" /> Команда
             </h2>
             <div className="team-faces">
-              {selected.slice(0, 3).map((item) => (
-                <span key={item.id} className={`talent-face ${item.tone}`} title={item.name}>
-                  {item.initials}
+              {selected.slice(0, 3).map((item, index) => (
+                <span key={item.id} className={`talent-face reference-portrait portrait-${index % 3}`} title={item.name}>
+                  <span className="sr-only">{item.name}</span>
                 </span>
               ))}
               <button type="button" className="add-face" aria-label="Добавить исполнителя" onClick={() => setPanelOpen(true)}>
@@ -399,7 +413,7 @@ export default function EventStudioMap({
           </div>
         </section>
 
-        <aside className="talent-panel" aria-label="Добавить исполнителя" aria-hidden={!panelOpen && undefined}>
+        <aside className="talent-panel" aria-label="Добавить исполнителя">
           <div className="panel-header">
             <button type="button" aria-label="Назад" onClick={() => setPanelOpen(false)}>
               ←
@@ -445,12 +459,12 @@ export default function EventStudioMap({
             <p className="panel-state">Никого не нашли — попробуйте другую дату или роль.</p>
           ) : null}
           <div className="talent-list">
-            {filtered.map((item) => {
+            {filtered.map((item, index) => {
               const isSelected = draft.talentIds.includes(item.id);
               return (
                 <article className="talent-card" key={item.id}>
-                  <div className={`talent-photo ${item.tone}`}>
-                    <span>{item.initials}</span>
+                  <div className={`talent-photo reference-portrait portrait-${index % 3}`} role="img" aria-label={`Фото: ${item.name}`}>
+                    <span className="sr-only">{item.initials}</span>
                   </div>
                   <div className="talent-copy">
                     <h3>{item.name}</h3>
@@ -476,6 +490,10 @@ export default function EventStudioMap({
           </div>
         </aside>
       </div>
+
+      {panelOpen ? (
+        <button type="button" className="panel-backdrop" aria-label="Закрыть каталог исполнителей" onClick={() => setPanelOpen(false)} />
+      ) : null}
 
       <button
         type="button"

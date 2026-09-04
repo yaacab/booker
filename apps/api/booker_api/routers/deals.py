@@ -1,13 +1,26 @@
+import hashlib
+import hmac
 import json
 from datetime import datetime
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
+from starlette.requests import Request as HttpRequest
 
 from booker_api.calendar import overlapping_slots
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
 from booker_api.config import settings
 from booker_api.db import get_db
+from booker_api.event_day import (
+    build_day_status,
+    check_in_booking,
+    check_in_event,
+    check_out_booking,
+    check_out_event,
+)
+from booker_api.file_scan import scan_upload
 from booker_api.models import (
     Artist,
     ArtistTariff,
@@ -16,6 +29,7 @@ from booker_api.models import (
     BookingHold,
     Contract,
     Conversation,
+    DealAttachment,
     Dispute,
     Event,
     EventTeamRequirement,
@@ -28,11 +42,17 @@ from booker_api.models import (
     TeamMember,
     User,
     Venue,
+    VenueHall,
+    VenueTariff,
 )
+from booker_api.notifications import on_offer_created, on_request_created
 from booker_api.pricing import first_deal_waive, price_breakdown
+from booker_api.rate_limit import client_key, messaging_limiter, upload_limiter
+from booker_api.replacement import build_replacement_plan
 from booker_api.schemas import DISPUTE_CATEGORIES
 from booker_api.security import (
     audit,
+    authenticate_token,
     aware,
     current_user,
     hold_deadline,
@@ -42,6 +62,58 @@ from booker_api.security import (
 )
 
 router = APIRouter(tags=["deals"])
+
+
+def _open_slot_for_request(db: Session, req: Request) -> AvailabilitySlot | None:
+    if req.resource_type == "artist":
+        return (
+            db.query(AvailabilitySlot)
+            .filter(
+                AvailabilitySlot.resource_type == "artist",
+                AvailabilitySlot.resource_id == req.resource_id,
+                AvailabilitySlot.status == "open",
+            )
+            .first()
+        )
+    if req.resource_type == "hall":
+        return (
+            db.query(AvailabilitySlot)
+            .filter(
+                AvailabilitySlot.resource_type == "hall",
+                AvailabilitySlot.resource_id == req.resource_id,
+                AvailabilitySlot.status == "open",
+            )
+            .first()
+        )
+    if req.resource_type == "venue":
+        halls = db.query(VenueHall).filter(VenueHall.venue_id == req.resource_id).all()
+        for hall in halls:
+            slot = (
+                db.query(AvailabilitySlot)
+                .filter(
+                    AvailabilitySlot.resource_type == "hall",
+                    AvailabilitySlot.resource_id == hall.id,
+                    AvailabilitySlot.status == "open",
+                )
+                .first()
+            )
+            if slot:
+                return slot
+    return None
+
+
+def _honorarium_for_request(db: Session, req: Request) -> int:
+    if req.resource_type == "artist":
+        tariff = db.query(ArtistTariff).filter(ArtistTariff.artist_id == req.resource_id).first()
+        return tariff.honorarium_rub if tariff else 100000
+    if req.resource_type in {"venue", "hall"}:
+        venue_id = req.resource_id
+        if req.resource_type == "hall":
+            hall = db.get(VenueHall, req.resource_id)
+            venue_id = hall.venue_id if hall else req.resource_id
+        tariff = db.query(VenueTariff).filter(VenueTariff.venue_id == venue_id).first()
+        return tariff.honorarium_rub if tariff else 220000
+    return 100000
 
 ALLOWED = {
     "Draft": {"RequestSent"},
@@ -77,6 +149,10 @@ def expire_holds(db: Session) -> int:
             slot.status = "open"
         if booking and booking.status == "DateHeld":
             _transition(booking, "Cancelled")
+            offer = db.get(Offer, booking.offer_id)
+            req = db.get(Request, offer.request_id) if offer else None
+            if req:
+                req.status = "Cancelled"
             conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one_or_none()
             if conv:
                 db.add(
@@ -99,14 +175,19 @@ def expire_holds(db: Session) -> int:
 
 @router.post("/events")
 def create_event(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    require_org_writer(db, user, body["organization_id"])
+    organization_id = body.get("organization_id")
+    title = body.get("title")
+    event_date = body.get("event_date")
+    if not organization_id or not title or not event_date:
+        raise HTTPException(400, "organization_id, title и event_date обязательны")
+    require_org_writer(db, user, organization_id)
     event = Event(
-        organization_id=body["organization_id"],
-        title=body["title"],
+        organization_id=organization_id,
+        title=title,
         city=body.get("city", "Москва"),
-        event_date=datetime.fromisoformat(body["event_date"])
-        if isinstance(body["event_date"], str)
-        else body["event_date"],
+        event_date=datetime.fromisoformat(event_date)
+        if isinstance(event_date, str)
+        else event_date,
         guest_count=body.get("guest_count", 50),
         budget_rub=body.get("budget_rub"),
         notes=body.get("notes", ""),
@@ -204,6 +285,255 @@ def get_event(event_id: str, user: User = Depends(current_user), db: Session = D
     }
 
 
+@router.get("/events/{event_id}/offline-pack")
+def event_offline_pack(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Сводка для дня события: печать / офлайн у concierge."""
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
+    requirements = ensure_requirements(db, event, actor_user_id=user.id) if settings.composition_v2 else []
+    reqs = db.query(Request).filter(Request.event_id == event.id).all()
+    pack_requests = []
+    for req in reqs:
+        offer = db.query(Offer).filter(Offer.request_id == req.id).one_or_none()
+        booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none() if offer else None
+        pack_requests.append(
+            {
+                "id": req.id,
+                "status": req.status,
+                "resource_type": req.resource_type,
+                "requirement_id": getattr(req, "requirement_id", None),
+                "booking_id": booking.id if booking else None,
+                "booking_status": booking.status if booking else None,
+            }
+        )
+    db.commit()
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="event.offline_pack",
+        entity_type="event",
+        entity_id=event.id,
+    )
+    db.commit()
+    return {
+        "event": {
+            "id": event.id,
+            "title": event.title,
+            "status": event.status,
+            "city": event.city,
+            "event_date": event.event_date.isoformat(),
+            "guest_count": event.guest_count,
+        },
+        "requirements": requirements,
+        "requests": pack_requests,
+        "generated_at": now().isoformat(),
+    }
+
+
+@router.get("/events/{event_id}/day-status")
+def event_day_status(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
+    return build_day_status(db, event)
+
+
+@router.post("/events/{event_id}/check-in")
+def event_check_in(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_writer(db, user, event.organization_id)
+    try:
+        result = check_in_event(db, event)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="event.check_in",
+        entity_type="event",
+        entity_id=event.id,
+        payload={"bookings": result["checked_in_bookings"]},
+    )
+    db.commit()
+    return {**result, "day_status": build_day_status(db, event)}
+
+
+@router.post("/events/{event_id}/check-out")
+def event_check_out(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_writer(db, user, event.organization_id)
+    try:
+        result = check_out_event(db, event)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="event.check_out",
+        entity_type="event",
+        entity_id=event.id,
+        payload={"bookings": result["checked_out_bookings"]},
+    )
+    db.commit()
+    return {**result, "day_status": build_day_status(db, event)}
+
+
+@router.post("/bookings/{booking_id}/check-in")
+def booking_check_in(booking_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    event = db.get(Event, booking.event_id)
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(Request, offer.request_id) if offer else None
+    if not event or not req:
+        raise HTTPException(404, "Сделка не найдена")
+    if not (
+        membership_ok(db, user, event.organization_id)
+        or membership_ok(db, user, req.supplier_org_id)
+    ):
+        raise HTTPException(403, "Нет доступа")
+    try:
+        status = check_in_booking(booking)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    if event.status in {"Confirmed", "Planning", "Draft", "RequestSent", "Negotiation"}:
+        event.status = "InProgress"
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="booking.check_in",
+        entity_type="booking",
+        entity_id=booking.id,
+    )
+    db.commit()
+    return {"booking_id": booking.id, "status": status, "event_status": event.status}
+
+
+@router.post("/bookings/{booking_id}/check-out")
+def booking_check_out(booking_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    event = db.get(Event, booking.event_id)
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(Request, offer.request_id) if offer else None
+    if not event or not req:
+        raise HTTPException(404, "Сделка не найдена")
+    if not (
+        membership_ok(db, user, event.organization_id)
+        or membership_ok(db, user, req.supplier_org_id)
+    ):
+        raise HTTPException(403, "Нет доступа")
+    try:
+        status = check_out_booking(booking)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    day = build_day_status(db, event)
+    if day["summary"]["in_progress"] == 0 and day["summary"]["confirmed"] == 0 and day["summary"]["completed"] > 0:
+        event.status = "Completed"
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="booking.check_out",
+        entity_type="booking",
+        entity_id=booking.id,
+    )
+    db.commit()
+    return {"booking_id": booking.id, "status": status, "event_status": event.status}
+
+
+@router.get("/events/{event_id}/requirements/{requirement_id}/replacement")
+def requirement_replacement_plan(
+    event_id: str,
+    requirement_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
+    requirement = db.get(EventTeamRequirement, requirement_id)
+    if not requirement or requirement.event_id != event.id:
+        raise HTTPException(404, "Позиция состава не найдена")
+    plan = build_replacement_plan(db, event, requirement)
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="replacement.viewed",
+        entity_type="requirement",
+        entity_id=requirement.id,
+        payload={"open_slots": plan["open_slots"], "cancelled": len(plan["cancelled_requests"])},
+    )
+    db.commit()
+    return plan
+
+
+@router.post("/bookings/{booking_id}/cancel")
+def cancel_booking(
+    booking_id: str,
+    body: dict | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    expire_holds(db)
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(Request, offer.request_id) if offer else None
+    event = db.get(Event, booking.event_id)
+    if not req or not event:
+        raise HTTPException(404, "Бронь не найдена")
+    cust_org = event.organization_id
+    sup_org = req.supplier_org_id
+    if membership_ok(db, user, cust_org):
+        require_org_writer(db, user, cust_org)
+    elif membership_ok(db, user, sup_org):
+        require_org_writer(db, user, sup_org)
+    else:
+        raise HTTPException(403, "Нет доступа")
+    if booking.status in {"Cancelled", "Completed"}:
+        raise HTTPException(409, "Бронь уже закрыта")
+    _transition(booking, "Cancelled")
+    req.status = "Cancelled"
+    slot = db.get(AvailabilitySlot, booking.slot_id)
+    if slot and slot.status in {"held", "confirmed"}:
+        slot.status = "open"
+    hold = (
+        db.query(BookingHold)
+        .filter(BookingHold.booking_id == booking.id, BookingHold.status == "active")
+        .one_or_none()
+    )
+    if hold:
+        hold.status = "cancelled"
+    reason = (body or {}).get("reason") if isinstance(body, dict) else None
+    conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one_or_none()
+    if conv:
+        text = "Сделка отменена."
+        if reason:
+            text = f"{text} Причина: {reason}"
+        db.add(Message(conversation_id=conv.id, kind="system", body=text))
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="booking.cancelled",
+        entity_type="booking",
+        entity_id=booking.id,
+        payload={"request_id": req.id, "reason": reason or ""},
+    )
+    db.commit()
+    return {"booking_id": booking.id, "status": booking.status, "request_id": req.id, "request_status": req.status}
+
+
 @router.put("/events/{event_id}/requirements")
 def put_event_requirements(
     event_id: str,
@@ -239,22 +569,8 @@ def list_requests(
         booking = None
         if offer:
             booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none()
-        slot = (
-            db.query(AvailabilitySlot)
-            .filter(
-                AvailabilitySlot.resource_type == req.resource_type,
-                AvailabilitySlot.resource_id == req.resource_id,
-                AvailabilitySlot.status == "open",
-            )
-            .first()
-        )
-        honorarium = 100000
-        if req.resource_type == "artist":
-            tariff = (
-                db.query(ArtistTariff).filter(ArtistTariff.artist_id == req.resource_id).first()
-            )
-            if tariff:
-                honorarium = tariff.honorarium_rub
+        slot = _open_slot_for_request(db, req)
+        honorarium = _honorarium_for_request(db, req)
         items.append(
             {
                 "id": req.id,
@@ -305,12 +621,18 @@ def list_bookings(
 
 @router.post("/quick-request")
 def quick_request(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    artist = db.get(Artist, body["artist_id"])
+    artist_id = body.get("artist_id")
+    slot_id = body.get("slot_id")
+    if not artist_id or not slot_id:
+        raise HTTPException(400, "artist_id и slot_id обязательны")
+    artist = db.get(Artist, artist_id)
     if not artist:
         raise HTTPException(404, "Артист не найден")
-    slot = db.get(AvailabilitySlot, body["slot_id"])
+    slot = db.get(AvailabilitySlot, slot_id)
     if not slot or slot.status != "open":
         raise HTTPException(409, "Слот недоступен")
+    if slot.resource_type != "artist" or slot.resource_id != artist.id:
+        raise HTTPException(400, "Слот не относится к этому артисту")
     event_id = body.get("event_id")
     requirement_id = body.get("requirement_id")
     if event_id:
@@ -374,6 +696,13 @@ def quick_request(body: dict, user: User = Depends(current_user), db: Session = 
         entity_type="request",
         entity_id=req.id,
     )
+    on_request_created(
+        db,
+        actor_user_id=user.id,
+        request_id=req.id,
+        supplier_org_id=req.supplier_org_id,
+        event_title=event.title,
+    )
     db.commit()
     return {"event_id": event.id, "request_id": req.id, "status": req.status}
 
@@ -425,6 +754,13 @@ def create_request(
         entity_type="request",
         entity_id=req.id,
     )
+    on_request_created(
+        db,
+        actor_user_id=user.id,
+        request_id=req.id,
+        supplier_org_id=supplier_org_id,
+        event_title=event.title,
+    )
     db.commit()
     db.refresh(req)
     return {"id": req.id, "status": req.status}
@@ -444,14 +780,26 @@ def create_offer(
     member = require_org_writer(db, user, req.supplier_org_id)
     if not member.can_confirm_offer and not user.is_platform_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет права подтверждать оффер")
-    honorarium = int(body["honorarium_rub"])
+    raw_honorarium = body.get("honorarium_rub")
+    if raw_honorarium is None:
+        raise HTTPException(400, "honorarium_rub обязателен")
+    try:
+        honorarium = int(raw_honorarium)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "honorarium_rub должен быть числом") from None
+    if honorarium <= 0:
+        raise HTTPException(400, "honorarium_rub должен быть больше нуля")
     event = db.get(Event, req.event_id)
     waive = bool(event and first_deal_waive(db, event.organization_id))
     breakdown = price_breakdown(honorarium, waive_commission=waive)
-    slot_id = body["slot_id"]
+    slot_id = body.get("slot_id")
+    if not slot_id:
+        raise HTTPException(400, "slot_id обязателен")
     slot = db.get(AvailabilitySlot, slot_id)
     if not slot:
         raise HTTPException(404, "Слот не найден")
+    if slot.resource_type != req.resource_type or slot.resource_id != req.resource_id:
+        raise HTTPException(400, "Слот не относится к ресурсу заявки")
     offer = Offer(request_id=req.id)
     db.add(offer)
     db.flush()
@@ -495,6 +843,14 @@ def create_offer(
         entity_id=offer.id,
         payload=breakdown,
     )
+    if event:
+        on_offer_created(
+            db,
+            actor_user_id=user.id,
+            offer_id=offer.id,
+            customer_org_id=event.organization_id,
+            event_title=event.title,
+        )
     db.commit()
     db.refresh(offer)
     db.refresh(version)
@@ -530,8 +886,21 @@ def new_version(
         require_org_writer(db, user, event.organization_id)
     else:
         raise HTTPException(403, "Нет доступа")
-    honorarium = int(body["honorarium_rub"])
+    raw_honorarium = body.get("honorarium_rub")
+    if raw_honorarium is None:
+        raise HTTPException(400, "honorarium_rub обязателен")
+    try:
+        honorarium = int(raw_honorarium)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "honorarium_rub должен быть числом") from None
+    if honorarium <= 0:
+        raise HTTPException(400, "honorarium_rub должен быть больше нуля")
     booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none()
+    if booking and booking.status in {"AwaitingPayment", "Confirmed", "InProgress", "Completed"}:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Менять цену после перехода к оплате нельзя",
+        )
     waive = bool(
         event
         and first_deal_waive(db, event.organization_id, exclude_booking_id=booking.id if booking else None)
@@ -581,7 +950,15 @@ def ack_offer(
     version = db.get(OfferVersion, offer.active_version_id)
     req = db.get(Request, offer.request_id)
     event = db.get(Event, req.event_id)
-    side = body["side"]
+    quote_id = body.get("quote_id")
+    if quote_id is not None and quote_id != version.id:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "quote_id устарел: подтверждается только активная версия предложения",
+        )
+    side = body.get("side")
+    if side not in {"supplier", "customer"}:
+        raise HTTPException(400, "side: customer|supplier")
     if side == "supplier":
         member = require_org_writer(db, user, req.supplier_org_id)
         if not member.can_confirm_offer:
@@ -624,23 +1001,41 @@ def hold_booking(
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
+    cust_org, sup_org = _booking_participant_orgs(db, booking)
+    if user.is_platform_admin:
+        pass
+    elif membership_ok(db, user, cust_org):
+        require_org_writer(db, user, cust_org)
+    elif membership_ok(db, user, sup_org):
+        require_org_member(db, user, sup_org)
+    else:
+        raise HTTPException(403, "Нет доступа")
     offer = db.get(Offer, booking.offer_id)
     version = db.get(OfferVersion, offer.active_version_id) if offer else None
     if not version or not (version.customer_ack and version.supplier_ack):
         raise HTTPException(409, "Оффер не подтверждён обеими сторонами")
-    slot = db.get(AvailabilitySlot, booking.slot_id)
+    slot = db.execute(
+        select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).with_for_update()
+    ).scalar_one()
     busy = overlapping_slots(
         db,
         slot.resource_type,
         slot.resource_id,
         slot.starts_at,
         slot.ends_at,
-        statuses=("held", "confirmed"),
+        statuses=("held", "confirmed", "busy"),
         exclude_id=slot.id,
     )
-    if slot.status in {"held", "confirmed"} or busy:
+    if slot.status in {"held", "confirmed", "busy"} or busy:
         raise HTTPException(status.HTTP_409_CONFLICT, "Слот уже удерживается или подтверждён")
-    slot.status = "held"
+    claimed = db.execute(
+        update(AvailabilitySlot)
+        .where(AvailabilitySlot.id == slot.id, AvailabilitySlot.status == "open")
+        .values(status="held")
+    )
+    if claimed.rowcount != 1:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Слот уже удерживается или подтверждён")
+    db.refresh(slot)
     hold = BookingHold(
         booking_id=booking.id,
         slot_id=slot.id,
@@ -664,13 +1059,97 @@ def hold_booking(
 
 
 @router.post("/holds/expire")
-def run_expire(db: Session = Depends(get_db)):
+def run_expire(request: HttpRequest, db: Session = Depends(get_db)):
+    internal = request.headers.get("x-internal-token", "")
+    if not (internal and hmac.compare_digest(internal, settings.webhook_secret)):
+        auth = request.headers.get("authorization") or ""
+        raw = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+        user = None
+        if raw:
+            user, _session = authenticate_token(db, raw)
+        if not user or not user.is_platform_admin:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")
     count = expire_holds(db)
     db.commit()
     return {"expired": count}
 
 
-def _deal_documents(version: OfferVersion, contract: Contract | None) -> list[dict]:
+def _booking_participant_orgs(db: Session, booking: Booking) -> tuple[str, str]:
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(Request, offer.request_id)
+    event = db.get(Event, booking.event_id)
+    return event.organization_id, req.supplier_org_id
+
+
+@router.post("/bookings/{booking_id}/attachments")
+async def upload_booking_attachment(
+    booking_id: str,
+    request: HttpRequest,
+    file: UploadFile = File(...),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    upload_limiter.check(client_key(request, "upload"))
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > settings.max_upload_bytes:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Файл слишком большой")
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    cust_org, sup_org = _booking_participant_orgs(db, booking)
+    if not (membership_ok(db, user, cust_org) or membership_ok(db, user, sup_org)):
+        raise HTTPException(403, "Нет доступа")
+    if user.is_platform_admin:
+        pass
+    elif membership_ok(db, user, cust_org):
+        require_org_writer(db, user, cust_org)
+    else:
+        require_org_writer(db, user, sup_org)
+    raw = await file.read(settings.max_upload_bytes + 1)
+    if len(raw) > settings.max_upload_bytes:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Файл слишком большой")
+    safe_name = scan_upload(raw, file.filename or "file.bin", max_bytes=settings.max_upload_bytes)
+    digest = hashlib.sha256(raw).hexdigest()
+    root = Path(settings.upload_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    booking_dir = root / booking_id
+    booking_dir.mkdir(parents=True, exist_ok=True)
+    storage_key = f"{booking_id}/{digest[:16]}_{safe_name}"
+    path = root / storage_key
+    path.write_bytes(raw)
+    row = DealAttachment(
+        booking_id=booking_id,
+        filename=safe_name,
+        content_type=file.content_type or "application/octet-stream",
+        size_bytes=len(raw),
+        sha256=digest,
+        storage_key=storage_key,
+        uploaded_by_user_id=user.id,
+    )
+    db.add(row)
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="attachment.uploaded",
+        entity_type="booking",
+        entity_id=booking_id,
+        payload={"attachment_id": row.id, "filename": safe_name, "sha256": digest},
+    )
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "filename": row.filename,
+        "size_bytes": row.size_bytes,
+        "sha256": row.sha256,
+    }
+
+
+def _deal_documents(
+    version: OfferVersion,
+    contract: Contract | None,
+    attachments: list[DealAttachment] | None = None,
+) -> list[dict]:
     docs = [
         {
             "kind": "offer",
@@ -687,6 +1166,16 @@ def _deal_documents(version: OfferVersion, contract: Contract | None) -> list[di
                 "id": contract.id,
                 "label": "Договор",
                 "signed": contract.customer_signed and contract.supplier_signed,
+            }
+        )
+    for att in attachments or []:
+        docs.append(
+            {
+                "kind": "attachment",
+                "id": att.id,
+                "label": att.filename,
+                "signed": False,
+                "size_bytes": att.size_bytes,
             }
         )
     return docs
@@ -719,6 +1208,12 @@ def deal_room(
     version = db.get(OfferVersion, offer.active_version_id)
     contract = db.query(Contract).filter(Contract.booking_id == booking.id).one_or_none()
     payment = db.query(Payment).filter(Payment.booking_id == booking.id).one_or_none()
+    attachments = (
+        db.query(DealAttachment)
+        .filter(DealAttachment.booking_id == booking.id)
+        .order_by(DealAttachment.created_at.asc())
+        .all()
+    )
     hold = (
         db.query(BookingHold)
         .filter(BookingHold.booking_id == booking.id, BookingHold.status == "active")
@@ -727,6 +1222,7 @@ def deal_room(
     cust_org = db.get(Organization, event.organization_id)
     sup_org = db.get(Organization, req.supplier_org_id)
     role = "customer" if membership_ok(db, user, event.organization_id) else "supplier"
+    workspace_kind = "customer" if role == "customer" else (sup_org.kind if sup_org else "artist")
     return {
         "booking_id": booking.id,
         "offer_id": offer.id,
@@ -734,6 +1230,7 @@ def deal_room(
         "requirement_id": getattr(req, "requirement_id", None),
         "status": booking.status,
         "role": role,
+        "workspace_kind": workspace_kind,
         "event_title": event.title,
         "tabs": ["chat", "terms", "documents", "payments", "dispute"],
         "dispute_categories": [
@@ -759,8 +1256,10 @@ def deal_room(
             "customer_signed": contract.customer_signed,
             "supplier_signed": contract.supplier_signed,
             "body": contract.body,
+            "otp_customer": contract.otp_customer,
+            "otp_supplier": contract.otp_supplier,
         },
-        "documents": _deal_documents(version, contract),
+        "documents": _deal_documents(version, contract, attachments),
         "payment": None
         if not payment
         else {"id": payment.id, "status": payment.status, "amount_rub": payment.amount_rub},
@@ -857,17 +1356,28 @@ def open_booking_dispute(
 def post_message(
     booking_id: str,
     body: dict,
+    request: HttpRequest,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
+    messaging_limiter.check(client_key(request, "message"))
     conv = db.query(Conversation).filter(Conversation.booking_id == booking_id).one_or_none()
     if not conv:
         raise HTTPException(404, "Deal Room не найден")
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    cust_org, sup_org = _booking_participant_orgs(db, booking)
+    if not (membership_ok(db, user, cust_org) or membership_ok(db, user, sup_org)):
+        raise HTTPException(403, "Нет доступа")
+    text = body.get("body")
+    if not text or not str(text).strip():
+        raise HTTPException(400, "body обязателен")
     msg = Message(
         conversation_id=conv.id,
         author_user_id=user.id,
         kind="chat",
-        body=body["body"],
+        body=str(text),
     )
     db.add(msg)
     db.commit()
@@ -875,12 +1385,28 @@ def post_message(
 
 
 @router.get("/sse/bookings/{booking_id}")
-def sse_status(booking_id: str, db: Session = Depends(get_db)):
+def sse_status(
+    booking_id: str,
+    request: HttpRequest,
+    token: str | None = None,
+    db: Session = Depends(get_db),
+):
     from fastapi.responses import StreamingResponse
 
+    raw = token
+    if not raw:
+        auth = request.headers.get("authorization") or ""
+        if auth.lower().startswith("bearer "):
+            raw = auth[7:].strip()
+    if not raw:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Нужна авторизация")
+    user, _session = authenticate_token(db, raw)
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
+    cust_org, sup_org = _booking_participant_orgs(db, booking)
+    if not (membership_ok(db, user, cust_org) or membership_ok(db, user, sup_org)):
+        raise HTTPException(403, "Нет доступа")
 
     def gen():
         yield f"data: {json.dumps({'status': booking.status})}\n\n"

@@ -1,6 +1,7 @@
 import json
+import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from booker_api.config import settings
@@ -10,6 +11,7 @@ from booker_api.models import (
     Booking,
     Contract,
     Conversation,
+    Event,
     Message,
     Offer,
     OfferVersion,
@@ -17,9 +19,14 @@ from booker_api.models import (
     PaymentWebhookEvent,
     User,
 )
+from booker_api.models import (
+    Request as DealRequest,
+)
+from booker_api.payments.adapter import PaymentAdapterError, get_payment_adapter
+from booker_api.rate_limit import client_key, webhook_limiter
 from booker_api.routers.deals import _transition
 from booker_api.schemas import PaymentIn, SignIn, WebhookIn
-from booker_api.security import audit, current_user, verify_webhook_signature
+from booker_api.security import audit, current_user, require_org_member
 
 router = APIRouter(tags=["payments"])
 
@@ -35,6 +42,13 @@ quote_id={quote_id}
 """
 
 
+def _new_otp(exclude: str | None = None) -> str:
+    code = f"{secrets.randbelow(900000) + 100000}"
+    while exclude is not None and code == exclude:
+        code = f"{secrets.randbelow(900000) + 100000}"
+    return code
+
+
 @router.post("/bookings/{booking_id}/contract")
 def create_contract(
     booking_id: str,
@@ -44,13 +58,24 @@ def create_contract(
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
+    event = db.get(Event, booking.event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
     if booking.status not in {"DateHeld", "AwaitingContract"}:
         raise HTTPException(409, "Сначала удержите дату")
     offer = db.get(Offer, booking.offer_id)
     version = db.get(OfferVersion, offer.active_version_id)
     existing = db.query(Contract).filter(Contract.booking_id == booking.id).one_or_none()
     if existing:
-        return {"id": existing.id, "status": booking.status}
+        return {
+            "id": existing.id,
+            "status": booking.status,
+            "otp_customer": existing.otp_customer,
+            "otp_supplier": existing.otp_supplier,
+        }
+    otp_customer = _new_otp()
+    otp_supplier = _new_otp(exclude=otp_customer)
     body = CONTRACT_TEMPLATE.format(
         honorarium=version.honorarium_rub,
         commission=version.commission_rub,
@@ -60,8 +85,8 @@ def create_contract(
     contract = Contract(
         booking_id=booking.id,
         body=body,
-        otp_customer="123456",
-        otp_supplier="123456",
+        otp_customer=otp_customer,
+        otp_supplier=otp_supplier,
     )
     db.add(contract)
     db.flush()
@@ -77,7 +102,13 @@ def create_contract(
     )
     db.commit()
     db.refresh(contract)
-    return {"id": contract.id, "body": contract.body, "status": booking.status}
+    return {
+        "id": contract.id,
+        "body": contract.body,
+        "status": booking.status,
+        "otp_customer": otp_customer,
+        "otp_supplier": otp_supplier,
+    }
 
 
 @router.post("/contracts/{contract_id}/sign")
@@ -90,16 +121,23 @@ def sign_contract(
     contract = db.get(Contract, contract_id)
     if not contract:
         raise HTTPException(404, "Договор не найден")
+    booking = db.get(Booking, contract.booking_id)
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(DealRequest, offer.request_id)
+    event = db.get(Event, booking.event_id)
+    if body.side == "customer":
+        require_org_member(db, user, event.organization_id)
+    elif body.side == "supplier":
+        require_org_member(db, user, req.supplier_org_id)
+    else:
+        raise HTTPException(400, "side: customer|supplier")
     expected = contract.otp_customer if body.side == "customer" else contract.otp_supplier
     if body.otp != expected:
         raise HTTPException(403, "Неверный OTP")
     if body.side == "customer":
         contract.customer_signed = True
-    elif body.side == "supplier":
-        contract.supplier_signed = True
     else:
-        raise HTTPException(400, "side: customer|supplier")
-    booking = db.get(Booking, contract.booking_id)
+        contract.supplier_signed = True
     if contract.customer_signed and contract.supplier_signed and booking.status == "AwaitingContract":
         _transition(booking, "AwaitingPayment")
         conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one()
@@ -120,19 +158,6 @@ def sign_contract(
     }
 
 
-class StubProvider:
-    name = "stub"
-
-    def charge(self, payment: Payment) -> dict:
-        return {"provider": self.name, "payment_id": payment.id, "status": "pending"}
-
-
-def provider():
-    if settings.payment_provider != "stub":
-        raise HTTPException(501, "Боевой платёжный партнёр за фичефлагом, сейчас только stub")
-    return StubProvider()
-
-
 @router.post("/bookings/{booking_id}/payments")
 def create_payment(
     booking_id: str,
@@ -140,12 +165,17 @@ def create_payment(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
+    adapter = get_payment_adapter()
+    try:
+        idempotency_key = adapter.normalize_idempotency_key(body.idempotency_key)
+    except PaymentAdapterError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    existing = db.query(Payment).filter(Payment.idempotency_key == idempotency_key).one_or_none()
+    if existing:
+        return {"id": existing.id, "status": existing.status, "idempotent": True}
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
-    existing = db.query(Payment).filter(Payment.idempotency_key == body.idempotency_key).one_or_none()
-    if existing:
-        return {"id": existing.id, "status": existing.status, "idempotent": True}
     if booking.status != "AwaitingPayment":
         raise HTTPException(409, "Оплата доступна после подписания договора")
     offer = db.get(Offer, booking.offer_id)
@@ -154,39 +184,52 @@ def create_payment(
         booking_id=booking.id,
         amount_rub=version.total_rub,
         status="pending",
-        provider=provider().name,
-        idempotency_key=body.idempotency_key,
+        provider=adapter.name,
+        idempotency_key=idempotency_key,
     )
     db.add(pay)
     db.flush()
-    provider().charge(pay)
+    session = adapter.create_session(
+        payment_id=pay.id,
+        amount_rub=pay.amount_rub,
+        idempotency_key=idempotency_key,
+        booking_id=booking.id,
+    )
+    pay.status = session.status
     audit(
         db,
         actor_user_id=user.id,
         action="payment.created",
         entity_type="payment",
         entity_id=pay.id,
-        payload={"amount_rub": pay.amount_rub},
+        payload={"amount_rub": pay.amount_rub, "provider": session.provider},
     )
     db.commit()
     db.refresh(pay)
     return {"id": pay.id, "status": pay.status, "amount_rub": pay.amount_rub}
 
 
-@router.post("/payments/webhook")
-def payment_webhook(body: WebhookIn, db: Session = Depends(get_db)):
-    payload = f"{body.event_id}:{body.payment_id}:{body.status}"
-    if not verify_webhook_signature(payload, body.signature):
-        raise HTTPException(401, "Неверная подпись webhook")
-    seen = db.get(PaymentWebhookEvent, body.event_id)
+def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
+    adapter = get_payment_adapter()
+    try:
+        event = adapter.verify_webhook(
+            event_id=body.event_id,
+            payment_id=body.payment_id,
+            status=body.status,
+            signature=body.signature,
+        )
+    except PaymentAdapterError as exc:
+        raise HTTPException(401 if "подпись" in str(exc).lower() else 400, str(exc)) from exc
+    seen = db.get(PaymentWebhookEvent, event.event_id)
     if seen:
         return json.loads(seen.response_json)
-    payment = db.get(Payment, body.payment_id)
+    payment = db.get(Payment, event.payment_id)
     if not payment:
         raise HTTPException(404, "Платёж не найден")
     booking = db.get(Booking, payment.booking_id)
-    if body.status == "succeeded":
+    if event.status == "succeeded":
         payment.status = "succeeded"
+        adapter.ledger.on_capture(payment.id, payment.amount_rub)
         if booking.status == "AwaitingPayment":
             _transition(booking, "Confirmed")
             slot = db.get(AvailabilitySlot, booking.slot_id)
@@ -199,12 +242,10 @@ def payment_webhook(body: WebhookIn, db: Session = Depends(get_db)):
                     body="Предоплата получена. Бронирование подтверждено.",
                 )
             )
-    elif body.status == "failed":
+    elif event.status == "failed":
         payment.status = "failed"
         if booking.status != "Confirmed":
             pass
-    else:
-        raise HTTPException(400, "status: succeeded|failed")
     response = {
         "ok": True,
         "payment_id": payment.id,
@@ -213,9 +254,9 @@ def payment_webhook(body: WebhookIn, db: Session = Depends(get_db)):
     }
     db.add(
         PaymentWebhookEvent(
-            event_id=body.event_id,
+            event_id=event.event_id,
             payment_id=payment.id,
-            status=body.status,
+            status=event.status,
             response_json=json.dumps(response),
         )
     )
@@ -231,15 +272,34 @@ def payment_webhook(body: WebhookIn, db: Session = Depends(get_db)):
     return response
 
 
+@router.post("/payments/webhook")
+def payment_webhook(body: WebhookIn, request: Request, db: Session = Depends(get_db)):
+    webhook_limiter.check(client_key(request, "webhook"))
+    if (
+        not settings.allow_default_webhook_secret
+        and settings.webhook_secret == "dev-webhook-secret"
+    ):
+        raise HTTPException(503, "Webhook-секрет не настроен")
+    return _apply_payment_webhook(body, db)
+
+
 @router.post("/payments/{payment_id}/stub-complete")
 def stub_complete(
     payment_id: str,
     body: dict,
-    _user: User = Depends(current_user),
+    user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    if settings.payment_provider != "stub":
+    if settings.payment_provider.strip().lower() not in {"", "stub"}:
         raise HTTPException(403, "Только stub-провайдер")
+    payment = db.get(Payment, payment_id)
+    if not payment:
+        raise HTTPException(404, "Платёж не найден")
+    booking = db.get(Booking, payment.booking_id)
+    event = db.get(Event, booking.event_id) if booking else None
+    if not event:
+        raise HTTPException(404, "Событие платежа не найдено")
+    require_org_member(db, user, event.organization_id)
     status = body.get("status") or "succeeded"
     import hashlib
     import hmac
@@ -249,7 +309,7 @@ def stub_complete(
     signature = hmac.new(
         settings.webhook_secret.encode(), payload.encode(), hashlib.sha256
     ).hexdigest()
-    return payment_webhook(
+    return _apply_payment_webhook(
         WebhookIn(event_id=event_id, payment_id=payment_id, status=status, signature=signature),
         db,
     )

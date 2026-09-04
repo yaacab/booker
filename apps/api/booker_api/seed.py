@@ -1,10 +1,11 @@
 """Демо-данные для локального контура Букер."""
 
+import os
 from datetime import timedelta
 
 from sqlalchemy.orm import Session
 
-from booker_api.db import Base, SessionLocal, engine
+from booker_api.db import SessionLocal, engine, init_schema
 from booker_api.models import (
     Artist,
     ArtistTariff,
@@ -22,11 +23,81 @@ from booker_api.security import hash_password, now
 DEMO_PASSWORD = "password1"
 
 
+def _ensure_venue_user(db: Session) -> bool:
+    """Владелец площадки «Клуб Сигнал» для cross-role E2E."""
+    venue = db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none()
+    if not venue:
+        return False
+    user = db.query(User).filter(User.email == "venue@booker.test").one_or_none()
+    if not user:
+        user = User(
+            email="venue@booker.test",
+            full_name="Мария Площадка",
+            phone="+79003333333",
+            password_hash=hash_password(DEMO_PASSWORD),
+        )
+        db.add(user)
+        db.flush()
+    org = db.get(Organization, venue.organization_id)
+    if not org:
+        return False
+    member = (
+        db.query(TeamMember)
+        .filter(TeamMember.user_id == user.id, TeamMember.organization_id == org.id)
+        .one_or_none()
+    )
+    if not member:
+        db.add(
+            TeamMember(
+                user_id=user.id,
+                organization_id=org.id,
+                role="owner",
+                can_confirm_offer=True,
+            )
+        )
+        return True
+    return False
+
+
+def _open_in_horizon(db: Session, resource_type: str, resource_id: str) -> bool:
+    horizon_end = now() + timedelta(days=30)
+    return (
+        db.query(AvailabilitySlot)
+        .filter(
+            AvailabilitySlot.resource_type == resource_type,
+            AvailabilitySlot.resource_id == resource_id,
+            AvailabilitySlot.status == "open",
+            AvailabilitySlot.ends_at >= now(),
+            AvailabilitySlot.starts_at <= horizon_end,
+        )
+        .count()
+        > 0
+    )
+
+
+def _ensure_cross_role_catalog(db: Session) -> int:
+    """Open-слоты в горизонте 30д для cross-role E2E после исчерпания seed-слотов."""
+    added = 0
+    nova = db.query(Artist).filter(Artist.name == "DJ Nova").one_or_none()
+    if nova and not _open_in_horizon(db, "artist", nova.id):
+        db.add(_slot("artist", nova.id, 14, 18))
+        added += 1
+    venue = db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none()
+    if venue:
+        hall = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).first()
+        if hall and not _open_in_horizon(db, "hall", hall.id):
+            db.add(_slot("hall", hall.id, 14, 19))
+            added += 1
+    return added
+
+
 def seed(db: Session) -> dict[str, str]:
     if db.query(User).filter(User.email == "customer@booker.test").one_or_none():
         added = enrich_catalog(db)
+        added += _ensure_cross_role_catalog(db)
+        venue_user_added = _ensure_venue_user(db)
         db.commit()
-        return {"status": "already_seeded", "catalog_added": added}
+        return {"status": "already_seeded", "catalog_added": added, "venue_user_added": venue_user_added}
 
     customer = User(
         email="customer@booker.test",
@@ -46,7 +117,7 @@ def seed(db: Session) -> dict[str, str]:
         password_hash=hash_password(DEMO_PASSWORD),
         is_platform_admin=True,
         totp_enabled=True,
-        totp_secret="111111",
+        totp_secret="JBSWY3DPEHPK3PXP",
     )
     db.add_all([customer, artist_user, admin])
     db.flush()
@@ -97,11 +168,14 @@ def seed(db: Session) -> dict[str, str]:
     )
     db.commit()
     enrich_catalog(db)
+    _ensure_cross_role_catalog(db)
     db.commit()
+    _ensure_venue_user(db)
     return {
         "status": "ok",
         "customer": "customer@booker.test",
         "artist": "artist@booker.test",
+        "venue": "venue@booker.test",
         "admin": "admin@booker.test",
         "password": DEMO_PASSWORD,
         "artist_id": artist.id,
@@ -163,9 +237,27 @@ def enrich_catalog(db: Session) -> int:
             db.add(_slot("artist", artist.id, day, 18))
         added += 1
     if not db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none():
+        venue_user = db.query(User).filter(User.email == "venue@booker.test").one_or_none()
+        if not venue_user:
+            venue_user = User(
+                email="venue@booker.test",
+                full_name="Мария Площадка",
+                phone="+79003333333",
+                password_hash=hash_password(DEMO_PASSWORD),
+            )
+            db.add(venue_user)
+            db.flush()
         vorg = Organization(name="Сигнал", kind="venue", city="Москва")
         db.add(vorg)
         db.flush()
+        db.add(
+            TeamMember(
+                user_id=venue_user.id,
+                organization_id=vorg.id,
+                role="owner",
+                can_confirm_offer=True,
+            )
+        )
         venue = Venue(
             organization_id=vorg.id,
             name="Клуб Сигнал",
@@ -215,10 +307,16 @@ def enrich_catalog(db: Session) -> int:
 
 
 def main() -> None:
-    Base.metadata.create_all(bind=engine)
+    if os.environ.get("BOOKER_ALLOW_DEMO_SEED") != "1":
+        print("demo seed отключён: задайте BOOKER_ALLOW_DEMO_SEED=1 (только локальный контур)")
+        return
+    init_schema(engine)
     db = SessionLocal()
     try:
         print(seed(db))
+        from booker_api.seed_venues_moscow import import_moscow_venues
+
+        print(import_moscow_venues(db))
     finally:
         db.close()
 

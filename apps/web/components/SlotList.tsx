@@ -11,6 +11,7 @@ export type SlotRow = {
   hall?: string;
   buffer_before_min?: number;
   buffer_after_min?: number;
+  busy_source?: string;
 };
 
 function bufferCopy(slot: SlotRow): string | null {
@@ -20,10 +21,15 @@ function bufferCopy(slot: SlotRow): string | null {
   return parts.length ? parts.join(" · ") : null;
 }
 
-function statusCopy(status: string): { label: string; cls: string } {
+function statusCopy(status: string, busySource?: string): { label: string; cls: string } {
   if (status === "open") return { label: "свободен", cls: "ok" };
   if (status === "held") return { label: "hold", cls: "wait" };
   if (status === "confirmed") return { label: "занят", cls: "live" };
+  if (status === "busy") {
+    if (busySource === "vacation") return { label: "отпуск", cls: "wait" };
+    if (busySource === "ical") return { label: "занят (iCal)", cls: "live" };
+    return { label: "занят", cls: "live" };
+  }
   return { label: status, cls: "live" };
 }
 
@@ -59,12 +65,18 @@ export function SlotList({
   selectable?: boolean;
   highlightDay?: string | null;
 }) {
-  const hitRef = useRef<HTMLElement | null>(null);
+  const hitRef = useRef<{ el: HTMLElement; day: string } | null>(null);
 
   useEffect(() => {
-    if (!hitRef.current) return;
+    const hit = hitRef.current;
+    if (!hit) return;
+    // highlightDay больше не совпадает с подсвеченной секцией — сбрасываем ссылку.
+    if (!highlightDay || hit.day !== highlightDay) {
+      hitRef.current = null;
+      return;
+    }
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    hitRef.current.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    hit.el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
   }, [highlightDay, slots]);
   if (!slots.length) {
     return (
@@ -86,17 +98,24 @@ export function SlotList({
   return (
     <div className="slot-groups">
       {days.map((g) => {
-        const hit = Boolean(highlightDay && g.items.some((s) => moscowDate(s.starts_at) === highlightDay));
+        const day = highlightDay ?? "";
+        const hit = Boolean(day && g.items.some((s) => moscowDate(s.starts_at) === day));
         return (
         <section
           key={g.day}
-          ref={hit ? (el) => { hitRef.current = el; } : undefined}
+          ref={
+            hit
+              ? (el) => {
+                  hitRef.current = el ? { el, day } : null;
+                }
+              : undefined
+          }
           className={hit ? "slot-day-hit" : undefined}
         >
           <h3 className="slot-day">{g.day}{hit ? " · эта дата" : ""}</h3>
           <ul className="slot-list">
             {g.items.map((s) => {
-              const st = statusCopy(s.status);
+              const st = statusCopy(s.status, s.busy_source);
               const open = s.status === "open";
               const on = value === s.id;
               const buffer = bufferCopy(s);
