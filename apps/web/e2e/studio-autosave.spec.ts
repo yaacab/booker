@@ -157,4 +157,93 @@ test.describe("E06 Event Studio autosave", () => {
       .toMatch(/^e06-idem-/);
     expect(eventPosts).toBe(1);
   });
+
+  test("map: abort POST затем retry — один event, тот же submit key", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+
+    const session = await login(request, DEMO_ACCOUNTS.customer);
+    const me = await fetchMe(request, session.token);
+    const org = me.organizations.find((o) => o.kind === "customer");
+    test.skip(!org, "нет customer org — нужен make seed");
+
+    await page.addInitScript(() => {
+      sessionStorage.removeItem("booker.eventStudioSubmitKey");
+      sessionStorage.removeItem("booker.eventStudioSubmitKey:result");
+      localStorage.removeItem("booker.eventStudioMapDraft");
+    });
+    await injectSession(page, session.token, org!.id);
+
+    let eventPosts = 0;
+    let successfulCreates = 0;
+    let abortNextCreate = true;
+
+    await page.route("**/events", async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+      const url = route.request().url().replace(/\/$/, "");
+      if (!/\/events$/.test(url)) {
+        await route.continue();
+        return;
+      }
+      eventPosts += 1;
+      if (abortNextCreate) {
+        abortNextCreate = false;
+        await route.abort("failed");
+        return;
+      }
+      successfulCreates += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ id: "e06-retry-ok", requirements: [] }),
+      });
+    });
+    await page.route("**/events/*/requests", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.goto("/events/new?event_studio_map_v1=1");
+    await expect(page.locator(".event-studio-shell")).toBeVisible();
+
+    await page.getByLabel("Название события").fill(`E06 Retry ${Date.now()}`);
+    await page.getByRole("button", { name: "Проверка" }).click();
+    const continueBtn = page.getByRole("button", { name: /Продолжить/ });
+    await expect(continueBtn).toBeVisible();
+
+    const submitKeyBefore = await page.evaluate((k) => sessionStorage.getItem(k) || "", SUBMIT_KEY);
+    expect(submitKeyBefore.length).toBeGreaterThan(0);
+
+    await continueBtn.click();
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 10_000 });
+    await expect.poll(() => eventPosts, { timeout: 5_000 }).toBe(1);
+    expect(successfulCreates).toBe(0);
+    await expect
+      .poll(async () => page.evaluate((k) => sessionStorage.getItem(`${k}:result`), SUBMIT_KEY), {
+        timeout: 2_000,
+      })
+      .toBeNull();
+
+    const submitKeyAfterFail = await page.evaluate((k) => sessionStorage.getItem(k) || "", SUBMIT_KEY);
+    expect(submitKeyAfterFail).toBe(submitKeyBefore);
+
+    await expect(continueBtn).toBeEnabled({ timeout: 5_000 });
+    await continueBtn.click();
+
+    await expect
+      .poll(async () => page.evaluate((k) => sessionStorage.getItem(`${k}:result`) || "", SUBMIT_KEY), {
+        timeout: 10_000,
+      })
+      .toBe("e06-retry-ok");
+    expect(eventPosts).toBe(2);
+    expect(successfulCreates).toBe(1);
+
+    const submitKeyAfterOk = await page.evaluate((k) => sessionStorage.getItem(k) || "", SUBMIT_KEY);
+    expect(submitKeyAfterOk).toBe(submitKeyBefore);
+  });
 });
