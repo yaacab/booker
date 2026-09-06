@@ -1,6 +1,6 @@
 # E01–E24 Evidence — Spec v3 G2 candidate
 
-**Candidate SHA:** `14b2c0dfbf7068d537cb1947e640192ed12f42c2` (`14b2c0d`)  
+**Candidate SHA:** `7dfc22bb3b93b8a8f8028918b8e6042e87556167` (`7dfc22bb3b93b8a8f8028918b8e6042e87556167`)  
 **Branch:** `feat/master-plan-execution`  
 **Date:** 2026-09-06  
 **G2 status:** **не закрыт** — evidence pack mostly landed; CI green on this SHA still required.  
@@ -35,10 +35,10 @@ cd apps/web && npx playwright test \
 | E03 | Синтетический календарь | synthetic flag API + e2e copy | **PASS** | `6adf8c7` | |
 | E04 | Избранное без брони | `test_favorites.py` E04 | **PASS** | `8715009` | |
 | E05 | Event Studio flag on/off | `e2e/event-studio-map.spec.ts` | **PASS** | `fb24377` | default OFF |
-| E06 | Autosave / reload / offline | `e2e/studio-autosave.spec.ts`; event-studio-map E06 | **PARTIAL** | `14b2c0d` | Reload PASS; offline/retry thin |
-| E07 | Заявка → оффер одна сущность | `e2e/deal-path.spec.ts` E07; flow; cross-role | **PASS** | `14b2c0d` | In CI critical list |
-| E08 | Новая версия оффера | `test_quote_versioning.py`; deal-path E08 | **PASS** | `14b2c0d` | Old acks invalid until re-ack |
-| E09 | Двойной hold | `test_hold_race.py`; deal-path E09 | **PASS** | `14b2c0d` | One 200 + one 409 |
+| E06 | Autosave / reload / offline | `e2e/studio-autosave.spec.ts`; event-studio-map E06 | **PARTIAL** | `7dfc22bb3b93b8a8f8028918b8e6042e87556167` | Reload PASS; offline/retry thin |
+| E07 | Заявка → оффер одна сущность | `e2e/deal-path.spec.ts` E07; flow; cross-role | **PASS** | `7dfc22bb3b93b8a8f8028918b8e6042e87556167` | In CI critical list |
+| E08 | Новая версия оффера | `test_quote_versioning.py`; deal-path E08 | **PASS** | `7dfc22bb3b93b8a8f8028918b8e6042e87556167` | Old acks invalid until re-ack |
+| E09 | Двойной hold | `test_hold_race.py`; deal-path E09 | **PASS** | `7dfc22bb3b93b8a8f8028918b8e6042e87556167` | One 200 + one 409 |
 | E10 | Multi-hall atomic | `test_multi_hall_atomic.py` | **PASS** | `449e7e8` | |
 | E11 | Hold expire / cancel | holds + replacement + cross-role cancel | **PASS** | base | |
 | E12 | Fake pay redirect / webhook | `test_payments.py` stub | **PARTIAL** | base | stub≠PSP; C-LIVE OWNER_BLOCKED |
@@ -53,14 +53,14 @@ cd apps/web && npx playwright test \
 | E21 | Email outbox retry | `test_email_outbox_retry_idempotent` | **PASS** | `700f2c1` | |
 | E22 | Revoke shared link | `test_shortlists.py` revoke | **PASS** | `700f2c1` | |
 | E23 | Backup restore | `test_backup_restore.py`; RESTORE_DRILL_LOG | **PASS** | drill 2026-09-06 | |
-| E24 | 390 + keyboard | `cabinet-a11y.spec.ts`; `docs/screenshots/g2-roles/` | **PASS** | `14b2c0d` | Full SR audit still manual |
+| E24 | 390 + keyboard | `cabinet-a11y.spec.ts`; `docs/screenshots/g2-roles/` | **PASS** | `7dfc22bb3b93b8a8f8028918b8e6042e87556167` | Full SR audit still manual |
 | E25 | Prod smoke | — | **ожидает G3** | — | |
 
 ## Manifest checkbox sources
 
 | Checklist item | Evidence |
 | ---- | ---- |
-| CI green on candidate SHA | Expanded e2e-critical; await green on `14b2c0d` |
+| CI green on candidate SHA | Expanded e2e-critical; await green on `7dfc22bb3b93b8a8f8028918b8e6042e87556167` |
 | Screenshots 1440/390 × 3 roles | `docs/screenshots/g2-roles/` (6 PNGs) |
 | Заявка→оффер | flow + deal-path + cross-role |
 | E01–E24 table | this file; E25 = ожидает G3 |
