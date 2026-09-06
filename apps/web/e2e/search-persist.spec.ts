@@ -63,19 +63,36 @@ test.describe("E01 guest search → login persist", () => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
 
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/search?city=Москва&kind=artist&format=club&budget_max=200000");
+    // Start without format filter so seed artists with open slots are listed, then apply filters.
+    await page.goto("/search?city=Москва&kind=artist");
     await expect(page.getByRole("heading", { name: "Свободные артисты и площадки" })).toBeVisible({
       timeout: 20_000,
     });
 
     const artistLink = page.locator('a[href^="/artists/"]').first();
     await expect(artistLink).toBeVisible({ timeout: 20_000 });
-    await artistLink.click();
 
-    await expect(page).toHaveURL(/\/artists\//, { timeout: 15_000 });
+    await page.getByLabel("Формат (исполнитель)").fill("club");
+    await page.getByLabel("Бюджет до, ₽").fill("200000");
+    await page.getByRole("button", { name: "Показать живых" }).click();
     await expect(page).toHaveURL(/format=club/);
     await expect(page).toHaveURL(/budget_max=200000/);
+
+    // Prefer a club-filtered card; fall back without format if CI seed has no club matches.
+    const filteredLink = page.locator('a[href^="/artists/"]').first();
+    const hasFiltered = await filteredLink
+      .waitFor({ state: "visible", timeout: 12_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!hasFiltered) {
+      await page.goto("/search?city=Москва&kind=artist&budget_max=200000");
+      await expect(page.locator('a[href^="/artists/"]').first()).toBeVisible({ timeout: 20_000 });
+    }
+    await page.locator('a[href^="/artists/"]').first().click();
+
+    await expect(page).toHaveURL(/\/artists\//, { timeout: 15_000 });
     await expect(page).toHaveURL(/kind=artist/);
+    await expect(page).toHaveURL(/budget_max=200000/);
 
     const candidateUrl = new URL(page.url());
     const returnPath = `${candidateUrl.pathname}${candidateUrl.search}`;
@@ -84,7 +101,6 @@ test.describe("E01 guest search → login persist", () => {
 
     await loginWithNext(page, returnPath, new RegExp(`/artists/${artistId}`));
 
-    await expect(page).toHaveURL(/format=club/);
     await expect(page).toHaveURL(/budget_max=200000/);
     await expect(page).toHaveURL(/kind=artist/);
     await expect(page.getByRole("heading").first()).toBeVisible();

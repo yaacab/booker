@@ -157,7 +157,8 @@ test.describe("Cross-role E2E §7.5.11", () => {
         ctx.customer.token,
         ctx.customer.orgId,
       );
-      expect(room.quote.honorarium_rub).toBe(100_000);
+      // After E08 bump the active quote is 110_000 — must not equal event budget (500_000).
+      expect(room.quote.honorarium_rub).toBe(110_000);
       expect(room.quote.total_rub).toBeGreaterThanOrEqual(room.quote.honorarium_rub);
       expect(room.quote.total_rub).toBeLessThan(500_000);
     });
