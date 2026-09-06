@@ -5,7 +5,7 @@ Updated: 2026-09-06 (LOOP tick #3 — G2 evidence integrate)
 ## Git
 
 - Branch: `feat/master-plan-execution` (integration)
-- HEAD: `7dfc22bb3b93b8a8f8028918b8e6042e87556167`
+- HEAD: `fac2ffd`
 - Ahead of origin: local; no push required this turn
 - PR #14: OPEN — **не merge** без OK владельца
 - Prod deploy: **запрещён**
