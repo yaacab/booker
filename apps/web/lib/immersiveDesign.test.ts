@@ -67,3 +67,22 @@ test("reference puzzles are accessible local toggles, not booking actions", () =
   assert.doesNotMatch(hero, /\bfetch\(|\bapi\(|localStorage/);
   assert.match(puzzles, /translateY\(-20px\)/);
 });
+
+test("internal pages share the workspace skin without restyling the home", () => {
+  const layout = read("../app/layout.tsx");
+  const chrome = read("../components/SiteChrome.tsx");
+  const workspace = read("../app/workspace-design.css");
+  assert.match(layout, /import "\.\/workspace-design.css"/);
+  assert.match(chrome, /className="site-content" data-section=/);
+  assert.match(workspace, /:not\(\[data-section="home"\]\)/);
+  assert.match(workspace, /prefers-reduced-motion:reduce/);
+  assert.match(workspace, /\.deal-head :is\(h1,a\).*color: #243b2e/);
+});
+test("supplier profiles retain actions inside the shared overview", () => {
+  for (const file of ["ArtistProfileClient.tsx", "VenueProfileClient.tsx"]) {
+    const source = read("../components/" + file);
+    assert.match(source, /className="profile-overview"/);
+    assert.match(source, /<FavoriteToggle/);
+    assert.match(source, /Поделиться/);
+  }
+});

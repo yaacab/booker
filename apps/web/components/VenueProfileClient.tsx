@@ -224,6 +224,8 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
       <Suspense fallback={null}>
         <PromoAttributionBeacon kind="venue" profileId={data.id} />
       </Suspense>
+      <header className="profile-overview">
+      <Link className="profile-back" href="/search">← Вернуться в каталог</Link>
       <p className="kicker">Профиль площадки</p>
       <h1>{data.name}</h1>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -244,6 +246,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
           Поделиться
         </Link>
       </p>
+      </header>
       {data.address ? (
         <p className="timeline">
           {data.address}

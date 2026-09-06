@@ -119,7 +119,7 @@ export default function LoginPage() {
       : mode === "recover"
         ? "Восстановление доступа"
         : mode === "login"
-          ? "Backstage Control Room"
+          ? "Ваше пространство событий"
           : "Новый аккаунт";
 
   return (

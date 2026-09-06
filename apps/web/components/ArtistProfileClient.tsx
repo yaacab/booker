@@ -186,6 +186,8 @@ export function ArtistProfileClient() {
       <Suspense fallback={null}>
         <PromoAttributionBeacon kind="artist" profileId={data.id} />
       </Suspense>
+      <header className="profile-overview">
+      <Link className="profile-back" href="/search">← Вернуться в каталог</Link>
       <p className="kicker">Профиль артиста</p>
       <h1>{data.name}</h1>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -198,6 +200,7 @@ export function ArtistProfileClient() {
           Поделиться
         </Link>
       </p>
+      </header>
       <p>{data.facts.note}</p>
       <p className="timeline">
         Ответ обычно: {data.facts.response || "данных пока мало"}. Завершённых сделок: {data.facts.deals ?? 0}.

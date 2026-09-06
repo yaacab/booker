@@ -43,7 +43,7 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
   const hallHint = item.matching_halls?.[0];
 
   return (
-    <article className="card">
+    <article className={`card catalog-result catalog-result--${kind}`}>
       <div className="card-head">
         <Link href={href} style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
           <span className="avatar" aria-hidden>
@@ -82,7 +82,7 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
           {date ? `слот на ${formatDay(`${date}T12:00:00+03:00`)}` : formatWhen(item.next_open_at)}
         </p>
         {item.tariffs?.[0] ? (
-          <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
+          <p className="catalog-price"><span>Ориентир от</span> {money(item.tariffs[0].honorarium_rub)}</p>
         ) : kind === "venue" ? (
           <p className="timeline">цена по запросу</p>
         ) : null}

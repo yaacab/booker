@@ -125,9 +125,12 @@ export default async function SearchPage({
   }
   const empty = items.length === 0 && venues.length === 0 && !error;
   return (
-    <main className="page-enter">
-      <p className="kicker">Каталог с проверкой календаря</p>
-      <h1>Свободные артисты и площадки</h1>
+    <main className="page-enter catalog-page">
+      <header className="workspace-heading">
+        <div><p className="kicker">Люди и места для вашего события</p>
+        <h1>Найдите свою команду</h1></div>
+        <Link className="btn secondary" href="/cabinet/customer/favorites">Избранное</Link>
+      </header>
       <div className="catalog-layout">
         <CatalogFilters
           city={city}

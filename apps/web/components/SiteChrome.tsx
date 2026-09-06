@@ -279,7 +279,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <div id="content">{children}</div>
+        <div id="content" className="site-content" data-section={path.split("/")[1] || "home"}>{children}</div>
         <footer className="site-footer surface-glass">
           <p>Букер объединяет заявку, свободный слот, предложение и подтверждения в одном рабочем пространстве.</p>
           <p>
