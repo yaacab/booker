@@ -133,6 +133,159 @@ export async function seedRequestAwaitingOffer(request: APIRequestContext): Prom
   };
 }
 
+export type NegotiationSeed = {
+  customer: AuthSession & { orgId: string };
+  owner: AuthSession & { orgId: string };
+  artistId: string;
+  slotId: string;
+  requestId: string;
+  offerId: string;
+  bookingId: string;
+  quoteId: string;
+  honorariumRub: number;
+  terms: string;
+  eventTitle: string;
+  startsAt: string;
+  endsAt: string;
+};
+
+/** Customer + artist + slot + request + offer — готово к ack/hold (E08/E09). */
+export async function seedNegotiation(
+  request: APIRequestContext,
+  opts?: { honorariumRub?: number; terms?: string; slotStartsAt?: string; slotEndsAt?: string },
+): Promise<NegotiationSeed> {
+  const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const startsAt = opts?.slotStartsAt ?? "2026-10-12T18:00:00+00:00";
+  const endsAt = opts?.slotEndsAt ?? "2026-10-12T22:00:00+00:00";
+  const honorariumRub = opts?.honorariumRub ?? 100_000;
+  const terms = opts?.terms ?? "E2E: 2 часа сет";
+  const eventTitle = `E2E Deal ${suffix}`;
+
+  const customer = await register(request, `e2e-deal-c-${suffix}@booker.test`, "E2E Deal Клиент");
+  const owner = await register(request, `e2e-deal-a-${suffix}@booker.test`, "E2E Deal Артист");
+
+  const custOrg = await postJson<{ id: string }>(request, "/orgs", customer.token, {
+    name: "E2E Deal Заказчик",
+    kind: "customer",
+  });
+  const artistOrg = await postJson<{ id: string }>(request, "/orgs", owner.token, {
+    name: "E2E Deal Шоу",
+    kind: "artist",
+  });
+  const artist = await postJson<{ id: string }>(request, "/artists", owner.token, {
+    organization_id: artistOrg.id,
+    name: `E2E Deal DJ ${suffix}`,
+    category: "dj",
+  });
+  await postJson(request, `/artists/${artist.id}/tariffs`, owner.token, {
+    title: "Сет",
+    honorarium_rub: honorariumRub,
+  });
+  const slot = await postJson<{ id: string }>(request, "/slots", owner.token, {
+    resource_type: "artist",
+    resource_id: artist.id,
+    starts_at: startsAt,
+    ends_at: endsAt,
+  });
+  const event = await postJson<{ id: string }>(request, "/events", customer.token, {
+    organization_id: custOrg.id,
+    title: eventTitle,
+    event_date: startsAt,
+    guest_count: 80,
+    budget_rub: 200_000,
+  });
+  const req = await postJson<{ id: string }>(request, `/events/${event.id}/requests`, customer.token, {
+    resource_type: "artist",
+    resource_id: artist.id,
+  });
+  const offer = await postJson<{
+    id: string;
+    booking_id: string;
+    version: { id: string; quote_id: string; honorarium_rub: number; terms?: string };
+  }>(request, `/requests/${req.id}/offers`, owner.token, {
+    honorarium_rub: honorariumRub,
+    slot_id: slot.id,
+    terms,
+  });
+
+  return {
+    customer: { ...customer, orgId: custOrg.id },
+    owner: { ...owner, orgId: artistOrg.id },
+    artistId: artist.id,
+    slotId: slot.id,
+    requestId: req.id,
+    offerId: offer.id,
+    bookingId: offer.booking_id,
+    quoteId: offer.version.quote_id ?? offer.version.id,
+    honorariumRub: offer.version.honorarium_rub,
+    terms,
+    eventTitle,
+    startsAt,
+    endsAt,
+  };
+}
+
+export type HoldRaceSeed = NegotiationSeed & {
+  customer2: AuthSession;
+  bookingId2: string;
+  offerId2: string;
+};
+
+/** Два бронирования на один слот (оба с двусторонним ack) — для E09 exclusivity. */
+export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<HoldRaceSeed> {
+  const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const startsAt = "2026-11-05T18:00:00+00:00";
+  const endsAt = "2026-11-05T22:00:00+00:00";
+  const ctx = await seedNegotiation(request, {
+    honorariumRub: 100_000,
+    terms: "E2E race A",
+    slotStartsAt: startsAt,
+    slotEndsAt: endsAt,
+  });
+
+  await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: "supplier" }, ctx.owner.orgId);
+  await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.customer.token, { side: "customer" }, ctx.customer.orgId);
+
+  const customer2 = await register(request, `e2e-deal-c2-${suffix}@booker.test`, "E2E Deal Клиент2");
+  await postJson(
+    request,
+    `/orgs/${ctx.customer.orgId}/members`,
+    ctx.customer.token,
+    { user_id: customer2.user_id, role: "manager" },
+    ctx.customer.orgId,
+  );
+  const event2 = await postJson<{ id: string }>(request, "/events", customer2.token, {
+    organization_id: ctx.customer.orgId,
+    title: `E2E Deal Race B ${suffix}`,
+    event_date: startsAt,
+    guest_count: 60,
+    budget_rub: 150_000,
+  }, ctx.customer.orgId);
+  const req2 = await postJson<{ id: string }>(
+    request,
+    `/events/${event2.id}/requests`,
+    customer2.token,
+    { resource_type: "artist", resource_id: ctx.artistId },
+    ctx.customer.orgId,
+  );
+  const offer2 = await postJson<{ id: string; booking_id: string }>(
+    request,
+    `/requests/${req2.id}/offers`,
+    ctx.owner.token,
+    { honorarium_rub: 95_000, slot_id: ctx.slotId, terms: "E2E race B" },
+    ctx.owner.orgId,
+  );
+  await postJson(request, `/offers/${offer2.id}/ack`, ctx.owner.token, { side: "supplier" }, ctx.owner.orgId);
+  await postJson(request, `/offers/${offer2.id}/ack`, customer2.token, { side: "customer" }, ctx.customer.orgId);
+
+  return {
+    ...ctx,
+    customer2,
+    bookingId2: offer2.booking_id,
+    offerId2: offer2.id,
+  };
+}
+
 export async function injectSession(page: Page, token: string, orgId: string): Promise<void> {
   await page.addInitScript(
     ({ token, orgId }) => {
