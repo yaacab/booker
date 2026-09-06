@@ -1,44 +1,45 @@
 # Delivery State
 
-Updated: 2026-09-06 (Agent continue Spec v3 G2)
+Updated: 2026-09-06 (LOOP — Spec v3 G2 continue)
 
 ## Git
 
 - Branch: `feat/master-plan-execution` (integration)
-- HEAD (pre-commit WIP): `4bf519a` + share/claim/support/outbox
-- Docs baseline: `f1a3298`
-- Wave 0: `fb24377` VERIFIED (flag OFF, CI master+e2e, calendar≠requests)
-- Wave 1: `6adf8c7` VERIFIED
-- Wave 2 (partial): `e578301` onboarding/autosave/ext-pay; `449e7e8` multi-hall E10; cancel E11 covered by `test_replacement.py`
-- Wave 3: fav `8715009`; briefs `4bf519a`; share/compare (this commit)
-- Wave 4: reviews `51214da`; claim/support/outbox (this commit)
-- PR #14: open — **не merge** без OK владельца
+- HEAD: `edf5b1a`
+- Ahead of origin: 26 commits (local; no push required this turn)
+- PR #14: OPEN — **не merge** без OK владельца
 - Prod deploy: **запрещён**
 
-## Правила (зеркало плана)
+## Wave status
 
-- G1/G2 **нельзя** при открытых обязательных A+B; `OWNER_BLOCKED` / `ENV_BLOCKED` ≠ done.
-- E25 = ожидает G3.
-- Query flag = URL-only; глобальный откат = env + rebuild.
-- Stub tests ≠ real PSP.
-- CI = checks на текущий SHA/PR.
-- Параллель: worktree + non-overlapping; coord sequential integrate; selective commits; never blind `git add -A`.
+| Wave | Status | Notes |
+| ---- | ------ | ----- |
+| 0 | VERIFIED | flag OFF, CI master+e2e, calendar≠requests (`fb24377`) |
+| 1 | VERIFIED | search/SEO/home (`6adf8c7`) |
+| 2 | PARTIAL | multi-hall/cancel/ext-pay + cab perf/venue deepened; deal-path e2e polish open |
+| 3 | MOSTLY | fav/briefs/share/compare/saved/promo integrated |
+| 4 | MOSTLY | reviews/claim/support/outbox/msg hub |
+| 5 | PARTIAL | RELEASE_MANIFEST draft; screenshots/E-table/G2 pack incomplete |
+| E25 | ожидает G3 | — |
 
-## Сделано
+## Parallel worktrees (this session)
 
-- Wave 0–1 VERIFIED
-- W3-FAV, W3-BRIEF, W3-COMPARE, W3-SHARE (E22 revoke)
-- W4-REVIEW, W4-CLAIM (no auto-own), W4-SUPPORT, W4-NOTIF outbox retry (E21)
-- W2-MULTI-HALL, W2-CANCEL (api), W2-EXT-PAY (stub≠PSP)
+| Task | Branch | Integrate SHA |
+| ---- | ------ | ------------- |
+| W3-SAVED | agent/w3-saved | `4e262ab` / wire `1f6d5cc` |
+| W3-PROMO | agent/w3-promo | `c052b61` / wire `60cf8ee` |
+| W4-MSG-HUB | coord main | `15d5880` |
+| W2-CAB-PERF | agent/w2-cab-perf | `3d7636a` |
+| W2-CAB-VEN | agent/w2-cab-ven | `edf5b1a` |
 
-## Открыто (A+B)
+## Owner / env blockers (≠ done)
 
-- W2 cabinets depth (performer/venue scenarios beyond shells)
-- W2-DEAL-PATH e2e polish E07–E09
-- W3-SAVED, W3-PROMO
-- W4-MSG-HUB
-- W5 authz/e2e/a11y/backup/manifest; E25 = G3
+- C-LIVE / C-MAP / C-SMS — `docs/OWNER_INPUTS.md`
+- Stub payments ≠ real PSP
+- E25 requires owner OK for prod
 
-## Owner / env blockers (не замена G1/G2)
+## Next (no «продолжать?»)
 
-См. `docs/OWNER_INPUTS.md`. C-LIVE / C-MAP / C-SMS.
+1. Deal-path critical e2e (E07–E09) + expand CI e2e list
+2. Screenshots 1440/390 × 3 roles + E01–E24 evidence table on SHA
+3. Finalize RELEASE_MANIFEST checkboxes; a11y/backup proof

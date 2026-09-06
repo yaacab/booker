@@ -9,7 +9,7 @@ Prod deploy: **запрещён** до G3 / OK владельца
 
 Заполняется координатором на момент G2-ready:
 
-- Integration SHA: `4e262ab` (обновлять при каждом integrate)
+- Integration SHA: `edf5b1a` (обновлять при каждом integrate)
 - Evidence: CI checks на **этом** SHA / PR, не на старом `master`
 
 ## Scope A+B (статус)
