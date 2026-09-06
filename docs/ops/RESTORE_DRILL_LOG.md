@@ -14,7 +14,7 @@ bash infra/restore-drill.sh /path/to/booker-backup-YYYYMMDD.tar.gz /tmp/booker-r
 
 | Дата | Среда | Бэкап (имя/hash) | RTO факт | Результат | Кто | Заметки |
 |------|-------|------------------|----------|-----------|-----|---------|
-| _YYYY-MM-DD_ | staging | | _мин_ | PASS / FAIL | | |
+| 2026-09-06 | prod VPS (isolated `/tmp`) | `booker-20260906T000539Z.tar.gz` | &lt;1 мин | PASS | agent | `infra/restore-drill.sh` exit 0; prod DB не трогали |
 | | | | | | | |
 
 Шаблон строки: дата → путь к tar.gz → время до «db readable» → PASS только если `restore-drill.sh` exit 0.
