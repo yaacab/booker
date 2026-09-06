@@ -1,6 +1,6 @@
 # E01-E24 Evidence — Spec v3 G2 candidate
 
-**Candidate SHA:** 7e7964dd6fe03da2549c02dd1827875f3cb4c758 (7e7964d)  
+**Candidate SHA:** 54afe9a929246c4790f133d932d42174b07db5e3 (54afe9a)
 **Branch:** feat/master-plan-execution  
 **Date:** 2026-09-06  
 **G2 status:** не закрыт — A/B evidence pack landed; CI green on PR SHA still required; Contour C disabled.  
@@ -45,7 +45,7 @@ Critical e2e (ci.yml e2e-critical): event-studio-map, supply-nav, search-filters
 
 | Checklist item | Evidence |
 | ---- | ---- |
-| CI green on candidate SHA | Expanded e2e-critical; await green on 7e7964d |
+| CI green on candidate SHA | Expanded e2e-critical; await green on 54afe9a |
 | Screenshots 1440/390 x 3 roles | docs/screenshots/g2-roles/ (6 PNGs) |
 | Заявка→оффер | flow + deal-path + cross-role |
 | E01-E24 table | this file; E25 = ожидает G3 |

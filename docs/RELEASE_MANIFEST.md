@@ -7,7 +7,7 @@ Prod deploy: запрещён до G3 / OK владельца
 
 ## Candidate SHA
 
-- Integration SHA: 7e7964d (7e7964dd6fe03da2549c02dd1827875f3cb4c758)
+- Integration SHA: 54afe9a (54afe9a929246c4790f133d932d42174b07db5e3)
 - Evidence: CI checks на этом SHA / PR, не на старом master
 
 ## Scope A+B (статус)
@@ -39,7 +39,7 @@ Prod deploy: запрещён до G3 / OK владельца
 
 ## Evidence checklist (G2)
 
-- [ ] CI green on candidate SHA (unit + critical e2e) — local batches PASS; list includes deal-path/a11y/onboard/autosave/search-persist/org-switch; await PR checks on 7e7964d
+- [ ] CI green on candidate SHA (unit + critical e2e) — local batches PASS; list includes deal-path/a11y/onboard/autosave/search-persist/org-switch; await PR checks on 54afe9a
 - [x] Screenshots 1440/390 x 3 roles — docs/screenshots/g2-roles/ (6 PNGs)
 - [x] Сквозной сценарий заявка→оффер на SHA — e2e/flow.spec.ts + e2e/deal-path.spec.ts + cabinets-cross-role.spec.ts
 - [x] E01-E24 table filled; E25 = ожидает G3 — docs/E01_E24_EVIDENCE.md
