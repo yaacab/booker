@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { DashboardWidget } from "../../DashboardWidget";
+import {
+  openOnboardingItems,
+  venueOnboardingItems,
+} from "@/lib/onboardingChecklists";
 
 /** Venue onboarding checklist. Spec §5 / W2-ONBOARD. */
 export function VenueOnboardingWidget({
@@ -13,27 +17,12 @@ export function VenueOnboardingWidget({
   profileComplete: boolean;
   hasRequests: boolean;
 }) {
-  const items = [
-    {
-      id: "halls",
-      label: "Добавить зал с вместимостью",
-      done: hasHalls,
-      href: "/cabinet/venue/halls",
-    },
-    {
-      id: "profile",
-      label: "Заполнить профиль площадки",
-      done: profileComplete,
-      href: "/cabinet/venue#supply",
-    },
-    {
-      id: "requests",
-      label: "Ответить на заявку бронирования",
-      done: hasRequests,
-      href: "/cabinet/venue/requests",
-    },
-  ];
-  if (items.every((i) => i.done)) return null;
+  const items = venueOnboardingItems({
+    hasHalls,
+    profileComplete,
+    hasRequests,
+  });
+  if (openOnboardingItems(items).length === 0) return null;
 
   return (
     <DashboardWidget title="Онбординг" hint="Готовность площадки" isEmpty={false}>

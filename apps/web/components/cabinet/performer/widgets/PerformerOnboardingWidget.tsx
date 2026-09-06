@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { DashboardWidget } from "../../DashboardWidget";
+import {
+  openOnboardingItems,
+  performerOnboardingItems,
+} from "@/lib/onboardingChecklists";
 
 /** Performer onboarding checklist. Spec §5 / W2-ONBOARD. */
 export function PerformerOnboardingWidget({
@@ -13,27 +17,12 @@ export function PerformerOnboardingWidget({
   hasOpenSlots: boolean;
   hasRequests: boolean;
 }) {
-  const items = [
-    {
-      id: "profile",
-      label: "Заполнить профиль и портфолио",
-      done: profileComplete,
-      href: "/cabinet/performer#supply",
-    },
-    {
-      id: "slots",
-      label: "Открыть слоты в календаре",
-      done: hasOpenSlots || hasRequests,
-      href: "/cabinet/performer/calendar",
-    },
-    {
-      id: "requests",
-      label: "Ответить на входящую заявку предложением",
-      done: hasRequests,
-      href: "/cabinet/performer/requests",
-    },
-  ];
-  if (items.every((i) => i.done)) return null;
+  const items = performerOnboardingItems({
+    profileComplete,
+    hasOpenSlots,
+    hasRequests,
+  });
+  if (openOnboardingItems(items).length === 0) return null;
 
   return (
     <DashboardWidget title="Онбординг" hint="Готовность к брони" isEmpty={false}>
