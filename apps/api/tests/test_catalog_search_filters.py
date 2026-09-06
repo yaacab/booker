@@ -167,3 +167,40 @@ def test_search_synthetic_venue_flag_present(client):
     res = client.get("/catalog/search", params={"city": "Москва", "kind": "venue"}).json()
     syn = next(v for v in res["venues"] if v["name"] == "Синтетика Холл")
     assert syn["availability_mode"] == "synthetic"
+
+
+def test_search_next_open_at_includes_timezone_offset(client):
+    owner = register(client, "tz-art@booker.test", "TZ Art")
+    org = client.post(
+        "/orgs",
+        json={"name": "TZ Artist Org", "kind": "artist"},
+        headers=auth_header(owner["token"]),
+    ).json()
+    artist = client.post(
+        "/artists",
+        json={
+            "organization_id": org["id"],
+            "name": "TZ DJ",
+            "city": "Москва",
+            "category": "dj",
+        },
+        headers=auth_header(owner["token"]),
+    ).json()
+    starts, ends = _future_slot()
+    assert (
+        client.post(
+            "/slots",
+            json={
+                "resource_type": "artist",
+                "resource_id": artist["id"],
+                "starts_at": starts,
+                "ends_at": ends,
+            },
+            headers=auth_header(owner["token"]),
+        ).status_code
+        == 200
+    )
+    res = client.get("/catalog/search", params={"city": "Москва", "category": "dj"}).json()
+    hit = next(i for i in res["items"] if i["name"] == "TZ DJ")
+    assert hit["next_open_at"]
+    assert hit["next_open_at"].endswith("+03:00") or hit["next_open_at"].endswith("+0300")

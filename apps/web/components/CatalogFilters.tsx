@@ -63,11 +63,14 @@ export function CatalogFilters(props: CatalogFilterValues) {
     seating,
   } = props;
   const [open, setOpen] = useState(false);
+  // min date only after mount — avoid SSR/client calendar-day drift near midnight.
+  const [minDate, setMinDate] = useState<string | undefined>(undefined);
   const [cats, setCats] = useState<CategoryChip[]>(
     categories?.length ? categories : fallbackCategories(),
   );
 
   useEffect(() => {
+    setMinDate(moscowToday());
     const mq = window.matchMedia("(min-width: 900px)");
     const sync = () => setOpen(mq.matches);
     sync();
@@ -127,7 +130,7 @@ export function CatalogFilters(props: CatalogFilterValues) {
           <CityField name="city" defaultValue={city} />
           <label>
             Дата
-            <input name="date" type="date" min={moscowToday()} defaultValue={date || ""} />
+            <input name="date" type="date" min={minDate} defaultValue={date || ""} />
           </label>
           <label>
             Тип

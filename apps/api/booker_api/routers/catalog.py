@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from booker_api.calendar import calendar_day_bounds, open_slots_unmasked, overlapping_slots
+from booker_api.calendar import MSK, calendar_day_bounds, open_slots_unmasked, overlapping_slots
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
 from booker_api.models import (
@@ -62,6 +62,20 @@ from booker_api.vacation import clear_vacation, set_vacation, vacation_status
 router = APIRouter(tags=["catalog"])
 
 
+def _catalog_iso(dt: datetime | None) -> str | None:
+    """Serialize slot times with an explicit MSK offset.
+
+    SQLite often returns naive datetimes; without an offset, Next.js SSR on UTC
+    hosts and browsers in Europe/Moscow parse them differently and the catalog
+    page fails hydration (React #418).
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=MSK).isoformat()
+    return dt.astimezone(MSK).isoformat()
+
+
 def _hall_item(hall: VenueHall) -> dict:
     return {"id": hall.id, "name": hall.name, "capacity": hall.capacity}
 
@@ -76,8 +90,8 @@ def _slot_item(slot: AvailabilitySlot, *, hall: str | None = None) -> dict:
             busy_source = "vacation"
     item = {
         "id": slot.id,
-        "starts_at": slot.starts_at.isoformat(),
-        "ends_at": slot.ends_at.isoformat(),
+        "starts_at": _catalog_iso(slot.starts_at),
+        "ends_at": _catalog_iso(slot.ends_at),
         "status": slot.status,
         "buffer_before_min": getattr(slot, "buffer_before_min", 0) or 0,
         "buffer_after_min": getattr(slot, "buffer_after_min", 0) or 0,
@@ -550,7 +564,7 @@ def search_catalog(
                     "verified": artist.verified,
                     "has_calendar": True,
                     "open_slots": len(pool),
-                    "next_open_at": nxt.starts_at.isoformat() if nxt else None,
+                    "next_open_at": _catalog_iso(nxt.starts_at) if nxt else None,
                     "search_date": aware(date).date().isoformat() if date else None,
                     "travel_ok": _rider_travel_ok(rider),
                     "formats": _rider_formats(rider),
@@ -630,7 +644,7 @@ def search_catalog(
                     "capacity": venue.capacity,
                     "matching_halls": [_hall_item(h) for h in matching],
                     "open_slots": len(pool),
-                    "next_open_at": nxt.starts_at.isoformat(),
+                    "next_open_at": _catalog_iso(nxt.starts_at),
                     "tariffs": [{"honorarium_rub": t.honorarium_rub} for t in tariffs],
                 }
             )

@@ -1,8 +1,31 @@
 const TZ = "Europe/Moscow";
+/** Moscow has no DST since 2014; naive API datetimes are pilot wall clock in MSK. */
+const MSK_OFFSET = "+03:00";
+
+/**
+ * Parse Booker API datetimes for display.
+ * Naive ISO (no `Z`/offset) must be treated as Europe/Moscow wall time: Node on UTC
+ * servers otherwise parses them as UTC while browsers in MSK use local time, which
+ * desyncs SSR vs client text and throws React #418 on /search.
+ */
+export function parseBookerDate(iso: string): Date {
+  const trimmed = iso.trim();
+  if (!trimmed) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return new Date(`${trimmed}T00:00:00${MSK_OFFSET}`);
+  }
+  if (/([zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed)) {
+    return new Date(trimmed);
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(trimmed)) {
+    return new Date(`${trimmed}${MSK_OFFSET}`);
+  }
+  return new Date(trimmed);
+}
 
 export function formatWhen(iso?: string | null): string {
   if (!iso) return "дата не указана";
-  const d = new Date(iso);
+  const d = parseBookerDate(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
@@ -14,7 +37,7 @@ export function formatWhen(iso?: string | null): string {
 }
 
 export function formatDay(iso: string): string {
-  const d = new Date(iso);
+  const d = parseBookerDate(iso);
   if (Number.isNaN(d.getTime())) return "дата не указана";
   return new Intl.DateTimeFormat("ru-RU", {
     weekday: "long",
@@ -25,7 +48,7 @@ export function formatDay(iso: string): string {
 }
 
 export function formatClock(iso: string): string {
-  const d = new Date(iso);
+  const d = parseBookerDate(iso);
   if (Number.isNaN(d.getTime())) return "--:--";
   return new Intl.DateTimeFormat("ru-RU", {
     hour: "2-digit",
@@ -35,7 +58,7 @@ export function formatClock(iso: string): string {
 }
 
 export function moscowDate(iso: string): string {
-  const d = new Date(iso);
+  const d = parseBookerDate(iso);
   if (Number.isNaN(d.getTime())) return "";
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
@@ -50,7 +73,8 @@ export function moscowToday(): string {
 }
 
 export function money(n: number): string {
-  return new Intl.NumberFormat("ru-RU").format(n) + " ₽";
+  // Normalize NBSP/NNBSP so SSR (Node ICU) and browsers never diverge on spaces.
+  return new Intl.NumberFormat("ru-RU").format(n).replace(/[\u00a0\u202f]/g, " ") + " ₽";
 }
 
 /** Русская плюрализация: pluralRu(1, "гость", "гостя", "гостей"). */
@@ -74,7 +98,7 @@ export function initials(name: string): string {
 }
 
 export function holdRemaining(iso: string): string {
-  const ms = new Date(iso).getTime() - Date.now();
+  const ms = parseBookerDate(iso).getTime() - Date.now();
   if (Number.isNaN(ms) || ms <= 0) return "hold истёк";
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
