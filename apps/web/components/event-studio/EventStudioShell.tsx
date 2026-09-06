@@ -8,6 +8,9 @@ import { moscowToday } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import {
   budgetHintFromSelection,
+  bumpDraftVersion,
+  EVENT_STUDIO_DRAFT_STORAGE_KEY,
+  isDraftVersionConflict,
   loadCatalog,
   loadStoredDraft,
   mapCatalogTalent,
@@ -69,6 +72,27 @@ export default function EventStudioShell() {
     }, AUTOSAVE_MS);
     return () => window.clearTimeout(timer);
   }, [draft, hydrated, online]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const onStorage = (ev: StorageEvent) => {
+      if (ev.key !== EVENT_STUDIO_DRAFT_STORAGE_KEY) return;
+      const incoming = loadStoredDraft();
+      if (!incoming) return;
+      setDraft((local) => {
+        if (
+          isDraftVersionConflict(local, incoming.draft) ||
+          (incoming.draft.version || 0) > (local.version || 0)
+        ) {
+          setSaveStatus("conflict");
+          return incoming.draft;
+        }
+        return local;
+      });
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [hydrated]);
 
   const reloadCatalog = useCallback(async () => {
     catalogAbortRef.current?.abort();
@@ -141,7 +165,9 @@ export default function EventStudioShell() {
   return (
     <EventStudioMap
       draft={draft}
-      onDraftChange={setDraft}
+      onDraftChange={(next) =>
+        setDraft((prev) => bumpDraftVersion({ ...next, version: prev.version || 1 }))
+      }
       talents={talents}
       venues={venues}
       budgetHint={budgetHint}

@@ -86,6 +86,7 @@ function saveLabel(status: SaveStatus): string {
   if (status === "offline") return "Без сети · черновик на устройстве";
   if (status === "saving") return "Сохраняем…";
   if (status === "error") return "Ошибка сохранения";
+  if (status === "conflict") return "Конфликт вкладок · загружена более новая версия";
   return "Сохранено автоматически";
 }
 

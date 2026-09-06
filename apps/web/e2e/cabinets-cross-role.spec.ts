@@ -108,7 +108,22 @@ test.describe("Cross-role E2E §7.5.11", () => {
       await expect(page.getByRole("heading", { name: "Новые предложения" })).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText(ctx.eventTitle).first()).toBeVisible();
 
+      // E08: новая версия сбрасывает ack — hold недоступен, пока обе стороны не подтвердят снова
+      const bumped = await postJson<{ honorarium_rub: number; active: boolean }>(
+        request,
+        `/offers/${artistOfferId}/versions`,
+        ctx.artist.token,
+        { honorarium_rub: 110_000, terms: "E2E: новая смета" },
+        ctx.artist.orgId,
+      );
+      expect(bumped.active).toBe(false);
+      await injectSession(page, ctx.artist.token, ctx.artist.orgId);
+      await page.goto(`/deals/${artistBookingId}`);
+      await page.getByRole("button", { name: "Подтвердить условия" }).click();
+      await expect(page.getByText("подтвердил только исполнитель").first()).toBeVisible({ timeout: 10_000 });
+
       for (const bookingId of [artistBookingId, venueBookingId]) {
+        await injectSession(page, ctx.customer.token, ctx.customer.orgId);
         await page.goto(`/deals/${bookingId}`);
         await expect(page.getByTestId("deal-room-accents")).toBeVisible();
         await expect(page.getByRole("heading", { name: "Состав" })).toBeVisible();

@@ -6,7 +6,7 @@ export function ProfileCompletenessWidget({ completeness }: { completeness: Prof
   return (
     <DashboardWidget
       title="Профиль"
-      hint={`Полнота — ${completeness.score}%`}
+      hint={incomplete.length ? `${incomplete.length} пункта к заполнению` : "Готово к выдаче"}
       isEmpty={incomplete.length === 0}
       empty="Профиль заполнен полностью."
     >

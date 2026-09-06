@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CabinetPageShell } from "../CabinetPageShell";
 import { useCustomerCabinetData } from "./useCustomerCabinetData";
 import { DraftsWidget } from "./widgets/DraftsWidget";
+import { CustomerOnboardingWidget } from "./widgets/CustomerOnboardingWidget";
 import { ExpiringHoldsWidget } from "./widgets/ExpiringHoldsWidget";
 import { NewOffersWidget } from "./widgets/NewOffersWidget";
 import { UpcomingEventsWidget } from "./widgets/UpcomingEventsWidget";
@@ -85,6 +86,10 @@ export function CustomerCabinetDashboard() {
       <section className="cabinet-zone" aria-label="События">
         <h2 className="cabinet-zone-title">События</h2>
         <div className="cabinet-zone-grid">
+          <CustomerOnboardingWidget
+            hasEvents={upcomingEvents.length + drafts.length > 0}
+            hasOffers={newOffers.length > 0}
+          />
           <UpcomingEventsWidget events={upcomingEvents} />
           <DraftsWidget drafts={drafts} />
         </div>

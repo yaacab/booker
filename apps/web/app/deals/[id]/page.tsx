@@ -330,7 +330,7 @@ export default function DealPage() {
             >
               Счёт
             </button>
-            {isStubPayment ? (
+            {isStubPayment && !isExternalPayment ? (
               <>
                 {!paymentProvider ? <span className="chip wait">Пилот / без эквайринга</span> : null}
                 <button
@@ -348,6 +348,11 @@ export default function DealPage() {
                   Пилот: отметить оплату
                 </button>
               </>
+            ) : null}
+            {isExternalPayment ? (
+              <span className="chip wait" data-testid="external-pay-chip">
+                Вне платформы · ждёт оператора
+              </span>
             ) : null}
           </p>
           <div className="tabs" role="tablist">
@@ -455,7 +460,32 @@ export default function DealPage() {
                   : "Счёта нет. Статус платежа передаёт платёжный партнёр."}
               </p>
               {isExternalPayment ? (
-                <p>Оплата вне платформы · статус подтвердит оператор Букера</p>
+                <div className="external-pay-panel" data-testid="external-payment-panel">
+                  <p>
+                    <span className="chip wait">Оплата вне платформы</span>
+                  </p>
+                  <p>
+                    Это <strong>не</strong> онлайн-эквайринг Букера. Перевод идёт напрямую между сторонами; статус
+                    «оплачено» выставляет только оператор после ручного подтверждения.
+                  </p>
+                  {room.payment ? (
+                    <p className="mono">
+                      payment_id: {room.payment.id} · {room.payment.status} · {money(room.payment.amount_rub)}
+                    </p>
+                  ) : null}
+                  <p>
+                    <a
+                      className="btn secondary"
+                      href={`mailto:hello@bukergo.ru?subject=${encodeURIComponent(
+                        `External pay · ${room.booking_id}`,
+                      )}&body=${encodeURIComponent(
+                        `Booking: ${room.booking_id}\nPayment: ${room.payment?.id || "—"}\nПрошу подтвердить оплату вне платформы.`,
+                      )}`}
+                    >
+                      Написать оператору
+                    </a>
+                  </p>
+                </div>
               ) : (
                 <>
                   {isStubPayment && !paymentProvider ? (

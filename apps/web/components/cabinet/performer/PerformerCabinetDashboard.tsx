@@ -9,6 +9,7 @@ import { ExpiringOffersWidget } from "./widgets/ExpiringOffersWidget";
 import { HoldsWidget } from "./widgets/HoldsWidget";
 import { NewRequestsWidget } from "./widgets/NewRequestsWidget";
 import { OpenSlotsWidget } from "./widgets/OpenSlotsWidget";
+import { PerformerOnboardingWidget } from "./widgets/PerformerOnboardingWidget";
 import { ProfileCompletenessWidget } from "./widgets/ProfileCompletenessWidget";
 import { UpcomingPerformancesWidget } from "./widgets/UpcomingPerformancesWidget";
 
@@ -91,6 +92,11 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
         <section className="cabinet-zone" aria-label="Входящие">
           <h2 className="cabinet-zone-title">Входящие</h2>
           <div className="cabinet-zone-grid">
+            <PerformerOnboardingWidget
+              profileComplete={!profileIncomplete}
+              hasOpenSlots={upcomingPerformances.length > 0 || activeHolds.length > 0}
+              hasRequests={newRequests.length + awaitingResponse.length > 0}
+            />
             <NewRequestsWidget
               requests={newRequests}
               role={role}

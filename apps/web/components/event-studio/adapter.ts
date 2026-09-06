@@ -11,6 +11,8 @@ import type {
 import { EMPTY_DRAFT } from "./types";
 
 const DRAFT_KEY = "booker.eventStudioMapDraft";
+
+export const EVENT_STUDIO_DRAFT_STORAGE_KEY = DRAFT_KEY;
 const IDEMPOTENCY_KEY = "booker.eventStudioSubmitKey";
 
 type CatalogItem = {

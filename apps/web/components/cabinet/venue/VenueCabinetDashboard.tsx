@@ -12,6 +12,7 @@ import { ProfileCompletenessWidget } from "../performer/widgets/ProfileCompleten
 import { UpcomingPerformancesWidget } from "../performer/widgets/UpcomingPerformancesWidget";
 import { useVenueCabinetData } from "./useVenueCabinetData";
 import { VenueHallsWidget } from "./widgets/VenueHallsWidget";
+import { VenueOnboardingWidget } from "./widgets/VenueOnboardingWidget";
 
 export type VenueCabinetSection = "home" | "calendar" | "requests";
 
@@ -113,6 +114,11 @@ export function VenueCabinetDashboard({ section = "home" }: { section?: VenueCab
         <section className="cabinet-zone" aria-label="Пространство">
           <h2 className="cabinet-zone-title">Пространство</h2>
           <div className="cabinet-zone-grid">
+            <VenueOnboardingWidget
+              hasHalls={hallCount > 0}
+              profileComplete={!profileIncomplete}
+              hasRequests={newRequests.length + awaitingResponse.length > 0}
+            />
             <VenueHallsWidget halls={halls} role={role} onChanged={() => void reload()} />
             {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
           </div>

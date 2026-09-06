@@ -39,6 +39,20 @@ test.describe("Event Studio Map v1", () => {
     await expect(toggle).toBeVisible();
   });
 
+  test("E06: autosave переживает reload", async ({ page }) => {
+    await page.goto("/events/new?event_studio_map_v1=1");
+    await expect(page.locator(".event-studio-shell")).toBeVisible();
+    await page.getByLabel("Название события").fill("Autosave E06");
+    await expect
+      .poll(async () => page.evaluate(() => localStorage.getItem("booker.eventStudioMapDraft") || ""), {
+        timeout: 5_000,
+      })
+      .toContain("Autosave E06");
+    await page.reload();
+    await expect(page.locator(".event-studio-shell")).toBeVisible();
+    await expect(page.getByLabel("Название события")).toHaveValue("Autosave E06");
+  });
+
   test("screenshots desktop 1440 и mobile 390", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/events/new?event_studio_map_v1=1");
