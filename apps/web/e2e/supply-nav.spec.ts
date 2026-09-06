@@ -21,13 +21,13 @@ test.describe("E16 supply nav: Calendar ≠ Requests", () => {
 
     await calendarLink.click();
     await expect(page).toHaveURL(/\/cabinet\/performer\/calendar/);
-    await expect(page.getByRole("heading", { name: "Расписание" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Входящие" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Расписание", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Входящие", exact: true })).toHaveCount(0);
 
     await requestsLink.click();
     await expect(page).toHaveURL(/\/cabinet\/performer\/requests/);
-    await expect(page.getByRole("heading", { name: "Входящие" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Расписание" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Входящие", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Расписание", exact: true })).toHaveCount(0);
   });
 
   test("venue: section nav calendar vs requests", async ({ page, request }) => {

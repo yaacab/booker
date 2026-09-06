@@ -169,22 +169,28 @@ test.describe("E06 Event Studio autosave", () => {
 
     let eventPosts = 0;
     let successfulCreates = 0;
-    let abortNextCreate = true;
+    let failNextCreate = true;
 
     await page.route("**/events", async (route) => {
       if (route.request().method() !== "POST") {
         await route.continue();
         return;
       }
-      const url = route.request().url().replace(/\/$/, "");
-      if (!/\/events$/.test(url)) {
+      const path = new URL(route.request().url()).pathname.replace(/\/$/, "");
+      // Exact create only — not /analytics/events or /events/:id/requests.
+      if (path !== "/events" && path !== "/api/events") {
         await route.continue();
         return;
       }
       eventPosts += 1;
-      if (abortNextCreate) {
-        abortNextCreate = false;
-        await route.abort("failed");
+      if (failNextCreate) {
+        failNextCreate = false;
+        // Prefer HTTP error over network abort — avoids browser/proxy retry storms.
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "upstream unavailable" }),
+        });
         return;
       }
       successfulCreates += 1;

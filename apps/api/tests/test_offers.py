@@ -184,3 +184,64 @@ def test_viewer_cannot_post_offer_or_ack(client):
         headers=auth_header(viewer["token"]),
     )
     assert denied_version.status_code == 403
+
+
+def test_venue_offer_accepts_hall_slot_of_same_venue(client):
+    """Venue requests are resource_type=venue; open slots live on halls — must still match."""
+    customer = register(client, "c-venue-off@booker.test", "Клиент")
+    owner = register(client, "o-venue-off@booker.test", "Площадка")
+    cust_org = client.post(
+        "/orgs",
+        json={"name": "Заказчик V", "kind": "customer"},
+        headers=auth_header(customer["token"]),
+    ).json()
+    venue_org = client.post(
+        "/orgs",
+        json={"name": "Площадка V", "kind": "venue"},
+        headers=auth_header(owner["token"]),
+    ).json()
+    venue = client.post(
+        "/venues",
+        json={"organization_id": venue_org["id"], "name": "Зал Оффер", "city": "Москва", "capacity": 100},
+        headers=auth_header(owner["token"]),
+    ).json()
+    hall_id = venue.get("hall_id")
+    if not hall_id:
+        halls = client.get(f"/venues/{venue['id']}/halls", headers=auth_header(owner["token"])).json()["items"]
+        hall_id = halls[0]["id"]
+    slot = client.post(
+        "/slots",
+        json={
+            "resource_type": "hall",
+            "resource_id": hall_id,
+            "starts_at": "2026-10-01T18:00:00+00:00",
+            "ends_at": "2026-10-01T23:00:00+00:00",
+        },
+        headers=auth_header(owner["token"]),
+    ).json()
+    event = client.post(
+        "/events",
+        json={
+            "organization_id": cust_org["id"],
+            "title": "Вечер на площадке",
+            "event_date": "2026-10-01T18:00:00+00:00",
+            "guest_count": 60,
+            "budget_rub": 300000,
+        },
+        headers=auth_header(customer["token"]),
+    ).json()
+    req = client.post(
+        f"/events/{event['id']}/requests",
+        json={"resource_type": "venue", "resource_id": venue["id"]},
+        headers=auth_header(customer["token"]),
+    ).json()
+    listed = client.get("/requests", headers=auth_header(owner["token"])).json()["items"]
+    match = next(i for i in listed if i["id"] == req["id"])
+    assert match["slot_id"] == slot["id"]
+    offer = client.post(
+        f"/requests/{req['id']}/offers",
+        json={"honorarium_rub": 150000, "slot_id": slot["id"]},
+        headers=auth_header(owner["token"]),
+    )
+    assert offer.status_code == 200, offer.text
+    assert offer.json()["booking_id"]

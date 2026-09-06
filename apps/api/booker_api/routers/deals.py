@@ -102,6 +102,16 @@ def _open_slot_for_request(db: Session, req: Request) -> AvailabilitySlot | None
     return None
 
 
+def _slot_matches_request(db: Session, slot: AvailabilitySlot, req: Request) -> bool:
+    """Artist/hall exact match; venue requests may use a hall slot of that venue."""
+    if slot.resource_type == req.resource_type and slot.resource_id == req.resource_id:
+        return True
+    if req.resource_type == "venue" and slot.resource_type == "hall":
+        hall = db.get(VenueHall, slot.resource_id)
+        return bool(hall and hall.venue_id == req.resource_id)
+    return False
+
+
 def _honorarium_for_request(db: Session, req: Request) -> int:
     if req.resource_type == "artist":
         tariff = db.query(ArtistTariff).filter(ArtistTariff.artist_id == req.resource_id).first()
@@ -806,7 +816,7 @@ def create_offer(
     slot = db.get(AvailabilitySlot, slot_id)
     if not slot:
         raise HTTPException(404, "Слот не найден")
-    if slot.resource_type != req.resource_type or slot.resource_id != req.resource_id:
+    if not _slot_matches_request(db, slot, req):
         raise HTTPException(400, "Слот не относится к ресурсу заявки")
     offer = Offer(request_id=req.id)
     db.add(offer)
