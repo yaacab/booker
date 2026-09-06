@@ -18,6 +18,8 @@ from booker_api.routers import (
     payments,
     reviews,
     services,
+    shortlists,
+    trust,
 )
 
 
@@ -51,4 +53,6 @@ app.include_router(deals.router)
 app.include_router(payments.router)
 app.include_router(reviews.router)
 app.include_router(briefs.router)
+app.include_router(shortlists.router)
+app.include_router(trust.router)
 app.include_router(admin.router)

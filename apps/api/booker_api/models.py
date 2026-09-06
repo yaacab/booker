@@ -464,3 +464,91 @@ class BriefResponse(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     brief: Mapped[PublicBrief] = relationship(back_populates="responses")
+
+
+class SharedShortlist(Base):
+    """Read-only shared shortlist with token; revoke removes access (E22)."""
+
+    __tablename__ = "shared_shortlists"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    target_type: Mapped[str] = mapped_column(String(16))  # artist | venue
+    title: Mapped[str] = mapped_column(String(255), default="Подборка")
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    items: Mapped[list["SharedShortlistItem"]] = relationship(back_populates="shortlist")
+
+
+class SharedShortlistItem(Base):
+    """Snapshot for shared view: no phones, private budget, or chat."""
+
+    __tablename__ = "shared_shortlist_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    shortlist_id: Mapped[str] = mapped_column(ForeignKey("shared_shortlists.id"), index=True)
+    target_id: Mapped[str] = mapped_column(String(36), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    city: Mapped[str] = mapped_column(String(128), default="")
+    summary: Mapped[str] = mapped_column(Text, default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    shortlist: Mapped[SharedShortlist] = relationship(back_populates="items")
+
+
+class VenueOwnershipClaim(Base):
+    """Claim for open-data/unowned venue listing — does not grant ownership immediately."""
+
+    __tablename__ = "venue_ownership_claims"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id"), index=True)
+    claimant_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    claimant_org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    evidence_note: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SupportTicket(Base):
+    """Operational support / complaint ticket with human escalation path."""
+
+    __tablename__ = "support_tickets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    organization_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("organizations.id"), nullable=True, index=True
+    )
+    category: Mapped[str] = mapped_column(String(64), index=True)
+    subject: Mapped[str] = mapped_column(String(255))
+    body: Mapped[str] = mapped_column(Text)
+    related_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    related_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EmailOutbox(Base):
+    """Persisted email delivery for retry without duplicate semantic send (E21)."""
+
+    __tablename__ = "email_outbox"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    recipient_email: Mapped[str] = mapped_column(String(255), index=True)
+    subject: Mapped[str] = mapped_column(String(255))
+    body: Mapped[str] = mapped_column(Text, default="")
+    template: Mapped[str] = mapped_column(String(64), default="")
+    entity_type: Mapped[str] = mapped_column(String(32), default="notification")
+    entity_id: Mapped[str] = mapped_column(String(64), default="")
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

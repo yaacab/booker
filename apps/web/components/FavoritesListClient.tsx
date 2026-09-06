@@ -87,6 +87,30 @@ export function FavoritesListClient() {
         <Link className="btn" href="/search">
           Каталог
         </Link>
+        {items.filter((i) => i.target_type === "artist").length >= 2 ? (
+          <Link
+            className="btn secondary"
+            href={`/compare?type=artist&ids=${items
+              .filter((i) => i.target_type === "artist")
+              .slice(0, 4)
+              .map((i) => i.target_id)
+              .join(",")}`}
+          >
+            Сравнить артистов
+          </Link>
+        ) : null}
+        {items.filter((i) => i.target_type === "venue").length >= 2 ? (
+          <Link
+            className="btn secondary"
+            href={`/compare?type=venue&ids=${items
+              .filter((i) => i.target_type === "venue")
+              .slice(0, 4)
+              .map((i) => i.target_id)
+              .join(",")}`}
+          >
+            Сравнить площадки
+          </Link>
+        ) : null}
       </p>
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       {!error && items.length === 0 ? (

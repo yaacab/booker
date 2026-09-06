@@ -389,3 +389,14 @@ def list_audit(_: User = Depends(require_admin), db: Session = Depends(get_db)):
 @router.delete("/audit/{audit_id}")
 def delete_audit(audit_id: str, _: User = Depends(require_admin)):
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Журнал неизменяемый")
+
+
+@router.post("/email-outbox/retry")
+def retry_email_outbox(
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """E21: retry failed/pending email without duplicating already-sent keys."""
+    from booker_api.notifications.outbox import retry_pending_outbox
+
+    return retry_pending_outbox(db, actor_user_id=user.id)
