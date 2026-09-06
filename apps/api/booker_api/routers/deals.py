@@ -1439,6 +1439,74 @@ def open_booking_dispute(
     return {"id": dispute.id, "status": dispute.status, "ai_decides": False}
 
 
+@router.get("/messages/inbox")
+def messages_inbox(
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Message hub: deal-room threads the user can access (§19 / W4-MSG-HUB)."""
+    from booker_api.models import TeamMember
+
+    org_ids = [
+        m.organization_id
+        for m in db.query(TeamMember).filter(TeamMember.user_id == user.id).all()
+    ]
+    if user.is_platform_admin:
+        convs = db.query(Conversation).order_by(Conversation.id.desc()).limit(100).all()
+    else:
+        if not org_ids:
+            return {"items": []}
+        convs = db.query(Conversation).all()
+
+    items: list[dict] = []
+    for conv in convs:
+        booking = db.get(Booking, conv.booking_id)
+        if not booking:
+            continue
+        try:
+            cust_org, sup_org = _booking_participant_orgs(db, booking)
+        except Exception:
+            continue
+        if not user.is_platform_admin and cust_org not in org_ids and sup_org not in org_ids:
+            continue
+        last = (
+            db.query(Message)
+            .filter(Message.conversation_id == conv.id)
+            .order_by(Message.created_at.desc())
+            .first()
+        )
+        event = db.get(Event, booking.event_id)
+        cust_name = db.get(Organization, cust_org)
+        sup_name = db.get(Organization, sup_org)
+        items.append(
+            {
+                "conversation_id": conv.id,
+                "booking_id": booking.id,
+                "booking_status": booking.status,
+                "event_title": event.title if event else "",
+                "customer_org": cust_name.name if cust_name else cust_org,
+                "supplier_org": sup_name.name if sup_name else sup_org,
+                "deal_path": f"/deals/{booking.id}",
+                "last_message": (
+                    {
+                        "id": last.id,
+                        "kind": last.kind,
+                        "body": last.body[:240],
+                        "created_at": last.created_at.isoformat() if last.created_at else None,
+                    }
+                    if last
+                    else None
+                ),
+            }
+        )
+
+    items.sort(
+        key=lambda x: (x["last_message"] or {}).get("created_at") or "",
+        reverse=True,
+    )
+    return {"items": items[:50]}
+
+
 @router.post("/deal-room/{booking_id}/messages")
 def post_message(
     booking_id: str,
