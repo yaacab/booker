@@ -6,21 +6,19 @@ Updated: 2026-09-06
 
 - Branch: `feat/master-plan-execution`
 - Docs baseline: `f1a3298`
+- Wave 0: `fb24377` (flag OFF, CI master+e2e, calendar≠requests)
 - PR #14: open — **не merge** без OK владельца
 - Prod deploy: **запрещён** в этой сессии
 
-## Wave 0 (в работе / локально)
+## Сделано
 
-- W0-FLAG: `isEventStudioMapV1` = query → env → **default OFF**; unit `lib/features.test.ts`; deploy env default OFF
-- W0-CI: `ci.yml` push/PR на `master` (+`main`); job `e2e-critical` на SHA кандидата
-- W0-NAV / W0-CAB-ROUTES: `/cabinet/{performer|venue}/{calendar|requests}`; SiteChrome + SupplyCabinetNav; e2e `supply-nav.spec.ts`
+- Wave 0 VERIFIED (unit + e2e supply-nav + event-studio-map)
+- Wave 1: `/catalog/search` format/travel/budget_max/guests/seating/kind; home dual search; SEO metadata + sitemap profiles; E03 synthetic chip; e2e search-filters
 
 ## Следующее
 
-1. Локально: unit + critical e2e → коммит Wave 0
-2. Wave 1: search filters, home dual search, SEO
-3. Без merge/prod; E25 = G3
+Wave 2 (кабинеты/онбординг/deal path/multi-hall) → 3 discovery B → 4 trust → 5 G2 pack.
 
 ## Owner / env blockers (не замена G1/G2)
 
-См. `docs/OWNER_INPUTS.md`: PAYMENT_PARTNER, MAP_*, EMAIL/SMS, legal entity, LAWYER_APPROVAL.
+См. `docs/OWNER_INPUTS.md`. Map provider = C, не блокер W1.

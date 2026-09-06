@@ -10,14 +10,14 @@ Evidence при закрытии: реализация → тест → резу
 | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
 | DOC-GAP | Gap + spec в repo | P0 | — | coord | VERIFIED | docs | review | f1a3298 | — |
 | DOC-CONTRACT | CONTRACT discovery + reviews/claims | P0 | DOC-GAP | coord | VERIFIED | CONTRACT | review | f1a3298 | — |
-| W0-FLAG | Flag query→env→default OFF | P0 | — | web | VERIFIED | E05 | unit+e2e | pending | — |
-| W0-CI | CI master; e2e на SHA PR | P0 | — | ops | VERIFIED | CI on branch SHA | CI | pending | — |
-| W0-NAV | Calendar ≠ Requests URLs | P0 | — | web | VERIFIED | E15 E16 | e2e | pending | — |
-| W0-CAB-ROUTES | cabinet section routes | P0 | W0-NAV | web | VERIFIED | sections | e2e | pending | — |
-| W1-SEARCH-ART | Filters format/travel/budget | P0 | — | api+web | TODO | E01 | api+e2e | — | — |
-| W1-SEARCH-VEN | Hall capacity/equipment | P0 | — | api+web | TODO | E02 E03 | api+e2e | — | — |
-| W1-SEO | metadata + sitemap | P0 | — | web | TODO | SEO | unit | — | — |
-| W1-HOME | Home dual search | P0 | W1-SEARCH | web | TODO | §4.1 | e2e | — | — |
+| W0-FLAG | Flag query→env→default OFF | P0 | — | web | VERIFIED | E05 | unit+e2e | fb24377 | — |
+| W0-CI | CI master; e2e на SHA PR | P0 | — | ops | VERIFIED | CI on branch SHA | CI | fb24377 | — |
+| W0-NAV | Calendar ≠ Requests URLs | P0 | — | web | VERIFIED | E15 E16 | e2e | fb24377 | — |
+| W0-CAB-ROUTES | cabinet section routes | P0 | W0-NAV | web | VERIFIED | sections | e2e | fb24377 | — |
+| W1-SEARCH-ART | Filters format/travel/budget | P0 | — | api+web | VERIFIED | E01 | api+e2e | pending | — |
+| W1-SEARCH-VEN | Hall capacity/equipment | P0 | — | api+web | VERIFIED | E02 E03 | api+e2e | pending | map OWNER |
+| W1-SEO | metadata + sitemap | P0 | — | web | VERIFIED | SEO | unit | pending | — |
+| W1-HOME | Home dual search | P0 | W1-SEARCH | web | VERIFIED | §4.1 | e2e | pending | — |
 | W2-ONBOARD | Role onboarding | P0 | — | web+api | TODO | §5 | e2e | — | — |
 | W2-CAB-CUST | Customer scenarios | P0 | W0-CAB | web | TODO | §11.2 | e2e 3 roles | — | — |
 | W2-CAB-PERF | Performer scenarios | P0 | W0-CAB | web | TODO | §12 | e2e | — | — |

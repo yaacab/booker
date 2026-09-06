@@ -150,7 +150,7 @@ def seed(db: Session) -> dict[str, str]:
         verified=True,
         verified_status="approved",
         media_url="",
-        rider_json='{"format":"DJ-сет 2 часа","lineup":"1 человек","tech":"пульт, 2 колонки"}',
+        rider_json='{"format":"DJ-сет 2 часа","formats":["club","wedding"],"travel_ok":true,"lineup":"1 человек","tech":"пульт, 2 колонки"}',
     )
     db.add(artist)
     db.flush()
@@ -501,7 +501,7 @@ def enrich_catalog(db: Session) -> int:
         added += 1
     nova = db.query(Artist).filter(Artist.name == "DJ Nova").one_or_none()
     if nova and (not nova.rider_json or nova.rider_json == "{}"):
-        nova.rider_json = '{"format":"DJ-сет 2 часа","lineup":"1 человек","tech":"пульт, 2 колонки"}'
+        nova.rider_json = '{"format":"DJ-сет 2 часа","formats":["club","wedding"],"travel_ok":true,"lineup":"1 человек","tech":"пульт, 2 колонки"}'
     if nova:
         existing = db.query(Service).filter(Service.organization_id == nova.organization_id).count()
         if existing == 0:

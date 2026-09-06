@@ -407,6 +407,21 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
 }
 .cabinet-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-left: 8px; }
 
+.home-kind-toggle {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.home-kind-toggle .category-chips {
+  margin-top: 6px;
+}
+.home-kind-toggle button.chip {
+  cursor: pointer;
+  font: inherit;
+  background: transparent;
+}
+
 .cabinet-metrics {
   display: grid; gap: 12px; margin-top: 18px;
   grid-template-columns: repeat(2, minmax(0, 1fr));

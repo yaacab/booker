@@ -76,4 +76,5 @@ jobs:
           npx playwright test \
             e2e/event-studio-map.spec.ts \
             e2e/supply-nav.spec.ts \
+            e2e/search-filters.spec.ts \
             --reporter=line

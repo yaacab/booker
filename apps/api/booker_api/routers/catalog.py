@@ -420,72 +420,181 @@ def delete_vacation(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
 
+def _parse_rider(raw: str | None) -> dict:
+    try:
+        data = json.loads(raw or "{}")
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+def _rider_formats(rider: dict) -> list[str]:
+    values: list[str] = []
+    fmt = rider.get("format")
+    if isinstance(fmt, str) and fmt.strip():
+        values.append(fmt.strip().lower())
+    formats = rider.get("formats")
+    if isinstance(formats, list):
+        values.extend(str(x).strip().lower() for x in formats if str(x).strip())
+    elif isinstance(formats, str) and formats.strip():
+        values.extend(part.strip().lower() for part in formats.split(",") if part.strip())
+    return values
+
+
+def _rider_travel_ok(rider: dict) -> bool | None:
+    """True/False if rider declares travel; None = unknown (does not match travel=1 filter)."""
+    for key in ("travel", "travel_ok", "выезд"):
+        if key not in rider:
+            continue
+        val = rider[key]
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return bool(val)
+        if isinstance(val, str):
+            low = val.strip().lower()
+            if low in {"1", "true", "yes", "да", "ok"}:
+                return True
+            if low in {"0", "false", "no", "нет"}:
+                return False
+    return None
+
+
+def _format_matches(rider: dict, needle: str) -> bool:
+    needle_l = needle.strip().lower()
+    if not needle_l:
+        return True
+    return any(needle_l in fmt for fmt in _rider_formats(rider))
+
+
+def _min_tariff(tariffs: list) -> int | None:
+    amounts = [int(t.honorarium_rub) for t in tariffs if getattr(t, "honorarium_rub", None) is not None]
+    return min(amounts) if amounts else None
+
+
 @router.get("/catalog/search")
 def search_catalog(
     city: str = Query("Москва"),
     category: str | None = None,
     date: datetime | None = None,
     exclude: str | None = Query(None, description="Comma-separated artist/venue ids to hide"),
+    format: str | None = Query(None, description="Substring match against artist rider format(s)"),
+    travel: bool | None = Query(None, description="Require travel_ok in artist rider when true"),
+    budget_max: int | None = Query(None, ge=0, description="Max honorarium (min tariff)"),
+    guests: int | None = Query(None, ge=1, description="Minimum hall capacity"),
+    seating: str | None = Query(None, description="Optional seating hint; filters halls/venues mentioning it"),
+    kind: str | None = Query(None, description="artist | venue — narrow dual search"),
     db: Session = Depends(get_db),
 ):
     """В выдаче только профили с календарём. Занятые слоты не считаются свободными."""
     excluded = {item.strip() for item in (exclude or "").split(",") if item.strip()}
-    q = db.query(Artist).filter(Artist.city == city)
-    if category:
-        q = q.filter(Artist.category == category)
+    kind_l = (kind or "").strip().lower() or None
+    include_artists = kind_l != "venue" and (not category or category != "venue")
+    include_venues = kind_l != "artist" and (not category or category == "venue")
+    # Dual search: category=venue without kind still venues-only via include_artists false.
+    if category == "venue":
+        include_artists = False
+        include_venues = True
+    elif category and kind_l != "venue":
+        include_venues = kind_l == "venue"
+
     horizon_end = now() + timedelta(days=30)
     results = []
-    for artist in q.all():
-        if artist.id in excluded:
-            continue
-        slots = (
-            db.query(AvailabilitySlot)
-            .filter(
-                AvailabilitySlot.resource_type == "artist",
-                AvailabilitySlot.resource_id == artist.id,
-            )
-            .all()
-        )
-        if not slots:
-            continue
-        open_future = open_slots_unmasked(
-            slots, horizon_start=now(), horizon_end=horizon_end
-        )
-        if date:
-            day_start, day_end = calendar_day_bounds(date)
-            free = open_slots_unmasked(slots, day_start=day_start, day_end=day_end)
-            if not free:
+    if include_artists:
+        q = db.query(Artist).filter(Artist.city == city)
+        if category and category != "venue":
+            q = q.filter(Artist.category == category)
+        for artist in q.all():
+            if artist.id in excluded:
                 continue
-        elif not open_future:
-            continue
-        tariffs = db.query(ArtistTariff).filter(ArtistTariff.artist_id == artist.id).all()
-        pool = free if date else open_future
-        nxt = min(pool, key=lambda s: aware(s.starts_at)) if pool else None
-        results.append(
-            {
-                "id": artist.id,
-                "name": artist.name,
-                "city": artist.city,
-                "category": artist.category,
-                "verified": artist.verified,
-                "has_calendar": True,
-                "open_slots": len(pool),
-                "next_open_at": nxt.starts_at.isoformat() if nxt else None,
-                "search_date": aware(date).date().isoformat() if date else None,
-                "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
-            }
-        )
+            rider = _parse_rider(artist.rider_json)
+            if format and not _format_matches(rider, format):
+                continue
+            if travel is True and _rider_travel_ok(rider) is not True:
+                continue
+            if travel is False and _rider_travel_ok(rider) is True:
+                continue
+            slots = (
+                db.query(AvailabilitySlot)
+                .filter(
+                    AvailabilitySlot.resource_type == "artist",
+                    AvailabilitySlot.resource_id == artist.id,
+                )
+                .all()
+            )
+            if not slots:
+                continue
+            open_future = open_slots_unmasked(
+                slots, horizon_start=now(), horizon_end=horizon_end
+            )
+            if date:
+                day_start, day_end = calendar_day_bounds(date)
+                free = open_slots_unmasked(slots, day_start=day_start, day_end=day_end)
+                if not free:
+                    continue
+            elif not open_future:
+                continue
+            tariffs = db.query(ArtistTariff).filter(ArtistTariff.artist_id == artist.id).all()
+            if budget_max is not None:
+                floor = _min_tariff(tariffs)
+                if floor is None or floor > budget_max:
+                    continue
+            pool = free if date else open_future
+            nxt = min(pool, key=lambda s: aware(s.starts_at)) if pool else None
+            results.append(
+                {
+                    "id": artist.id,
+                    "name": artist.name,
+                    "city": artist.city,
+                    "category": artist.category,
+                    "verified": artist.verified,
+                    "has_calendar": True,
+                    "open_slots": len(pool),
+                    "next_open_at": nxt.starts_at.isoformat() if nxt else None,
+                    "search_date": aware(date).date().isoformat() if date else None,
+                    "travel_ok": _rider_travel_ok(rider),
+                    "formats": _rider_formats(rider),
+                    "tariffs": [
+                        {"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs
+                    ],
+                }
+            )
+
     venue_results = []
-    if not category or category == "venue":
+    if include_venues:
+        seating_l = (seating or "").strip().lower() or None
         for venue in db.query(Venue).filter(Venue.city == city).all():
             if venue.id in excluded:
                 continue
             halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
+            if guests is not None:
+                matching = [h for h in halls if (h.capacity or 0) >= guests]
+            else:
+                matching = list(halls)
+            if seating_l:
+                blob = " ".join(
+                    [
+                        (getattr(venue, "description", "") or ""),
+                        (getattr(venue, "name", "") or ""),
+                        *[h.name for h in matching],
+                    ]
+                ).lower()
+                if seating_l not in blob:
+                    # Soft filter: keep venue only if hint appears; unknown seating does not invent match.
+                    continue
+            if guests is not None and not matching:
+                continue
+            hall_ids = {h.id for h in matching} if guests is not None else {h.id for h in halls}
             hall_slots = []
             for hall in halls:
+                if hall.id not in hall_ids:
+                    continue
                 hall_slots.extend(
                     db.query(AvailabilitySlot)
-                    .filter(AvailabilitySlot.resource_type == "hall", AvailabilitySlot.resource_id == hall.id)
+                    .filter(
+                        AvailabilitySlot.resource_type == "hall",
+                        AvailabilitySlot.resource_id == hall.id,
+                    )
                     .all()
                 )
             if not hall_slots:
@@ -503,6 +612,10 @@ def search_catalog(
                 continue
             nxt = min(pool, key=lambda s: aware(s.starts_at))
             tariffs = db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).all()
+            if budget_max is not None and kind_l == "venue":
+                floor = _min_tariff(tariffs)
+                if floor is not None and floor > budget_max:
+                    continue
             venue_results.append(
                 {
                     "id": venue.id,
@@ -514,6 +627,8 @@ def search_catalog(
                     "metro": getattr(venue, "metro", "") or "",
                     "availability_mode": getattr(venue, "availability_mode", "owner") or "owner",
                     "listing_origin": getattr(venue, "listing_origin", "owner") or "owner",
+                    "capacity": venue.capacity,
+                    "matching_halls": [_hall_item(h) for h in matching],
                     "open_slots": len(pool),
                     "next_open_at": nxt.starts_at.isoformat(),
                     "tariffs": [{"honorarium_rub": t.honorarium_rub} for t in tariffs],

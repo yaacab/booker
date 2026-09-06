@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { CityField } from "@/components/CityField";
-import { HeroDateField } from "@/components/HeroDateField";
+import { HomeSearchForm } from "@/components/HomeSearchForm";
 
 export const metadata = {
   alternates: { canonical: "/" },
@@ -46,20 +45,7 @@ export default function HomePage() {
           <p className="kicker">Поиск по календарю</p>
           <h2>Найдите свободный слот</h2>
           <p className="timeline">Сначала дата и формат — затем доступные участники.</p>
-          <form className="search search-vertical" action="/search" method="get">
-            <CityField name="city" defaultValue="Москва" />
-            <HeroDateField />
-            <label>
-              Кто нужен
-              <select name="category" defaultValue="dj">
-                <option value="dj">DJ</option>
-                <option value="host">Ведущий</option>
-                <option value="cover">Кавер-группа</option>
-                <option value="venue">Площадка</option>
-              </select>
-            </label>
-            <button type="submit">Показать свободных</button>
-          </form>
+          <HomeSearchForm />
           <p className="timeline">Пилотный каталог сейчас работает по Москве.</p>
         </aside>
       </section>
