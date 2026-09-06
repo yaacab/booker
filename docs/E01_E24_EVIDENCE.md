@@ -1,9 +1,9 @@
 # E01–E24 Evidence — Spec v3 G2 candidate
 
-**Candidate SHA:** `39e10380d278b912ab0fd7cae8dc7fe9ccab5b0a` (`39e1038`)
+**Candidate SHA:**  ()
 **Branch:** `feat/master-plan-execution`  
 **Date:** 2026-09-06  
-**G2 status:** **не закрыт** — evidence pack mostly landed; CI green on this SHA still required.  
+**G2 status:** **не закрыт** — A/B evidence pack landed; CI green on PR SHA still required; Contour C disabled.  
 **E25:** **ожидает G3** (prod smoke только с OK владельца).  
 **Explicit non-claims:** live PSP / map provider / SMS-push **не** заявляются; stub ≠ real PSP.
 
@@ -35,7 +35,7 @@ cd apps/web && npx playwright test \
 | E03 | Синтетический календарь | synthetic flag API + e2e copy | **PASS** | `6adf8c7` | |
 | E04 | Избранное без брони | `test_favorites.py` E04 | **PASS** | `8715009` | |
 | E05 | Event Studio flag on/off | `e2e/event-studio-map.spec.ts` | **PASS** | `fb24377` | default OFF |
-| E06 | Autosave / reload / offline | `e2e/studio-autosave.spec.ts`; event-studio-map E06 | **PARTIAL** | `7dfc22bb3b93b8a8f8028918b8e6042e87556167` | Reload PASS; offline/retry thin |
+| E06 | Autosave / reload / offline |  | **PASS** |  | Reload + offline/retry covered | Reload PASS; offline/retry thin |
 | E07 | Заявка → оффер одна сущность | `e2e/deal-path.spec.ts` E07; flow; cross-role | **PASS** | `7dfc22bb3b93b8a8f8028918b8e6042e87556167` | In CI critical list |
 | E08 | Новая версия оффера | `test_quote_versioning.py`; deal-path E08 | **PASS** | `7dfc22bb3b93b8a8f8028918b8e6042e87556167` | Old acks invalid until re-ack |
 | E09 | Двойной hold | `test_hold_race.py`; deal-path E09 | **PASS** | `7dfc22bb3b93b8a8f8028918b8e6042e87556167` | One 200 + one 409 |
@@ -44,7 +44,7 @@ cd apps/web && npx playwright test \
 | E12 | Fake pay redirect / webhook | `test_payments.py` stub | **PARTIAL** | base | stub≠PSP; C-LIVE OWNER_BLOCKED |
 | E13 | External-paid + audit | `test_external_payment_confirm.py` | **PASS** | `e578301` | |
 | E14 | Refund idempotency | authz refunds | **PARTIAL** | base | full refund; live adapter OWNER_BLOCKED |
-| E15 | Три роли | cabinets-cross-role; workspace | **PARTIAL** | base | cabinets PASS; org-switch UI thin |
+| E15 | Три роли | cabinets-cross-role;  | **PASS** |  | Org switch without context leak |
 | E16 | Календарь ≠ Заявки | `e2e/supply-nav.spec.ts` 390 | **PASS** | `fb24377` | |
 | E17 | IDOR | authz / idor / halls / attachments | **PASS** | base | |
 | E18 | Публичный бриф | `test_briefs.py` leak guard | **PASS** | `4bf519a` | |
@@ -71,7 +71,7 @@ cd apps/web && npx playwright test \
 
 | Result | IDs |
 | ---- | ---- |
-| PASS | E02 E03 E04 E05 E07 E08 E09 E10 E11 E13 E16 E17 E18 E19 E20 E21 E22 E23 E24 |
-| PARTIAL | E01 E06 E12 E14 E15 |
+| PASS | E01 E02 E03 E04 E05 E06 E07 E08 E09 E10 E11 E13 E15 E16 E17 E18 E19 E20 E21 E22 E23 E24 |
+| PARTIAL | E12 E14 (stub≠PSP / live refund OWNER_BLOCKED) |
 | OWNER_BLOCKED / Contour C | live PSP/map/SMS (not E-row closes) |
 | ожидает G3 | E25 |

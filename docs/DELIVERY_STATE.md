@@ -1,12 +1,11 @@
 # Delivery State
 
-Updated: 2026-09-06 (LOOP tick #3 — G2 evidence integrate)
+Updated: 2026-09-06 (LOOP tick #5 — residual E01/E15/E06 integrated)
 
 ## Git
 
-- Branch: `feat/master-plan-execution` (integration)
-- HEAD: `39e1038`
-- Ahead of origin: local; no push required this turn
+- Branch:  (integration)
+- HEAD: 
 - PR #14: OPEN — **не merge** без OK владельца
 - Prod deploy: **запрещён**
 
@@ -14,22 +13,19 @@ Updated: 2026-09-06 (LOOP tick #3 — G2 evidence integrate)
 
 | Wave | Status | Notes |
 | ---- | ------ | ----- |
-| 0 | VERIFIED | flag OFF, CI, calendar≠requests |
-| 1 | VERIFIED | search/SEO/home |
-| 2 | MOSTLY | deal-path E07–E09 e2e; onboard; autosave; cab depth |
-| 3 | MOSTLY | fav/briefs/share/compare/saved/promo |
-| 4 | MOSTLY | reviews/claim/support/outbox/msg hub |
-| 5 | MOSTLY | screenshots 3 roles; E-table; a11y; CI expand; manifest draft |
+| 0–1 | VERIFIED | + E01 persist e2e |
+| 2 | MOSTLY | deal-path; onboard; autosave/offline; cab depth |
+| 3–4 | MOSTLY | discovery + trust |
+| 5 | MOSTLY | screenshots; E-table; a11y; CI expand; manifest |
 | E25 | ожидает G3 | — |
 
-## Owner / env blockers (≠ done)
+## G2 open
 
-- C-LIVE / C-MAP / C-SMS — `docs/OWNER_INPUTS.md`
-- Stub payments ≠ real PSP
-- E25 requires owner OK for prod
+1. CI green on  (GitHub PR checks)
+2. E12/E14 PARTIAL — stub≠live PSP (Contour C OWNER_BLOCKED)
+3. Contour C live map/SMS/PSP — documented disabled
+4. E25 — ожидает G3
 
-## G2 residual
+## G2 closed (this branch)
 
-1. Await CI green on `7dfc22bb3b93b8a8f8028918b8e6042e87556167` (expanded e2e list)
-2. Residual PARTIAL rows in `docs/E01_E24_EVIDENCE.md` (E01 post-login, E06 offline, E12/E14 live/stub limits)
-3. No merge/prod without owner OK
+Screenshots 3 roles; E-table; deal-path E07–E09; a11y E24; backup E23; E01 persist; E06 autosave/offline; E15 org-switch; request→offer e2e

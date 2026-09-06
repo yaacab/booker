@@ -77,9 +77,11 @@ jobs:
             e2e/event-studio-map.spec.ts \
             e2e/supply-nav.spec.ts \
             e2e/search-filters.spec.ts \
+            e2e/search-persist.spec.ts \
             e2e/flow.spec.ts \
             e2e/deal-path.spec.ts \
             e2e/cabinets-cross-role.spec.ts \
+            e2e/org-switch.spec.ts \
             e2e/cabinet-a11y.spec.ts \
             e2e/studio-autosave.spec.ts \
             e2e/onboarding.spec.ts \
