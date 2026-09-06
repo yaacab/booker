@@ -7,7 +7,7 @@ Prod deploy: запрещён до G3 / OK владельца
 
 ## Candidate SHA
 
-- Integration SHA: PENDING_PIN (next docs commit after this)
+- Integration SHA: 321a2d8 (321a2d844adc5dbec37c824935ffddc1445fd3a5)
 - Evidence: CI checks на этом SHA / PR, не на старом master
 - Schema revision (Alembic head): `b1c2d3e4f5a7` (saved_searches)
 - Payment mode: stub (`BOOKER_PAYMENT_PROVIDER=stub`, live disabled)

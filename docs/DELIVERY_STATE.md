@@ -5,7 +5,7 @@ Updated: 2026-09-06 (LOOP tick #11 — cab depth e2e + E01/E15 harden + push)
 ## Git
 
 - Branch: feat/master-plan-execution (integration)
-- HEAD: (pin after commit)
+- HEAD: 321a2d8
 - PR #14: OPEN — не merge без OK владельца
 - Prod deploy: запрещён
 

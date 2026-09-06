@@ -1,6 +1,6 @@
 # E01-E24 Evidence — Spec v3 G2 candidate
 
-**Candidate SHA:** (pin after commit — see RELEASE_MANIFEST)  
+**Candidate SHA:** 321a2d844adc5dbec37c824935ffddc1445fd3a5 (321a2d8)  
 **Branch:** feat/master-plan-execution  
 **Date:** 2026-09-06  
 **G2 status:** не закрыт — A/B evidence pack landed; CI green on PR SHA still required; Contour C disabled.  
