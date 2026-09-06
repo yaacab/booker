@@ -7,7 +7,7 @@ Prod deploy: **запрещён** до G3 / OK владельца
 
 ## Candidate SHA
 
-- Integration SHA: `40e7072` (`40e7072dec8b8c45415185184cd2443a1549a238`)
+- Integration SHA: `14b2c0d` (`14b2c0dfbf7068d537cb1947e640192ed12f42c2`)
 - Evidence: CI checks на **этом** SHA / PR, не на старом `master`
 
 ## Scope A+B (статус)
@@ -39,8 +39,8 @@ Prod deploy: **запрещён** до G3 / OK владельца
 
 ## Evidence checklist (G2)
 
-- [ ] CI green on candidate SHA (unit + critical e2e) — list expanded on `40e7072`; **await PR checks green**
-- [x] Screenshots 1440/390 × 3 roles — `docs/screenshots/g2-roles/` (integrated `40e7072`)
+- [ ] CI green on candidate SHA (unit + critical e2e) — **local** `deal-path`+`cabinet-a11y` 9/9 PASS; list expanded; await GitHub checks on `14b2c0d`; **await PR checks green**
+- [x] Screenshots 1440/390 × 3 roles — `docs/screenshots/g2-roles/` (integrated `14b2c0d`)
 - [x] Сквозной сценарий заявка→оффер на SHA — `e2e/flow.spec.ts` + `e2e/deal-path.spec.ts` + `cabinets-cross-role.spec.ts`
 - [x] E01–E24 table filled; E25 = ожидает G3 — `docs/E01_E24_EVIDENCE.md`
 - [ ] No open mandatory A/B — residual PARTIAL (E01/E06/E12/E14/E15); Contour C OWNER_BLOCKED documented, not claimed done
