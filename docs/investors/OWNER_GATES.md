@@ -2,6 +2,8 @@
 
 Вне кода. Без этого **уровень 3 (live-деньги)** не «включается конфигом честно».
 
+**Статус продукта (код, 2026-09-06):** diligence-ready на `bukergo.ru` с `BOOKER_PAYMENT_PROVIDER=external`. Этот файл — трек владельца.
+
 ## 1. OPERATOR
 
 - [ ] Заполнить все поля [docs/legal/OPERATOR.md](../legal/OPERATOR.md)

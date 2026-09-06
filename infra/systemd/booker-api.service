@@ -11,7 +11,7 @@ Environment=BOOKER_PUBLIC_URL=https://bukergo.ru
 Environment=BOOKER_UPLOAD_DIR=/opt/booker/data/uploads
 Environment=BOOKER_ALLOW_DEFAULT_WEBHOOK_SECRET=false
 Environment=BOOKER_PAYMENT_PROVIDER=external
-Environment=BOOKER_REQUIRE_ADMIN_2FA_ENFORCED=false
+Environment=BOOKER_REQUIRE_ADMIN_2FA_ENFORCED=true
 Environment=BOOKER_IN_APP_PROVIDER=dev
 EnvironmentFile=-/etc/booker/booker-api.env
 ExecStart=/opt/booker/.venv/bin/uvicorn booker_api.main:app --host 127.0.0.1 --port 8030

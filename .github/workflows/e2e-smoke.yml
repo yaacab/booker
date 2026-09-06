@@ -1,0 +1,44 @@
+name: e2e-smoke
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: API deps + seed DB
+        working-directory: apps/api
+        run: |
+          pip install -e ".[dev]"
+          BOOKER_ALLOW_DEMO_SEED=1 BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db python -m booker_api.seed
+      - name: Start API
+        working-directory: apps/api
+        run: |
+          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PAYMENT_PROVIDER=stub \
+            uvicorn booker_api.main:app --host 127.0.0.1 --port 8030 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8030/health && break; sleep 1; done
+      - name: Web install + Playwright
+        working-directory: apps/web
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+      - name: E2E flow smoke
+        working-directory: apps/web
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8030
+          BOOKER_INTERNAL_API_URL: http://127.0.0.1:8030
+        run: |
+          npm run build
+          npx next start -H 127.0.0.1 -p 3000 &
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          npx playwright test e2e/flow.spec.ts --reporter=line

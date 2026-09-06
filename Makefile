@@ -1,4 +1,4 @@
-.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow
+.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow e2e-smoke
 
 PYTHON ?= $(CURDIR)/.venv/bin/python
 
@@ -20,6 +20,10 @@ web-build:
 	cd apps/web && npm run build
 
 check: test-api lint
+
+# Узкий Playwright smoke (нужны локальные API+web). Не в default CI.
+e2e-smoke:
+	cd apps/web && npx playwright test e2e/flow.spec.ts --reporter=line
 
 seed:
 	cd apps/api && BOOKER_ALLOW_DEMO_SEED=1 $(PYTHON) -m booker_api.seed

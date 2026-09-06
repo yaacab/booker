@@ -15,5 +15,7 @@
 | [DOMAINS.md](../ops/DOMAINS.md) | DNS / канон bukergo.ru |
 | [FOUNDING_SUPPLY_PLAYBOOK.md](../ops/FOUNDING_SUPPLY_PLAYBOOK.md) | Outreach supply |
 | [RESTORE_DRILL_LOG.md](../ops/RESTORE_DRILL_LOG.md) | Журнал restore |
+| [POSTGRES_STAGING_PROOF.md](../ops/POSTGRES_STAGING_PROOF.md) | Alembic на Postgres staging |
+| [FOUNDING_SUPPLY_PLAYBOOK.md](../ops/FOUNDING_SUPPLY_PLAYBOOK.md) | Outreach founding supply |
 | [FIGMA.md](../design/FIGMA.md) | Дизайн |
 | Этот каталог `docs/investors/` | One-pager, pitch, demo, metrics, payments path, risks, owner gates |
