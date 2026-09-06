@@ -9,13 +9,14 @@ import { loginHref } from "@/lib/next";
 import {
   budgetHintFromSelection,
   bumpDraftVersion,
+  clearSubmitIdempotency,
   EVENT_STUDIO_DRAFT_STORAGE_KEY,
+  getOrCreateSubmitIdempotencyKey,
   isDraftVersionConflict,
   loadCatalog,
   loadStoredDraft,
   mapCatalogTalent,
   mapCatalogVenue,
-  newSubmitIdempotencyKey,
   saveStoredDraft,
   submitEventStudioDraft,
 } from "./adapter";
@@ -38,12 +39,19 @@ export default function EventStudioShell() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
-  const idempotencyRef = useRef(newSubmitIdempotencyKey());
+  const idempotencyRef = useRef("");
   const catalogAbortRef = useRef<AbortController | null>(null);
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
     const stored = loadStoredDraft();
-    if (stored) setDraft(stored.draft);
+    if (stored) {
+      setDraft(stored.draft);
+    } else {
+      // Fresh studio session — allow a new event create (do not reuse prior result).
+      clearSubmitIdempotency();
+    }
+    idempotencyRef.current = getOrCreateSubmitIdempotencyKey();
     setHydrated(true);
     trackClientEvent("event.studio.started");
   }, []);
@@ -125,6 +133,7 @@ export default function EventStudioShell() {
   const budgetHint = useMemo(() => budgetHintFromSelection(talents, venues, draft), [talents, venues, draft]);
 
   async function handleContinue() {
+    if (submitLockRef.current) return;
     if (!getToken()) {
       router.push(loginHref("/events/new?event_studio_map_v1=1"));
       return;
@@ -137,9 +146,13 @@ export default function EventStudioShell() {
       setSubmitError("Выберите текущую или будущую дату.");
       return;
     }
+    submitLockRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
     try {
+      if (!idempotencyRef.current) {
+        idempotencyRef.current = getOrCreateSubmitIdempotencyKey();
+      }
       const { eventId, reused } = await submitEventStudioDraft(draft, talents, idempotencyRef.current);
       if (reused) {
         setSubmitError("Заявка уже отправлена — открываем событие.");
@@ -148,6 +161,7 @@ export default function EventStudioShell() {
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Не удалось отправить");
     } finally {
+      submitLockRef.current = false;
       setSubmitting(false);
     }
   }
