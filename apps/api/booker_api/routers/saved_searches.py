@@ -177,4 +177,3 @@ def delete_saved_search(
     require_org_member(db, user, row.organization_id)
     db.delete(row)
     db.commit()
-    return None

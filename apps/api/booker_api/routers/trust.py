@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
-from booker_api.models import Organization, SupportTicket, User, Venue, VenueOwnershipClaim, utcnow
+from booker_api.models import Organization, SupportTicket, User, Venue, VenueOwnershipClaim
 from booker_api.security import audit, current_user, require_org_member
 
 router = APIRouter(tags=["trust"])

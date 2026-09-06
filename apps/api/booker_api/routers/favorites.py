@@ -184,7 +184,6 @@ def remove_favorite_by_target(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Избранное не найдено")
     db.delete(row)
     db.commit()
-    return None
 
 
 @router.delete("/{favorite_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -201,4 +200,3 @@ def remove_favorite(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет доступа к организации")
     db.delete(row)
     db.commit()
-    return None

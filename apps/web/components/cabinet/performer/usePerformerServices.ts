@@ -50,9 +50,10 @@ export function usePerformerServices(orgId: string, role: string) {
     setBusy(true);
     setError("");
     try {
+      const category = String(data.get("category") || "dj");
       const body: Record<string, unknown> = {
         organization_id: orgId,
-        category_code: String(data.get("category") || "dj"),
+        category_code: category,
         title,
         description: String(data.get("description") || "").trim(),
       };
@@ -63,7 +64,7 @@ export function usePerformerServices(orgId: string, role: string) {
         body: JSON.stringify(body),
       });
       setServices((prev) => [...prev, created]);
-      trackClientEvent("cabinet.service_created", { category: body.category_code });
+      trackClientEvent("cabinet.service_created", { category });
       form.reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось создать услугу");

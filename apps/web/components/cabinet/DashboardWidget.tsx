@@ -6,7 +6,7 @@ type DashboardWidgetProps = {
   hint?: string;
   empty?: string;
   isEmpty?: boolean;
-  children: ReactNode;
+  children?: ReactNode;
   span?: "full" | "half";
   accent?: "venue" | "performer" | "customer" | "neutral";
 };
@@ -16,7 +16,7 @@ export function DashboardWidget({
   hint,
   empty,
   isEmpty,
-  children,
+  children = null,
   span = "half",
   accent = "neutral",
 }: DashboardWidgetProps) {

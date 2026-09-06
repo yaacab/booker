@@ -1465,7 +1465,10 @@ def messages_inbox(
             continue
         try:
             cust_org, sup_org = _booking_participant_orgs(db, booking)
-        except Exception:
+        except (AttributeError, TypeError):
+            # Broken booking graph (missing offer/request/event) — skip inbox row.
+            cust_org, sup_org = "", ""
+        if not cust_org or not sup_org:
             continue
         if not user.is_platform_admin and cust_org not in org_ids and sup_org not in org_ids:
             continue
