@@ -1,0 +1,87 @@
+/* Reference direction: silver-white, forest ink and translucent lime. */
+body { background: #edf1eb; }
+.wrap { max-width: 1488px; padding-inline: clamp(20px, 4.5vw, 68px); }
+.top.surface-glass { background: rgba(237, 241, 235, .88); border-bottom: 0; padding-block: 24px; gap: 24px; }
+.brand { display: inline-flex; align-items: center; gap: 24px; }
+.brand-word { font-size: 44px; font-weight: 800; letter-spacing: -.065em; }
+.brand-lime-dot { color: #c8f13c; display: inline-block; font-size: 42px; line-height: .5; vertical-align: top; margin-left: 2px; }
+.brand-tagline { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.brand-lockup.compact .brand-word { font-size: 24px; }
+.nav-public { padding: 5px 14px; border: 1px solid rgba(255,255,255,.9); border-radius: 20px; background: rgba(255,255,255,.32); box-shadow: inset 0 1px 0 white; }
+.nav-public a { padding: 10px 19px; font-weight: 500; font-size: 14px; }
+.nav-public a:hover { background: rgba(255,255,255,.75); }
+.nav-reference-public { margin-inline: auto; }
+.reference-login { display: flex; }
+.reference-login a { padding: 12px 32px; border: 1px solid rgba(255,255,255,.9); border-radius: 18px; background: rgba(255,255,255,.32); color: var(--ink); font-size: 14px; }
+.reference-hero { padding: 0 0 56px; }
+.reference-heading { position: relative; }
+.reference-heading h1 { margin: 0; font-size: clamp(46px, 5.65vw, 84px); line-height: .94; font-weight: 800; letter-spacing: -.055em; max-width: 1080px; }
+.reference-manifesto { position: absolute; right: 0; top: 8px; font-size: 10px; letter-spacing: .18em; line-height: 1.6; text-transform: uppercase; color: var(--muted); }
+.reference-description { position: absolute; right: 0; bottom: -4px; margin: 0; width: 43%; font-size: clamp(14px, 1.35vw, 19px); line-height: 1.45; padding-left: 18px; }
+.reference-assembly { display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: center; margin-top: -6px; }
+.team-legend { padding: 12px 0 12px 16px; border-left: 1px solid #9eaaa0; }
+.team-legend h2 { font-size: 16px; font-weight: 700; margin: 0 0 20px; letter-spacing: -.025em; }
+.team-legend button { display: flex; align-items: center; text-align: left; gap: 12px; color: var(--ink); background: none; border: 0; padding: 12px 0; width: 100%; cursor: pointer; border-radius: 12px; }
+.team-index { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; background: #dbf875; border-radius: 50%; font-size: 11px; }
+.team-legend strong { display: block; font-size: 14px; font-weight: 600; }
+.team-legend small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+.team-legend button[aria-pressed="true"] .team-index { background: #263b24; color: #e3fb97; }
+.reference-pieces { display: flex; min-width: 0; padding-block: 22px 28px; align-items: center; isolation: isolate; }
+.reference-piece { position: relative; display: block; background: none; border: 0; padding: 0; width: 38%; flex: 0 0 38%; cursor: pointer; color: white; -webkit-tap-highlight-color: transparent; transition: transform 420ms cubic-bezier(.2,.75,.2,1); will-change: transform; filter: drop-shadow(0 18px 10px rgba(51,65,20,.16)); transform-origin: 50% 75%; }
+.reference-piece + .reference-piece { margin-left: -7%; }
+.reference-piece img { display: block; width: 100%; height: auto; }
+.reference-piece, .reference-piece:hover, .team-legend button, .team-legend button:hover { box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.reference-piece:hover { background: transparent; }
+.reference-piece[aria-pressed="true"] { z-index: 3; transform: translateY(-20px) rotate(-1deg) scale(1.035);  }
+.reference-piece::after { content: ""; position: absolute; inset: 18% 15% 12%; border-radius: 40%; background: radial-gradient(ellipse, rgba(190,233,57,.3), transparent 70%); opacity: 0; pointer-events: none; transition: opacity 420ms ease; }
+.reference-piece[aria-pressed="true"]::after { opacity: 1; }
+.reference-piece:focus-visible { outline: 3px solid #426225; outline-offset: -12px; border-radius: 28px; z-index: 4; }
+.piece-label { position: absolute; bottom: 15%; left: 15%; right: 20%; text-align: left; padding: 10px 12px; border-radius: 12px; background: rgba(17,26,15,.67); pointer-events: none; z-index: 1; }
+.piece-label strong { display: block; font-size: clamp(12px, 1.2vw, 18px); font-weight: 600; }
+.piece-label small { display: block; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; line-height: 1.5; margin-top: 5px; }
+.reference-action { text-align: center; margin-top: 2px; }
+.reference-action > p { font-size: 12px; color: var(--muted); margin: 0 0 16px; }
+a.btn.reference-cta { display: inline-flex; justify-content: center; align-items: center; gap: 36px; width: min(100%, 480px); padding: 22px 28px; min-height: 78px; border: 1px solid #c8e638; border-radius: 100px; color: #1e2916; background: linear-gradient(115deg, rgba(215,248,68,.94), rgba(222,250,97,.58)); box-shadow: inset 0 0 0 2px rgba(255,255,255,.7), inset 0 0 18px rgba(255,255,255,.6), 0 15px 26px -10px rgba(165,194,28,.6); font-size: 19px; font-weight: 650; transition: transform 180ms ease, box-shadow 180ms ease; }
+a.btn.reference-cta:hover { transform: translateY(-3px); box-shadow: inset 0 0 0 2px rgba(255,255,255,.8), 0 20px 30px -10px rgba(165,194,28,.6); }
+.reference-cta span { font-size: 29px; font-weight: 400; }
+.reference-action .reference-footnote { font-size: 10px; margin-top: 20px; }
+.cabinet-v2.cabinet-customer, .cabinet-v2.cabinet-performer, .cabinet-v2.cabinet-venue { --cabinet-accent: #426225; --cabinet-accent-soft: #e4edcf; }
+.cabinet-v2 .cabinet-hero-actions .btn:not(.secondary) { color: white; }
+.btn:hover { background-color: var(--brand-hover); }
+@media (hover: hover) and (pointer: fine) {
+  .reference-piece:not([aria-pressed="true"]):hover { transform: translateY(-6px); }
+}
+@media (max-width: 1100px) {
+  .brand-tagline { display: none; }
+  .reference-assembly { grid-template-columns: 155px minmax(0, 1fr); }
+  .team-legend { padding-left: 10px; }
+  .team-legend small { font-size: 10px; }
+  .team-legend button { gap: 8px; }
+  .reference-description { position: static; margin: 18px 0 0 auto; }
+}
+@media (max-width: 760px) {
+  .top.surface-glass { padding-block: 14px; }
+  .brand-word { font-size: 34px; }
+  .reference-hero { padding-top: 24px; }
+  .reference-heading h1 { font-size: clamp(36px, 7.7vw, 58px); }
+  .reference-description { width: 100%; padding-left: 0; font-size: 15px; margin-top: 22px; }
+  .reference-manifesto { display: none; }
+  .reference-assembly { display: flex; flex-direction: column; align-items: stretch; margin-top: 24px; }
+  .team-legend { display: flex; gap: 10px; border: 0; padding: 0; justify-content: space-between; }
+  .team-legend h2, .team-index, .team-legend small { display: none; }
+  .team-legend button { width: auto; min-height: 44px; padding: 7px 10px; border: 1px solid var(--border); background: rgba(255,255,255,.45); }
+  .team-legend button[aria-pressed="true"] { background: #dbf875; border-color: #a4bf51; }
+  .team-legend strong { font-size: 12px; }
+  .reference-pieces { padding-block: 30px 15px; }
+  .piece-label { left: 13%; right: 18%; padding: 5px; border-radius: 5px; bottom: 14%; }
+  .piece-label strong { font-size: clamp(9px, 2vw, 14px); }
+  .piece-label small { display: none; }
+  .reference-piece[aria-pressed="true"] { transform: translateY(-12px) scale(1.035); }
+  a.btn.reference-cta { min-height: 66px; padding: 15px; font-size: 17px; }
+  .reference-action > p { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reference-piece, .reference-piece::after, a.btn.reference-cta { transition: none; will-change: auto; }
+  .reference-piece[aria-pressed="true"], .reference-piece:not([aria-pressed="true"]):hover, a.btn.reference-cta:hover { transform: none; }
+  .reference-piece[aria-pressed="true"] .piece-label { outline: 3px solid #d8f654; }
+}

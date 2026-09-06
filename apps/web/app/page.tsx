@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { ReferencePuzzleHero } from "@/components/ReferencePuzzleHero";
 import { HomeSearchForm } from "@/components/HomeSearchForm";
 
 export const metadata = {
@@ -28,22 +28,7 @@ export default function HomePage() {
   return (
     <main className="page-enter immersive-home">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <section className="immersive-intro" aria-labelledby="home-title">
-        <div className="immersive-copy">
-          <p className="eyebrow">Букер / Люди. Места. События.</p>
-          <h1 id="home-title">Ваше событие.<br /><span>Всё складывается.</span></h1>
-          <p className="intro-description">Найдите артистов и пространство, которые звучат с вами в унисон. Соберите свою команду — от первой идеи до согласованных условий.</p>
-          <div className="intro-actions">
-            <Link className="btn immersive-primary" href="/events/new?event_studio_map_v1=1">Собрать событие <span aria-hidden="true">↗</span></Link>
-            <Link className="intro-link" href="#discover">Найти артиста или площадку <span aria-hidden="true">↓</span></Link>
-          </div>
-          <p className="intro-note">Москва · Пилотный запуск</p>
-        </div>
-        <div className="puzzle-art" aria-hidden="true">
-          <Image src="/design/puzzle-hero.webp" alt="" width={1024} height={1024} priority sizes="(max-width: 760px) 100vw, 550px" />
-          <span className="art-caption">Из отдельных талантов — в одно событие</span>
-        </div>
-      </section>
+      <ReferencePuzzleHero />
       <section id="discover" className="discovery-section" aria-labelledby="discover-title">
         <div className="section-heading">
           <div><p className="eyebrow">01 / Найдите своих</p><h2 id="discover-title">Начните с нужной даты</h2></div>
