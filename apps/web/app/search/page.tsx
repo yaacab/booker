@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CatalogFilters, type CategoryChip } from "@/components/CatalogFilters";
-import { CATEGORY, CHIP, categoryLabel, PILOT_CITIES } from "@/lib/copy";
-import { formatDay, formatWhen, initials, money } from "@/lib/format";
+import { CatalogResultCard } from "@/components/CatalogResultCard";
+import { CATEGORY, categoryLabel, PILOT_CITIES } from "@/lib/copy";
+import { formatDay } from "@/lib/format";
 
 export async function generateMetadata({
   searchParams,
@@ -59,15 +60,6 @@ async function loadCategories(): Promise<CategoryChip[]> {
   } catch {
     return fallbackCategories();
   }
-}
-
-function slotState(item: SearchItem): { label: string; cls: string } {
-  if (item.availability_mode === "synthetic") {
-    return { label: CHIP.syntheticCalendar, cls: "wait" };
-  }
-  if ((item.open_slots ?? 0) > 0 && item.verified) return { label: CHIP.slotOk, cls: "ok" };
-  if ((item.open_slots ?? 0) > 0 && !item.verified) return { label: CHIP.slotWait, cls: "wait" };
-  return { label: CHIP.slotNone, cls: "live" };
 }
 
 type SearchQuery = {
@@ -202,36 +194,15 @@ export default async function SearchPage({
             <>
               {venues.length > 0 ? <h2>Артисты</h2> : null}
               <div className="grid">
-                {items.map((item) => {
-                  const st = slotState(item);
-                  return (
-                    <Link className="card" key={item.id} href={`/artists/${item.id}${itemQs ? `?${itemQs}` : ""}`}>
-                      <div className="card-head">
-                        <span className="avatar" aria-hidden>
-                          {initials(item.name)}
-                        </span>
-                        <strong>{item.name}</strong>
-                      </div>
-                      <div>
-                        {item.city} · {categoryLabel(item.category)}
-                      </div>
-                      <p>
-                        <span className={`chip ${st.cls}`}>{st.label}</span>{" "}
-                        {item.verified ? (
-                          <span className="chip ok">{CHIP.verified}</span>
-                        ) : (
-                          <span className="chip wait">{CHIP.pending}</span>
-                        )}
-                      </p>
-                      <p className="mono">
-                        {q.date ? `слот на ${formatDay(`${q.date}T12:00:00+03:00`)}` : formatWhen(item.next_open_at)}
-                      </p>
-                      {item.tariffs?.[0] ? (
-                        <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
-                      ) : null}
-                    </Link>
-                  );
-                })}
+                {items.map((item) => (
+                  <CatalogResultCard
+                    key={item.id}
+                    item={item}
+                    kind="artist"
+                    href={`/artists/${item.id}${itemQs ? `?${itemQs}` : ""}`}
+                    date={q.date}
+                  />
+                ))}
               </div>
             </>
           ) : null}
@@ -239,47 +210,15 @@ export default async function SearchPage({
             <>
               {items.length > 0 ? <h2>Площадки</h2> : null}
               <div className="grid">
-                {venues.map((item) => {
-                  const st = slotState(item);
-                  const synthetic = item.availability_mode === "synthetic";
-                  const hallHint = item.matching_halls?.[0];
-                  return (
-                    <Link className="card" key={item.id} href={`/venues/${item.id}${itemQs ? `?${itemQs}` : ""}`}>
-                      <div className="card-head">
-                        <span className="avatar" aria-hidden>
-                          {initials(item.name)}
-                        </span>
-                        <strong>{item.name}</strong>
-                      </div>
-                      <div>
-                        {item.city} · площадка
-                        {item.metro ? ` · м. ${item.metro}` : ""}
-                        {hallHint ? ` · зал до ${hallHint.capacity}` : ""}
-                      </div>
-                      {item.address ? <p className="timeline">{item.address}</p> : null}
-                      <p>
-                        <span className={`chip ${st.cls}`}>{st.label}</span>{" "}
-                        {item.listing_origin === "open_data" ? (
-                          <span className="chip wait">{CHIP.openDataVenue}</span>
-                        ) : synthetic ? (
-                          <span className="chip wait">{CHIP.syntheticCalendar}</span>
-                        ) : item.verified ? (
-                          <span className="chip ok">{CHIP.verified}</span>
-                        ) : (
-                          <span className="chip wait">{CHIP.pending}</span>
-                        )}
-                      </p>
-                      <p className="mono">
-                        {q.date ? `слот на ${formatDay(`${q.date}T12:00:00+03:00`)}` : formatWhen(item.next_open_at)}
-                      </p>
-                      {item.tariffs?.[0] ? (
-                        <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
-                      ) : (
-                        <p className="timeline">цена по запросу</p>
-                      )}
-                    </Link>
-                  );
-                })}
+                {venues.map((item) => (
+                  <CatalogResultCard
+                    key={item.id}
+                    item={item}
+                    kind="venue"
+                    href={`/venues/${item.id}${itemQs ? `?${itemQs}` : ""}`}
+                    date={q.date}
+                  />
+                ))}
               </div>
             </>
           ) : null}

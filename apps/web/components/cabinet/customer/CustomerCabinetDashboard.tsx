@@ -40,6 +40,7 @@ export function CustomerCabinetDashboard() {
       actions={[
         { href: "/events/new", label: "Новое событие", primary: true },
         { href: "/search", label: "Каталог" },
+        { href: "/cabinet/customer/favorites", label: "Избранное" },
       ]}
       lead={
         <nav className="chrome-puzzle-progress" aria-label="Прогресс по сделке">

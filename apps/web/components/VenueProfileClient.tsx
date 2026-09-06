@@ -7,6 +7,7 @@ import { api, getActiveOrg, getToken, isWriteRole } from "@/lib/api";
 import { CHIP } from "@/lib/copy";
 import { formatWhen, guestsLabel, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
+import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { SlotList } from "@/components/SlotList";
 
 type Venue = {
@@ -221,17 +222,20 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
     <main>
       <p className="kicker">Профиль площадки</p>
       <h1>{data.name}</h1>
-      <p>
-        {data.city} · до {guestsLabel(data.capacity)}{" "}
-        {data.listing_origin === "open_data" ? (
-          <span className="chip wait">{CHIP.openDataVenue}</span>
-        ) : synthetic ? (
-          <span className="chip wait">{CHIP.syntheticCalendar}</span>
-        ) : data.verified ? (
-          <span className="chip ok">{CHIP.verified}</span>
-        ) : (
-          <span className="chip wait">{CHIP.pending}</span>
-        )}
+      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <span>
+          {data.city} · до {guestsLabel(data.capacity)}{" "}
+          {data.listing_origin === "open_data" ? (
+            <span className="chip wait">{CHIP.openDataVenue}</span>
+          ) : synthetic ? (
+            <span className="chip wait">{CHIP.syntheticCalendar}</span>
+          ) : data.verified ? (
+            <span className="chip ok">{CHIP.verified}</span>
+          ) : (
+            <span className="chip wait">{CHIP.pending}</span>
+          )}
+        </span>
+        <FavoriteToggle targetType="venue" targetId={data.id} />
       </p>
       {data.address ? (
         <p className="timeline">

@@ -400,3 +400,25 @@ class Service(Base):
     city: Mapped[str] = mapped_column(String(128), default="Москва")
     published: Mapped[bool] = mapped_column(Boolean, default=True)
     honorarium_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class Favorite(Base):
+    """Избранное заказчика: артист или площадка. Не создаёт заявку/hold/бронь (E04)."""
+
+    __tablename__ = "favorites"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "organization_id",
+            "target_type",
+            "target_id",
+            name="uq_favorites_user_org_target",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    target_type: Mapped[str] = mapped_column(String(16))  # artist | venue
+    target_id: Mapped[str] = mapped_column(String(36), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
