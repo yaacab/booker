@@ -16,6 +16,7 @@ from booker_api.routers import (
     health,
     identity,
     payments,
+    promo,
     reviews,
     saved_searches,
     services,
@@ -57,4 +58,5 @@ app.include_router(briefs.router)
 app.include_router(shortlists.router)
 app.include_router(trust.router)
 app.include_router(saved_searches.router)
+app.include_router(promo.router)
 app.include_router(admin.router)
