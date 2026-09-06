@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { api, getActiveOrg, getToken, setToken, trackClientEvent } from "@/lib/api";
-import { orgKindToCabinetMode, type CabinetMode } from "@/lib/cabinetRoutes";
+import { orgKindToCabinetMode, supplyCalendarHref, supplyRequestsHref, type CabinetMode } from "@/lib/cabinetRoutes";
 import { loginHref } from "@/lib/next";
 import { isEventStudioMapV1 } from "@/lib/features";
 
@@ -119,8 +119,12 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
 
   const isSupply = cabinetMode === "performer" || cabinetMode === "venue";
   const cabinetHref = cabinetMode ? `/cabinet/${cabinetMode}` : "/cabinet";
-  const primaryWorkHref = isSupply ? cabinetHref : "/events/new";
+  const calendarHref = cabinetMode && isSupply ? supplyCalendarHref(cabinetMode) : cabinetHref;
+  const requestsHref = cabinetMode && isSupply ? supplyRequestsHref(cabinetMode) : cabinetHref;
+  const primaryWorkHref = isSupply ? calendarHref : "/events/new";
   const primaryWorkLabel = isSupply ? "Мой календарь" : "Создать заявку";
+  const onCalendar = isSupply && path.includes("/calendar");
+  const onRequests = isSupply && path.includes("/requests");
 
   if (fullScreenStudio) {
     return (
@@ -152,7 +156,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 href={primaryWorkHref}
                 aria-current={
                   isSupply
-                    ? path.startsWith("/cabinet")
+                    ? onCalendar
                       ? "page"
                       : undefined
                     : path.startsWith("/events/new")
@@ -169,8 +173,16 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             )}
             {authed ? (
               <Link
-                href={cabinetHref}
-                aria-current={path.startsWith("/cabinet") || path.startsWith("/deals") ? "page" : undefined}
+                href={isSupply ? requestsHref : cabinetHref}
+                aria-current={
+                  isSupply
+                    ? onRequests
+                      ? "page"
+                      : undefined
+                    : path.startsWith("/cabinet") || path.startsWith("/deals")
+                      ? "page"
+                      : undefined
+                }
               >
                 {isSupply ? "Заявки" : "Сделки"}
               </Link>
@@ -289,10 +301,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           Главная
         </Link>
         <Link
-          href={isSupply ? cabinetHref : "/search"}
+          href={isSupply ? calendarHref : "/search"}
           className={
             isSupply
-              ? path.startsWith("/cabinet")
+              ? onCalendar
                 ? "on"
                 : ""
               : path.startsWith("/search") || path.startsWith("/artists") || path.startsWith("/venues")
@@ -303,8 +315,16 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           {isSupply ? "Календарь" : "Каталог"}
         </Link>
         <Link
-          href={authed ? cabinetHref : loginHref("/cabinet")}
-          className={path.startsWith("/cabinet") || path.startsWith("/deals") ? "on" : ""}
+          href={authed ? (isSupply ? requestsHref : cabinetHref) : loginHref("/cabinet")}
+          className={
+            isSupply
+              ? onRequests
+                ? "on"
+                : ""
+              : path.startsWith("/cabinet") || path.startsWith("/deals")
+                ? "on"
+                : ""
+          }
         >
           {isSupply ? "Заявки" : "Сделки"}
         </Link>

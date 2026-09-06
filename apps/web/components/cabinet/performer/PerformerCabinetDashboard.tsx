@@ -12,7 +12,9 @@ import { OpenSlotsWidget } from "./widgets/OpenSlotsWidget";
 import { ProfileCompletenessWidget } from "./widgets/ProfileCompletenessWidget";
 import { UpcomingPerformancesWidget } from "./widgets/UpcomingPerformancesWidget";
 
-export function PerformerCabinetDashboard() {
+export type PerformerCabinetSection = "home" | "calendar" | "requests";
+
+export function PerformerCabinetDashboard({ section = "home" }: { section?: PerformerCabinetSection }) {
   const {
     ready,
     error,
@@ -33,6 +35,14 @@ export function PerformerCabinetDashboard() {
   } = usePerformerCabinetData();
 
   const completenessScore = profileIncomplete?.score;
+  const showRequests = section === "home" || section === "requests";
+  const showCalendar = section === "home" || section === "calendar";
+  const subtitle =
+    section === "calendar"
+      ? "Свободные слоты, ближайшие даты и конфликты календаря."
+      : section === "requests"
+        ? "Входящие заявки, предложения и удержания."
+        : "Календарь, гонорар и ответы на запросы. Вы не собираете события — вас бронируют.";
 
   return (
     <CabinetPageShell
@@ -52,7 +62,7 @@ export function PerformerCabinetDashboard() {
           </p>
         </article>
       }
-      subtitle="Календарь, гонорар и ответы на запросы. Вы не собираете события — вас бронируют."
+      subtitle={subtitle}
       metrics={[
         { label: "Новые запросы", value: newRequests.length, tone: newRequests.length ? "wait" : "default" },
         { label: "Ждут заказчика", value: awaitingResponse.length, tone: awaitingResponse.length ? "live" : "default" },
@@ -63,33 +73,47 @@ export function PerformerCabinetDashboard() {
           tone: completenessScore != null && completenessScore >= 80 ? "ok" : "wait",
         },
       ]}
-      actions={[{ href: "#cabinet-widgets", label: "К заявкам", primary: true }]}
-      lead={orgId ? <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="artist" /> : null}
+      actions={[
+        {
+          href: section === "calendar" ? "#cabinet-widgets" : "/cabinet/performer/requests",
+          label: section === "calendar" ? "К слотам" : "К заявкам",
+          primary: true,
+        },
+      ]}
+      lead={
+        showCalendar && orgId ? (
+          <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="artist" />
+        ) : null
+      }
       footer={orgId ? <SupplyCabinetSection orgId={orgId} role={role} /> : null}
     >
-      <section className="cabinet-zone" aria-label="Входящие">
-        <h2 className="cabinet-zone-title">Входящие</h2>
-        <div className="cabinet-zone-grid">
-          <NewRequestsWidget
-            requests={newRequests}
-            role={role}
-            offerBusy={offerBusy}
-            onSendOffer={(item) => void sendOffer(item)}
-          />
-          <AwaitingResponseWidget deals={awaitingResponse} />
-          <ExpiringOffersWidget deals={expiringOffers} />
-          <HoldsWidget holds={activeHolds} />
-        </div>
-      </section>
+      {showRequests ? (
+        <section className="cabinet-zone" aria-label="Входящие">
+          <h2 className="cabinet-zone-title">Входящие</h2>
+          <div className="cabinet-zone-grid">
+            <NewRequestsWidget
+              requests={newRequests}
+              role={role}
+              offerBusy={offerBusy}
+              onSendOffer={(item) => void sendOffer(item)}
+            />
+            <AwaitingResponseWidget deals={awaitingResponse} />
+            <ExpiringOffersWidget deals={expiringOffers} />
+            <HoldsWidget holds={activeHolds} />
+          </div>
+        </section>
+      ) : null}
 
-      <section className="cabinet-zone" aria-label="Расписание">
-        <h2 className="cabinet-zone-title">Расписание</h2>
-        <div className="cabinet-zone-grid">
-          <UpcomingPerformancesWidget bookings={upcomingPerformances} />
-          <CalendarConflictsWidget conflicts={calendarConflicts} />
-          {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
-        </div>
-      </section>
+      {showCalendar ? (
+        <section className="cabinet-zone" aria-label="Расписание">
+          <h2 className="cabinet-zone-title">Расписание</h2>
+          <div className="cabinet-zone-grid">
+            <UpcomingPerformancesWidget bookings={upcomingPerformances} />
+            <CalendarConflictsWidget conflicts={calendarConflicts} />
+            {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
+          </div>
+        </section>
+      ) : null}
     </CabinetPageShell>
   );
 }

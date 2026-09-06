@@ -353,6 +353,27 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
   border-radius: inherit;
 }
 .cabinet-hero-copy { display: grid; gap: 8px; max-width: 720px; padding-left: 8px; }
+
+.supply-cabinet-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 4px;
+}
+.supply-cabinet-nav a {
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: var(--muted, #5a5a5a);
+  border-bottom: 2px solid transparent;
+  padding-bottom: 2px;
+}
+.supply-cabinet-nav a.on,
+.supply-cabinet-nav a[aria-current="page"] {
+  color: var(--cabinet-accent, #2d6a66);
+  border-bottom-color: var(--cabinet-accent, #2d6a66);
+  font-weight: 500;
+}
 .cabinet-eyebrow {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em;

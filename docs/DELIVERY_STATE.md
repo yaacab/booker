@@ -5,37 +5,22 @@ Updated: 2026-09-06
 ## Git
 
 - Branch: `feat/master-plan-execution`
-- Base HEAD for Spec v3 work: `c90d091`
+- Docs baseline: `f1a3298`
 - PR #14: open — **не merge** без OK владельца
 - Prod deploy: **запрещён** в этой сессии
 
-## Текущий стоп (честно)
+## Wave 0 (в работе / локально)
 
-- Cursor **Plan mode**; переключение в **Agent отклонено** пользователем.
-- Код Wave 0–5 **не исполняется**. Параллельные агенты/worktree **не запущены**.
-- Документы плана/gap/backlog обновлены уточнениями G1/G2, flag, payments, CI SHA, parallel ops.
+- W0-FLAG: `isEventStudioMapV1` = query → env → **default OFF**; unit `lib/features.test.ts`; deploy env default OFF
+- W0-CI: `ci.yml` push/PR на `master` (+`main`); job `e2e-critical` на SHA кандидата
+- W0-NAV / W0-CAB-ROUTES: `/cabinet/{performer|venue}/{calendar|requests}`; SiteChrome + SupplyCabinetNav; e2e `supply-nav.spec.ts`
 
-## Docs готовы к выборочному коммиту (в Agent)
+## Следующее
 
-Только эти пути (не всё дерево):
+1. Локально: unit + critical e2e → коммит Wave 0
+2. Wave 1: search filters, home dual search, SEO
+3. Без merge/prod; E25 = G3
 
-- `docs/specs/`
-- `docs/DELIVERY_GAP_ANALYSIS.md`
-- `docs/DELIVERY_BACKLOG.md`
-- `docs/DELIVERY_STATE.md`
-- `docs/OWNER_INPUTS.md`
-- `docs/product/CONTRACT.md`
-
-Перед коммитом: `git diff` по списку; не `git add -A`.
-
-## Следующее действие при Agent
-
-1. Коммит docs (список выше).
-2. Сразу W0-FLAG → W0-CI → W0-NAV/routes с тестами.
-3. Параллельные worktree по независимым слотам после Wave 0.
-4. Без «продолжать?» до исчерпания выполнимых A/B или честного списка блокеров.
-5. Итог: G2 **только если A+B закрыты**, иначе список незакрытых критериев.
-
-## Owner / env blockers (не замена G1)
+## Owner / env blockers (не замена G1/G2)
 
 См. `docs/OWNER_INPUTS.md`: PAYMENT_PARTNER, MAP_*, EMAIL/SMS, legal entity, LAWYER_APPROVAL.

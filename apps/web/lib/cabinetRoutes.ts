@@ -19,6 +19,33 @@ export function cabinetPathForMode(mode: CabinetMode): string {
   return `/cabinet/${mode}`;
 }
 
+export type CabinetSection =
+  | "home"
+  | "calendar"
+  | "requests"
+  | "halls"
+  | "events"
+  | "offers"
+  | "messages"
+  | "stats"
+  | "services"
+  | "showcase";
+
+export function cabinetSectionPath(mode: CabinetMode, section: CabinetSection): string {
+  if (section === "home") return cabinetPathForMode(mode);
+  return `/cabinet/${mode}/${section}`;
+}
+
+/** Supply calendar tab — must not share URL with requests (E16). */
+export function supplyCalendarHref(mode: CabinetMode): string {
+  return cabinetSectionPath(mode, "calendar");
+}
+
+/** Supply inbound requests tab. */
+export function supplyRequestsHref(mode: CabinetMode): string {
+  return cabinetSectionPath(mode, "requests");
+}
+
 export function isSupplyCabinet(mode: CabinetMode): boolean {
   return mode === "performer" || mode === "venue";
 }

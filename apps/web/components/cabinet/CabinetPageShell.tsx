@@ -3,9 +3,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { setToken } from "@/lib/api";
-import { CabinetMode, cabinetHeadline, cabinetTitle } from "@/lib/cabinetRoutes";
+import { CabinetMode, cabinetHeadline, cabinetTitle, isSupplyCabinet } from "@/lib/cabinetRoutes";
 import { KIND_LABEL } from "@/lib/copy";
 import { loginHref } from "@/lib/next";
+import { SupplyCabinetNav } from "./SupplyCabinetNav";
 
 export type CabinetMetric = {
   label: string;
@@ -94,6 +95,7 @@ export function CabinetPageShell({
           </p>
           <h1 id="cabinet-heading">{cabinetHeadline(mode)}</h1>
           <p className="cabinet-lede">{subtitle || roleBlurb(mode)}</p>
+          {isSupplyCabinet(mode) ? <SupplyCabinetNav mode={mode} /> : null}
           {email ? (
             <p className="cabinet-identity">
               <span className="cabinet-identity-mail">{email}</span>

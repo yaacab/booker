@@ -34,9 +34,14 @@ async function loginDemo(email: string): Promise<{ token: string; user_id: strin
 export default async function globalSetup() {
   const apiDir = path.resolve(__dirname, "../../api");
   const venvPython = path.resolve(apiDir, "../../.venv/bin/python");
-  execSync(`${venvPython} -m booker_api.seed`, {
+  const pythonBin = fs.existsSync(venvPython) ? venvPython : "python3";
+  execSync(`${pythonBin} -m booker_api.seed`, {
     cwd: apiDir,
     stdio: "inherit",
+    env: {
+      ...process.env,
+      BOOKER_ALLOW_DEMO_SEED: process.env.BOOKER_ALLOW_DEMO_SEED ?? "1",
+    },
   });
 
   const tokens: Record<string, { token: string; user_id: string }> = {};

@@ -1,8 +1,9 @@
 name: ci
 on:
   push:
-    branches: [main]
+    branches: [master, main]
   pull_request:
+    branches: [master, main]
 
 jobs:
   api:
@@ -34,5 +35,45 @@ jobs:
       - run: npm run test:unit
       - run: npm run build
 
-  # Narrow diligence smoke: unit already covers adapters; e2e stays local/nightly
-  # (Playwright against prod is documented in docs/investors/DEMO_SCRIPT.md).
+  # Critical e2e on the PR/candidate SHA (not an old master green).
+  e2e-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: API deps + seed DB
+        working-directory: apps/api
+        run: |
+          pip install -e ".[dev]"
+          BOOKER_ALLOW_DEMO_SEED=1 BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db python -m booker_api.seed
+      - name: Start API
+        working-directory: apps/api
+        run: |
+          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PAYMENT_PROVIDER=stub \
+            uvicorn booker_api.main:app --host 127.0.0.1 --port 8000 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
+      - name: Web install + Playwright
+        working-directory: apps/web
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+      - name: Critical e2e (flag + supply nav)
+        working-directory: apps/web
+        env:
+          BOOKER_API_URL: http://127.0.0.1:8000
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+          BOOKER_INTERNAL_API_URL: http://127.0.0.1:8000
+          # Default OFF — do not set NEXT_PUBLIC_EVENT_STUDIO_MAP_V1=1
+        run: |
+          npm run build
+          npx next start -H 127.0.0.1 -p 3000 &
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          npx playwright test \
+            e2e/event-studio-map.spec.ts \
+            e2e/supply-nav.spec.ts \
+            --reporter=line

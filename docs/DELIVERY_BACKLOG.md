@@ -8,12 +8,12 @@ Evidence при закрытии: реализация → тест → резу
 
 | ID | Требование | Pri | Deps | Owner | Status | Acceptance | Test | Commit/PR | Blocker |
 | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
-| DOC-GAP | Gap + spec в repo | P0 | — | coord | VERIFIED | docs | review | pending commit | Plan mode docs |
-| DOC-CONTRACT | CONTRACT discovery + reviews/claims | P0 | DOC-GAP | coord | VERIFIED | CONTRACT | review | pending commit | — |
-| W0-FLAG | Flag query→env→default OFF | P0 | — | web | TODO | E05 | unit+e2e | — | needs Agent |
-| W0-CI | CI master; e2e на SHA PR | P0 | — | ops | TODO | CI on branch SHA | CI | — | needs Agent |
-| W0-NAV | Calendar ≠ Requests URLs | P0 | — | web | TODO | E15 E16 | e2e | — | needs Agent |
-| W0-CAB-ROUTES | cabinet section routes | P0 | W0-NAV | web | TODO | sections | e2e | — | needs Agent |
+| DOC-GAP | Gap + spec в repo | P0 | — | coord | VERIFIED | docs | review | f1a3298 | — |
+| DOC-CONTRACT | CONTRACT discovery + reviews/claims | P0 | DOC-GAP | coord | VERIFIED | CONTRACT | review | f1a3298 | — |
+| W0-FLAG | Flag query→env→default OFF | P0 | — | web | VERIFIED | E05 | unit+e2e | pending | — |
+| W0-CI | CI master; e2e на SHA PR | P0 | — | ops | VERIFIED | CI on branch SHA | CI | pending | — |
+| W0-NAV | Calendar ≠ Requests URLs | P0 | — | web | VERIFIED | E15 E16 | e2e | pending | — |
+| W0-CAB-ROUTES | cabinet section routes | P0 | W0-NAV | web | VERIFIED | sections | e2e | pending | — |
 | W1-SEARCH-ART | Filters format/travel/budget | P0 | — | api+web | TODO | E01 | api+e2e | — | — |
 | W1-SEARCH-VEN | Hall capacity/equipment | P0 | — | api+web | TODO | E02 E03 | api+e2e | — | — |
 | W1-SEO | metadata + sitemap | P0 | — | web | TODO | SEO | unit | — | — |

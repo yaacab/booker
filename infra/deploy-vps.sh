@@ -44,7 +44,8 @@ rm -rf .next
 npm ci --silent
 export NEXT_PUBLIC_API_URL=/api
 export NEXT_PUBLIC_SITE_URL=https://bukergo.ru
-export NEXT_PUBLIC_EVENT_STUDIO_MAP_V1=1
+# Event Studio Map: default OFF (omit or 0). Set =1 only after rebuild when enabling.
+# export NEXT_PUBLIC_EVENT_STUDIO_MAP_V1=1
 export BOOKER_INTERNAL_API_URL=http://127.0.0.1:8030
 npm run build
 # Dedicated service user for systemd units (idempotent)

@@ -13,7 +13,9 @@ import { UpcomingPerformancesWidget } from "../performer/widgets/UpcomingPerform
 import { useVenueCabinetData } from "./useVenueCabinetData";
 import { VenueHallsWidget } from "./widgets/VenueHallsWidget";
 
-export function VenueCabinetDashboard() {
+export type VenueCabinetSection = "home" | "calendar" | "requests";
+
+export function VenueCabinetDashboard({ section = "home" }: { section?: VenueCabinetSection }) {
   const {
     ready,
     error,
@@ -40,6 +42,15 @@ export function VenueCabinetDashboard() {
   const hallsActive = hallCount > 0;
   const slotsActive =
     newRequests.length > 0 || activeHolds.length > 0 || upcomingEvents.length > 0;
+  const showRequests = section === "home" || section === "requests";
+  const showCalendar = section === "home" || section === "calendar";
+  const showSpace = section === "home" || section === "calendar";
+  const subtitle =
+    section === "calendar"
+      ? "Залы, свободные слоты, даты и конфликты календаря."
+      : section === "requests"
+        ? "Входящие бронирования, предложения и удержания."
+        : "Залы, календарь и ответы на бронирования — рабочий стол площадки.";
 
   return (
     <CabinetPageShell
@@ -55,7 +66,7 @@ export function VenueCabinetDashboard() {
           <p>Добавьте зал и держите календарь открытым — новые заявки и удержания появятся здесь.</p>
         </article>
       }
-      subtitle="Залы, календарь и ответы на бронирования — рабочий стол площадки."
+      subtitle={subtitle}
       metrics={[
         {
           label: "Залы",
@@ -84,38 +95,56 @@ export function VenueCabinetDashboard() {
           glow: hallsActive || slotsActive,
         },
       ]}
-      actions={[{ href: "#cabinet-widgets", label: "К календарю", primary: true }]}
+      actions={[
+        {
+          href: section === "requests" ? "/cabinet/venue/calendar" : "#cabinet-widgets",
+          label: "К календарю",
+          primary: true,
+        },
+      ]}
       lead={
-        orgId ? (
+        showCalendar && orgId ? (
           <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="venue" />
         ) : null
       }
       footer={orgId ? <SupplyCabinetSection orgId={orgId} role={role} /> : null}
     >
-      <section className="cabinet-zone" aria-label="Пространство">
-        <h2 className="cabinet-zone-title">Пространство</h2>
-        <div className="cabinet-zone-grid">
-          <VenueHallsWidget halls={halls} role={role} onChanged={() => void reload()} />
-          {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
-        </div>
-      </section>
+      {showSpace ? (
+        <section className="cabinet-zone" aria-label="Пространство">
+          <h2 className="cabinet-zone-title">Пространство</h2>
+          <div className="cabinet-zone-grid">
+            <VenueHallsWidget halls={halls} role={role} onChanged={() => void reload()} />
+            {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
+          </div>
+        </section>
+      ) : null}
 
-      <section className="cabinet-zone" aria-label="Заявки и сделки">
-        <h2 className="cabinet-zone-title">Заявки и сделки</h2>
-        <div className="cabinet-zone-grid">
-          <NewRequestsWidget
-            requests={newRequests}
-            role={role}
-            offerBusy={offerBusy}
-            onSendOffer={(item) => void sendOffer(item)}
-          />
-          <AwaitingResponseWidget deals={awaitingResponse} />
-          <ExpiringOffersWidget deals={expiringOffers} />
-          <HoldsWidget holds={activeHolds} />
-          <UpcomingPerformancesWidget bookings={upcomingEvents} />
-          <CalendarConflictsWidget conflicts={calendarConflicts} />
-        </div>
-      </section>
+      {showRequests ? (
+        <section className="cabinet-zone" aria-label="Заявки и сделки">
+          <h2 className="cabinet-zone-title">Заявки и сделки</h2>
+          <div className="cabinet-zone-grid">
+            <NewRequestsWidget
+              requests={newRequests}
+              role={role}
+              offerBusy={offerBusy}
+              onSendOffer={(item) => void sendOffer(item)}
+            />
+            <AwaitingResponseWidget deals={awaitingResponse} />
+            <ExpiringOffersWidget deals={expiringOffers} />
+            <HoldsWidget holds={activeHolds} />
+          </div>
+        </section>
+      ) : null}
+
+      {showCalendar ? (
+        <section className="cabinet-zone" aria-label="Расписание">
+          <h2 className="cabinet-zone-title">Расписание</h2>
+          <div className="cabinet-zone-grid">
+            <UpcomingPerformancesWidget bookings={upcomingEvents} />
+            <CalendarConflictsWidget conflicts={calendarConflicts} />
+          </div>
+        </section>
+      ) : null}
     </CabinetPageShell>
   );
 }
