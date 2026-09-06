@@ -7,6 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from booker_api.analytics_taxonomy import FUNNEL_STEPS
+from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import (
     Artist,
@@ -20,9 +21,8 @@ from booker_api.models import (
 )
 from booker_api.rate_limit import admin_sensitive_limiter, client_key
 from booker_api.routers.deals import _transition
-from booker_api.schemas import DisputeIn, RefundIn, TotpEnableIn, VerifyIn
-from booker_api.config import settings
 from booker_api.routers.payments import capture_payment_as_succeeded
+from booker_api.schemas import DisputeIn, RefundIn, TotpEnableIn, VerifyIn
 from booker_api.security import audit, current_user, now, require_admin, require_admin_2fa
 
 router = APIRouter(prefix="/admin", tags=["admin"])

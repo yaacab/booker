@@ -1,8 +1,8 @@
 import hashlib
 import hmac
 
-from tests.conftest import auth_header, contract_otps, register
 from booker_api.config import settings
+from tests.conftest import auth_header, contract_otps, register
 from tests.test_offers import ack_both, setup_negotiation
 
 
