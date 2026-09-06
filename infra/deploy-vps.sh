@@ -36,18 +36,32 @@ fi
 BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
   /opt/booker/infra/backup-booker.sh || echo "backup skipped (non-fatal)"
 /opt/booker/.venv/bin/pip install -e "/opt/booker/apps/api" -q
-systemctl stop booker-web || true
-pkill -f "/opt/booker/apps/web/node_modules/.bin/next" || true
-sleep 1
 cd /opt/booker/apps/web
-rm -rf .next
 npm ci --silent
 export NEXT_PUBLIC_API_URL=/api
 export NEXT_PUBLIC_SITE_URL=https://bukergo.ru
 # Event Studio Map: default OFF (omit or 0). Set =1 only after rebuild when enabling.
 # export NEXT_PUBLIC_EVENT_STUDIO_MAP_V1=1
 export BOOKER_INTERNAL_API_URL=http://127.0.0.1:8030
-npm run build
+# Snapshot the live build before replacing it. Failed/interrupted deploys must not
+# leave booker-web without BUILD_ID (nginx 502 crash-loop).
+if [[ -d .next && -f .next/BUILD_ID ]]; then
+  rm -rf .next.bak
+  cp -a .next .next.bak
+fi
+systemctl stop booker-web || true
+pkill -f "/opt/booker/apps/web/node_modules/.bin/next" || true
+sleep 1
+if ! npm run build; then
+  echo "web build failed — restoring previous .next" >&2
+  rm -rf .next
+  if [[ -d .next.bak ]]; then
+    mv .next.bak .next
+  fi
+  systemctl start booker-web || true
+  exit 1
+fi
+rm -rf .next.bak
 # Dedicated service user for systemd units (idempotent)
 if ! id -u booker >/dev/null 2>&1; then
   useradd --system --home /var/lib/booker --create-home --shell /usr/sbin/nologin booker

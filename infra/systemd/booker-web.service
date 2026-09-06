@@ -10,6 +10,8 @@ Environment=PORT=3030
 Environment=BOOKER_INTERNAL_API_URL=http://127.0.0.1:8030
 Environment=NEXT_PUBLIC_API_URL=/api
 Environment=NEXT_PUBLIC_SITE_URL=https://bukergo.ru
+# If deploy was interrupted mid-build, restore the last good snapshot.
+ExecStartPre=/bin/bash -c 'if [[ ! -f /opt/booker/apps/web/.next/BUILD_ID && -d /opt/booker/apps/web/.next.bak ]]; then rm -rf /opt/booker/apps/web/.next; mv /opt/booker/apps/web/.next.bak /opt/booker/apps/web/.next; fi'
 ExecStart=/usr/bin/npx next start -H 127.0.0.1 -p 3030
 Restart=always
 RestartSec=3
