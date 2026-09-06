@@ -7,9 +7,7 @@ Prod deploy: **запрещён** до G3 / OK владельца
 
 ## Candidate SHA
 
-Заполняется координатором на момент G2-ready:
-
-- Integration SHA: `ef1f83b` (обновлять при каждом integrate)
+- Integration SHA: `2037a7a` (`2037a7ac2f157106e1a66104e3a51983017a6ec7`)
 - Evidence: CI checks на **этом** SHA / PR, не на старом `master`
 
 ## Scope A+B (статус)
@@ -18,10 +16,10 @@ Prod deploy: **запрещён** до G3 / OK владельца
 | ------- | ------ | -------- |
 | Wave 0 flag/CI/nav | VERIFIED | `fb24377` |
 | Wave 1 search/SEO | VERIFIED | `6adf8c7` |
-| Wave 2 deals/cabinets | PARTIAL | multi-hall `449e7e8`; cancel; cab depth; deal-path e2e in flight |
+| Wave 2 deals/cabinets | MOSTLY | deal-path e2e E07–E09; onboard/autosave; cab depth |
 | Wave 3 discovery | MOSTLY | fav/briefs/share/compare/saved/promo |
 | Wave 4 trust/comms | MOSTLY | reviews/claim/support/outbox/msg hub |
-| Wave 5 harden | PARTIAL | CI e2e expand; a11y/backup proofs; screenshots/E-table in flight |
+| Wave 5 harden | MOSTLY | CI e2e expand; a11y 390×3; screenshots; E-table; backup proof |
 | E25 prod smoke | ожидает G3 | — |
 
 ## Contour C (disabled for G2 OK)
@@ -41,20 +39,20 @@ Prod deploy: **запрещён** до G3 / OK владельца
 
 ## Evidence checklist (G2)
 
-- [ ] CI green on candidate SHA (unit + critical e2e) — list expanded: flow, cabinets-cross-role, cabinet-a11y (+ deal-path after integrate)
-- [ ] Screenshots 1440/390 × 3 roles — in flight (`docs/screenshots/g2-roles/`)
-- [x] Сквозной сценарий заявка→оффер на SHA — `apps/web/e2e/flow.spec.ts` + `cabinets-cross-role.spec.ts`; API `test_offers.py`
-- [ ] E01–E24 table filled; E25 = ожидает G3 — `docs/E01_E24_EVIDENCE.md` in flight
-- [ ] No open mandatory A/B (OWNER_BLOCKED ≠ done) — onboarding/autosave/deal e2e polish remain
+- [ ] CI green on candidate SHA (unit + critical e2e) — list expanded on `2037a7a`; **await PR checks green**
+- [x] Screenshots 1440/390 × 3 roles — `docs/screenshots/g2-roles/` (capture base `ef1f83b`, integrated `2037a7a`)
+- [x] Сквозной сценарий заявка→оффер на SHA — `e2e/flow.spec.ts` + `e2e/deal-path.spec.ts` + `cabinets-cross-role.spec.ts`
+- [x] E01–E24 table filled; E25 = ожидает G3 — `docs/E01_E24_EVIDENCE.md`
+- [ ] No open mandatory A/B — residual PARTIAL depth (E01 guest→login, E06 offline, E12/E14 live PSP OWNER_BLOCKED ≠ A/B code gaps); Contour C stays disabled
 
 ### Proof pointers (a11y / backup)
 
 | Check | Evidence | Result |
 | ----- | -------- | ------ |
-| E24 a11y cabinets | `apps/web/e2e/cabinet-a11y.spec.ts` | present; expand 390×3 roles in flight |
-| E23 backup/restore | `apps/api/tests/test_backup_restore.py` + `docs/ops/RESTORE_DRILL_LOG.md` (2026-09-06 PASS) | unit PASS locally; drill PASS isolated `/tmp` |
-| Hold exclusivity E09 | `apps/api/tests/test_hold_race.py` | PASS |
-| Offer version E08 | `apps/api/tests/test_quote_versioning.py` | PASS |
+| E24 a11y cabinets | `apps/web/e2e/cabinet-a11y.spec.ts` (390×3 roles) | expanded |
+| E23 backup/restore | `apps/api/tests/test_backup_restore.py` + `docs/ops/RESTORE_DRILL_LOG.md` (2026-09-06 PASS) | PASS |
+| Hold exclusivity E09 | API `test_hold_race.py` + e2e `deal-path` E09 | covered |
+| Offer version E08 | API `test_quote_versioning.py` + e2e `deal-path` E08 | covered |
 
 ## Explicit non-goals this package
 
