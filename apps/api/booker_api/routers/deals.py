@@ -725,6 +725,14 @@ def create_request(
         if not artist:
             raise HTTPException(404, "Артист не найден")
         supplier_org_id = artist.organization_id
+    elif resource_type == "hall":
+        hall = db.get(VenueHall, resource_id)
+        if not hall:
+            raise HTTPException(404, "Зал не найден")
+        venue = db.get(Venue, hall.venue_id)
+        if not venue:
+            raise HTTPException(404, "Площадка не найдена")
+        supplier_org_id = venue.organization_id
     else:
         venue = db.get(Venue, resource_id)
         if not venue:
@@ -991,29 +999,17 @@ def ack_offer(
     }
 
 
-@router.post("/bookings/{booking_id}/hold")
-def hold_booking(
-    booking_id: str,
-    user: User = Depends(current_user),
-    db: Session = Depends(get_db),
-):
-    expire_holds(db)
-    booking = db.get(Booking, booking_id)
-    if not booking:
-        raise HTTPException(404, "Бронь не найдена")
-    cust_org, sup_org = _booking_participant_orgs(db, booking)
-    if user.is_platform_admin:
-        pass
-    elif membership_ok(db, user, cust_org):
-        require_org_writer(db, user, cust_org)
-    elif membership_ok(db, user, sup_org):
-        require_org_member(db, user, sup_org)
-    else:
-        raise HTTPException(403, "Нет доступа")
+def _assert_hold_ready(db: Session, booking: Booking) -> OfferVersion:
     offer = db.get(Offer, booking.offer_id)
     version = db.get(OfferVersion, offer.active_version_id) if offer else None
     if not version or not (version.customer_ack and version.supplier_ack):
         raise HTTPException(409, "Оффер не подтверждён обеими сторонами")
+    if booking.status != "Negotiation":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Бронь уже удержана или закрыта")
+    return version
+
+
+def _lock_and_validate_slot(db: Session, booking: Booking) -> AvailabilitySlot:
     slot = db.execute(
         select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).with_for_update()
     ).scalar_one()
@@ -1028,6 +1024,10 @@ def hold_booking(
     )
     if slot.status in {"held", "confirmed", "busy"} or busy:
         raise HTTPException(status.HTTP_409_CONFLICT, "Слот уже удерживается или подтверждён")
+    return slot
+
+
+def _apply_hold(db: Session, *, booking: Booking, slot: AvailabilitySlot, actor_user_id: str) -> BookingHold:
     claimed = db.execute(
         update(AvailabilitySlot)
         .where(AvailabilitySlot.id == slot.id, AvailabilitySlot.status == "open")
@@ -1048,14 +1048,97 @@ def hold_booking(
     db.add(Message(conversation_id=conv.id, kind="system", body="Дата удерживается до оплаты."))
     audit(
         db,
-        actor_user_id=user.id,
+        actor_user_id=actor_user_id,
         action="hold.created",
         entity_type="booking",
         entity_id=booking.id,
     )
+    return hold
+
+
+@router.post("/bookings/{booking_id}/hold")
+def hold_booking(
+    booking_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    expire_holds(db)
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    cust_org, sup_org = _booking_participant_orgs(db, booking)
+    if user.is_platform_admin:
+        pass
+    elif membership_ok(db, user, cust_org):
+        require_org_writer(db, user, cust_org)
+    elif membership_ok(db, user, sup_org):
+        require_org_member(db, user, sup_org)
+    else:
+        raise HTTPException(403, "Нет доступа")
+    _assert_hold_ready(db, booking)
+    slot = _lock_and_validate_slot(db, booking)
+    hold = _apply_hold(db, booking=booking, slot=slot, actor_user_id=user.id)
     db.commit()
     db.refresh(hold)
     return {"hold_id": hold.id, "expires_at": hold.expires_at.isoformat(), "status": booking.status}
+
+
+@router.post("/events/{event_id}/holds/atomic")
+def hold_bookings_atomic(
+    event_id: str,
+    body: dict,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """E10: hold an obligatory set of bookings (e.g. multi-hall) all-or-nothing."""
+    expire_holds(db)
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_writer(db, user, event.organization_id)
+    booking_ids = body.get("booking_ids") or []
+    if not isinstance(booking_ids, list) or len(booking_ids) < 2:
+        raise HTTPException(400, "Нужен обязательный набор из ≥2 бронирований")
+    if len(set(booking_ids)) != len(booking_ids):
+        raise HTTPException(400, "Дубликаты booking_ids запрещены")
+
+    bookings: list[Booking] = []
+    for bid in booking_ids:
+        booking = db.get(Booking, bid)
+        if not booking or booking.event_id != event_id:
+            raise HTTPException(404, "Бронь не найдена в этом событии")
+        bookings.append(booking)
+
+    for booking in bookings:
+        _assert_hold_ready(db, booking)
+
+    # Lock slots in deterministic order to avoid deadlocks; validate all before any claim.
+    ordered = sorted(bookings, key=lambda b: b.slot_id)
+    slots: list[tuple[Booking, AvailabilitySlot]] = []
+    for booking in ordered:
+        slots.append((booking, _lock_and_validate_slot(db, booking)))
+
+    holds_out = []
+    for booking, slot in slots:
+        hold = _apply_hold(db, booking=booking, slot=slot, actor_user_id=user.id)
+        holds_out.append(
+            {
+                "booking_id": booking.id,
+                "hold_id": hold.id,
+                "expires_at": hold.expires_at.isoformat(),
+                "status": booking.status,
+            }
+        )
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="hold.atomic_package",
+        entity_type="event",
+        entity_id=event_id,
+        payload={"booking_ids": booking_ids, "count": len(booking_ids)},
+    )
+    db.commit()
+    return {"ok": True, "holds": holds_out}
 
 
 @router.post("/holds/expire")
