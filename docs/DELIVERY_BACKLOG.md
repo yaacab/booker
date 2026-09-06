@@ -25,26 +25,26 @@ Evidence при закрытии: реализация → тест → резу
 | W2-CAB-PERF | Performer scenarios | P0 | W0-CAB | web | IN_PROGRESS | §12 | e2e | shells | depth |
 | W2-CAB-VEN | Venue scenarios | P0 | W0-CAB | web | IN_PROGRESS | §13 | e2e | shells | depth |
 | W2-AUTOSAVE | Studio autosave | P0 | W0-FLAG | web | IN_PROGRESS | E06 | e2e | e578301 | polish |
-| W2-DEAL-PATH | Request→offer→hold | P0 | — | api+web | IN_PROGRESS | E07–E09 | api | exists | e2e polish |
+| W2-DEAL-PATH | Request→offer→hold | P0 | — | api+web | IN_PROGRESS | E07–E09 | api+e2e PARTIAL | hold_race/quote/flow/cross-role | e2e polish; not in CI critical |
 | W2-MULTI-HALL | Atomic multi-hall | P1 | W2-DEAL | api | VERIFIED | E10 | race | 449e7e8 | — |
 | W2-CANCEL | Transfer/cancel | P1 | W2-DEAL | api | VERIFIED | E11 | api | test_replacement | — |
 | W2-EXT-PAY | External confirm UX/audit | P0 | — | api+web | VERIFIED | E13 no fake online | api | e578301 | stub≠PSP |
 | W3-FAV | Favorites | P1 | — | api+web | VERIFIED | E04 | api | 8715009 | — |
 | W3-COMPARE | Compare | P1 | W3-FAV | web+api | VERIFIED | §10 | api | pending | — |
 | W3-SHARE | Shared + revoke | P1 | W3-FAV | api+web | VERIFIED | E22 | api | pending | — |
-| W3-SAVED | Saved search + consent | P1 | notif | api+web | TODO | §10 | api | — | — |
+| W3-SAVED | Saved search + consent | P1 | notif | api+web | VERIFIED | §10 | api | 4e262ab / 1f6d5cc | — |
 | W3-BRIEF | Public briefs | P1 | — | api+web | VERIFIED | E18 E19 | api | 4bf519a | — |
-| W3-PROMO | Share/QR/funnel | P1 | — | web+api | TODO | §15.1 | e2e | — | — |
-| W4-MSG-HUB | Message center | P1 | — | web+api | TODO | §19 | e2e | — | — |
+| W3-PROMO | Share/QR/funnel | P1 | — | web+api | VERIFIED | §15.1 | api | c052b61 / 60cf8ee | — |
+| W4-MSG-HUB | Message center | P1 | — | web+api | VERIFIED | §19 | api | 15d5880 | e2e optional expand |
 | W4-NOTIF | Email outbox retry | P1 | EMAIL | api | VERIFIED | E21 | unit | pending | SMTP optional |
 | W4-REVIEW | Reviews after Completed | P1 | — | api+web | VERIFIED | E20 | api | 51214da | — |
 | W4-CLAIM | Venue ownership claim | P1 | — | api+web | VERIFIED | §20 | api | pending | — |
 | W4-SUPPORT | Support/complaints | P1 | — | api+web | VERIFIED | §20–21 | api | pending | — |
 | W5-AUTHZ | Authz regression | P0 | — | qa | IN_PROGRESS | E17 | api | test_authz_* | expand |
 | W5-E2E-PR | Critical e2e in PR | P0 | W0-CI | qa | IN_PROGRESS | entry+cabinets+deal+flag | CI | fb24377 | expand specs |
-| W5-A11Y | Mobile 390 a11y | P1 | — | qa | IN_PROGRESS | E24 | e2e | cabinet-a11y | expand |
-| W5-BACKUP | DB+files restore | P1 | — | ops | IN_PROGRESS | E23 | drill | docs/ops | proof |
-| W5-MANIFEST | RELEASE_MANIFEST | P0 | waves | coord | TODO | G2 pack | review | — | — |
+| W5-A11Y | Mobile 390 a11y | P1 | — | qa | IN_PROGRESS | E24 PARTIAL | e2e | cabinet-a11y + E01_E24_EVIDENCE | expand SR + 3-role shots |
+| W5-BACKUP | DB+files restore | P1 | — | ops | VERIFIED | E23 | drill+pytest | ea46dca + test_backup_restore | RESTORE_DRILL_LOG PASS 2026-09-06 |
+| W5-MANIFEST | RELEASE_MANIFEST | P0 | waves | coord | IN_PROGRESS | G2 pack | review | draft | checkboxes open; evidence table ready |
 | W5-E25 | Prod smoke | G3 | owner | ops | TODO | E25 | prod | — | ожидает G3 |
 | C-LIVE | Live provider | C | OWNER | api | OWNER_BLOCKED | sandbox | — | — | PAYMENT_PARTNER |
 | C-MAP | Map provider | C | OWNER | web | OWNER_BLOCKED | §7 | — | — | MAP_PROVIDER |
@@ -65,9 +65,10 @@ Base SHA для новых worktree: текущий integration HEAD после 
 | W3-SHARE+COMPARE+W4-CLAIM/SUPPORT/NOTIF | coord | main wt | 4bf519a | shortlists, trust, outbox, compare/support UI | fav | VERIFIED | api 14 | this commit |
 | W2-CAB-PERF | — | — | HEAD | cabinet/performer/** | W0 | QUEUED | e2e | — |
 | W2-CAB-VEN | — | — | HEAD | cabinet/venue/** | W0 | QUEUED | e2e | — |
-| W4-MSG-HUB | — | — | HEAD | messages hub | deals | QUEUED | e2e | — |
-| W3-SAVED+PROMO | — | — | HEAD | saved search, QR | — | QUEUED | api | — |
-| W5-MANIFEST | coord | main wt | after A+B | RELEASE_MANIFEST | waves | QUEUED | review | — |
+| W4-MSG-HUB | coord | main wt | 15d5880 | messages hub | deals | VERIFIED | api | integrated |
+| W3-SAVED+PROMO | agents | main wt | 4e262ab/c052b61 | saved search, QR | — | VERIFIED | api | integrated |
+| W5-EVIDENCE | agent/w5-evidence | w5-evidence | ef1f83b | E01_E24_EVIDENCE, DELIVERY_* | — | IN_PROGRESS | docs | this branch |
+| W5-MANIFEST | coord | main wt | after A+B | RELEASE_MANIFEST | waves | IN_PROGRESS | review | draft checkboxes open |
 
 Shared (только coord): migrations, auth, OpenAPI/types, SiteChrome, lockfile, CI, globals.css, features.ts.
 
