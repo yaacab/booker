@@ -258,7 +258,6 @@ export default function EventStudioMap({
             <h2>
               <Icon name="place" /> Площадка
             </h2>
-            <div className="venue-visual" role="img" aria-label="Загородная площадка у воды" />
             <h3>{venue?.name || "Площадка не выбрана"}</h3>
             <p>{venue ? `${venue.city}` : "Можно выбрать позже"}</p>
             <div className="card-meta">
@@ -340,9 +339,9 @@ export default function EventStudioMap({
               <Icon name="users" /> Команда
             </h2>
             <div className="team-faces">
-              {selected.slice(0, 3).map((item, index) => (
-                <span key={item.id} className={`talent-face reference-portrait portrait-${index % 3}`} title={item.name}>
-                  <span className="sr-only">{item.name}</span>
+              {selected.slice(0, 3).map((item) => (
+                <span key={item.id} className="talent-face talent-initials" title={item.name}>
+                  <span aria-hidden="true">{item.initials}</span><span className="sr-only">{item.name}</span>
                 </span>
               ))}
               <button type="button" className="add-face" aria-label="Добавить исполнителя" onClick={() => setPanelOpen(true)}>
@@ -460,12 +459,12 @@ export default function EventStudioMap({
             <p className="panel-state">Никого не нашли — попробуйте другую дату или роль.</p>
           ) : null}
           <div className="talent-list">
-            {filtered.map((item, index) => {
+            {filtered.map((item) => {
               const isSelected = draft.talentIds.includes(item.id);
               return (
                 <article className="talent-card" key={item.id}>
-                  <div className={`talent-photo reference-portrait portrait-${index % 3}`} role="img" aria-label={`Фото: ${item.name}`}>
-                    <span className="sr-only">{item.initials}</span>
+                  <div className="talent-photo talent-initials" aria-label={`Фото не добавлено: ${item.name}`}>
+                    <span aria-hidden="true">{item.initials}</span>
                   </div>
                   <div className="talent-copy">
                     <h3>{item.name}</h3>

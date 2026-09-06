@@ -250,7 +250,7 @@ button, .btn, a.btn {
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
 }
 button:hover, .btn:hover, a.btn:hover {
-  background: color-mix(in srgb, var(--brand-dark) 88%, transparent);
+  background: color-mix(in srgb, var(--brand-hover, var(--brand-dark)) 88%, transparent);
   box-shadow: 0 10px 26px rgba(45, 106, 102, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 button:active, .btn:active, a.btn:active { transform: translateY(1px); }

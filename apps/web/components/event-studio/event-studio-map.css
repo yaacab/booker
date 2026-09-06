@@ -1,13 +1,13 @@
 :root {
-  --es-ink: #171918;
-  --es-muted: #747973;
-  --es-border: #dedad2;
-  --es-paper: #fbfaf7;
-  --es-canvas: #f6f3ed;
-  --es-green: #286c65;
-  --es-green-dark: #1f5752;
-  --es-gold: #c99a3c;
-  --es-shadow: 0 10px 28px rgba(42, 46, 42, .09);
+  --es-ink: #f4f3fa;
+  --es-muted: #b0b4c6;
+  --es-border: #363a50;
+  --es-paper: #151824;
+  --es-canvas: #090b12;
+  --es-green: #7761cb;
+  --es-green-dark: #d0bfff;
+  --es-gold: #a795d9;
+  --es-shadow: 0 12px 32px rgba(0, 0, 0, .24);
 }
 
 .event-studio-shell { min-height: 100dvh; background: var(--es-canvas); color: var(--es-ink); font-family: var(--font-body, "DM Sans"), system-ui, sans-serif; }
@@ -331,3 +331,141 @@
   .puzzle-piece--filled path:first-child,
   .puzzle-piece--ghost path { transition: none !important; }
 }
+
+/* Immersive materials; booking state is unchanged. */
+.event-studio-shell .time-editor > label > input { background: #202436; color: var(--es-ink); }
+.event-studio-shell .stage-rail li button > span { font-size: 14px; flex-shrink: 0; }
+.event-studio-shell .talent-initials {
+  display: grid;
+  place-items: center;
+  background: #26253c;
+  color: #ddd3ff;
+  font-weight: 650;
+  font-size: 25px;
+}
+.event-studio-shell { color-scheme: dark; }
+.event-studio-shell :is(.event-studio-header, .stage-rail, .map-card,
+  .puzzle-event-meta, .compatibility-note, .event-summary, .talent-card,
+  .search-box, .home-button, .add-face, .mobile-panel-toggle) {
+  background: var(--es-paper);
+  color: var(--es-ink);
+  border-color: var(--es-border);
+}
+.event-studio-shell :is(input, select, .card-button, .role-chips button, .role-tabs button) {
+  background: #202436;
+  color: var(--es-ink);
+  border-color: var(--es-border);
+}
+.event-studio-shell :is(.text-button, .outline-button, .panel-header button) { color: var(--es-ink); }
+.event-studio-shell :is(.card-meta, .event-summary small, .role-chips .ghost-chip) { color: var(--es-muted); }
+.event-studio-shell .role-tabs button.selected { background: #393052; color: #e4d6ff; border-color: #a795d9; }
+.event-studio-shell .remove-talent { background: #302b45; color: #e0d0ff; border-color: #a795d9; }
+.event-studio-shell .event-summary > button { background: #7560c6; }
+.event-studio-shell .submit-error, .event-studio-shell .availability-busy { color: #ffadb8; }
+.event-studio-shell .availability-tentative { color: #eed299; }
+.event-studio-shell .availability-available { color: #87dfbd; }
+.event-studio-shell .event-map { background: var(--es-canvas); }
+.event-studio-shell .puzzle-label.is-filled strong { color: #dbceff; }
+.event-studio-shell .puzzle-board-svg { filter: drop-shadow(0 10px 8px #0009) drop-shadow(0 0 20px #9a6df126); }
+.event-studio-shell .puzzle-piece--ghost { opacity: .55; }
+.event-studio-shell .puzzle-piece--snapping { animation-name: puzzle-assemble; }
+@keyframes puzzle-assemble {
+  from { transform: translateY(-18px) rotate(-5deg) scale(1.08); opacity: .25; }
+  70% { transform: translateY(2px) rotate(.5deg) scale(.99); opacity: 1; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Intrinsic card heights keep expanded editors and long names from overlapping. */
+.event-studio-shell .event-map {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "venue time" "puzzle puzzle" "team terms" "note note" "summary summary";
+  align-content: start;
+  align-items: start;
+  gap: 24px;
+  min-height: 0;
+  padding: 28px;
+  overflow: visible;
+}
+.event-studio-shell .event-map > :is(.map-card, .puzzle-stage, .compatibility-note, .event-summary) {
+  position: relative;
+  inset: auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  transform: none;
+  margin: 0;
+}
+.event-studio-shell .venue-card { grid-area: venue; }
+.event-studio-shell .time-card { grid-area: time; }
+.event-studio-shell .puzzle-stage { grid-area: puzzle; justify-self: center; width: min(520px, 100%); padding: 20px 0 8px; }
+.event-studio-shell .team-card { grid-area: team; }
+.event-studio-shell .terms-card { grid-area: terms; }
+.event-studio-shell .compatibility-note { grid-area: note; }
+.event-studio-shell .event-summary { grid-area: summary; }
+.event-studio-shell .connection-lines { display: none; }
+.event-studio-shell .map-card { padding: 16px; border-radius: 20px; background: rgba(21, 24, 36, .94); }
+.event-studio-shell .puzzle-stage.map-card-focus { box-shadow: none; }
+.event-studio-shell .puzzle-event-meta { background: #171b2c; border-color: #746a9d; box-shadow: var(--es-shadow); }
+.event-studio-shell .puzzle-label { max-width: 88px; white-space: normal; }
+.event-studio-shell .puzzle-label span { white-space: nowrap; }
+.event-studio-shell .puzzle-label--left { transform: translate(-25%, -50%); }
+.event-studio-shell .puzzle-label--right { transform: translate(-75%, -50%); }
+.event-studio-shell .team-faces { flex-wrap: wrap; }
+.event-studio-shell .talent-face { border-color: #202436; }
+.event-studio-shell .talent-copy { min-width: 0; overflow-wrap: anywhere; }
+.event-studio-shell .talent-photo { background-color: #2b3047; }
+.event-studio-shell .stage-rail li button { color: var(--es-muted); }
+.event-studio-shell .stage-rail li.active button { color: var(--es-ink); }
+.event-studio-shell .stage-rail li:not(:last-child)::after { background: var(--es-border); }
+.event-studio-shell .stage-rail li button > span { border-color: #596079; }
+.event-studio-shell .requirement { gap: 12px; }
+.event-studio-shell .requirement i { flex-shrink: 0; color: #91e3cf; border-color: #5d9e90; }
+.event-studio-shell :is(.card-button, .role-chips button, .role-tabs button, .text-button, .outline-button) { min-height: 44px; }
+.event-studio-shell .search-box:focus-within { outline: 2px solid #bca6ff; outline-offset: 2px; }
+.event-studio-shell :focus-visible { outline-color: #bca6ff; }
+.event-studio-shell .talent-panel { position: sticky; top: 0; overscroll-behavior: contain; }
+.event-studio-shell .panel-backdrop { background: rgba(3, 5, 12, .72); }
+.event-studio-shell .puzzle-piece--snapping { animation-duration: 420ms; }
+.event-studio-shell .puzzle-piece--releasing { animation: puzzle-release 320ms ease-out both; }
+@keyframes puzzle-release {
+  0% { transform: scale(.98); opacity: .85; }
+  45% { transform: translateY(-6px) scale(1.03); opacity: .2; }
+  100% { transform: none; opacity: .55; }
+}
+@media (min-width: 1181px) and (max-width: 1500px) {
+  .event-studio-grid { grid-template-columns: 86px minmax(0, 1fr) 350px; }
+  .event-studio-header { grid-template-columns: 86px minmax(0, 1fr) auto; }
+  .event-studio-brand { justify-content: center; padding: 0; }
+  .event-studio-brand strong { display: none; }
+  .stage-rail { padding: 14px 12px; }
+  .stage-rail li button { font-size: 0; }
+  .event-studio-shell .talent-card { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
+}
+@media (max-width: 1180px) {
+  .event-studio-shell .talent-panel { position: fixed; }
+  .event-studio-shell .event-map { padding-bottom: 88px; }
+}
+@media (max-width: 820px) {
+  .event-studio-title h1 { font-size: clamp(16px, 4vw, 20px); white-space: normal; }
+  .event-studio-title span { max-width: 100px; }
+  .event-studio-grid { padding-bottom: 0; }
+  .event-studio-shell .event-map { gap: 16px; padding: 18px 16px 90px; }
+  .event-studio-shell .map-card { padding: 12px; border-radius: 16px; }
+  .event-studio-shell .puzzle-stage { padding-top: 24px; }
+  .event-studio-shell .puzzle-label { max-width: 70px; }
+  .event-studio-shell .event-summary span { display: block; }
+  .event-studio-shell .mobile-panel-toggle { bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .event-studio-shell .talent-panel { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  .event-studio-shell .panel-header { position: sticky; top: -18px; z-index: 2; background: var(--es-paper); padding-block: 12px; }
+}
+@media (max-width: 520px) {
+  .event-studio-shell .event-map { grid-template-areas: "venue time" "puzzle puzzle" "team team" "terms terms" "note note" "summary summary"; gap: 14px; }
+  .event-studio-shell .venue-card h2, .event-studio-shell .time-card h2 { align-items: flex-start; overflow-wrap: anywhere; }
+  .event-studio-shell .map-card h2 .es-icon { flex-shrink: 0; }
+  .event-studio-shell .talent-card { grid-template-columns: 88px minmax(0, 1fr); gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-studio-shell .puzzle-piece { animation: none !important; transition: none !important; }
+}
+.puzzle-board--reduced .puzzle-piece--releasing { animation: none !important; }
