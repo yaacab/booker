@@ -107,16 +107,19 @@ class PaymentAdapter(ABC):
 def payment_live_enabled() -> bool:
     provider = settings.payment_provider.strip().lower()
     merchant = (settings.payment_merchant_id or "").strip()
-    return provider not in {"", "stub", "disabled"} and bool(merchant)
+    return provider not in {"", "stub", "external", "disabled"} and bool(merchant)
 
 
 def get_payment_adapter() -> PaymentAdapter:
+    from booker_api.payments.external import ExternalPaymentAdapter
     from booker_api.payments.live import LivePaymentAdapter
     from booker_api.payments.stub import StubPaymentAdapter
 
     provider = settings.payment_provider.strip().lower()
     if provider in {"", "stub"}:
         return StubPaymentAdapter()
+    if provider == "external":
+        return ExternalPaymentAdapter()
     if not payment_live_enabled():
         raise HTTPException(
             501,

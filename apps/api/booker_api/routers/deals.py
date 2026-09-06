@@ -1256,13 +1256,17 @@ def deal_room(
             "customer_signed": contract.customer_signed,
             "supplier_signed": contract.supplier_signed,
             "body": contract.body,
-            "otp_customer": contract.otp_customer,
-            "otp_supplier": contract.otp_supplier,
+            "otp_pending": not (contract.customer_signed and contract.supplier_signed),
         },
         "documents": _deal_documents(version, contract, attachments),
         "payment": None
         if not payment
-        else {"id": payment.id, "status": payment.status, "amount_rub": payment.amount_rub},
+        else {
+            "id": payment.id,
+            "status": payment.status,
+            "amount_rub": payment.amount_rub,
+            "provider": payment.provider,
+        },
         "quote": {
             "quote_id": version.id,
             "honorarium_rub": version.honorarium_rub,

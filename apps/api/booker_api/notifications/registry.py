@@ -2,6 +2,7 @@ from booker_api.config import settings
 from booker_api.notifications.transports.base import NotificationTransport
 from booker_api.notifications.transports.dev import DevTransport
 from booker_api.notifications.transports.disabled import DisabledTransport
+from booker_api.notifications.transports.smtp import SmtpTransport
 from booker_api.notifications.types import Channel
 
 
@@ -12,6 +13,7 @@ class NotificationMisconfiguredError(RuntimeError):
 _TRANSPORTS: dict[str, type[NotificationTransport]] = {
     "disabled": DisabledTransport,
     "dev": DevTransport,
+    "smtp": SmtpTransport,
 }
 
 

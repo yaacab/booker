@@ -34,20 +34,9 @@ test("заявка → оффер: API seed, artist cabinet, Deal Room", async (
   await expect(page.getByRole("tab", { name: "Условия" })).toBeVisible();
 });
 
-test("Deal Room: вкладки Сводка / Чат / Условия / Документы / Платежи", async ({ page }) => {
-  await page.goto("/deals/demo");
-  await expect(page.getByRole("tab", { name: "Сводка" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Чат" })).toBeVisible();
-  await page.getByRole("tab", { name: "Условия" }).click();
-  await expect(
-    page.getByText("только после отдельных подтверждений заказчика и исполнителя"),
-  ).toBeVisible();
-  await page.getByRole("tab", { name: "Документы" }).click();
-  await expect(page.getByText("агрегатор")).toBeVisible();
-  await page.getByRole("tab", { name: "Платежи" }).click();
-  await expect(
-    page.getByText("Прямой перевод вне предусмотренного сценария платформой не фиксируется."),
-  ).toBeVisible();
-  await page.getByRole("tab", { name: "Спор" }).click();
-  await expect(page.getByText("Решение принимает оператор.")).toBeVisible();
+test("студия события и каталог доступны", async ({ page }) => {
+  await page.goto("/events/new");
+  await expect(page.getByRole("heading").first()).toBeVisible();
+  await page.goto("/search");
+  await expect(page.getByRole("heading", { name: /Свободные артисты/ })).toBeVisible();
 });

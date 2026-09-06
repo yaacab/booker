@@ -44,6 +44,7 @@ rm -rf .next
 npm ci --silent
 export NEXT_PUBLIC_API_URL=/api
 export NEXT_PUBLIC_SITE_URL=https://bukergo.ru
+export NEXT_PUBLIC_EVENT_STUDIO_MAP_V1=1
 export BOOKER_INTERNAL_API_URL=http://127.0.0.1:8030
 npm run build
 # Dedicated service user for systemd units (idempotent)
@@ -67,6 +68,9 @@ echo
 cd /opt/booker/apps/api
 BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
   /opt/booker/.venv/bin/python -m booker_api.seed_venues_moscow
+# Founding artists: idempotent enrich only (no demo-user wipe)
+BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
+  /opt/booker/.venv/bin/python -c "from booker_api.db import SessionLocal; from booker_api.seed import enrich_catalog; db=SessionLocal(); print(enrich_catalog(db)); db.commit()"
 # Seed runs as root; re-assert booker ownership of data afterwards
 chown -R booker:booker /opt/booker/data
 REMOTE_SCRIPT

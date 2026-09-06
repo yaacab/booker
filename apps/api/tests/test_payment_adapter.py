@@ -26,6 +26,16 @@ def test_stub_is_default_adapter():
     assert adapter.name == "stub"
 
 
+def test_external_adapter_selected(monkeypatch):
+    from booker_api.payments.external import ExternalPaymentAdapter
+
+    monkeypatch.setattr(settings, "payment_provider", "external")
+    adapter = get_payment_adapter()
+    assert isinstance(adapter, ExternalPaymentAdapter)
+    assert adapter.name == "external"
+    assert payment_live_enabled() is False
+
+
 def test_payment_live_disabled_without_merchant(monkeypatch):
     monkeypatch.setattr(settings, "payment_provider", "yookassa")
     monkeypatch.setattr(settings, "payment_merchant_id", "")

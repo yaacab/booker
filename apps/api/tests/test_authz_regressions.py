@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from booker_api.config import settings
 from booker_api.security import now
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, contract_otps, register
 from tests.test_admin import _promote_admin
 from tests.test_offers import ack_both, setup_negotiation
 from tests.test_payments import _awaiting_payment, _sign
@@ -142,8 +142,11 @@ def test_contract_requires_participant_and_real_otp(client):
         f"/bookings/{ctx['booking_id']}/contract",
         headers=auth_header(ctx["customer"]["token"]),
     ).json()
-    assert contract["otp_customer"] != "123456"
-    assert contract["otp_customer"] != contract["otp_supplier"]
+    assert contract.get("otp_delivered") is True
+    assert "otp_customer" not in contract
+    otps = contract_otps(client.app.state.SessionLocal, contract["id"])
+    assert otps["otp_customer"] != "123456"
+    assert otps["otp_customer"] != otps["otp_supplier"]
     wrong = client.post(
         f"/contracts/{contract['id']}/sign",
         json={"side": "customer", "otp": "000000"},
@@ -152,13 +155,13 @@ def test_contract_requires_participant_and_real_otp(client):
     assert wrong.status_code == 403
     cross = client.post(
         f"/contracts/{contract['id']}/sign",
-        json={"side": "supplier", "otp": contract["otp_supplier"]},
+        json={"side": "supplier", "otp": otps["otp_supplier"]},
         headers=auth_header(ctx["customer"]["token"]),
     )
     assert cross.status_code == 403
     ok = client.post(
         f"/contracts/{contract['id']}/sign",
-        json={"side": "supplier", "otp": contract["otp_supplier"]},
+        json={"side": "supplier", "otp": otps["otp_supplier"]},
         headers=auth_header(ctx["owner"]["token"]),
     )
     assert ok.status_code == 200
@@ -300,12 +303,16 @@ def test_logout_invalidates_session(client):
 
 
 def test_expired_session_rejected(client):
+    import hashlib
+
     user = register(client, "expired@booker.test", "Просрочен")
     db = client.app.state.SessionLocal()
     try:
         from booker_api.models import SessionToken
 
-        row = db.get(SessionToken, user["token"])
+        token_hash = hashlib.sha256(user["token"].encode()).hexdigest()
+        row = db.get(SessionToken, token_hash)
+        assert row is not None
         row.expires_at = now() - timedelta(minutes=1)
         db.commit()
     finally:

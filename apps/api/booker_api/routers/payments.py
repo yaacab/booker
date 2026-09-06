@@ -22,6 +22,8 @@ from booker_api.models import (
 from booker_api.models import (
     Request as DealRequest,
 )
+from booker_api.notifications.service import notify, org_member_notifications
+from booker_api.notifications.types import Channel
 from booker_api.payments.adapter import PaymentAdapterError, get_payment_adapter
 from booker_api.rate_limit import client_key, webhook_limiter
 from booker_api.routers.deals import _transition
@@ -71,8 +73,7 @@ def create_contract(
         return {
             "id": existing.id,
             "status": booking.status,
-            "otp_customer": existing.otp_customer,
-            "otp_supplier": existing.otp_supplier,
+            "otp_delivered": True,
         }
     otp_customer = _new_otp()
     otp_supplier = _new_otp(exclude=otp_customer)
@@ -92,7 +93,37 @@ def create_contract(
     db.flush()
     _transition(booking, "AwaitingContract")
     conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one()
-    db.add(Message(conversation_id=conv.id, kind="system", body="Договор готов к подписи OTP."))
+    db.add(
+        Message(
+            conversation_id=conv.id,
+            kind="system",
+            body="Договор готов к подписи. Код OTP отправлен в уведомления сторон (не показывается в UI).",
+        )
+    )
+    offer_req = db.get(DealRequest, offer.request_id) if offer else None
+    customer_notes = org_member_notifications(
+        db,
+        organization_id=event.organization_id,
+        template="contract.otp",
+        subject="Код подписи договора (заказчик)",
+        body=f"Ваш код подписи договора в Букере: {otp_customer}",
+        entity_type="contract",
+        entity_id=contract.id,
+        channels=(Channel.IN_APP, Channel.EMAIL),
+    )
+    supplier_notes: list = []
+    if offer_req and offer_req.supplier_org_id:
+        supplier_notes = org_member_notifications(
+            db,
+            organization_id=offer_req.supplier_org_id,
+            template="contract.otp",
+            subject="Код подписи договора (исполнитель)",
+            body=f"Ваш код подписи договора в Букере: {otp_supplier}",
+            entity_type="contract",
+            entity_id=contract.id,
+            channels=(Channel.IN_APP, Channel.EMAIL),
+        )
+    notify(db, actor_user_id=user.id, notifications=customer_notes + supplier_notes)
     audit(
         db,
         actor_user_id=user.id,
@@ -106,8 +137,7 @@ def create_contract(
         "id": contract.id,
         "body": contract.body,
         "status": booking.status,
-        "otp_customer": otp_customer,
-        "otp_supplier": otp_supplier,
+        "otp_delivered": True,
     }
 
 
@@ -313,3 +343,59 @@ def stub_complete(
         WebhookIn(event_id=event_id, payment_id=payment_id, status=status, signature=signature),
         db,
     )
+
+
+def capture_payment_as_succeeded(
+    db: Session,
+    *,
+    payment: Payment,
+    actor_user_id: str | None,
+    event_id: str,
+    note: str,
+) -> dict:
+    """Shared capture path for stub webhook / external admin confirm."""
+    seen = db.get(PaymentWebhookEvent, event_id)
+    if seen:
+        return json.loads(seen.response_json)
+    booking = db.get(Booking, payment.booking_id)
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
+    payment.status = "succeeded"
+    if booking.status == "AwaitingPayment":
+        _transition(booking, "Confirmed")
+        slot = db.get(AvailabilitySlot, booking.slot_id)
+        if slot:
+            slot.status = "confirmed"
+        conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one_or_none()
+        if conv:
+            db.add(
+                Message(
+                    conversation_id=conv.id,
+                    kind="system",
+                    body=note,
+                )
+            )
+    response = {
+        "ok": True,
+        "payment_id": payment.id,
+        "payment_status": payment.status,
+        "booking_status": booking.status,
+    }
+    db.add(
+        PaymentWebhookEvent(
+            event_id=event_id,
+            payment_id=payment.id,
+            status="succeeded",
+            response_json=json.dumps(response),
+        )
+    )
+    audit(
+        db,
+        actor_user_id=actor_user_id,
+        action="payment.captured",
+        entity_type="payment",
+        entity_id=payment.id,
+        payload=response,
+    )
+    db.commit()
+    return response

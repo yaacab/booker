@@ -21,6 +21,8 @@ from booker_api.models import (
 from booker_api.rate_limit import admin_sensitive_limiter, client_key
 from booker_api.routers.deals import _transition
 from booker_api.schemas import DisputeIn, RefundIn, TotpEnableIn, VerifyIn
+from booker_api.config import settings
+from booker_api.routers.payments import capture_payment_as_succeeded
 from booker_api.security import audit, current_user, now, require_admin, require_admin_2fa
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -301,6 +303,35 @@ def refund(
     )
     db.commit()
     return {"id": payment.id, "status": payment.status}
+
+
+@router.post("/payments/{payment_id}/confirm-external")
+def confirm_external_payment(
+    payment_id: str,
+    request: Request,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+    totp: str | None = None,
+):
+    """Concierge confirms off-platform transfer (external payment mode)."""
+    admin_sensitive_limiter.check(client_key(request, "admin-external-pay"))
+    require_admin_2fa(user, totp, request)
+    if settings.payment_provider.strip().lower() != "external":
+        raise HTTPException(403, "Доступно только при BOOKER_PAYMENT_PROVIDER=external")
+    payment = db.get(Payment, payment_id)
+    if not payment:
+        raise HTTPException(404, "Платёж не найден")
+    if payment.provider != "external":
+        raise HTTPException(409, "Платёж не в режиме external")
+    if payment.status == "succeeded":
+        return {"id": payment.id, "status": payment.status, "idempotent": True}
+    return capture_payment_as_succeeded(
+        db,
+        payment=payment,
+        actor_user_id=user.id,
+        event_id=f"external-confirm-{payment.id}",
+        note="Оплата вне платформы подтверждена оператором Букера. Бронирование подтверждено.",
+    )
 
 
 @router.get("/metrics")

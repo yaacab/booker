@@ -221,7 +221,9 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       <h1>{data.name}</h1>
       <p>
         {data.city} · до {guestsLabel(data.capacity)}{" "}
-        {synthetic ? (
+        {data.listing_origin === "open_data" ? (
+          <span className="chip wait">{CHIP.openDataVenue}</span>
+        ) : synthetic ? (
           <span className="chip wait">{CHIP.syntheticCalendar}</span>
         ) : data.verified ? (
           <span className="chip ok">{CHIP.verified}</span>

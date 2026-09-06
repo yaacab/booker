@@ -82,6 +82,9 @@ export default function AdminPage() {
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [totpSecret, setTotpSecret] = useState("");
   const [totpBusy, setTotpBusy] = useState(false);
+  const [externalPaymentId, setExternalPaymentId] = useState("");
+  const [externalBusy, setExternalBusy] = useState(false);
+  const [externalNotice, setExternalNotice] = useState("");
 
   async function load() {
     if (!getToken()) {
@@ -142,6 +145,24 @@ export default function AdminPage() {
     }
   }
 
+  async function confirmExternalPayment(e: React.FormEvent) {
+    e.preventDefault();
+    const id = externalPaymentId.trim();
+    if (!id) return;
+    setExternalBusy(true);
+    setExternalNotice("");
+    try {
+      await api(`/admin/payments/${encodeURIComponent(id)}/confirm-external`, { method: "POST" });
+      setExternalNotice("Оплата подтверждена.");
+      setExternalPaymentId("");
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось подтвердить оплату");
+    } finally {
+      setExternalBusy(false);
+    }
+  }
+
   function renderTargets(targetType: "artist" | "venue", title: string, items: VerifyTarget[]) {
     return (
       <>
@@ -197,6 +218,23 @@ export default function AdminPage() {
               </button>
             </form>
           )}
+        </article>
+        <article className="card">
+          <h2>External-оплата</h2>
+          <form onSubmit={confirmExternalPayment} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
+            <label>
+              Payment id
+              <input
+                value={externalPaymentId}
+                onChange={(e) => setExternalPaymentId(e.target.value)}
+                required
+              />
+            </label>
+            <button type="submit" disabled={externalBusy}>
+              {externalBusy ? "Подтверждаем…" : "Подтвердить external-оплату"}
+            </button>
+            {externalNotice ? <p className="timeline">{externalNotice}</p> : null}
+          </form>
         </article>
         <article className="card">
           <h2>Верификация</h2>

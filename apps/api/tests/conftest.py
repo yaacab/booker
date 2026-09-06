@@ -75,6 +75,19 @@ def auth_header(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def contract_otps(SessionLocal, contract_id: str) -> dict[str, str]:
+    """OTP codes are server-side only; tests read them from DB."""
+    from booker_api.models import Contract
+
+    db = SessionLocal()
+    try:
+        row = db.get(Contract, contract_id)
+        assert row is not None
+        return {"otp_customer": row.otp_customer, "otp_supplier": row.otp_supplier}
+    finally:
+        db.close()
+
+
 def register(client: TestClient, email: str, name: str = "User") -> dict:
     res = client.post(
         "/auth/register",

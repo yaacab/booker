@@ -89,8 +89,8 @@ export default function HomePage() {
         <Link className="btn btn-glass" href="/events/new">
           Создать заявку
         </Link>
-        <Link className="btn secondary btn-glass" href="/deals/demo">
-          Посмотреть Deal Room
+        <Link className="btn secondary btn-glass" href="/search">
+          Смотреть каталог
         </Link>
       </p>
     </main>

@@ -35,6 +35,7 @@ type SearchItem = {
   address?: string;
   metro?: string;
   availability_mode?: string;
+  listing_origin?: string;
 };
 
 function fallbackCategories(): CategoryChip[] {
@@ -217,7 +218,9 @@ export default async function SearchPage({
                       {item.address ? <p className="timeline">{item.address}</p> : null}
                       <p>
                         <span className={`chip ${st.cls}`}>{st.label}</span>{" "}
-                        {synthetic ? (
+                        {item.listing_origin === "open_data" ? (
+                          <span className="chip wait">{CHIP.openDataVenue}</span>
+                        ) : synthetic ? (
                           <span className="chip wait">{CHIP.syntheticCalendar}</span>
                         ) : item.verified ? (
                           <span className="chip ok">{CHIP.verified}</span>

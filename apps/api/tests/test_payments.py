@@ -1,8 +1,8 @@
 import hashlib
 import hmac
 
+from tests.conftest import auth_header, contract_otps, register
 from booker_api.config import settings
-from tests.conftest import auth_header, register
 from tests.test_offers import ack_both, setup_negotiation
 
 
@@ -25,13 +25,15 @@ def _awaiting_payment(client):
         f"/bookings/{ctx['booking_id']}/contract",
         headers=auth_header(ctx["customer"]["token"]),
     ).json()
+    assert contract.get("otp_delivered") is True
+    otps = contract_otps(client.app.state.SessionLocal, contract["id"])
     for side, token in (
         ("customer", ctx["customer"]["token"]),
         ("supplier", ctx["owner"]["token"]),
     ):
         signed = client.post(
             f"/contracts/{contract['id']}/sign",
-            json={"side": side, "otp": contract[f"otp_{side}"]},
+            json={"side": side, "otp": otps[f"otp_{side}"]},
             headers=auth_header(token),
         )
         assert signed.status_code == 200, signed.text

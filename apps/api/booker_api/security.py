@@ -40,20 +40,22 @@ SESSION_TTL_DAYS = 30
 
 
 def issue_token(db: Session, user: User) -> str:
-    token = secrets.token_urlsafe(32)
+    raw = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
     db.add(
         SessionToken(
-            token=token,
+            token=token_hash,
             user_id=user.id,
             expires_at=now() + timedelta(days=SESSION_TTL_DAYS),
         )
     )
     db.flush()
-    return token
+    return raw
 
 
 def authenticate_token(db: Session, raw: str) -> tuple[User, SessionToken]:
-    row = db.get(SessionToken, raw)
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    row = db.get(SessionToken, token_hash) or db.get(SessionToken, raw)
     if not row:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Сессия недействительна")
     if row.expires_at is not None and aware(row.expires_at) <= now():
@@ -179,7 +181,8 @@ def require_admin(
 
 
 def mark_admin_2fa_verified(db: Session, token: str) -> None:
-    row = db.get(SessionToken, token)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    row = db.get(SessionToken, token_hash) or db.get(SessionToken, token)
     if row:
         row.admin_2fa_verified_at = now()
 

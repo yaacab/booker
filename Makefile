@@ -1,4 +1,4 @@
-.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow
+.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow
 
 PYTHON ?= $(CURDIR)/.venv/bin/python
 
@@ -26,6 +26,10 @@ seed:
 
 seed-venues-moscow:
 	cd apps/api && $(PYTHON) -m booker_api.seed_venues_moscow
+
+# Идемпотентно добирает founding-артистов (без demo-users / wipe).
+seed-founding-artists:
+	cd apps/api && $(PYTHON) -c "from booker_api.db import SessionLocal; from booker_api.seed import enrich_catalog; db=SessionLocal(); print({'catalog_added': enrich_catalog(db)}); db.commit()"
 
 fetch-venues-moscow:
 	mkdir -p /tmp/booker-venues

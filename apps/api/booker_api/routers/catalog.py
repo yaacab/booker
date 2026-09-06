@@ -18,7 +18,6 @@ from booker_api.models import (
     Offer,
     Organization,
     Request,
-    SessionToken,
     User,
     Venue,
     VenueHall,
@@ -49,6 +48,7 @@ from booker_api.schemas import (
 )
 from booker_api.security import (
     audit,
+    authenticate_token,
     aware,
     bearer,
     current_user,
@@ -115,10 +115,11 @@ def _optional_user(
 ) -> User | None:
     if creds is None:
         return None
-    row = db.get(SessionToken, creds.credentials)
-    if not row:
+    try:
+        user, _ = authenticate_token(db, creds.credentials)
+        return user
+    except HTTPException:
         return None
-    return db.get(User, row.user_id)
 
 
 @router.get("/categories")

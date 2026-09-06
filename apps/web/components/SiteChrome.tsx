@@ -23,7 +23,6 @@ function tabTitle(path: string): string {
   if (path.startsWith("/admin")) return "Пульт · Букер";
   if (path.startsWith("/login")) return "Вход · Букер";
   if (path.startsWith("/faq")) return "Помощь · Букер";
-  if (path.startsWith("/deals/demo")) return "Deal Room (демо) · Букер";
   if (path.startsWith("/deals/")) return "Deal Room · Букер";
   if (path.startsWith("/artists/")) return "Артист · Букер";
   if (path.startsWith("/venues/")) return "Площадка · Букер";
@@ -41,6 +40,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<
+    { id: string; subject?: string | null; body?: string | null }[]
+  >([]);
   const path = usePathname();
   // Флаг студии зависит от window.location.search — считаем только после маунта,
   // иначе SSR и первая клиентская отрисовка расходятся (hydration mismatch).
@@ -66,6 +69,17 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         setCabinetMode(org ? orgKindToCabinetMode(org.kind) : null);
       })
       .catch(() => setCabinetMode(null));
+  }, [path, authed]);
+
+  useEffect(() => {
+    if (!authed || !getToken()) {
+      setNotifications([]);
+      setNotificationsOpen(false);
+      return;
+    }
+    void api<{ items: { id: string; subject?: string | null; body?: string | null }[] }>("/notifications")
+      .then((res) => setNotifications(res.items || []))
+      .catch(() => setNotifications([]));
   }, [path, authed]);
 
   useEffect(() => {
@@ -170,6 +184,52 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <Link href="/admin" aria-current={path.startsWith("/admin") ? "page" : undefined}>
                 Оператор
               </Link>
+            ) : null}
+            {authed ? (
+              <span style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  className="linkish"
+                  aria-expanded={notificationsOpen}
+                  onClick={() => setNotificationsOpen((open) => !open)}
+                >
+                  Уведомления
+                  {notifications.length > 0 ? (
+                    <span className="chip wait" style={{ marginLeft: 6 }}>
+                      {notifications.length}
+                    </span>
+                  ) : null}
+                </button>
+                {notificationsOpen ? (
+                  <div
+                    className="card surface-glass"
+                    role="menu"
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "calc(100% + 8px)",
+                      zIndex: 40,
+                      width: 320,
+                      maxHeight: 360,
+                      overflow: "auto",
+                      display: "grid",
+                      gap: 8,
+                      padding: 12,
+                    }}
+                  >
+                    {notifications.length === 0 ? (
+                      <p className="timeline">Пока пусто</p>
+                    ) : (
+                      notifications.map((item) => (
+                        <div key={item.id}>
+                          <strong>{item.subject || "Уведомление"}</strong>
+                          {item.body ? <p className="timeline">{item.body}</p> : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+              </span>
             ) : null}
             {authed ? <WorkspaceSwitcher /> : null}
             {authed ? (

@@ -15,8 +15,12 @@ class Settings(BaseSettings):
     payment_secret_key: str = ""
     lawyer_approval_date: str = ""
     payment_flow_approval: str = ""
-    support_email: str = ""
+    support_email: str = "hello@bukergo.ru"
+    email_from: str = "Букер <noreply@bukergo.ru>"
     email_api_key: str = ""
+    email_smtp_host: str = ""
+    email_smtp_port: int = 587
+    email_smtp_user: str = ""
     sms_api_key: str = ""
     object_storage_provider: str = "local"
     object_storage_bucket: str = ""
@@ -41,6 +45,7 @@ class Settings(BaseSettings):
     sms_provider: str = "disabled"
     push_provider: str = "disabled"
     in_app_provider: str = "dev"
+    password_reset_ttl_hours: int = 2
 
 
 settings = Settings()

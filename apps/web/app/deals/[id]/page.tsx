@@ -43,7 +43,7 @@ type Room = {
   };
   contract: { id: string; customer_signed: boolean; supplier_signed: boolean; body: string } | null;
   documents?: { kind: string; id: string; label: string; quote_id?: string; signed: boolean }[];
-  payment: { id: string; status: string; amount_rub: number } | null;
+  payment: { id: string; status: string; amount_rub: number; provider?: string } | null;
   messages: { id: string; kind: string; body: string }[];
 };
 
@@ -64,7 +64,6 @@ export default function DealPage() {
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [otpCodes, setOtpCodes] = useState<{ customer?: string; supplier?: string } | null>(null);
   const [otpInput, setOtpInput] = useState("");
 
   async function load() {
@@ -84,22 +83,6 @@ export default function DealPage() {
   useEffect(() => {
     if (room?.event_title) document.title = `${room.event_title} · Deal Room · Букер`;
   }, [room?.event_title]);
-
-  // Пилот: коды подписи приходят в ответе POST /bookings/{id}/contract.
-  // Восстанавливаем их из sessionStorage, если страницу перезагрузили.
-  useEffect(() => {
-    const contractId = room?.contract?.id;
-    if (!contractId) {
-      setOtpCodes(null);
-      return;
-    }
-    try {
-      const raw = sessionStorage.getItem(`booker.contractOtp.${contractId}`);
-      setOtpCodes(raw ? (JSON.parse(raw) as { customer?: string; supplier?: string }) : null);
-    } catch {
-      setOtpCodes(null);
-    }
-  }, [room?.contract?.id]);
 
   useEffect(() => {
     if (!quoteOpen) return;
@@ -154,30 +137,20 @@ export default function DealPage() {
       state: !inPipeline ? "не применимо" : iLabel(cls),
     };
   });
-  // Пилотный код подписи текущей стороны — только если его вернул сервер при создании договора.
-  const pilotOtp = side === "customer" ? otpCodes?.customer : otpCodes?.supplier;
+  const paymentProvider = current.payment?.provider;
+  const isStubPayment = Boolean(current.payment) && (paymentProvider === "stub" || !paymentProvider);
+  const isExternalPayment = paymentProvider === "external";
 
   async function createContract() {
-    const res = await api<{ id: string; otp_customer?: string; otp_supplier?: string }>(
-      `/bookings/${current.booking_id}/contract`,
-      { method: "POST" },
-    );
-    if (res.otp_customer || res.otp_supplier) {
-      const codes = { customer: res.otp_customer, supplier: res.otp_supplier };
-      setOtpCodes(codes);
-      try {
-        sessionStorage.setItem(`booker.contractOtp.${res.id}`, JSON.stringify(codes));
-      } catch {
-        /* ignore */
-      }
-    }
+    await api(`/bookings/${current.booking_id}/contract`, { method: "POST" });
+    setNotice("Код подписи отправлен в уведомления");
   }
 
   async function signContract() {
     if (!current.contract) return;
-    const otp = pilotOtp || otpInput.trim();
+    const otp = otpInput.trim();
     if (!otp) {
-      setError("Введите код подписи — он показывается при создании договора.");
+      setError("Введите код подписи из уведомлений.");
       return;
     }
     await act(() =>
@@ -357,21 +330,24 @@ export default function DealPage() {
             >
               Счёт
             </button>
-            {room.payment ? (
-              <button
-                type="button"
-                className="secondary"
-                onClick={() =>
-                  void act(() =>
-                    api(`/payments/${room.payment!.id}/stub-complete`, {
-                      method: "POST",
-                      body: JSON.stringify({ status: "succeeded" }),
-                    })
-                  )
-                }
-              >
-                Пилот: отметить оплату
-              </button>
+            {isStubPayment ? (
+              <>
+                {!paymentProvider ? <span className="chip wait">Пилот / без эквайринга</span> : null}
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() =>
+                    void act(() =>
+                      api(`/payments/${room.payment!.id}/stub-complete`, {
+                        method: "POST",
+                        body: JSON.stringify({ status: "succeeded" }),
+                      })
+                    )
+                  }
+                >
+                  Пилот: отметить оплату
+                </button>
+              </>
             ) : null}
           </p>
           <div className="tabs" role="tablist">
@@ -456,13 +432,6 @@ export default function DealPage() {
           )}
           {tab === "documents" && (
             <section className="card" role="tabpanel" id="deal-panel-documents" aria-labelledby="deal-tab-documents">
-              {otpCodes?.customer || otpCodes?.supplier ? (
-                <p className="timeline">
-                  <span className="chip wait">код для теста</span> заказчик:{" "}
-                  <span className="mono">{otpCodes?.customer ?? "—"}</span>
-                  {" · "}исполнитель: <span className="mono">{otpCodes?.supplier ?? "—"}</span>
-                </p>
-              ) : null}
               {room.documents?.length ? (
                 <ul className="timeline">
                   {room.documents.map((doc) => (
@@ -485,15 +454,18 @@ export default function DealPage() {
                   ? `${room.payment.status} · ${money(room.payment.amount_rub)}`
                   : "Счёта нет. Статус платежа передаёт платёжный партнёр."}
               </p>
-              <p>Перевод напрямую не фиксируется платформой.</p>
-              <p>Стороны могут проводить расчёты самостоятельно или по взаимному согласию запросить подключение гаранта.</p>
-              <a
-                className="btn secondary"
-                href={`mailto:hello@bukergo.ru?subject=${encodeURIComponent(`Гарант для сделки ${room.booking_id}`)}`}
-              >
-                Запросить условия гаранта
-              </a>
-              <p className="timeline">Вариант начнёт действовать только после отдельного согласия обеих сторон.</p>
+              {isExternalPayment ? (
+                <p>Оплата вне платформы · статус подтвердит оператор Букера</p>
+              ) : (
+                <>
+                  {isStubPayment && !paymentProvider ? (
+                    <p>
+                      <span className="chip wait">Пилот / без эквайринга</span>
+                    </p>
+                  ) : null}
+                  <p>Перевод напрямую не фиксируется платформой.</p>
+                </>
+              )}
             </section>
           )}
           {tab === "dispute" && (
@@ -537,21 +509,15 @@ export default function DealPage() {
             {action.label}
           </button>
           {room.contract && action.kind === "contract" ? (
-            pilotOtp ? (
-              <p className="timeline">
-                <span className="chip wait">код для теста</span> <span className="mono">{pilotOtp}</span>
-              </p>
-            ) : (
-              <label>
-                Код подписи договора
-                <input
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value)}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                />
-              </label>
-            )
+            <label>
+              Код подписи договора
+              <input
+                value={otpInput}
+                onChange={(e) => setOtpInput(e.target.value)}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+              />
+            </label>
           ) : null}
           {quoteBlock}
         </aside>

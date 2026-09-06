@@ -34,7 +34,7 @@ def missing_owner_inputs() -> list[str]:
     missing: list[str] = []
 
     provider = settings.payment_provider.strip().lower()
-    if provider not in {"", "stub", "disabled"}:
+    if provider not in {"", "stub", "external", "disabled"}:
         if not _configured(settings.payment_merchant_id):
             missing.append("PAYMENT_MERCHANT_ID")
         if not _configured(settings.payment_public_key):
