@@ -1,7 +1,7 @@
 """public briefs and brief responses
 
 Revision ID: f7a3b4c5d6e7
-Revises: e5f1a2b3c4d5
+Revises: f6a2b3c4d5e6
 Create Date: 2026-09-06
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 revision: str = "f7a3b4c5d6e7"
 # Favorites (f6a2b3c4d5e6) may land first; coordinator rewires chain on integrate.
-down_revision: Union[str, None] = "e5f1a2b3c4d5"
+down_revision: Union[str, None] = "f6a2b3c4d5e6"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
