@@ -77,7 +77,10 @@ export default function LoginPage() {
           city: "Москва",
         });
         setActiveOrg(org.id);
-        router.push(cabinetPathForKind(kind));
+        const rawNext = new URLSearchParams(window.location.search).get("next");
+        const roleCabinet = cabinetPathForKind(kind);
+        const next = safeNext(rawNext, roleCabinet);
+        router.push(!rawNext || next === "/cabinet" ? roleCabinet : next);
         return;
       }
       const me = await api<{
@@ -140,7 +143,7 @@ export default function LoginPage() {
               Имя
               <input name="full_name" required />
             </label>
-            <fieldset className="role-picker">
+            <fieldset className="role-picker" data-testid="role-picker">
               <legend>Роль</legend>
               <input type="hidden" name="kind" value={selectedRole} />
               {[
@@ -153,6 +156,7 @@ export default function LoginPage() {
                   type="button"
                   className={`role-option ${selectedRole === value ? "on" : ""}`}
                   aria-pressed={selectedRole === value}
+                  data-testid={`role-option-${value}`}
                   onClick={() => setSelectedRole(value)}
                 >
                   <span><strong>{title}</strong><small>{description}</small></span>

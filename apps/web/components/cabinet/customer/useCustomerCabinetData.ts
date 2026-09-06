@@ -14,6 +14,7 @@ export function useCustomerCabinetData() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [orgName, setOrgName] = useState("");
   const [events, setEvents] = useState<CustomerEvent[]>([]);
   const [dealRooms, setDealRooms] = useState<CustomerDealRoom[]>([]);
@@ -27,10 +28,12 @@ export function useCustomerCabinetData() {
     try {
       const me = await api<{
         email: string;
+        full_name?: string;
         organizations?: { id: string; name: string; kind: string }[];
         active_organization_id?: string;
       }>("/me");
       setEmail(me.email);
+      setFullName((me.full_name || "").trim());
       const activeOrgId = getActiveOrg() || me.active_organization_id || me.organizations?.[0]?.id;
       const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
       if (!org) {
@@ -114,7 +117,34 @@ export function useCustomerCabinetData() {
     [dealRooms, now],
   );
 
+  const hasEventWithCity = useMemo(
+    () =>
+      events.some(
+        (e) =>
+          e.status !== "Cancelled" &&
+          Boolean(e.event_date) &&
+          Boolean((e.city || "").trim()),
+      ),
+    [events],
+  );
+
+  const needsOnboarding =
+    !fullName ||
+    !email ||
+    !hasEventWithCity ||
+    newOffers.length === 0;
+
+  // Keep board visible while onboarding remains — empty shell hid §5 checklist.
   const empty =
+    ready &&
+    !error &&
+    !needsOnboarding &&
+    upcomingEvents.length === 0 &&
+    drafts.length === 0 &&
+    newOffers.length === 0 &&
+    expiringHolds.length === 0;
+
+  const showStartCard =
     ready &&
     !error &&
     upcomingEvents.length === 0 &&
@@ -126,11 +156,14 @@ export function useCustomerCabinetData() {
     ready,
     error,
     email,
+    fullName,
     orgName,
     upcomingEvents,
     drafts,
     newOffers,
     expiringHolds,
+    hasEventWithCity,
+    showStartCard,
     empty,
     reload: load,
   };

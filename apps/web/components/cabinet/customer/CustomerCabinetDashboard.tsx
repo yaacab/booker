@@ -14,11 +14,14 @@ export function CustomerCabinetDashboard() {
     ready,
     error,
     email,
+    fullName,
     orgName,
     upcomingEvents,
     drafts,
     newOffers,
     expiringHolds,
+    hasEventWithCity,
+    showStartCard,
     empty,
   } = useCustomerCabinetData();
 
@@ -87,8 +90,28 @@ export function CustomerCabinetDashboard() {
       <section className="cabinet-zone" aria-label="События">
         <h2 className="cabinet-zone-title">События</h2>
         <div className="cabinet-zone-grid">
+          {showStartCard ? (
+            <article className="cabinet-empty-card" data-testid="customer-start-card">
+              <p className="cabinet-eyebrow">Старт</p>
+              <h2>Соберите первое событие</h2>
+              <p>
+                Укажите город, дату и тип — каталог покажет свободные слоты. Цена только из серверного
+                предложения.
+              </p>
+              <div className="cabinet-hero-actions">
+                <Link className="btn" href="/events/new">
+                  Создать событие
+                </Link>
+                <Link className="btn secondary" href="/search">
+                  Открыть каталог
+                </Link>
+              </div>
+            </article>
+          ) : null}
           <CustomerOnboardingWidget
-            hasEvents={upcomingEvents.length + drafts.length > 0}
+            hasName={Boolean(fullName)}
+            hasContact={Boolean(email)}
+            hasEventWithCity={hasEventWithCity}
             hasOffers={newOffers.length > 0}
           />
           <UpcomingEventsWidget events={upcomingEvents} />

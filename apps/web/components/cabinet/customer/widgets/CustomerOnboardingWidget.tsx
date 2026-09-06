@@ -2,25 +2,34 @@
 
 import Link from "next/link";
 import { DashboardWidget } from "../../DashboardWidget";
+import {
+  customerOnboardingItems,
+  openOnboardingItems,
+} from "@/lib/onboardingChecklists";
 
 /** Customer onboarding checklist. Spec §5 / W2-ONBOARD. */
 export function CustomerOnboardingWidget({
-  hasEvents,
+  hasName,
+  hasContact,
+  hasEventWithCity,
   hasOffers,
 }: {
-  hasEvents: boolean;
+  hasName: boolean;
+  hasContact: boolean;
+  hasEventWithCity: boolean;
   hasOffers: boolean;
 }) {
-  const items = [
-    { id: "event", label: "Создать событие с датой", done: hasEvents, href: "/events/new" },
-    { id: "search", label: "Посмотреть каталог по слотам", done: hasEvents, href: "/search" },
-    { id: "offer", label: "Дождаться предложения в Deal Room", done: hasOffers, href: "/cabinet/customer" },
-  ];
-  const open = items.filter((i) => !i.done);
+  const items = customerOnboardingItems({
+    hasName,
+    hasContact,
+    hasEventWithCity,
+    hasOffers,
+  });
+  const open = openOnboardingItems(items);
   if (open.length === 0) return null;
 
   return (
-    <DashboardWidget title="Онбординг" hint="С чего начать" isEmpty={false}>
+    <DashboardWidget title="Онбординг" hint="Чего не хватает" isEmpty={false}>
       <ul className="timeline" data-testid="customer-onboarding">
         {items.map((item) => (
           <li key={item.id}>
