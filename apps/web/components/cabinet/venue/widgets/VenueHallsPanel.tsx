@@ -114,6 +114,9 @@ export function VenueHallsPanel({ venueId, venueName, role }: Props) {
                   <Link className="btn secondary" href={`/venues/${venueId}`}>
                     Витрина
                   </Link>
+                  <Link className="btn secondary" href={`/venues/${venueId}/share`}>
+                    Поделиться / QR
+                  </Link>
                 </div>
               </article>
             </li>
