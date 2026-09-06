@@ -1,6 +1,6 @@
 # E01–E24 Evidence — Spec v3 G2 candidate
 
-**Candidate SHA:** `51907cf611410ea7481f2ed86b90cc3d715375f8` (`51907cf`)
+**Candidate SHA:** `39e10380d278b912ab0fd7cae8dc7fe9ccab5b0a` (`39e1038`)
 **Branch:** `feat/master-plan-execution`  
 **Date:** 2026-09-06  
 **G2 status:** **не закрыт** — evidence pack mostly landed; CI green on this SHA still required.  

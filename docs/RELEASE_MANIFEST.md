@@ -7,7 +7,7 @@ Prod deploy: **запрещён** до G3 / OK владельца
 
 ## Candidate SHA
 
-- Integration SHA: `51907cf` (`51907cf611410ea7481f2ed86b90cc3d715375f8`)
+- Integration SHA: `39e1038` (`39e10380d278b912ab0fd7cae8dc7fe9ccab5b0a`)
 - Evidence: CI checks на **этом** SHA / PR, не на старом `master`
 
 ## Scope A+B (статус)
