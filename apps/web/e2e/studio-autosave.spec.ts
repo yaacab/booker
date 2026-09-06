@@ -84,7 +84,7 @@ test.describe("E06 Event Studio autosave", () => {
     await expect(page.getByRole("status")).toContainText(/Сохран/i, { timeout: 5_000 });
   });
 
-  test("map: повторный submit под lock не дублирует POST /events", async ({ page, request }) => {
+  test("map: retry с тем же submit key не создаёт второй POST /events", async ({ page, request }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
 
     const session = await login(request, DEMO_ACCOUNTS.customer);
@@ -92,69 +92,63 @@ test.describe("E06 Event Studio autosave", () => {
     const org = me.organizations.find((o) => o.kind === "customer");
     test.skip(!org, "нет customer org — нужен make seed");
 
-    await page.addInitScript(() => {
-      sessionStorage.removeItem("booker.eventStudioSubmitKey");
-      sessionStorage.removeItem("booker.eventStudioSubmitKey:result");
-      localStorage.removeItem("booker.eventStudioMapDraft");
-    });
+    const cachedEventId = `e06-cached-${Date.now()}`;
+    await page.addInitScript(
+      ({ draftKey, submitKey, eventId }) => {
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({
+            draft: {
+              title: "E06 Idem Retry",
+              kind: "Свадьба",
+              city: "Москва",
+              date: "",
+              startsAt: "17:00",
+              endsAt: "23:30",
+              guests: 80,
+              talentIds: [],
+              requirements: [],
+              version: 2,
+            },
+            savedAt: new Date().toISOString(),
+          }),
+        );
+        // Prior successful create in this tab — retry must reuse, not POST again.
+        sessionStorage.setItem(submitKey, "e06-stable-submit-key");
+        sessionStorage.setItem(`${submitKey}:result`, eventId);
+      },
+      { draftKey: MAP_DRAFT_KEY, submitKey: SUBMIT_KEY, eventId: cachedEventId },
+    );
     await injectSession(page, session.token, org!.id);
 
-    let releasePost!: () => void;
-    const postGate = new Promise<void>((resolve) => {
-      releasePost = resolve;
-    });
     let eventPosts = 0;
-
     await page.route("**/events", async (route) => {
       if (route.request().method() !== "POST") {
         await route.continue();
         return;
       }
-      // Only the create endpoint — not /events/:id/requests.
-      const url = route.request().url().replace(/\/$/, "");
-      if (!/\/events$/.test(url)) {
+      const path = new URL(route.request().url()).pathname.replace(/\/$/, "");
+      // Exact create only — not /analytics/events or /events/:id/requests.
+      if (path !== "/events") {
         await route.continue();
         return;
       }
       eventPosts += 1;
-      await postGate;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ id: `e06-idem-${eventPosts}`, requirements: [] }),
+        body: JSON.stringify({ id: `should-not-create-${eventPosts}`, requirements: [] }),
       });
-    });
-    await page.route("**/events/*/requests", async (route) => {
-      if (route.request().method() === "POST") {
-        await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
-        return;
-      }
-      await route.continue();
     });
 
     await page.goto("/events/new?event_studio_map_v1=1");
     await expect(page.locator(".event-studio-shell")).toBeVisible();
+    await expect(page.getByLabel("Название события")).toHaveValue("E06 Idem Retry");
 
-    await page.getByLabel("Название события").fill(`E06 Idem ${Date.now()}`);
     await page.getByRole("button", { name: "Проверка" }).click();
-    const continueBtn = page.getByRole("button", { name: /Продолжить/ });
-    await expect(continueBtn).toBeVisible();
+    await page.getByRole("button", { name: /Продолжить/ }).click();
 
-    const firstClick = continueBtn.click();
-    await expect.poll(() => eventPosts, { timeout: 10_000 }).toBe(1);
-
-    // Second click while first POST is held — submitLock must drop it.
-    await continueBtn.click({ force: true }).catch(() => undefined);
-    await page.waitForTimeout(400);
-    expect(eventPosts).toBe(1);
-
-    releasePost();
-    await firstClick;
-    await expect
-      .poll(async () => page.evaluate((k) => sessionStorage.getItem(`${k}:result`) || "", SUBMIT_KEY), {
-        timeout: 10_000,
-      })
-      .toMatch(/^e06-idem-/);
-    expect(eventPosts).toBe(1);
+    await expect(page).toHaveURL(new RegExp(`/events/${cachedEventId}`), { timeout: 10_000 });
+    expect(eventPosts).toBe(0);
   });
 });
