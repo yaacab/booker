@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { SiteChrome } from "@/components/SiteChrome";
 import "./globals.css";
+import "./immersive.css";
+import "./cabinet-design.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
 
@@ -22,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2D6A66",
+  themeColor: "#090b12",
   width: "device-width",
   initialScale: 1,
 };

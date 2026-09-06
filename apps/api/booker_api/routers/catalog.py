@@ -1,11 +1,12 @@
 import json
 from datetime import datetime, timedelta
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from booker_api.calendar import calendar_day_bounds, overlapping_slots, ranges_overlap
+from booker_api.calendar import calendar_day_bounds, open_slots_unmasked, overlapping_slots
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
 from booker_api.models import (
@@ -15,8 +16,8 @@ from booker_api.models import (
     Booking,
     CatalogCategory,
     Offer,
+    Organization,
     Request,
-    SessionToken,
     User,
     Venue,
     VenueHall,
@@ -35,9 +36,19 @@ def _supplier_deals_count(db: Session, org_id: str) -> int:
         )
         .count()
     )
-from booker_api.schemas import ArtistIn, SlotIn, TariffIn, VenueIn
+from booker_api.ical_import import calendar_targets, import_ical_source
+from booker_api.schemas import (
+    ArtistIn,
+    IcalImportIn,
+    SlotIn,
+    TariffIn,
+    VacationClearIn,
+    VacationIn,
+    VenueIn,
+)
 from booker_api.security import (
     audit,
+    authenticate_token,
     aware,
     bearer,
     current_user,
@@ -46,12 +57,36 @@ from booker_api.security import (
     require_org_member,
     require_org_writer,
 )
+from booker_api.vacation import clear_vacation, set_vacation, vacation_status
 
 router = APIRouter(tags=["catalog"])
 
 
 def _hall_item(hall: VenueHall) -> dict:
     return {"id": hall.id, "name": hall.name, "capacity": hall.capacity}
+
+
+def _slot_item(slot: AvailabilitySlot, *, hall: str | None = None) -> dict:
+    uid = getattr(slot, "external_uid", None) or None
+    busy_source = None
+    if uid:
+        if uid.startswith("ical:"):
+            busy_source = "ical"
+        elif uid.startswith("vacation:"):
+            busy_source = "vacation"
+    item = {
+        "id": slot.id,
+        "starts_at": slot.starts_at.isoformat(),
+        "ends_at": slot.ends_at.isoformat(),
+        "status": slot.status,
+        "buffer_before_min": getattr(slot, "buffer_before_min", 0) or 0,
+        "buffer_after_min": getattr(slot, "buffer_after_min", 0) or 0,
+    }
+    if busy_source:
+        item["busy_source"] = busy_source
+    if hall:
+        item["hall"] = hall
+    return item
 
 
 def _halls_for_venue(db: Session, venue_id: str) -> list[VenueHall]:
@@ -80,10 +115,11 @@ def _optional_user(
 ) -> User | None:
     if creds is None:
         return None
-    row = db.get(SessionToken, creds.credentials)
-    if not row:
+    try:
+        user, _ = authenticate_token(db, creds.credentials)
+        return user
+    except HTTPException:
         return None
-    return db.get(User, row.user_id)
 
 
 @router.get("/categories")
@@ -106,7 +142,7 @@ def list_categories(db: Session = Depends(get_db)):
 
 @router.post("/artists")
 def create_artist(body: ArtistIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    require_org_member(db, user, body.organization_id)
+    require_org_writer(db, user, body.organization_id)
     artist = Artist(
         organization_id=body.organization_id,
         name=body.name,
@@ -123,7 +159,7 @@ def create_artist(body: ArtistIn, user: User = Depends(current_user), db: Sessio
 
 @router.post("/venues")
 def create_venue(body: VenueIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    require_org_member(db, user, body.organization_id)
+    require_org_writer(db, user, body.organization_id)
     venue = Venue(
         organization_id=body.organization_id,
         name=body.name,
@@ -205,7 +241,7 @@ def add_tariff(
     artist = db.get(Artist, artist_id)
     if not artist:
         raise HTTPException(404, "Артист не найден")
-    require_org_member(db, user, artist.organization_id)
+    require_org_writer(db, user, artist.organization_id)
     row = ArtistTariff(
         artist_id=artist_id,
         title=body.title,
@@ -227,7 +263,7 @@ def add_venue_tariff(
     venue = db.get(Venue, venue_id)
     if not venue:
         raise HTTPException(404, "Площадка не найдена")
-    require_org_member(db, user, venue.organization_id)
+    require_org_writer(db, user, venue.organization_id)
     row = VenueTariff(venue_id=venue_id, title=body.title, honorarium_rub=body.honorarium_rub)
     db.add(row)
     db.commit()
@@ -240,17 +276,18 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
         artist = db.get(Artist, body.resource_id)
         if not artist:
             raise HTTPException(404, "Артист не найден")
-        require_org_member(db, user, artist.organization_id)
+        require_org_writer(db, user, artist.organization_id)
     elif body.resource_type == "hall":
         hall = db.get(VenueHall, body.resource_id)
         if not hall:
             raise HTTPException(404, "Зал не найден")
         venue = db.get(Venue, hall.venue_id)
-        require_org_member(db, user, venue.organization_id)
+        require_org_writer(db, user, venue.organization_id)
     else:
         raise HTTPException(400, "resource_type: artist|hall")
     before = max(0, getattr(body, "buffer_before_min", 0) or 0)
     after = max(0, getattr(body, "buffer_after_min", 0) or 0)
+    # Local open/held/confirmed conflict; busy is an overlay and may coexist.
     if overlapping_slots(
         db,
         body.resource_type,
@@ -292,95 +329,293 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
     }
 
 
+@router.get("/organizations/{org_id}/calendar-targets")
+def list_calendar_targets(
+    org_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(404, "Организация не найдена")
+    require_org_member(db, user, org_id)
+    return {"items": calendar_targets(db, org_id, org.kind)}
+
+
+@router.post("/calendar/ical/import")
+async def import_ical_busy(
+    body: IcalImportIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    require_org_writer(db, user, body.organization_id)
+    try:
+        return await import_ical_source(
+            db,
+            org_id=body.organization_id,
+            resource_type=body.resource_type,
+            resource_id=body.resource_id,
+            ical_url=body.ical_url,
+            ical_body=body.ical_body,
+            actor_user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Не удалось загрузить iCal") from exc
+
+
+@router.get("/organizations/{org_id}/vacation")
+def get_vacation(
+    org_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(404, "Организация не найдена")
+    require_org_member(db, user, org_id)
+    if org.kind not in {"artist", "venue"}:
+        return {"items": []}
+    return vacation_status(db, org_id, org.kind)
+
+
+@router.post("/calendar/vacation")
+def post_vacation(
+    body: VacationIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    require_org_writer(db, user, body.organization_id)
+    try:
+        return set_vacation(
+            db,
+            org_id=body.organization_id,
+            resource_type=body.resource_type,
+            resource_id=body.resource_id,
+            starts_at=body.starts_at,
+            ends_at=body.ends_at,
+            actor_user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
+@router.delete("/calendar/vacation")
+def delete_vacation(
+    body: VacationClearIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    require_org_writer(db, user, body.organization_id)
+    try:
+        return clear_vacation(
+            db,
+            org_id=body.organization_id,
+            resource_type=body.resource_type,
+            resource_id=body.resource_id,
+            actor_user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
+def _parse_rider(raw: str | None) -> dict:
+    try:
+        data = json.loads(raw or "{}")
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+def _rider_formats(rider: dict) -> list[str]:
+    values: list[str] = []
+    fmt = rider.get("format")
+    if isinstance(fmt, str) and fmt.strip():
+        values.append(fmt.strip().lower())
+    formats = rider.get("formats")
+    if isinstance(formats, list):
+        values.extend(str(x).strip().lower() for x in formats if str(x).strip())
+    elif isinstance(formats, str) and formats.strip():
+        values.extend(part.strip().lower() for part in formats.split(",") if part.strip())
+    return values
+
+
+def _rider_travel_ok(rider: dict) -> bool | None:
+    """True/False if rider declares travel; None = unknown (does not match travel=1 filter)."""
+    for key in ("travel", "travel_ok", "выезд"):
+        if key not in rider:
+            continue
+        val = rider[key]
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return bool(val)
+        if isinstance(val, str):
+            low = val.strip().lower()
+            if low in {"1", "true", "yes", "да", "ok"}:
+                return True
+            if low in {"0", "false", "no", "нет"}:
+                return False
+    return None
+
+
+def _format_matches(rider: dict, needle: str) -> bool:
+    needle_l = needle.strip().lower()
+    if not needle_l:
+        return True
+    return any(needle_l in fmt for fmt in _rider_formats(rider))
+
+
+def _min_tariff(tariffs: list) -> int | None:
+    amounts = [int(t.honorarium_rub) for t in tariffs if getattr(t, "honorarium_rub", None) is not None]
+    return min(amounts) if amounts else None
+
+
 @router.get("/catalog/search")
 def search_catalog(
     city: str = Query("Москва"),
     category: str | None = None,
     date: datetime | None = None,
+    exclude: str | None = Query(None, description="Comma-separated artist/venue ids to hide"),
+    format: str | None = Query(None, description="Substring match against artist rider format(s)"),
+    travel: bool | None = Query(None, description="Require travel_ok in artist rider when true"),
+    budget_max: int | None = Query(None, ge=0, description="Max honorarium (min tariff)"),
+    guests: int | None = Query(None, ge=1, description="Minimum hall capacity"),
+    seating: str | None = Query(None, description="Optional seating hint; filters halls/venues mentioning it"),
+    kind: str | None = Query(None, description="artist | venue — narrow dual search"),
     db: Session = Depends(get_db),
 ):
     """В выдаче только профили с календарём. Занятые слоты не считаются свободными."""
-    q = db.query(Artist).filter(Artist.city == city)
-    if category:
-        q = q.filter(Artist.category == category)
+    excluded = {item.strip() for item in (exclude or "").split(",") if item.strip()}
+    kind_l = (kind or "").strip().lower() or None
+    include_artists = kind_l != "venue" and (not category or category != "venue")
+    include_venues = kind_l != "artist" and (not category or category == "venue")
+    # Dual search: category=venue without kind still venues-only via include_artists false.
+    if category == "venue":
+        include_artists = False
+        include_venues = True
+    elif category and kind_l != "venue":
+        include_venues = kind_l == "venue"
+
     horizon_end = now() + timedelta(days=30)
     results = []
-    for artist in q.all():
-        slots = (
-            db.query(AvailabilitySlot)
-            .filter(
-                AvailabilitySlot.resource_type == "artist",
-                AvailabilitySlot.resource_id == artist.id,
-            )
-            .all()
-        )
-        if not slots:
-            continue
-        open_future = [
-            s
-            for s in slots
-            if s.status == "open" and aware(s.ends_at) >= now() and aware(s.starts_at) <= horizon_end
-        ]
-        if date:
-            day_start, day_end = calendar_day_bounds(date)
-            free = [
-                s
-                for s in slots
-                if s.status == "open" and ranges_overlap(s.starts_at, s.ends_at, day_start, day_end)
-            ]
-            if not free:
+    if include_artists:
+        q = db.query(Artist).filter(Artist.city == city)
+        if category and category != "venue":
+            q = q.filter(Artist.category == category)
+        for artist in q.all():
+            if artist.id in excluded:
                 continue
-        elif not open_future:
-            continue
-        tariffs = db.query(ArtistTariff).filter(ArtistTariff.artist_id == artist.id).all()
-        pool = free if date else open_future
-        nxt = min(pool, key=lambda s: aware(s.starts_at)) if pool else None
-        results.append(
-            {
-                "id": artist.id,
-                "name": artist.name,
-                "city": artist.city,
-                "category": artist.category,
-                "verified": artist.verified,
-                "has_calendar": True,
-                "open_slots": len(pool),
-                "next_open_at": nxt.starts_at.isoformat() if nxt else None,
-                "search_date": aware(date).date().isoformat() if date else None,
-                "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
-            }
-        )
+            rider = _parse_rider(artist.rider_json)
+            if format and not _format_matches(rider, format):
+                continue
+            if travel is True and _rider_travel_ok(rider) is not True:
+                continue
+            if travel is False and _rider_travel_ok(rider) is True:
+                continue
+            slots = (
+                db.query(AvailabilitySlot)
+                .filter(
+                    AvailabilitySlot.resource_type == "artist",
+                    AvailabilitySlot.resource_id == artist.id,
+                )
+                .all()
+            )
+            if not slots:
+                continue
+            open_future = open_slots_unmasked(
+                slots, horizon_start=now(), horizon_end=horizon_end
+            )
+            if date:
+                day_start, day_end = calendar_day_bounds(date)
+                free = open_slots_unmasked(slots, day_start=day_start, day_end=day_end)
+                if not free:
+                    continue
+            elif not open_future:
+                continue
+            tariffs = db.query(ArtistTariff).filter(ArtistTariff.artist_id == artist.id).all()
+            if budget_max is not None:
+                floor = _min_tariff(tariffs)
+                if floor is None or floor > budget_max:
+                    continue
+            pool = free if date else open_future
+            nxt = min(pool, key=lambda s: aware(s.starts_at)) if pool else None
+            results.append(
+                {
+                    "id": artist.id,
+                    "name": artist.name,
+                    "city": artist.city,
+                    "category": artist.category,
+                    "verified": artist.verified,
+                    "has_calendar": True,
+                    "open_slots": len(pool),
+                    "next_open_at": nxt.starts_at.isoformat() if nxt else None,
+                    "search_date": aware(date).date().isoformat() if date else None,
+                    "travel_ok": _rider_travel_ok(rider),
+                    "formats": _rider_formats(rider),
+                    "tariffs": [
+                        {"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs
+                    ],
+                }
+            )
+
     venue_results = []
-    if not category or category == "venue":
+    if include_venues:
+        seating_l = (seating or "").strip().lower() or None
         for venue in db.query(Venue).filter(Venue.city == city).all():
+            if venue.id in excluded:
+                continue
             halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
+            if guests is not None:
+                matching = [h for h in halls if (h.capacity or 0) >= guests]
+            else:
+                matching = list(halls)
+            if seating_l:
+                blob = " ".join(
+                    [
+                        (getattr(venue, "description", "") or ""),
+                        (getattr(venue, "name", "") or ""),
+                        *[h.name for h in matching],
+                    ]
+                ).lower()
+                if seating_l not in blob:
+                    # Soft filter: keep venue only if hint appears; unknown seating does not invent match.
+                    continue
+            if guests is not None and not matching:
+                continue
+            hall_ids = {h.id for h in matching} if guests is not None else {h.id for h in halls}
             hall_slots = []
             for hall in halls:
+                if hall.id not in hall_ids:
+                    continue
                 hall_slots.extend(
                     db.query(AvailabilitySlot)
-                    .filter(AvailabilitySlot.resource_type == "hall", AvailabilitySlot.resource_id == hall.id)
+                    .filter(
+                        AvailabilitySlot.resource_type == "hall",
+                        AvailabilitySlot.resource_id == hall.id,
+                    )
                     .all()
                 )
             if not hall_slots:
                 continue
-            open_future = [
-                s
-                for s in hall_slots
-                if s.status == "open" and aware(s.ends_at) >= now() and aware(s.starts_at) <= now() + timedelta(days=30)
-            ]
+            open_future = open_slots_unmasked(
+                hall_slots, horizon_start=now(), horizon_end=now() + timedelta(days=30)
+            )
             pool = open_future
             if date:
                 day_start, day_end = calendar_day_bounds(date)
-                pool = [
-                    s
-                    for s in hall_slots
-                    if s.status == "open" and ranges_overlap(s.starts_at, s.ends_at, day_start, day_end)
-                ]
+                pool = open_slots_unmasked(hall_slots, day_start=day_start, day_end=day_end)
                 if not pool:
                     continue
             elif not open_future:
                 continue
             nxt = min(pool, key=lambda s: aware(s.starts_at))
             tariffs = db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).all()
+            if budget_max is not None and kind_l == "venue":
+                floor = _min_tariff(tariffs)
+                if floor is not None and floor > budget_max:
+                    continue
             venue_results.append(
                 {
                     "id": venue.id,
@@ -388,6 +623,12 @@ def search_catalog(
                     "city": venue.city,
                     "category": "venue",
                     "verified": venue.verified,
+                    "address": getattr(venue, "address", "") or "",
+                    "metro": getattr(venue, "metro", "") or "",
+                    "availability_mode": getattr(venue, "availability_mode", "owner") or "owner",
+                    "listing_origin": getattr(venue, "listing_origin", "owner") or "owner",
+                    "capacity": venue.capacity,
+                    "matching_halls": [_hall_item(h) for h in matching],
                     "open_slots": len(pool),
                     "next_open_at": nxt.starts_at.isoformat(),
                     "tariffs": [{"honorarium_rub": t.honorarium_rub} for t in tariffs],
@@ -411,17 +652,7 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
             .order_by(AvailabilitySlot.starts_at)
             .all()
         ):
-            slots.append(
-                {
-                    "id": s.id,
-                    "hall": hall.name,
-                    "starts_at": s.starts_at.isoformat(),
-                    "ends_at": s.ends_at.isoformat(),
-                    "status": s.status,
-                    "buffer_before_min": getattr(s, "buffer_before_min", 0) or 0,
-                    "buffer_after_min": getattr(s, "buffer_after_min", 0) or 0,
-                }
-            )
+            slots.append(_slot_item(s, hall=hall.name))
     return {
         "id": venue.id,
         "organization_id": venue.organization_id,
@@ -429,7 +660,21 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
         "city": venue.city,
         "capacity": venue.capacity,
         "verified": venue.verified,
-        "facts": {"note": "Звёзды повесим после десяти закрытых вечеров. Пока — факты, не магия."},
+        "address": getattr(venue, "address", "") or "",
+        "district": getattr(venue, "district", "") or "",
+        "metro": getattr(venue, "metro", "") or "",
+        "description": getattr(venue, "description", "") or "",
+        "source_url": getattr(venue, "source_url", "") or "",
+        "source_attribution": getattr(venue, "source_attribution", "") or "",
+        "listing_origin": getattr(venue, "listing_origin", "owner") or "owner",
+        "availability_mode": getattr(venue, "availability_mode", "owner") or "owner",
+        "facts": {
+            "note": (
+                "Календарь ориентировочный: слоты синтетические, доступность не подтверждена владельцем."
+                if (getattr(venue, "availability_mode", "owner") or "owner") == "synthetic"
+                else "Звёзды повесим после десяти закрытых вечеров. Пока — факты, не магия."
+            )
+        },
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
         "halls": [_hall_item(h) for h in halls],
         "slots": slots,
@@ -472,15 +717,5 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
             "note": "Рейтинг из восьми факторов подождёт. Сначала десять живых отзывов, потом цирк.",
         },
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
-        "slots": [
-            {
-                "id": s.id,
-                "starts_at": s.starts_at.isoformat(),
-                "ends_at": s.ends_at.isoformat(),
-                "status": s.status,
-                "buffer_before_min": getattr(s, "buffer_before_min", 0) or 0,
-                "buffer_after_min": getattr(s, "buffer_after_min", 0) or 0,
-            }
-            for s in slots
-        ],
+        "slots": [_slot_item(s) for s in slots],
     }

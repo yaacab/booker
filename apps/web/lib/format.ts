@@ -14,29 +14,35 @@ export function formatWhen(iso?: string | null): string {
 }
 
 export function formatDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "дата не указана";
   return new Intl.DateTimeFormat("ru-RU", {
     weekday: "long",
     day: "numeric",
     month: "long",
     timeZone: TZ,
-  }).format(new Date(iso));
+  }).format(d);
 }
 
 export function formatClock(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "--:--";
   return new Intl.DateTimeFormat("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: TZ,
-  }).format(new Date(iso));
+  }).format(d);
 }
 
 export function moscowDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date(iso));
+  }).format(d);
 }
 
 export function moscowToday(): string {
@@ -45,6 +51,20 @@ export function moscowToday(): string {
 
 export function money(n: number): string {
   return new Intl.NumberFormat("ru-RU").format(n) + " ₽";
+}
+
+/** Русская плюрализация: pluralRu(1, "гость", "гостя", "гостей"). */
+export function pluralRu(n: number, one: string, few: string, many: string): string {
+  const abs = Math.abs(Math.trunc(n)) % 100;
+  const last = abs % 10;
+  if (abs > 10 && abs < 20) return many;
+  if (last > 1 && last < 5) return few;
+  if (last === 1) return one;
+  return many;
+}
+
+export function guestsLabel(n: number): string {
+  return `${n} ${pluralRu(n, "гость", "гостя", "гостей")}`;
 }
 
 export function initials(name: string): string {

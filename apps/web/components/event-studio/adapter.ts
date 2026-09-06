@@ -11,6 +11,8 @@ import type {
 import { EMPTY_DRAFT } from "./types";
 
 const DRAFT_KEY = "booker.eventStudioMapDraft";
+
+export const EVENT_STUDIO_DRAFT_STORAGE_KEY = DRAFT_KEY;
 const IDEMPOTENCY_KEY = "booker.eventStudioSubmitKey";
 
 type CatalogItem = {
@@ -22,6 +24,7 @@ type CatalogItem = {
   open_slots?: number;
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
+  availability_mode?: string;
 };
 
 type CatalogResponse = {
@@ -47,7 +50,7 @@ function availabilityOf(item: CatalogItem, date?: string): { state: Availability
   const slots = item.open_slots ?? 0;
   if (slots > 0 && item.verified) {
     const day = date ? formatDay(`${date}T12:00:00+03:00`) : "на дату";
-    return { state: "available", label: `● Свободен ${day.split(",")[0]}` };
+    return { state: "available", label: `Свободен: ${day.split(",")[0]}` };
   }
   if (slots > 0 && !item.verified) {
     return { state: "tentative", label: "● Нужно уточнить слот" };
@@ -81,20 +84,27 @@ export function mapCatalogTalent(item: CatalogItem, date?: string): TalentItem {
 }
 
 export function mapCatalogVenue(item: CatalogItem): VenueItem {
+  const synthetic = item.availability_mode === "synthetic";
   return {
     id: item.id,
     name: item.name,
     city: item.city,
     honorariumFrom: minHonorarium(item.tariffs),
+    availabilityLabel: synthetic ? "Календарь ориентировочный" : undefined,
   };
 }
 
-export async function loadCatalog(city: string, date: string, category?: string): Promise<CatalogResponse> {
+export async function loadCatalog(
+  city: string,
+  date: string,
+  category?: string,
+  signal?: AbortSignal,
+): Promise<CatalogResponse> {
   const params = new URLSearchParams({ city });
   const iso = catalogDateParam(date);
   if (iso) params.set("date", iso);
   if (category) params.set("category", category);
-  return api<CatalogResponse>(`/catalog/search?${params.toString()}`);
+  return api<CatalogResponse>(`/catalog/search?${params.toString()}`, { signal });
 }
 
 export function budgetHintFromSelection(
@@ -168,15 +178,48 @@ function talentCategoryCodes(talentIds: string[], talents: TalentItem[]): Map<st
   return counts;
 }
 
+export function newSubmitIdempotencyKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `esm-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** Stable submit key for this browser tab — survives remount / retry without minting a duplicate event. */
+export function getOrCreateSubmitIdempotencyKey(): string {
+  if (typeof window === "undefined") return newSubmitIdempotencyKey();
+  const existing = sessionStorage.getItem(IDEMPOTENCY_KEY);
+  if (existing) return existing;
+  const key = newSubmitIdempotencyKey();
+  sessionStorage.setItem(IDEMPOTENCY_KEY, key);
+  return key;
+}
+
+export function clearSubmitIdempotency(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(IDEMPOTENCY_KEY);
+  sessionStorage.removeItem(`${IDEMPOTENCY_KEY}:result`);
+}
+
+export function peekSubmitIdempotencyResult(idempotencyKey: string): string | null {
+  if (typeof window === "undefined") return null;
+  const prev = sessionStorage.getItem(IDEMPOTENCY_KEY);
+  const prevResult = sessionStorage.getItem(`${IDEMPOTENCY_KEY}:result`);
+  if (prev === idempotencyKey && prevResult) return prevResult;
+  return null;
+}
+
 export async function submitEventStudioDraft(
   draft: EventStudioDraft,
   talents: TalentItem[],
   idempotencyKey: string,
 ): Promise<{ eventId: string; reused: boolean }> {
-  const prev = sessionStorage.getItem(IDEMPOTENCY_KEY);
-  const prevResult = sessionStorage.getItem(`${IDEMPOTENCY_KEY}:result`);
-  if (prev === idempotencyKey && prevResult) {
-    return { eventId: prevResult, reused: true };
+  const cached = peekSubmitIdempotencyResult(idempotencyKey);
+  if (cached) {
+    return { eventId: cached, reused: true };
+  }
+
+  // Pin key before POST so a remount mid-flight keeps the same key.
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
   }
 
   const me = await api<{ organizations: { id: string; kind: string }[]; active_organization_id?: string }>("/me");
@@ -185,6 +228,12 @@ export async function submitEventStudioDraft(
     me.organizations.find((o) => o.kind === "customer") ||
     me.organizations[0];
   if (!org) throw new Error("Сначала войдите как заказчик");
+
+  // Re-check after await — concurrent retry may have finished the create.
+  const raced = peekSubmitIdempotencyResult(idempotencyKey);
+  if (raced) {
+    return { eventId: raced, reused: true };
+  }
 
   const roleCounts = talentCategoryCodes(draft.talentIds, talents);
   const requirements = [...roleCounts.entries()].map(([category_code, qty]) => ({ category_code, qty }));
@@ -211,6 +260,11 @@ export async function submitEventStudioDraft(
     }),
   });
 
+  // Persist result immediately after create so a retry cannot POST another event,
+  // even if the /requests loop fails mid-way.
+  sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
+  sessionStorage.setItem(`${IDEMPOTENCY_KEY}:result`, created.id);
+
   const reqByCategory = new Map((created.requirements || []).map((r) => [r.category_code, r.id]));
   for (const talentId of draft.talentIds) {
     const talent = talents.find((t) => t.id === talentId);
@@ -235,13 +289,6 @@ export async function submitEventStudioDraft(
     });
   }
 
-  sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
-  sessionStorage.setItem(`${IDEMPOTENCY_KEY}:result`, created.id);
   clearStoredDraft();
   return { eventId: created.id, reused: false };
-}
-
-export function newSubmitIdempotencyKey(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `esm-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

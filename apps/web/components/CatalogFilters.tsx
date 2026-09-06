@@ -4,39 +4,64 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CATEGORY, categoryLabel } from "@/lib/copy";
 import { moscowToday } from "@/lib/format";
+import { trackClientEvent } from "@/lib/api";
 import { CityField } from "@/components/CityField";
 
 export type CategoryChip = { code: string; title: string };
 
-function fallbackCategories(): CategoryChip[] {
-  return Object.entries(CATEGORY).map(([code, title]) => ({ code, title }));
-}
-
-function searchHref(city: string, date?: string, cat?: string, event?: string, requirement?: string) {
-  const p = new URLSearchParams();
-  p.set("city", city);
-  if (date) p.set("date", date);
-  if (cat) p.set("category", cat);
-  if (event) p.set("event", event);
-  if (requirement) p.set("requirement", requirement);
-  return `/search?${p.toString()}`;
-}
-
-export function CatalogFilters({
-  city,
-  date,
-  category,
-  categories,
-  event,
-  requirement,
-}: {
+export type CatalogFilterValues = {
   city: string;
   date?: string;
   category?: string;
   categories?: CategoryChip[];
   event?: string;
   requirement?: string;
-}) {
+  exclude?: string;
+  kind?: string;
+  format?: string;
+  travel?: string;
+  budget_max?: string;
+  guests?: string;
+  seating?: string;
+};
+
+function fallbackCategories(): CategoryChip[] {
+  return Object.entries(CATEGORY).map(([code, title]) => ({ code, title }));
+}
+
+function searchHref(base: CatalogFilterValues, cat?: string | null) {
+  const p = new URLSearchParams();
+  p.set("city", base.city);
+  if (base.date) p.set("date", base.date);
+  if (cat) p.set("category", cat);
+  if (base.event) p.set("event", base.event);
+  if (base.requirement) p.set("requirement", base.requirement);
+  if (base.exclude) p.set("exclude", base.exclude);
+  if (base.kind) p.set("kind", base.kind);
+  if (base.format) p.set("format", base.format);
+  if (base.travel) p.set("travel", base.travel);
+  if (base.budget_max) p.set("budget_max", base.budget_max);
+  if (base.guests) p.set("guests", base.guests);
+  if (base.seating) p.set("seating", base.seating);
+  return `/search?${p.toString()}`;
+}
+
+export function CatalogFilters(props: CatalogFilterValues) {
+  const {
+    city,
+    date,
+    category,
+    categories,
+    event,
+    requirement,
+    exclude,
+    kind,
+    format,
+    travel,
+    budget_max,
+    guests,
+    seating,
+  } = props;
   const [open, setOpen] = useState(false);
   const [cats, setCats] = useState<CategoryChip[]>(
     categories?.length ? categories : fallbackCategories(),
@@ -76,28 +101,73 @@ export function CatalogFilters({
     };
   }, [categories]);
 
-  const closedLabel = [city, date || "без даты", categoryLabel(category) || "все"].join(" · ");
+  const closedLabel = [
+    city,
+    date || "без даты",
+    categoryLabel(category) || (kind === "venue" ? "площадки" : "все"),
+    guests ? `от ${guests} гостей` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <aside className="filters card">
+    <aside className="filters card surface-glass">
       <button type="button" className="filter-toggle" onClick={() => setOpen((v) => !v)}>
         {open ? "Спрятать фильтр" : closedLabel}
       </button>
       <div className={`filter-body${open ? " open" : ""}`}>
         <h2 className="filter-title">Сузить охоту</h2>
-        <form action="/search" method="get">
+        <form
+          action="/search"
+          method="get"
+          onSubmit={() => {
+            trackClientEvent("search.performed", { city, category: category || "all", kind: kind || "all" });
+          }}
+        >
           <CityField name="city" defaultValue={city} />
           <label>
             Дата
             <input name="date" type="date" min={moscowToday()} defaultValue={date || ""} />
           </label>
-          {category ? <input type="hidden" name="category" value={category} /> : null}
+          <label>
+            Тип
+            <select name="kind" defaultValue={kind || ""}>
+              <option value="">Артисты и площадки</option>
+              <option value="artist">Только исполнители</option>
+              <option value="venue">Только площадки</option>
+            </select>
+          </label>
+          <label>
+            Формат (исполнитель)
+            <input name="format" type="text" placeholder="wedding, club…" defaultValue={format || ""} />
+          </label>
+          <label>
+            Бюджет до, ₽
+            <input name="budget_max" type="number" min={0} placeholder="например 80000" defaultValue={budget_max || ""} />
+          </label>
+          <label>
+            Выезд
+            <select name="travel" defaultValue={travel || ""}>
+              <option value="">Не важно</option>
+              <option value="true">Только с выездом</option>
+              <option value="false">Без выезда</option>
+            </select>
+          </label>
+          <label>
+            Гостей от (зал)
+            <input name="guests" type="number" min={1} placeholder="80" defaultValue={guests || ""} />
+          </label>
+          <label>
+            Рассадка / зал (подсказка)
+            <input name="seating" type="text" placeholder="банкет, театр…" defaultValue={seating || ""} />
+          </label>
           {event ? <input type="hidden" name="event" value={event} /> : null}
           {requirement ? <input type="hidden" name="requirement" value={requirement} /> : null}
+          {exclude ? <input type="hidden" name="exclude" value={exclude} /> : null}
           <p className="filter-label">Категория</p>
           <nav className="category-chips" aria-label="Категории">
             <Link
-              href={searchHref(city, date, undefined, event, requirement)}
+              href={searchHref({ ...props, category: undefined }, null)}
               className={`chip${category ? "" : " on"}`}
               aria-current={category ? undefined : "page"}
             >
@@ -106,7 +176,7 @@ export function CatalogFilters({
             {cats.map((c) => (
               <Link
                 key={c.code}
-                href={searchHref(city, date, c.code, event, requirement)}
+                href={searchHref(props, c.code)}
                 className={`chip${category === c.code ? " on" : ""}`}
                 aria-current={category === c.code ? "page" : undefined}
               >

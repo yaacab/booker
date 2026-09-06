@@ -22,6 +22,7 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: str
     password: str
+    totp: str | None = None
 
 
 class TokenOut(BaseModel):
@@ -97,6 +98,7 @@ class OfferIn(BaseModel):
 
 class AckIn(BaseModel):
     side: str
+    quote_id: str | None = None
 
 
 class MessageIn(BaseModel):
@@ -195,3 +197,61 @@ class ServiceOut(BaseModel):
     honorarium_rub: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ServiceFromTemplateIn(BaseModel):
+    organization_id: str
+    template_id: str
+    city: str = "Москва"
+    honorarium_rub: int | None = None
+
+
+class TotpEnableIn(BaseModel):
+    secret: str = Field(min_length=6, max_length=64)
+
+
+class ClientEventIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_.-]*$")
+    properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=20)
+
+
+class IcalImportIn(BaseModel):
+    organization_id: str
+    resource_type: str
+    resource_id: str
+    ical_url: str | None = None
+    ical_body: str | None = None
+
+    @model_validator(mode="after")
+    def source_required(self):
+        if not self.ical_url and not self.ical_body:
+            raise ValueError("Нужен ical_url или ical_body")
+        if self.resource_type not in {"artist", "hall"}:
+            raise ValueError("resource_type: artist|hall")
+        return self
+
+
+class VacationIn(BaseModel):
+    organization_id: str
+    resource_type: str
+    resource_id: str
+    starts_at: datetime
+    ends_at: datetime
+
+    @model_validator(mode="after")
+    def resource_kind(self):
+        if self.resource_type not in {"artist", "hall"}:
+            raise ValueError("resource_type: artist|hall")
+        return self
+
+
+class VacationClearIn(BaseModel):
+    organization_id: str
+    resource_type: str
+    resource_id: str
+
+    @model_validator(mode="after")
+    def resource_kind(self):
+        if self.resource_type not in {"artist", "hall"}:
+            raise ValueError("resource_type: artist|hall")
+        return self

@@ -5,16 +5,19 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import { CATEGORY, KIND_LABEL, categoryLabel } from "@/lib/copy";
-import { formatWhen, moscowDate } from "@/lib/format";
+import { formatWhen, guestsLabel, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import {
   BLOCKER_LABEL,
   buildNextSteps,
   isClosedRequest,
   openLooseRequests,
+  needsReplacement,
   qtyOf,
   requestsForRole,
   unmatchedRequests,
+  dayOpsVisible,
+  type DayStatus,
   type EventRequestLite,
   type RequirementLite,
 } from "@/lib/eventDayOps";
@@ -56,13 +59,250 @@ function chipCls(status: string): string {
   return "live";
 }
 
-function searchHref(date: string, category: string, city?: string, eventId?: string, requirementId?: string): string {
+function searchHref(
+  date: string,
+  category: string,
+  city?: string,
+  eventId?: string,
+  requirementId?: string,
+  exclude?: string[],
+): string {
   const q = new URLSearchParams({ date });
   if (category) q.set("category", category);
   if (city) q.set("city", city);
   if (eventId) q.set("event", eventId);
   if (requirementId) q.set("requirement", requirementId);
+  if (exclude?.length) q.set("exclude", exclude.join(","));
   return `/search?${q.toString()}`;
+}
+
+type ReplacementPlan = {
+  needs_replacement: boolean;
+  open_slots: number;
+  cancelled_requests: { id: string; resource_name?: string | null; status: string }[];
+  exclude_resource_ids: string[];
+  search: { date: string; category: string; city: string; exclude?: string };
+};
+
+function DayStatusPanel({
+  eventId,
+  canWrite,
+  onUpdated,
+}: {
+  eventId: string;
+  canWrite: boolean;
+  onUpdated: () => void;
+}) {
+  const [day, setDay] = useState<DayStatus | null>(null);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    api<DayStatus>(`/events/${eventId}/day-status`)
+      .then((data) => {
+        if (!cancelled) {
+          setDay(data);
+          setError("");
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Не удалось загрузить статус дня");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
+  async function act(path: string) {
+    setBusy(path);
+    setError("");
+    try {
+      const res = await api<{ day_status?: DayStatus; event_status?: string }>(path, { method: "POST" });
+      if (res.day_status) setDay(res.day_status);
+      onUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось выполнить действие");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function actBooking(bookingId: string, action: "check-in" | "check-out") {
+    setBusy(`${action}-${bookingId}`);
+    setError("");
+    try {
+      await api(`/bookings/${bookingId}/${action}`, { method: "POST" });
+      const fresh = await api<DayStatus>(`/events/${eventId}/day-status`);
+      setDay(fresh);
+      onUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось выполнить действие");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  if (error && !day) {
+    return (
+      <p className="timeline" role="alert">
+        {error}
+      </p>
+    );
+  }
+  if (!dayOpsVisible(day)) return null;
+
+  const d = day!;
+  return (
+    <section className="reveal">
+      <h2>День события</h2>
+      <article className="card tint">
+        <p className="timeline">
+          Подтверждено: {d.summary.confirmed} · в работе: {d.summary.in_progress} · завершено:{" "}
+          {d.summary.completed}
+        </p>
+        {canWrite ? (
+          <p>
+            {d.can_event_check_in ? (
+              <button
+                type="button"
+                className="btn"
+                disabled={Boolean(busy)}
+                onClick={() => void act(`/events/${eventId}/check-in`)}
+              >
+                {busy === `/events/${eventId}/check-in` ? "Отмечаем…" : "Начать день (check-in)"}
+              </button>
+            ) : null}{" "}
+            {d.can_event_check_out ? (
+              <button
+                type="button"
+                className="secondary"
+                disabled={Boolean(busy)}
+                onClick={() => void act(`/events/${eventId}/check-out`)}
+              >
+                {busy === `/events/${eventId}/check-out` ? "Завершаем…" : "Завершить день (check-out)"}
+              </button>
+            ) : null}
+          </p>
+        ) : null}
+        <ul className="timeline" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {d.bookings.map((item) => (
+            <li key={item.booking_id} style={{ marginBottom: "0.75rem" }}>
+              <strong>{item.resource_name || "Исполнитель"}</strong>{" "}
+              <span className={`chip ${chipCls(item.booking_status)}`}>
+                {STATUS_LABEL[item.booking_status] || item.booking_status}
+              </span>
+              {canWrite && item.can_check_in ? (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={Boolean(busy)}
+                    onClick={() => void actBooking(item.booking_id, "check-in")}
+                  >
+                    Check-in
+                  </button>
+                </>
+              ) : null}
+              {canWrite && item.can_check_out ? (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={Boolean(busy)}
+                    onClick={() => void actBooking(item.booking_id, "check-out")}
+                  >
+                    Check-out
+                  </button>
+                </>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        {error ? (
+          <p className="timeline" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </article>
+    </section>
+  );
+}
+
+function ReplacementPanel({
+  eventId,
+  requirementId,
+  label,
+  date,
+  city,
+  category,
+}: {
+  eventId: string;
+  requirementId: string;
+  label: string;
+  date: string;
+  city?: string;
+  category: string;
+}) {
+  const [plan, setPlan] = useState<ReplacementPlan | null>(null);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    api<ReplacementPlan>(`/events/${eventId}/requirements/${requirementId}/replacement`)
+      .then((data) => {
+        if (!cancelled) {
+          setPlan(data);
+          setLoadError("");
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setPlan(null);
+          setLoadError(err instanceof Error ? err.message : "Не удалось загрузить план замены");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, requirementId]);
+
+  if (loadError) {
+    return (
+      <p className="timeline" role="alert">
+        {loadError}
+      </p>
+    );
+  }
+  if (!plan?.needs_replacement) return null;
+
+  const exclude = plan.exclude_resource_ids;
+  return (
+    <article className="card tint" style={{ marginTop: "0.75rem" }}>
+      <strong>Замена: {label}</strong>
+      <p className="timeline">
+        Нужно закрыть {plan.open_slots} {plan.open_slots === 1 ? "позицию" : "позиции"}. Предыдущие исполнители исключены из
+        каталога.
+      </p>
+      <ul className="timeline" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {plan.cancelled_requests.map((item) => (
+          <li key={item.id}>
+            {item.resource_name || "Исполнитель"} — {STATUS_LABEL[item.status] || item.status}
+          </li>
+        ))}
+      </ul>
+      <p>
+        <Link
+          className="btn"
+          href={searchHref(date, category, city || plan.search.city, eventId, requirementId, exclude)}
+        >
+          Подобрать замену
+        </Link>
+      </p>
+    </article>
+  );
 }
 
 function fillRate(requirements: Requirement[], requests: EventRequest[]): { closed: number; total: number } {
@@ -116,6 +356,7 @@ export default function EventPage() {
   const [draft, setDraft] = useState<DraftItem[]>([]);
   const [editError, setEditError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [packError, setPackError] = useState("");
 
   async function loadEvent(id: string) {
     const [data, me] = await Promise.all([
@@ -236,8 +477,37 @@ export default function EventPage() {
       <p className="mono">
         {formatWhen(event.event_date)}
         {event.city ? ` · ${event.city}` : ""}
-        {event.guest_count ? ` · ${event.guest_count} гостей` : ""}
+        {event.guest_count ? ` · ${guestsLabel(event.guest_count)}` : ""}
       </p>
+      <p>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            setPackError("");
+            void api<Record<string, unknown>>(`/events/${event.id}/offline-pack`)
+              .then((pack) => {
+                const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `event-${event.id.slice(0, 8)}-offline-pack.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              })
+              .catch((err: unknown) => {
+                setPackError(err instanceof Error ? err.message : "Не удалось скачать offline-pack");
+              });
+          }}
+        >
+          Скачать offline-pack
+        </button>
+      </p>
+      {packError ? (
+        <p className="timeline" role="alert">
+          {packError}
+        </p>
+      ) : null}
       {totalPositions > 0 ? (
         <article className="card tint reveal">
           <strong>Закрытие состава</strong>
@@ -249,6 +519,7 @@ export default function EventPage() {
           </p>
         </article>
       ) : null}
+      <DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} />
       {requirements.length > 0 || looseOpen.length > 0 ? (
         <section className="reveal">
           <h2>Следующие шаги</h2>
@@ -272,20 +543,31 @@ export default function EventPage() {
                         {step.openRequests.map((item) => (
                           <RequestDeal key={item.id} item={item} />
                         ))}
-                        <p>
-                          <Link
-                            className="btn"
-                            href={searchHref(
-                              date,
-                              step.requirement.category_code,
-                              event.city,
-                              event.id,
-                              step.requirement.id,
-                            )}
-                          >
-                            Найти
-                          </Link>
-                        </p>
+                        {needsReplacement(step) ? (
+                          <ReplacementPanel
+                            eventId={event.id}
+                            requirementId={step.requirement.id || ""}
+                            label={step.label}
+                            date={date}
+                            city={event.city}
+                            category={step.requirement.category_code}
+                          />
+                        ) : (
+                          <p>
+                            <Link
+                              className="btn"
+                              href={searchHref(
+                                date,
+                                step.requirement.category_code,
+                                event.city,
+                                event.id,
+                                step.requirement.id,
+                              )}
+                            >
+                              Найти
+                            </Link>
+                          </p>
+                        )}
                       </li>
                     ))}
                   </ul>

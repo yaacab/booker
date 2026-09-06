@@ -1,4 +1,4 @@
-.PHONY: init test-api lint web-build web-lint check seed deploy wait-dns
+.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow e2e-smoke
 
 PYTHON ?= $(CURDIR)/.venv/bin/python
 
@@ -21,8 +21,40 @@ web-build:
 
 check: test-api lint
 
+# Узкий Playwright smoke (нужны локальные API+web). Не в default CI.
+e2e-smoke:
+	cd apps/web && npx playwright test e2e/flow.spec.ts --reporter=line
+
 seed:
-	cd apps/api && $(PYTHON) -m booker_api.seed
+	cd apps/api && BOOKER_ALLOW_DEMO_SEED=1 $(PYTHON) -m booker_api.seed
+
+seed-venues-moscow:
+	cd apps/api && $(PYTHON) -m booker_api.seed_venues_moscow
+
+# Идемпотентно добирает founding-артистов (без demo-users / wipe).
+seed-founding-artists:
+	cd apps/api && $(PYTHON) -c "from booker_api.db import SessionLocal; from booker_api.seed import enrich_catalog; db=SessionLocal(); print({'catalog_added': enrich_catalog(db)}); db.commit()"
+
+fetch-venues-moscow:
+	mkdir -p /tmp/booker-venues
+	$(PYTHON) scripts/fetch_osm_venues_moscow.py --out /tmp/booker-venues/osm_venues_raw.json || echo "warning: OSM venues fetch failed, continuing"
+	$(PYTHON) scripts/fetch_wikidata_venues_moscow.py --out /tmp/booker-venues/wikidata_venues_raw.json || echo "warning: Wikidata venues fetch failed, continuing"
+	$(PYTHON) scripts/fetch_datamos_culture_venues.py --out /tmp/booker-venues/datamos_culture_raw.json || echo "warning: data.mos culture venues fetch failed, continuing"
+
+merge-venues-moscow:
+	$(PYTHON) scripts/merge_moscow_venues_open.py \
+		--curated $${CURATED:-/tmp/moscow_venues_wave1.json} \
+		--osm /tmp/booker-venues/osm_venues_raw.json \
+		--wikidata /tmp/booker-venues/wikidata_venues_raw.json \
+		--datamos /tmp/booker-venues/datamos_culture_raw.json \
+		--out data/moscow_venues_open.json \
+		--target 300
+
+migrate:
+	cd apps/api && $(PYTHON) -m alembic upgrade head
+
+migrate-docker:
+	./infra/migrate-postgres-docker.sh
 
 deploy:
 	bash infra/deploy-vps.sh

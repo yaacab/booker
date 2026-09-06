@@ -48,8 +48,22 @@ class SessionToken(Base):
     token: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    admin_2fa_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Organization(Base):
@@ -102,6 +116,14 @@ class Venue(Base):
     capacity: Mapped[int] = mapped_column(Integer, default=100)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
     verified_status: Mapped[str] = mapped_column(String(32), default="pending")
+    address: Mapped[str] = mapped_column(String(512), default="")
+    district: Mapped[str] = mapped_column(String(128), default="")
+    metro: Mapped[str] = mapped_column(String(128), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    source_url: Mapped[str] = mapped_column(String(512), default="")
+    source_attribution: Mapped[str] = mapped_column(String(128), default="")
+    listing_origin: Mapped[str] = mapped_column(String(32), default="owner")  # open_data|owner|seed
+    availability_mode: Mapped[str] = mapped_column(String(32), default="owner")  # synthetic|owner
 
 
 class VenueHall(Base):
@@ -140,9 +162,10 @@ class AvailabilitySlot(Base):
     resource_id: Mapped[str] = mapped_column(String(36), index=True)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    status: Mapped[str] = mapped_column(String(16), default="open")  # open|held|confirmed
+    status: Mapped[str] = mapped_column(String(16), default="open")  # open|held|confirmed|busy
     buffer_before_min: Mapped[int] = mapped_column(Integer, default=0)
     buffer_after_min: Mapped[int] = mapped_column(Integer, default=0)
+    external_uid: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
 
 class Event(Base):
@@ -335,6 +358,35 @@ class Dispute(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class Review(Base):
+    """Отзыв по завершённой сделке: один на бронь от автора, org_id — профиль контрагента."""
+
+    __tablename__ = "reviews"
+    __table_args__ = (UniqueConstraint("booking_id", "author_user_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
+    author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    rating: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DealAttachment(Base):
+    __tablename__ = "deal_attachments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(128))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64))
+    storage_key: Mapped[str] = mapped_column(String(512))
+    uploaded_by_user_id: Mapped[str] = mapped_column(String(36))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Service(Base):
     """Каталожная услуга поверх таксономии. Не заменяет Artist/Venue; honorarium_rub — витрина, не quote."""
 
@@ -348,3 +400,169 @@ class Service(Base):
     city: Mapped[str] = mapped_column(String(128), default="Москва")
     published: Mapped[bool] = mapped_column(Boolean, default=True)
     honorarium_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class Favorite(Base):
+    """Избранное заказчика: артист или площадка. Не создаёт заявку/hold/бронь (E04)."""
+
+    __tablename__ = "favorites"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "organization_id",
+            "target_type",
+            "target_id",
+            name="uq_favorites_user_org_target",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    target_type: Mapped[str] = mapped_column(String(16))  # artist | venue
+    target_id: Mapped[str] = mapped_column(String(36), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PublicBrief(Base):
+    """Добровольный публичный бриф (E18): ограниченный снимок, не приватное событие."""
+
+    __tablename__ = "public_briefs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    event_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("events.id"), nullable=True, index=True
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    city: Mapped[str] = mapped_column(String(128), default="Москва")
+    date_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    date_to: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    role_needed: Mapped[str] = mapped_column(String(64), index=True)
+    guest_count_band: Mapped[str] = mapped_column(String(32), default="1-50")
+    public_notes: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    responses: Mapped[list["BriefResponse"]] = relationship(back_populates="brief")
+
+
+class BriefResponse(Base):
+    """Отклик поставщика на публичный бриф (E19): интерес/сообщение, без автоброни."""
+
+    __tablename__ = "brief_responses"
+    __table_args__ = (UniqueConstraint("brief_id", "supplier_org_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    brief_id: Mapped[str] = mapped_column(ForeignKey("public_briefs.id"), index=True)
+    supplier_org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    message: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="interested")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    brief: Mapped[PublicBrief] = relationship(back_populates="responses")
+
+
+class SharedShortlist(Base):
+    """Read-only shared shortlist with token; revoke removes access (E22)."""
+
+    __tablename__ = "shared_shortlists"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    target_type: Mapped[str] = mapped_column(String(16))  # artist | venue
+    title: Mapped[str] = mapped_column(String(255), default="Подборка")
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    items: Mapped[list["SharedShortlistItem"]] = relationship(back_populates="shortlist")
+
+
+class SharedShortlistItem(Base):
+    """Snapshot for shared view: no phones, private budget, or chat."""
+
+    __tablename__ = "shared_shortlist_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    shortlist_id: Mapped[str] = mapped_column(ForeignKey("shared_shortlists.id"), index=True)
+    target_id: Mapped[str] = mapped_column(String(36), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    city: Mapped[str] = mapped_column(String(128), default="")
+    summary: Mapped[str] = mapped_column(Text, default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    shortlist: Mapped[SharedShortlist] = relationship(back_populates="items")
+
+
+class VenueOwnershipClaim(Base):
+    """Claim for open-data/unowned venue listing — does not grant ownership immediately."""
+
+    __tablename__ = "venue_ownership_claims"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id"), index=True)
+    claimant_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    claimant_org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    evidence_note: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SupportTicket(Base):
+    """Operational support / complaint ticket with human escalation path."""
+
+    __tablename__ = "support_tickets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    organization_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("organizations.id"), nullable=True, index=True
+    )
+    category: Mapped[str] = mapped_column(String(64), index=True)
+    subject: Mapped[str] = mapped_column(String(255))
+    body: Mapped[str] = mapped_column(Text)
+    related_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    related_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EmailOutbox(Base):
+    """Persisted email delivery for retry without duplicate semantic send (E21)."""
+
+    __tablename__ = "email_outbox"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    recipient_email: Mapped[str] = mapped_column(String(255), index=True)
+    subject: Mapped[str] = mapped_column(String(255))
+    body: Mapped[str] = mapped_column(Text, default="")
+    template: Mapped[str] = mapped_column(String(64), default="")
+    entity_type: Mapped[str] = mapped_column(String(32), default="notification")
+    entity_id: Mapped[str] = mapped_column(String(64), default="")
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SavedSearch(Base):
+    """Saved catalog search for a logged-in customer (W3-SAVED)."""
+
+    __tablename__ = "saved_searches"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    query_params_json: Mapped[str] = mapped_column(Text, default="{}")
+    notify_consent: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

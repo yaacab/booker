@@ -37,7 +37,7 @@ cd apps/api && ../../.venv/bin/uvicorn booker_api.main:app --reload
 cd apps/web && npm run dev
 ```
 
-Повторный выкат на VPS: `make deploy` (ключ `theaiv/cursor_key`, хост `5.45.112.180:2222`). HTTPS: на сервере `bash /opt/booker/infra/issue-cert.sh`, когда `dig bukergo.ru` покажет этот IP.
+Повторный выкат на VPS: `make deploy` (ключ `~/.ssh/booker_deploy_key`, хост `5.45.112.180:2222`). HTTPS: на сервере `bash /opt/booker/infra/issue-cert.sh`, когда `dig bukergo.ru` покажет этот IP.
 
 Путь: каталог → профиль DJ Nova → заявка → кабинет артиста → оффер → Deal Room → ack → hold → договор OTP `123456` → stub-оплата.
 

@@ -28,3 +28,7 @@
 ## Справочник пилота (не весь A–I)
 
 `dj`, `host`, `cover`, `photo`, `makeup`, `decor`, `catering`, `venue` — остальное `unpublished` в таблице категорий.
+
+## Contract v2
+
+ICP, state machines, monetization, «не строим», stop/go — [CONTRACT.md](CONTRACT.md) §Contract v2. Журнал выполнения: [MASTER_PLAN.md](../MASTER_PLAN.md).

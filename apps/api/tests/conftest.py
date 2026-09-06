@@ -8,6 +8,14 @@ from sqlalchemy.pool import StaticPool
 
 from booker_api.db import Base, get_db
 from booker_api.main import app
+from booker_api.rate_limit import (
+    admin_sensitive_limiter,
+    analytics_limiter,
+    auth_limiter,
+    messaging_limiter,
+    upload_limiter,
+    webhook_limiter,
+)
 
 
 @pytest.fixture()
@@ -30,6 +38,23 @@ def SessionLocal(engine):
     return sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiters():
+    auth_limiter.reset()
+    webhook_limiter.reset()
+    analytics_limiter.reset()
+    upload_limiter.reset()
+    admin_sensitive_limiter.reset()
+    messaging_limiter.reset()
+    yield
+    auth_limiter.reset()
+    webhook_limiter.reset()
+    analytics_limiter.reset()
+    upload_limiter.reset()
+    admin_sensitive_limiter.reset()
+    messaging_limiter.reset()
+
+
 @pytest.fixture()
 def client(SessionLocal) -> Generator[TestClient, None, None]:
     def override():
@@ -48,6 +73,19 @@ def client(SessionLocal) -> Generator[TestClient, None, None]:
 
 def auth_header(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+def contract_otps(SessionLocal, contract_id: str) -> dict[str, str]:
+    """OTP codes are server-side only; tests read them from DB."""
+    from booker_api.models import Contract
+
+    db = SessionLocal()
+    try:
+        row = db.get(Contract, contract_id)
+        assert row is not None
+        return {"otp_customer": row.otp_customer, "otp_supplier": row.otp_supplier}
+    finally:
+        db.close()
 
 
 def register(client: TestClient, email: str, name: str = "User") -> dict:

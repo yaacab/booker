@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CatalogFilters, type CategoryChip } from "@/components/CatalogFilters";
-import { CATEGORY, CHIP, categoryLabel, PILOT_CITIES } from "@/lib/copy";
-import { formatDay, formatWhen, initials, money } from "@/lib/format";
+import { CatalogResultCard } from "@/components/CatalogResultCard";
+import { CATEGORY, categoryLabel, PILOT_CITIES } from "@/lib/copy";
+import { formatDay } from "@/lib/format";
 
 export async function generateMetadata({
   searchParams,
@@ -28,10 +29,15 @@ type SearchItem = {
   city: string;
   category: string;
   verified: boolean;
-  has_calendar: boolean;
+  has_calendar?: boolean;
   open_slots?: number;
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
+  address?: string;
+  metro?: string;
+  availability_mode?: string;
+  listing_origin?: string;
+  matching_halls?: { id: string; name: string; capacity: number }[];
 };
 
 function fallbackCategories(): CategoryChip[] {
@@ -56,16 +62,25 @@ async function loadCategories(): Promise<CategoryChip[]> {
   }
 }
 
-function slotState(item: SearchItem): { label: string; cls: string } {
-  if ((item.open_slots ?? 0) > 0 && item.verified) return { label: CHIP.slotOk, cls: "ok" };
-  if ((item.open_slots ?? 0) > 0 && !item.verified) return { label: CHIP.slotWait, cls: "wait" };
-  return { label: CHIP.slotNone, cls: "live" };
-}
+type SearchQuery = {
+  city?: string;
+  date?: string;
+  category?: string;
+  event?: string;
+  requirement?: string;
+  exclude?: string;
+  kind?: string;
+  format?: string;
+  travel?: string;
+  budget_max?: string;
+  guests?: string;
+  seating?: string;
+};
 
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ city?: string; date?: string; category?: string; event?: string; requirement?: string }>;
+  searchParams: Promise<SearchQuery>;
 }) {
   const q = await searchParams;
   const city = q.city || "Москва";
@@ -73,11 +88,25 @@ export default async function SearchPage({
   if (q.date) extra.set("date", q.date);
   if (q.event) extra.set("event", q.event);
   if (q.requirement) extra.set("requirement", q.requirement);
+  if (q.exclude) extra.set("exclude", q.exclude);
+  if (q.kind) extra.set("kind", q.kind);
+  if (q.format) extra.set("format", q.format);
+  if (q.travel) extra.set("travel", q.travel);
+  if (q.budget_max) extra.set("budget_max", q.budget_max);
+  if (q.guests) extra.set("guests", q.guests);
+  if (q.seating) extra.set("seating", q.seating);
   const itemQs = extra.toString();
   const params = new URLSearchParams();
   params.set("city", city);
   if (q.category) params.set("category", q.category);
   if (q.date) params.set("date", `${q.date}T00:00:00+03:00`);
+  if (q.exclude) params.set("exclude", q.exclude);
+  if (q.kind) params.set("kind", q.kind);
+  if (q.format) params.set("format", q.format);
+  if (q.travel === "true" || q.travel === "false") params.set("travel", q.travel);
+  if (q.budget_max) params.set("budget_max", q.budget_max);
+  if (q.guests) params.set("guests", q.guests);
+  if (q.seating) params.set("seating", q.seating);
   let items: SearchItem[] = [];
   let venues: SearchItem[] = [];
   let error: string | null = null;
@@ -107,6 +136,13 @@ export default async function SearchPage({
           categories={categories}
           event={q.event}
           requirement={q.requirement}
+          exclude={q.exclude}
+          kind={q.kind}
+          format={q.format}
+          travel={q.travel}
+          budget_max={q.budget_max}
+          guests={q.guests}
+          seating={q.seating}
         />
         <div>
           <p className="timeline">
@@ -115,6 +151,9 @@ export default async function SearchPage({
             {q.category
               ? ` · ${categories.find((c) => c.code === q.category)?.title || categoryLabel(q.category)}`
               : ""}
+            {q.guests ? ` · от ${q.guests} гостей` : ""}
+            {q.format ? ` · формат «${q.format}»` : ""}
+            {q.exclude ? " · без ранее отменённых" : ""}
           </p>
           {!(PILOT_CITIES as readonly string[]).includes(city) ? (
             <article className="card empty">
@@ -155,36 +194,15 @@ export default async function SearchPage({
             <>
               {venues.length > 0 ? <h2>Артисты</h2> : null}
               <div className="grid">
-                {items.map((item) => {
-                  const st = slotState(item);
-                  return (
-                    <Link className="card" key={item.id} href={`/artists/${item.id}${itemQs ? `?${itemQs}` : ""}`}>
-                      <div className="card-head">
-                        <span className="avatar" aria-hidden>
-                          {initials(item.name)}
-                        </span>
-                        <strong>{item.name}</strong>
-                      </div>
-                      <div>
-                        {item.city} · {categoryLabel(item.category)}
-                      </div>
-                      <p>
-                        <span className={`chip ${st.cls}`}>{st.label}</span>{" "}
-                        {item.verified ? (
-                          <span className="chip ok">{CHIP.verified}</span>
-                        ) : (
-                          <span className="chip wait">{CHIP.pending}</span>
-                        )}
-                      </p>
-                      <p className="mono">
-                        {q.date ? `слот на ${formatDay(`${q.date}T12:00:00+03:00`)}` : formatWhen(item.next_open_at)}
-                      </p>
-                      {item.tariffs?.[0] ? (
-                        <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
-                      ) : null}
-                    </Link>
-                  );
-                })}
+                {items.map((item) => (
+                  <CatalogResultCard
+                    key={item.id}
+                    item={item}
+                    kind="artist"
+                    href={`/artists/${item.id}${itemQs ? `?${itemQs}` : ""}`}
+                    date={q.date}
+                  />
+                ))}
               </div>
             </>
           ) : null}
@@ -192,36 +210,15 @@ export default async function SearchPage({
             <>
               {items.length > 0 ? <h2>Площадки</h2> : null}
               <div className="grid">
-                {venues.map((item) => {
-                  const st = slotState(item);
-                  return (
-                    <Link className="card" key={item.id} href={`/venues/${item.id}${itemQs ? `?${itemQs}` : ""}`}>
-                      <div className="card-head">
-                        <span className="avatar" aria-hidden>
-                          {initials(item.name)}
-                        </span>
-                        <strong>{item.name}</strong>
-                      </div>
-                      <div>
-                        {item.city} · площадка
-                      </div>
-                      <p>
-                        <span className={`chip ${st.cls}`}>{st.label}</span>{" "}
-                        {item.verified ? (
-                          <span className="chip ok">{CHIP.verified}</span>
-                        ) : (
-                          <span className="chip wait">{CHIP.pending}</span>
-                        )}
-                      </p>
-                      <p className="mono">
-                        {q.date ? `слот на ${formatDay(`${q.date}T12:00:00+03:00`)}` : formatWhen(item.next_open_at)}
-                      </p>
-                      {item.tariffs?.[0] ? (
-                        <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
-                      ) : null}
-                    </Link>
-                  );
-                })}
+                {venues.map((item) => (
+                  <CatalogResultCard
+                    key={item.id}
+                    item={item}
+                    kind="venue"
+                    href={`/venues/${item.id}${itemQs ? `?${itemQs}` : ""}`}
+                    date={q.date}
+                  />
+                ))}
               </div>
             </>
           ) : null}

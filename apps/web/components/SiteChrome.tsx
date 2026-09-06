@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
-import { getToken, setToken } from "@/lib/api";
+import { api, getActiveOrg, getToken, setToken, trackClientEvent } from "@/lib/api";
+import { orgKindToCabinetMode, supplyCalendarHref, supplyRequestsHref, type CabinetMode } from "@/lib/cabinetRoutes";
 import { loginHref } from "@/lib/next";
+import { isEventStudioMapV1 } from "@/lib/features";
 
 const ADMIN_KEY = "booker.admin";
 const DEFAULT_TITLE = "Букер — сделки с артистами и площадками";
@@ -21,7 +23,6 @@ function tabTitle(path: string): string {
   if (path.startsWith("/admin")) return "Пульт · Букер";
   if (path.startsWith("/login")) return "Вход · Букер";
   if (path.startsWith("/faq")) return "Помощь · Букер";
-  if (path.startsWith("/deals/demo")) return "Deal Room (демо) · Букер";
   if (path.startsWith("/deals/")) return "Deal Room · Букер";
   if (path.startsWith("/artists/")) return "Артист · Букер";
   if (path.startsWith("/venues/")) return "Площадка · Букер";
@@ -38,12 +39,52 @@ function tabTitle(path: string): string {
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [admin, setAdmin] = useState(false);
+  const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<
+    { id: string; subject?: string | null; body?: string | null }[]
+  >([]);
   const path = usePathname();
+  // Флаг студии зависит от window.location.search — считаем только после маунта,
+  // иначе SSR и первая клиентская отрисовка расходятся (hydration mismatch).
+  const [fullScreenStudio, setFullScreenStudio] = useState(false);
 
   useEffect(() => {
     setAuthed(Boolean(getToken()));
     setAdmin(localStorage.getItem(ADMIN_KEY) === "1");
-  }, []);
+  }, [path]);
+
+  useEffect(() => {
+    if (!getToken()) {
+      setCabinetMode(null);
+      return;
+    }
+    void api<{
+      organizations?: { id: string; kind: string }[];
+      active_organization_id?: string;
+    }>("/me")
+      .then((me) => {
+        const activeOrgId = getActiveOrg() || me.active_organization_id || me.organizations?.[0]?.id;
+        const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
+        setCabinetMode(org ? orgKindToCabinetMode(org.kind) : null);
+      })
+      .catch(() => setCabinetMode(null));
+  }, [path, authed]);
+
+  useEffect(() => {
+    if (!authed || !getToken()) {
+      setNotifications([]);
+      setNotificationsOpen(false);
+      return;
+    }
+    void api<{ items: { id: string; subject?: string | null; body?: string | null }[] }>("/notifications")
+      .then((res) => setNotifications(res.items || []))
+      .catch(() => setNotifications([]));
+  }, [path, authed]);
+
+  useEffect(() => {
+    setFullScreenStudio(path === "/events/new" && isEventStudioMapV1());
+  }, [path]);
 
   useEffect(() => {
     let title = tabTitle(path);
@@ -52,20 +93,46 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       title = city ? `Каталог — ${city} · Букер` : title;
     }
     document.title = title;
+    if (getToken()) {
+      trackClientEvent("page.view", { path });
+    }
   }, [path]);
 
   useEffect(() => {
-    const bar = document.getElementById("scroll-progress");
+    if (fullScreenStudio) return;
     const onScroll = () => {
+      const bar = document.getElementById("scroll-progress");
+      if (!bar) return;
       const h = document.documentElement;
       const max = h.scrollHeight - h.clientHeight;
       const p = max > 0 ? Math.min(1, h.scrollTop / max) : 0;
-      if (bar) bar.style.transform = `scaleX(${p})`;
+      bar.style.transform = `scaleX(${p})`;
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [path]);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      const bar = document.getElementById("scroll-progress");
+      bar?.style.removeProperty("transform");
+    };
+  }, [path, fullScreenStudio]);
+
+  const isSupply = cabinetMode === "performer" || cabinetMode === "venue";
+  const cabinetHref = cabinetMode ? `/cabinet/${cabinetMode}` : "/cabinet";
+  const calendarHref = cabinetMode && isSupply ? supplyCalendarHref(cabinetMode) : cabinetHref;
+  const requestsHref = cabinetMode && isSupply ? supplyRequestsHref(cabinetMode) : cabinetHref;
+  const primaryWorkHref = isSupply ? calendarHref : "/events/new";
+  const primaryWorkLabel = isSupply ? "Мой календарь" : "Создать заявку";
+  const onCalendar = isSupply && path.includes("/calendar");
+  const onRequests = isSupply && path.includes("/requests");
+
+  if (fullScreenStudio) {
+    return (
+      <div id="content" key="event-studio-fullscreen" className="studio-fullscreen-root">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -74,16 +141,108 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         К содержанию
       </a>
       <div className="wrap">
-        <header className="top">
+        <header className="top surface-glass">
           <Link className="brand" href="/" aria-label="Букер">
             <BrandLockup />
           </Link>
           <nav className="nav-public" aria-label="Основное">
-            <Link href="/search" aria-current={path.startsWith("/search") ? "page" : undefined}>Каталог</Link>
-            <Link href="/events/new" aria-current={path.startsWith("/events/new") ? "page" : undefined}>Создать заявку</Link>
-            {authed ? <Link href="/cabinet" aria-current={path.startsWith("/cabinet") || path.startsWith("/deals") ? "page" : undefined}>Сделки</Link> : null}
-            {authed ? <Link href="/profile" aria-current={path.startsWith("/profile") ? "page" : undefined}>Профиль</Link> : null}
-            {admin ? <Link href="/admin" aria-current={path.startsWith("/admin") ? "page" : undefined}>Оператор</Link> : null}
+            {!isSupply ? (
+              <Link href="/search" aria-current={path.startsWith("/search") ? "page" : undefined}>
+                Каталог
+              </Link>
+            ) : null}
+            {authed ? (
+              <Link
+                href={primaryWorkHref}
+                aria-current={
+                  isSupply
+                    ? onCalendar
+                      ? "page"
+                      : undefined
+                    : path.startsWith("/events/new")
+                      ? "page"
+                      : undefined
+                }
+              >
+                {primaryWorkLabel}
+              </Link>
+            ) : (
+              <Link href="/events/new" aria-current={path.startsWith("/events/new") ? "page" : undefined}>
+                Создать заявку
+              </Link>
+            )}
+            {authed ? (
+              <Link
+                href={isSupply ? requestsHref : cabinetHref}
+                aria-current={
+                  isSupply
+                    ? onRequests
+                      ? "page"
+                      : undefined
+                    : path.startsWith("/cabinet") || path.startsWith("/deals")
+                      ? "page"
+                      : undefined
+                }
+              >
+                {isSupply ? "Заявки" : "Сделки"}
+              </Link>
+            ) : null}
+            {authed ? (
+              <Link href="/profile" aria-current={path.startsWith("/profile") ? "page" : undefined}>
+                Профиль
+              </Link>
+            ) : null}
+            {admin ? (
+              <Link href="/admin" aria-current={path.startsWith("/admin") ? "page" : undefined}>
+                Оператор
+              </Link>
+            ) : null}
+            {authed ? (
+              <span style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  className="linkish"
+                  aria-expanded={notificationsOpen}
+                  onClick={() => setNotificationsOpen((open) => !open)}
+                >
+                  Уведомления
+                  {notifications.length > 0 ? (
+                    <span className="chip wait" style={{ marginLeft: 6 }}>
+                      {notifications.length}
+                    </span>
+                  ) : null}
+                </button>
+                {notificationsOpen ? (
+                  <div
+                    className="card surface-glass"
+                    role="menu"
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "calc(100% + 8px)",
+                      zIndex: 40,
+                      width: 320,
+                      maxHeight: 360,
+                      overflow: "auto",
+                      display: "grid",
+                      gap: 8,
+                      padding: 12,
+                    }}
+                  >
+                    {notifications.length === 0 ? (
+                      <p className="timeline">Пока пусто</p>
+                    ) : (
+                      notifications.map((item) => (
+                        <div key={item.id}>
+                          <strong>{item.subject || "Уведомление"}</strong>
+                          {item.body ? <p className="timeline">{item.body}</p> : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+              </span>
+            ) : null}
             {authed ? <WorkspaceSwitcher /> : null}
             {authed ? (
               <button
@@ -120,7 +279,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <div id="content">{children}</div>
-        <footer className="site-footer">
+        <footer className="site-footer surface-glass">
           <p>Букер объединяет заявку, свободный слот, предложение и подтверждения в одном рабочем пространстве.</p>
           <p>
             <Link href="/legal/offer">Оферта</Link>
@@ -137,23 +296,37 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </p>
         </footer>
       </div>
-      <nav className="bottom-nav" aria-label="Мобильная навигация">
+      <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">
         <Link href="/" aria-label="Главная" className={path === "/" ? "on" : ""}>
           Главная
         </Link>
         <Link
-          href="/search"
+          href={isSupply ? calendarHref : "/search"}
           className={
-            path.startsWith("/search") || path.startsWith("/artists") || path.startsWith("/venues") ? "on" : ""
+            isSupply
+              ? onCalendar
+                ? "on"
+                : ""
+              : path.startsWith("/search") || path.startsWith("/artists") || path.startsWith("/venues")
+                ? "on"
+                : ""
           }
         >
-          Каталог
+          {isSupply ? "Календарь" : "Каталог"}
         </Link>
         <Link
-          href={authed ? "/cabinet" : loginHref("/cabinet")}
-          className={path.startsWith("/cabinet") || path.startsWith("/deals") ? "on" : ""}
+          href={authed ? (isSupply ? requestsHref : cabinetHref) : loginHref("/cabinet")}
+          className={
+            isSupply
+              ? onRequests
+                ? "on"
+                : ""
+              : path.startsWith("/cabinet") || path.startsWith("/deals")
+                ? "on"
+                : ""
+          }
         >
-          Сделки
+          {isSupply ? "Заявки" : "Сделки"}
         </Link>
         <Link href={authed ? "/profile" : loginHref("/profile")} className={path.startsWith("/profile") ? "on" : ""}>
           Профиль

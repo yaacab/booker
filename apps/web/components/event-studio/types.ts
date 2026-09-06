@@ -33,6 +33,7 @@ export type VenueItem = {
   name: string;
   city: string;
   honorariumFrom: number | null;
+  availabilityLabel?: string;
 };
 
 export type BudgetHint = {
@@ -41,7 +42,7 @@ export type BudgetHint = {
   isEstimate: true;
 };
 
-export type SaveStatus = "saving" | "saved" | "error" | "offline";
+export type SaveStatus = "saving" | "saved" | "error" | "offline" | "conflict";
 
 export const STUDIO_STAGES = ["Основа", "Место", "Команда", "Детали", "Проверка"] as const;
 export type StudioStage = (typeof STUDIO_STAGES)[number];

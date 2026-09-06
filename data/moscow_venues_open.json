@@ -1,0 +1,2759 @@
+{
+  "version": 2,
+  "city": "Москва",
+  "license_note": "Открытый каталог: кураторская волна 1 + OSM (ODbL) + Wikidata (CC0) + data.mos.ru. Календарь синтетический; не живой скрейп коммерческих агрегаторов.",
+  "venues": [
+    {
+      "name": "Crocus City Hall",
+      "address": "65–66 км МКАД",
+      "district": "Красногорск",
+      "metro": "Мякинино",
+      "capacity": 7000,
+      "description": "Одна из крупнейших концертных площадок агломерации Москвы.",
+      "source_url": "https://www.openstreetmap.org/search?query=Crocus%20City%20Hall",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 800000
+    },
+    {
+      "name": "Лужники · Малая спортивная арена",
+      "address": "ул. Лужники, 24",
+      "district": "Хамовники",
+      "metro": "Воробьёвы горы",
+      "capacity": 8000,
+      "description": "Спортивно-концертная площадка олимпийского комплекса.",
+      "source_url": "https://www.openstreetmap.org/search?query=Luzhniki%20Small%20Arena",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 600000
+    },
+    {
+      "name": "Adrenaline Stadium",
+      "address": "Ленинградский пр-т, 80к17",
+      "district": "Сокол",
+      "metro": "Сокол",
+      "capacity": 3500,
+      "description": "Крупная концертная арена на Ленинградском проспекте.",
+      "source_url": "https://www.openstreetmap.org/search?query=Adrenaline%20Stadium%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 500000
+    },
+    {
+      "name": "Vegas City Hall",
+      "address": "Международная ул., 12",
+      "district": "Коммунарка",
+      "metro": "Саларьево",
+      "capacity": 3500,
+      "description": "Концертный зал при ТРЦ Vegas.",
+      "source_url": "https://www.openstreetmap.org/search?query=Vegas%20City%20Hall",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 450000
+    },
+    {
+      "name": "Экспоцентр",
+      "address": "Краснопресненская наб., 14",
+      "district": "Пресненский",
+      "metro": "Выставочная",
+      "capacity": 5000,
+      "description": "Выставочный комплекс на Красной Пресне.",
+      "source_url": "https://www.openstreetmap.org/search?query=Expocentre%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 400000
+    },
+    {
+      "name": "Гостиный Двор",
+      "address": "ул. Ильинка, 4",
+      "district": "Тверской",
+      "metro": "Китай-город",
+      "capacity": 2500,
+      "description": "Крупный исторический комплекс в центре для выставок и корпоративов.",
+      "source_url": "https://www.openstreetmap.org/search?query=Gostiny%20Dvor%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 350000
+    },
+    {
+      "name": "Дом Союзов · Колонный зал",
+      "address": "ул. Большая Дмитровка, 1",
+      "district": "Тверской",
+      "metro": "Охотный Ряд",
+      "capacity": 1600,
+      "description": "Исторический колонный зал в центре Москвы для торжественных событий.",
+      "source_url": "https://www.openstreetmap.org/search?query=House%20of%20Unions%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 350000
+    },
+    {
+      "name": "Центральный Манеж",
+      "address": "Манежная пл., 1",
+      "district": "Тверской",
+      "metro": "Охотный Ряд",
+      "capacity": 2000,
+      "description": "Выставочный зал в центре у Кремля.",
+      "source_url": "https://www.openstreetmap.org/search?query=Moscow%20Manege",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 320000
+    },
+    {
+      "name": "Stadium Live",
+      "address": "Ленинградский пр-т, 80с17",
+      "district": "Сокол",
+      "metro": "Сокол",
+      "capacity": 2000,
+      "description": "Клубно-концертная площадка рядом с Adrenaline Stadium.",
+      "source_url": "https://www.openstreetmap.org/search?query=Stadium%20Live%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 300000
+    },
+    {
+      "name": "Известия Hall",
+      "address": "Пушкинская пл., 5",
+      "district": "Тверской",
+      "metro": "Пушкинская",
+      "capacity": 1500,
+      "description": "Концертный зал у Пушкинской площади.",
+      "source_url": "https://www.openstreetmap.org/search?query=Izvestia%20Hall",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 280000
+    },
+    {
+      "name": "Stereo Hall",
+      "address": "ул. Ленинская Слобода, 19",
+      "district": "Даниловский",
+      "metro": "Автозаводская",
+      "capacity": 1200,
+      "description": "Клубно-концертная площадка на юге центра.",
+      "source_url": "https://www.openstreetmap.org/search?query=Stereo%20Hall%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 250000
+    },
+    {
+      "name": "Дом культуры ГЭС-2",
+      "address": "Болотная наб., 15",
+      "district": "Якиманка",
+      "metro": "Боровицкая",
+      "capacity": 900,
+      "description": "Культурный центр на Болотной набережной с залами для программ и приёмов.",
+      "source_url": "https://www.openstreetmap.org/search?query=GES-2%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 240000
+    },
+    {
+      "name": "Московский международный Дом музыки",
+      "address": "Космодамианская наб., 52с8",
+      "district": "Замоскворечье",
+      "metro": "Павелецкая",
+      "capacity": 1700,
+      "description": "Концертный комплекс с несколькими залами у Павелецкой.",
+      "source_url": "https://www.openstreetmap.org/search?query=Moscow%20International%20House%20of%20Music",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 220000
+    },
+    {
+      "name": "Garage Museum · event spaces",
+      "address": "ул. Крымский Вал, 9с32",
+      "district": "Якиманка",
+      "metro": "Октябрьская",
+      "capacity": 700,
+      "description": "Пространства музея современного искусства в Парке Горького.",
+      "source_url": "https://www.openstreetmap.org/search?query=Garage%20Museum%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 210000
+    },
+    {
+      "name": "Музеон",
+      "address": "Крымский Вал, 2",
+      "district": "Якиманка",
+      "metro": "Октябрьская",
+      "capacity": 1500,
+      "description": "Парк искусств у ЦДХ — open-air и павильоны для событий.",
+      "source_url": "https://www.openstreetmap.org/search?query=Muzeon%20Park",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 200000
+    },
+    {
+      "name": "Театр Эстрады",
+      "address": "Берсеневская наб., 20/2",
+      "district": "Якиманка",
+      "metro": "Кропоткинская",
+      "capacity": 1300,
+      "description": "Исторический зал на Берсеневской набережной.",
+      "source_url": "https://www.openstreetmap.org/search?query=Moscow%20Estrada%20Theatre",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 200000
+    },
+    {
+      "name": "ВДнх · павильон 75",
+      "address": "пр-т Мира, 119",
+      "district": "Останкинский",
+      "metro": "ВДНХ",
+      "capacity": 1000,
+      "description": "Павильонный формат на территории ВДНХ для выставок и конференций.",
+      "source_url": "https://www.openstreetmap.org/search?query=VDNKh%20pavilion%2075",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 180000
+    },
+    {
+      "name": "Центральный дом художника",
+      "address": "Крымский Вал, 10",
+      "district": "Якиманка",
+      "metro": "Октябрьская",
+      "capacity": 900,
+      "description": "Выставочные залы и пространства для приёмов у Парка Горького.",
+      "source_url": "https://www.openstreetmap.org/search?query=Central%20House%20of%20Artists%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 180000
+    },
+    {
+      "name": "Сколково · Технопарк",
+      "address": "Большой бульвар, 42с1",
+      "district": "Сколково",
+      "metro": "Сколково",
+      "capacity": 800,
+      "description": "Конференц-пространства технопарка Сколково.",
+      "source_url": "https://www.openstreetmap.org/search?query=Skolkovo%20Technopark",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 170000
+    },
+    {
+      "name": "Loft Hall",
+      "address": "ул. Нижняя Красносельская, 35с48",
+      "district": "Басманный",
+      "metro": "Красносельская",
+      "capacity": 700,
+      "description": "Лофт-залы под банкеты, концерты и частные вечеринки.",
+      "source_url": "https://www.openstreetmap.org/search?query=Loft%20Hall%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 160000
+    },
+    {
+      "name": "Artplay",
+      "address": "ул. Нижняя Сыромятническая, 10",
+      "district": "Басманный",
+      "metro": "Курская",
+      "capacity": 800,
+      "description": "Дизайн-завод и event-площадки на территории бывшей мануфактуры.",
+      "source_url": "https://www.openstreetmap.org/search?query=Artplay%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 150000
+    },
+    {
+      "name": "Winzavod",
+      "address": "4-й Сыромятнический пер., 1с6",
+      "district": "Басманный",
+      "metro": "Курская",
+      "capacity": 600,
+      "description": "Центр современного искусства с залами под события.",
+      "source_url": "https://www.openstreetmap.org/search?query=Winzavod%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 150000
+    },
+    {
+      "name": "Digital October",
+      "address": "Берсеневская наб., 6с3",
+      "district": "Якиманка",
+      "metro": "Кропоткинская",
+      "capacity": 500,
+      "description": "ИТ-хаб и event-залы на Красном Октябре.",
+      "source_url": "https://www.openstreetmap.org/search?query=Digital%20October%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 140000
+    },
+    {
+      "name": "Красный Октябрь · площадки",
+      "address": "Берсеневская наб., 6",
+      "district": "Якиманка",
+      "metro": "Кропоткинская",
+      "capacity": 400,
+      "description": "Креативные лофты на территории бывшей фабрики.",
+      "source_url": "https://www.openstreetmap.org/search?query=Krasny%20Oktyabr%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 130000
+    },
+    {
+      "name": "Flacon Design Factory",
+      "address": "ул. Большая Новодмитровская, 36",
+      "district": "Бутырский",
+      "metro": "Дмитровская",
+      "capacity": 600,
+      "description": "Креативный кластер с залами под конференции, вечеринки и презентации.",
+      "source_url": "https://www.openstreetmap.org/search?query=Flacon%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 120000
+    },
+    {
+      "name": "Хлебозавод №9",
+      "address": "Новодмитровская ул., 1с1",
+      "district": "Бутырский",
+      "metro": "Дмитровская",
+      "capacity": 500,
+      "description": "Креативное пространство с залами для вечеринок и презентаций.",
+      "source_url": "https://www.openstreetmap.org/search?query=Khlebozavod%209%20Moscow",
+      "attribution": "openstreetmap",
+      "tariff_from_rub": 110000
+    },
+    {
+      "name": "14-й корпус Кремля",
+      "address": "55.75224,37.62017",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://kremlin.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "CCI Fabrika",
+      "address": "55.77963,37.68711",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.fabrikacci.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Garage studios",
+      "address": "55.83625,37.62469",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://garagemca.org/programs/garage_studios",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Red October",
+      "address": "55.74173,37.60991",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.redoctobergallery.com/?lang=en",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Totibadze Gallery",
+      "address": "55.75570,37.66441",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://winzavod.ru/residents/gallery/totibadze-gallery/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Агломерат",
+      "address": "55.75213,37.66529",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://aglomerat.org/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Амадей",
+      "address": "55.75856,37.59619",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.amadei.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Андреевский монастырь",
+      "address": "55.71186,37.57519",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://andreevskymon.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Армянский музей Москвы и культуры наций",
+      "address": "55.78769,37.62019",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.armmuseum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Бабушкинское кладбище",
+      "address": "55.86167,37.70250",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://ritual.mos.ru/perechen/cemetery/babushkinsky-cemetery.php",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Берёзка",
+      "address": "55.74984,37.80256",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://mos-kino.ru/cinema_17.html",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Большой зал Московской консерватории",
+      "address": "55.75620,37.60400",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://meloman.ru/?id=19",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Большой Концертный Зал «Академический»",
+      "address": "55.71057,37.57931",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://akademzal.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Борисовское кладбище",
+      "address": "55.63469,37.73477",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://борисовское-кладбище.рф",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Бородинская панорама",
+      "address": "55.73877,37.52297",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.1812panorama.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Булгаковский дом",
+      "address": "55.76691,37.59291",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.dombulgakova.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Бутовское кладбище",
+      "address": "55.52694,37.56417",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://butovskoekladbishe.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "выставка Г.О.Р.А.",
+      "address": "55.72700,37.50000",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://goramuseum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "ВЭБ Арена",
+      "address": "55.79139,37.51611",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://veb-arena.com/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Галеев-галерея",
+      "address": "55.76214,37.59460",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.ggallery.ru/en",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Галерея Ovcherenko",
+      "address": "55.75680,37.66550",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://ovcharenko.art",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Галерея Александра Шилова",
+      "address": "55.74901,37.60839",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.amshilov.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Галерея Беляево",
+      "address": "55.64512,37.52515",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://belyaevo.vzmoscow.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Галерея Гари Татинцяна",
+      "address": "55.75010,37.64960",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.tatintsian.com/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Галерея искусств Зураба Церетели",
+      "address": "55.74133,37.59385",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.rah.ru/museums/halls.php?ID=15",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Геликон-опера",
+      "address": "55.75216,37.59659",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.helikon.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Гоголь-центр",
+      "address": "55.76244,37.66208",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://gogolcenter.com/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Городская клиническая больница имени С. П. Боткина",
+      "address": "55.78139,37.54932",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://botkinmoscow.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Гостелерадиофонд",
+      "address": "55.82028,37.60444",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://gtrf.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Государственная Третьяковская галерея",
+      "address": "55.74139,37.62086",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.tretyakovgallery.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Государственный Дарвиновский музей",
+      "address": "55.69068,37.56144",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.darwinmuseum.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Государственный литературный музей",
+      "address": "55.76646,37.61541",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://goslitmuz.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Государственный музей Константина и Виктора Мельниковых",
+      "address": "55.74806,37.58941",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://muar.ru/dom-melnikova/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Государственный музей спорта",
+      "address": "55.76317,37.66532",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://museumsport.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Государственный центральный музей кино",
+      "address": "55.83975,37.61678",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.museikino.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Государственный центральный музей современной истории России",
+      "address": "55.76581,37.60162",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.sovrhistory.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "ГЭС-1",
+      "address": "55.74778,37.63083",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.mosenergo.ru/about/present/branch/hpp-1/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Дворец культуры имени Горбунова",
+      "address": "55.75000,37.49694",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.dkgorbunova.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Дом русского зарубежья имени Александра Солженицына",
+      "address": "55.74291,37.65167",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://domrz.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Дом Союзов",
+      "address": "55.75890,37.61640",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://domsojuzov.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Дружбы народов (стадион, Москва)",
+      "address": "55.73583,37.57583",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.rudn.ru/?pagec=1322",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Еврейский музей и центр толерантности",
+      "address": "55.78966,37.60688",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.jewish-museum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Зелёный театр",
+      "address": "55.72139,37.59167",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://stasnamintheatre.ru/theater/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Измайлово",
+      "address": "55.79195,37.76137",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.kremlin-izmailovo.com",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Изопарк (галерея)",
+      "address": "55.63880,37.51133",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.izopark.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Институт биоорганической химии им. М. М. Шемякина и Ю. А. Овчинникова РАН",
+      "address": "55.64660,37.50940",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.ibch.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Институт русского реалистического искусства",
+      "address": "55.72320,37.65130",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.rusrealart.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Камерный музыкальный театр оперы им. Б. А. Покровского",
+      "address": "55.75810,37.62350",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.opera-pokrovsky.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Киноклуб-музей Эльдар",
+      "address": "55.66533,37.51338",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://kinoklub-eldar.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Кинотеатр Иллюзион",
+      "address": "55.74806,37.64500",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://illuzion-cinema.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Кинотеатр Ролан",
+      "address": "55.76056,37.64361",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.5zvezd.ru/cinemas/rolan/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Кинотеатр Формула Кино ЦДМ г. Москва",
+      "address": "55.75991,37.62452",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.formulakino.ru/raspisanie/kinoteatry/moscow/cdm/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Киноцентр на Красной Пресне",
+      "address": "55.75972,37.57500",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.kinocenter.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Клуб Алексея Козлова",
+      "address": "55.75770,37.63440",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://kozlovclub.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "концертный зал \"Измайлово\"",
+      "address": "55.79075,37.74936",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://zalizmailovo.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Кремль в Измайлово",
+      "address": "55.79472,37.75028",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://kremlin-izmailovo.com",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Крутицкое подворье",
+      "address": "55.72750,37.65833",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.krutitsy.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Крылатское (велотрек)",
+      "address": "55.76311,37.43304",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://velotrek.msk.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Культурный Центр ДОМ",
+      "address": "55.74425,37.63009",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://dom.com.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Кусково",
+      "address": "55.73528,37.80750",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.kuskovo.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Ленком",
+      "address": "55.76772,37.60697",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://lenkom.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Ломаковский музей старинных автомобилей и мотоциклов",
+      "address": "55.67475,37.77180",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.lomakovka.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Лосиный Остров",
+      "address": "55.86361,37.77750",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://losinyiostrov.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "М'АРС",
+      "address": "55.76900,37.62670",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.centermars.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Мастерская «12» Никиты Михалкова",
+      "address": "55.75680,37.58630",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://mikhalkov12.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Мемориальная синагога на Поклонной горе",
+      "address": "55.73000,37.49628",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.poklonnaya.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Минералогический музей имени А. Е. Ферсмана РАН",
+      "address": "55.71861,37.59278",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.fmm.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Москвариум",
+      "address": "55.83306,37.61861",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.moskvarium.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московская государственная картинная галерея Ильи Глазунова",
+      "address": "55.74639,37.60683",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.glazunov-gallery.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский академический музыкальный театр имени К. С. Станиславского и Вл. И. Немировича-Данченко",
+      "address": "55.76472,37.61083",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://stanmus.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский академический театр имени Владимира Маяковского",
+      "address": "55.75630,37.60163",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.mayakovsky.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский государственный историко-этнографический театр",
+      "address": "55.86381,37.68097",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.mgiet.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский государственный музыкальный театр фольклора «Русская песня»",
+      "address": "55.77820,37.62321",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://folkteatr.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский государственный театр эстрады",
+      "address": "55.74472,37.61139",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.teatr-estrada.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский детский музыкально-драматический театр «Поколение»",
+      "address": "55.71711,37.78392",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://pokolenie-teatr.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский драматический театр «Бенефис» под руководством Анны Неровной",
+      "address": "55.67272,37.55506",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://benefistheatre.com",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский драматический театр «Сфера»",
+      "address": "55.77051,37.60860",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.spheratheatre.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский драматический театр имени А. С. Пушкина",
+      "address": "55.76222,37.60139",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.teatrpushkin.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский концертный зал „Зарядье“",
+      "address": "55.75139,37.63139",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://zaryadyehall.com/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский Кремль",
+      "address": "55.75167,37.61778",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://kreml.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский Лианозовский театр",
+      "address": "55.90514,37.57140",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://lia-teatr.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский Музей Анимации",
+      "address": "55.83301,37.63489",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://animamuseum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский музей дизайна",
+      "address": "55.75350,37.61250",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.moscowdesignmuseum.com",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский музей современного искусства",
+      "address": "55.76703,37.61428",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.mmoma.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский музыкально-драматический цыганский театр Ромэн",
+      "address": "55.78478,37.56919",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.teatr-romen.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский Мюзик-Холл",
+      "address": "55.77602,37.64938",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://music-hall.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский областной государственный театр кукол",
+      "address": "55.74531,37.65967",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.puppetmo.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский областной государственный театр юного зрителя",
+      "address": "55.61627,37.67303",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://mogtyz.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский театр «Et Cetera»",
+      "address": "55.76502,37.63543",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://et-cetera.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский театр «Мастерская Петра Фоменко»",
+      "address": "55.74333,37.53528",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://fomenko.theatre.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский театр «На досках»",
+      "address": "55.76264,37.58782",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://na-doskah.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский театр кукол",
+      "address": "55.77286,37.67786",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.mospuppets.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский театр музыки и драмы Стаса Намина",
+      "address": "55.72150,37.59150",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.stasnamintheatre.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский театр Олега Табакова",
+      "address": "55.76445,37.64625",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://tabakov.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский театр юного зрителя",
+      "address": "55.76647,37.59961",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://moscowtyz.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Московский театральный центр «Вишневый сад» под руководством Александра Вилькина",
+      "address": "55.77246,37.63063",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.vishnevii-sad.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музеи Московского Кремля",
+      "address": "55.75189,37.61697",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.kreml.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей «Дом Иконы и Живописи имени С. П. Рябушинского»",
+      "address": "55.75870,37.59580",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.rmuseum.org/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей «Дом на набережной»",
+      "address": "55.74350,37.61315",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://dnnmuseum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей «Огни Москвы»",
+      "address": "55.76080,37.63681",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://ognimos.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей АЗ",
+      "address": "55.77221,37.59394",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://museum-az.com/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей актуального искусства ART4.RU",
+      "address": "55.75780,37.60310",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.art4.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Ар Деко",
+      "address": "55.71556,37.57389",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://en.artdecomuseum.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей археологии Москвы",
+      "address": "55.75631,37.61710",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://mosmuseum.ru/association/archeology/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей архитектуры имени А. В. Щусева",
+      "address": "55.75237,37.60722",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://muar.ru/new/en/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей В. И. Ленина (Москва)",
+      "address": "55.75630,37.61863",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://lenin.shm.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Владимира Высоцкого",
+      "address": "55.74460,37.65169",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.visotsky.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей военной формы",
+      "address": "55.75806,37.59139",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://museum-vf.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Востока",
+      "address": "55.75639,37.59983",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://new.orientmuseum.ru/?lang=en",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей денег",
+      "address": "55.85792,37.46606",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://muzeydeneg.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей землеведения МГУ",
+      "address": "55.70278,37.53083",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.mes.msu.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей И. С. Тургенева",
+      "address": "55.73871,37.59615",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.pushkinmuseum.ru/?q=content/muzey-turgeneva",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Игоря Талькова",
+      "address": "55.74389,37.62500",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.museum.ru/M503",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей истории водки",
+      "address": "55.79464,37.74921",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://vodkamuseum.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей истории ГУЛАГа",
+      "address": "55.77707,37.61390",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.gmig.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей истории евреев в России",
+      "address": "55.79363,37.56039",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.mievr.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей истории коньяка",
+      "address": "55.86750,37.45944",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.cognacmuseum.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей истории Московского университета",
+      "address": "55.69880,37.52331",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.msu.ru/info/struct/dep/history-msu.html",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей космонавтики",
+      "address": "55.82257,37.63959",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.space-museum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Криптографии",
+      "address": "55.83067,37.59764",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://cryptography-museum.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей леса имени А.Р. Варгаса де Бедемара",
+      "address": "55.83528,37.54889",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://timacad.ru/deyatel/museum/vargas",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей личных коллекций",
+      "address": "55.74764,37.60753",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.artprivatecollections.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей магистрального транспорта газа",
+      "address": "55.58083,37.47639",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://moskva-tr.gazprom.ru/about/museum/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Москвы",
+      "address": "55.73667,37.59186",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://mosmuseum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Московского авиационного института",
+      "address": "55.81410,37.49980",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.mai.ru/content/org/index.php?ID=22701",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей обороны Москвы",
+      "address": "55.67639,37.46722",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.gmom.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Отечественной войны 1812 года",
+      "address": "55.75629,37.61844",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.shm.ru/museum/mov/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Победы",
+      "address": "55.73056,37.50389",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://victorymuseum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей пограничных войск",
+      "address": "55.75071,37.64536",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://ps.fsb.ru/fps/history/museum.htm",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей Рерихов",
+      "address": "55.74669,37.60330",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://roerichsmuseum.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей русского импрессионизма",
+      "address": "55.78076,37.57150",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.rusimp.su/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей советских игровых автоматов",
+      "address": "59.94011,30.32671",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.15kop.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей современного искусства «Гараж»",
+      "address": "55.72780,37.60160",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://garagemca.org/en",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей традиционных русских напитков",
+      "address": "55.67517,37.43493",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.ochakovo.ru/museum/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей финансов",
+      "address": "55.80105,37.52666",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.fa.ru/org/div/museum/Pages/Home.aspx",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей-квартира А. М. Горького",
+      "address": "55.75815,37.59636",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.museum.ru/M402",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей-квартира Александра Гольденвейзера",
+      "address": "55.76414,37.60558",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://music-museum.ru/museums/museum-apartment-goldenweiser.html",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музей-квартира Г. С. Улановой",
+      "address": "55.74795,37.64487",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.gctm.ru/branch/mku/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музейно-мемориальный комплекс истории Военно-морского флота России",
+      "address": "55.85200,37.45600",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://mosparks.ru/places/severnoe-tushino/vmf-museum",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Музыкальные культуры мира",
+      "address": "55.75637,37.60491",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://mosconservatoria.wixsite.com/wmcc",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Мультимедиа Арт Музей, Москва",
+      "address": "55.78111,37.60222",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.mamm-mdf.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Национальный исследовательский университет «МИЭТ»",
+      "address": "55.98333,37.20833",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.miet.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Национальный центр «Россия»",
+      "address": "55.75089,37.54381",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://russia.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Никольская церковь в Ржавках",
+      "address": "55.99528,37.24361",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.zelen-hram.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Никольский единоверческий монастырь",
+      "address": "55.79108,37.71628",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.pavel-prusskiy.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Новая опера",
+      "address": "55.77144,37.60908",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.novayaopera.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Новомученики и исповедники Церкви Русской",
+      "address": "55.76580,37.62880",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://monastery.ru/proekty/vystavka-novomuchenikii-ispovedniki-tserkvi-russkoy/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Новоспасский монастырь",
+      "address": "55.73220,37.65620",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://новоспасский-монастырь.рф/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Океанариум на Дмитровском шоссе",
+      "address": "55.90940,37.53970",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.oceanarium-rio.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Открытая галерея",
+      "address": "55.75410,37.58720",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://open-gallery.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон \"Атом\"",
+      "address": "55.83250,37.62500",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://atom.museum/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон Армения на ВДНХ",
+      "address": "55.83091,37.63366",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://vdnh.ru/map/4187/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон № 10 «Стандарты» на ВДНХ",
+      "address": "55.82944,37.62944",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://vdnh.ru/map/4236/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон № 11 «Казахстан» на ВДНХ",
+      "address": "55.83000,37.62861",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://vdnh.ru/map/4235/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон № 35 «Табак» на ВДНХ",
+      "address": "55.83833,37.61417",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://vdnh.ru/map/4212/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон № 36 «Переработка продукции сельского хозяйства» на ВДНХ",
+      "address": "55.83944,37.61639",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://vdnh.ru/map/4215/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон № 44 «Кролиководство» на ВДНХ",
+      "address": "55.84062,37.62548",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://vdnh.ru/places/pavilon-44-krolikovodstvo/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон № 46 «Экономика и организация АПК» на ВДНХ",
+      "address": "55.83806,37.62778",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://vdnh.ru/map/5687/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон № 71 «Мои документы» на ВДНХ",
+      "address": "55.82972,37.63417",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://vdnh.ru/map/4186/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Павильон № 8 «Юные натуралисты» на ВДНХ",
+      "address": "55.82887,37.62724",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://vdnh.ru/map/4238/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Палеонтологический музей им. Ю. А. Орлова",
+      "address": "55.62389,37.51389",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.paleo.ru/museum",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Парк искусств",
+      "address": "55.73555,37.60792",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.park-gorkogo.ru/muzeon",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Перервинский монастырь",
+      "address": "55.66933,37.71922",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://pererva.org/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Почвенно-агрономический музей имени В. Р. Вильямса",
+      "address": "55.83463,37.54866",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://museum-williams.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Практика (театр)",
+      "address": "55.76570,37.59500",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://praktikatheatre.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Прогресс Сцена Армена Джигарханяна",
+      "address": "55.68992,37.54078",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.dzigartheater.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Проун (галерея)",
+      "address": "55.75626,37.66500",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://proungallery.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Радиомузей РКК",
+      "address": "55.78050,37.60111",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.rkk-museum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Российская государственная библиотека",
+      "address": "55.75173,37.60900",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.rsl.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Российский государственный архив научно-технической документации",
+      "address": "55.65730,37.53890",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.rgantd.ru/en/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Российский государственный архив экономики",
+      "address": "55.73353,37.57533",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://rgae.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Российский музей леса",
+      "address": "55.73233,37.63197",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://museum.forest.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Россия",
+      "address": "55.76611,37.60750",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://stage-musical.ru/ser/theatres#rossiyatheatre",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Русский духовный театр «Глас»",
+      "address": "55.73892,37.63417",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.theatreglas.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Сахаровский центр",
+      "address": "55.75116,37.65879",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.sakharov-center.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Современник",
+      "address": "55.76167,37.64583",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://sovremennik.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Современный музей каллиграфии в России",
+      "address": "55.80056,37.67583",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.calligraphy-museum.com/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Содружество актёров Таганки",
+      "address": "55.74314,37.65350",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://taganka-sat.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Сретенский монастырь",
+      "address": "55.76556,37.63028",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.pravoslavie.ru/sm/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Студенческий театр МГУ",
+      "address": "55.76610,37.59170",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.teatrmost.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Сцена «Мельников»",
+      "address": "55.79130,37.68730",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://scenamelnikov.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Театр «Мастерская Олега Буданкова»",
+      "address": "55.72283,37.62684",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://budankov.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Театр «Около дома Станиславского»",
+      "address": "55.75844,37.60441",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.okolo.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Театр МДМ",
+      "address": "55.72698,37.58019",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://www.mdmpalace.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Театр на Малой Ордынке",
+      "address": "55.73360,37.62600",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://ordynka31.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Театр на Покровке",
+      "address": "55.76345,37.65514",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://pokrovka-teatr.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Театр сатиры (Москва)",
+      "address": "55.76833,37.59528",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.satire.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Трансвааль-парк",
+      "address": "55.59806,37.52944",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.transvaal.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Троекуровское кладбище",
+      "address": "55.70021,37.40895",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://ritual.mos.ru/perechen/cemetery/the-cemetery-troekurov.php",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Троице-Одигитриевская пустынь",
+      "address": "55.40829,36.91205",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://zosimapustin.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "У Никитских ворот",
+      "address": "55.75720,37.59910",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.teatrunikitskihvorot.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Успенская старообрядческая церковь в Гавриковом переулке",
+      "address": "55.77355,37.68619",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://gavrikovhram.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Хованское кладбище",
+      "address": "55.61152,37.44763",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://hovanskoe-kladbishche.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Храм Архангела Михаила при клиниках на Девичьем поле",
+      "address": "55.73488,37.57351",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.hramnadevichiem.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Храм Владимирской иконы Божией Матери в Виноградове",
+      "address": "55.94250,37.54639",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.hram-vinogradovo.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Храм Воскресения Христова в Кадашах",
+      "address": "55.74323,37.62245",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.kadashi.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Храм Николая Чудотворца в Хамовниках",
+      "address": "55.73204,37.59148",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://nikola-khamovniki.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Храм Рождества Пресвятой Богородицы в Крылатском",
+      "address": "55.75556,37.42558",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.hramnaholmah.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Храм Святителя Николая в Кузнецкой Слободе",
+      "address": "55.73667,37.63267",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://nikvkuz.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Храм Святителя Николая в Пыжах",
+      "address": "55.73889,37.62500",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://vpyzhax.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Храм Троицы Живоначальной в Конькове",
+      "address": "55.63822,37.51932",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://trinity.kmail.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Храм Успения Пресвятой Богородицы в Архангельском-Тюрикове",
+      "address": "55.91775,37.55495",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://turikovo.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Центр Вознесенского",
+      "address": "55.73562,37.62397",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.voznesenskycenter.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Центр Гиляровского",
+      "address": "55.76347,37.61532",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://mosmuseum.ru/association/gilyarovskogo/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Центр дизайна ARTPLAY",
+      "address": "55.75360,37.66878",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.artplay.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Центр исполнительских искусств на Добрынинской",
+      "address": "55.72889,37.62111",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://artsmoscow.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Центр оперного пения Галины Вишневской",
+      "address": "55.74030,37.59766",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://Opera-Centre.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Центральный архив города Москвы",
+      "address": "55.65784,37.53971",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://cga.mos.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Центральный дом архитектора",
+      "address": "55.75937,37.59051",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://domarch.info/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Центральный музей Вооружённых Сил",
+      "address": "55.78472,37.61722",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.cmaf.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Центральный музей древнерусской культуры и искусства имени Андрея Рублёва",
+      "address": "55.74952,37.67043",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.rublev-museum.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Церковно-археологический кабинет",
+      "address": "56.31140,38.13000",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.acmus.ru",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Церковь Георгия Победоносца в Коломенском (деревянная)",
+      "address": "55.67297,37.67531",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.mgomz.ru/pamyatniki/tserkov-svyatogo-velikomuchenika-georgiya-pobedonostsa-1685-goda",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Церковь Иоанна Воина",
+      "address": "55.73278,37.61145",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.hram-ioanna-voina.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Школа драматического искусства",
+      "address": "55.77019,37.63186",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.sdart.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Школа современной пьесы",
+      "address": "55.76690,37.62090",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.neglinka29.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Шуховская башня",
+      "address": "55.71722,37.61139",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.shukhov.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Щербинское кладбище",
+      "address": "55.50833,37.61899",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "https://sherbinskoe-kladbishche.ru/",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "2-й Павелецкий проезд 4 корпус 1",
+      "address": "55.84458,37.54032",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q116860425",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Angstrem Stadium",
+      "address": "55.98333,37.22444",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4763965",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "CDK МАИ",
+      "address": "55.81111,37.49884",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4035592",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Kotlyakovskoye Cemetery",
+      "address": "55.61981,37.63850",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q136904962",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Moscow museum of animation",
+      "address": "55.79454,37.74908",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q132148121",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Mosfilm Museum",
+      "address": "55.72299,37.53083",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q132148124",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Ostankino Palace Theatre",
+      "address": "55.82472,37.61444",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q67287540",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Reflex (галерея)",
+      "address": "55.74256,37.60925",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4048128",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "The Ostankino museum-estate",
+      "address": "55.82472,37.61444",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q67286441",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Алабушевское кладбище",
+      "address": "56.01500,37.13861",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q48956711",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Аламовская слобода",
+      "address": "55.79900,37.76600",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4060478",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Алексеевская слобода",
+      "address": "55.74580,37.66560",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q20020996",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Алексеевское",
+      "address": "55.82005,37.64139",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q20968659",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Алексеевское кладбище",
+      "address": "55.81838,37.64373",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4061925",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Аллея правителей России",
+      "address": "55.75652,37.63651",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q48948624",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Алтуфьевское кладбище",
+      "address": "55.90763,37.59436",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4062997",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Алёшкино (Москва)",
+      "address": "55.86800,37.44250",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4063853",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Анненгофская роща",
+      "address": "55.75806,32.70361",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4066623",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Ансамбль жилых домов на Онежской улице (Головинский)",
+      "address": "55.84879,37.52100",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q124457766",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Ансамбль конного двора Хорошёвской конюшенной слободы (Хорошёво-Мнёвники)",
+      "address": "55.78181,37.44139",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q116981585",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Ансамбль общежитий работников Центральной клинической больницы (Кунцево)",
+      "address": "55.74239,37.39601",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q116947552",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Ансамбль построек Рублёвской насосной станции Московского водопровода (Кунцево)",
+      "address": "55.78092,37.34600",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q124366056",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Ансамбль рабочего посёлка при Рублёвской насосной станции Московского водопровода (Кунцево)",
+      "address": "55.78444,37.35186",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q124415123",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Арбат-опера",
+      "address": "55.74910,37.59200",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4068639",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Арбатец",
+      "address": "55.72438,37.66217",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q20968658",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Артиллерийский ДОТ Московской линии обороны",
+      "address": "55.79526,37.44790",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q116981590",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Бабий городок",
+      "address": "55.73500,37.60900",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4074302",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Баку",
+      "address": "55.80614,37.52812",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q21193623",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Балчуг (местность)",
+      "address": "55.74740,37.62580",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4077012",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Бараки станции Пресня",
+      "address": "55.76935,37.51595",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q125301876",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Басманная слобода",
+      "address": "55.76556,37.66194",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q19907413",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Белый город",
+      "address": "55.75111,37.62833",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q520193",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Бережковская слобода",
+      "address": "55.74290,37.57045",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q20020964",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Берсеневка",
+      "address": "55.74250,37.61100",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4085182",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Бескудниково (бывшая деревня)",
+      "address": "55.86389,37.55694",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4085649",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Благуша",
+      "address": "55.78150,37.72200",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4087926",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Богородское кладбище",
+      "address": "55.80414,37.70943",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4089743",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Болото",
+      "address": "55.74600,37.61700",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4090957",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Большая Всехсвятская роща",
+      "address": "55.80640,37.48685",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4091254",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Большой Гнездниковский переулок 10",
+      "address": "55.76314,37.60581",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q16645464",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Большой Устьинский мост",
+      "address": "55.74722,37.63889",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4092908",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Боровицкий холм",
+      "address": "55.74889,37.61250",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q3683243",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братская могила в Малино",
+      "address": "55.95806,37.20381",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q117085120",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братская могила в Ржавках",
+      "address": "56.00039,37.24390",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q117085116",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братская могила воинов 44-й кавалерийской дивизии, погибших в 1941 году в боях за Москву (Зеленоград)",
+      "address": "55.95480,37.19573",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q117085115",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братская могила воинов Красной Армии в бывшей деревне Александровка",
+      "address": "55.98925,37.15822",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q117085103",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братская могила воинов Красной Армии у железнодорожной станции Крюково, 1941 г. (Зеленоград)",
+      "address": "55.97942,37.17401",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q117085118",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братская могила воинов, погибших в 1941 году в боях за Москву (Зеленоград)",
+      "address": "55.96617,37.20331",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q117085119",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братская могила воинов, погибших в период Великой Отечественной войны 1941-1945 гг. (Зеленоград)",
+      "address": "56.01545,37.20848",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q117085117",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братская могила советских воинов (Зеленоград (бывш. д. Каменка))",
+      "address": "55.96849,37.16076",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q117085104",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братское кладбище Никольского единоверческого монастыря",
+      "address": "55.79083,37.71750",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4095990",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Братцево",
+      "address": "55.84850,37.39750",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4096009",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Бронная слобода",
+      "address": "55.76200,37.60000",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q21636496",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Будка центрального управления стрелками и сигналами (Головинский)",
+      "address": "55.84139,37.52491",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q116860590",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Бульварное кольцо",
+      "address": "55.76106,37.60211",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q895086",
+      "attribution": "wikidata"
+    },
+    {
+      "name": "Буревестник",
+      "address": "55.73583,37.57583",
+      "district": "",
+      "metro": "",
+      "description": "Площадка из Wikidata (Москва)",
+      "source_url": "http://www.wikidata.org/entity/Q4099524",
+      "attribution": "wikidata"
+    }
+  ]
+}

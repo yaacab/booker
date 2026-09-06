@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, trackClientEvent } from "@/lib/api";
 import { categoryLabel } from "@/lib/copy";
 import { CityField } from "@/components/CityField";
 import EventStudioShell from "@/components/event-studio/EventStudioShell";
@@ -67,7 +67,7 @@ export default function NewEventPage() {
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [roofName, setRoofName] = useState("");
-  const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "offline">("saved");
+  const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "offline" | "error">("saved");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [online, setOnline] = useState(true);
 
@@ -141,8 +141,12 @@ export default function NewEventPage() {
     if (!hydrated) return;
     setSaveStatus(navigator.onLine ? "saving" : "offline");
     const timer = window.setTimeout(() => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, unknown, step, roofName, savedAt: new Date().toISOString() }));
-      setSaveStatus(navigator.onLine ? "saved" : "offline");
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, unknown, step, roofName, savedAt: new Date().toISOString() }));
+        setSaveStatus(navigator.onLine ? "saved" : "offline");
+      } catch {
+        setSaveStatus("error");
+      }
     }, 450);
     return () => window.clearTimeout(timer);
   }, [draft, unknown, step, roofName, hydrated]);
@@ -229,6 +233,7 @@ export default function NewEventPage() {
             .join("; "),
         }),
       });
+      trackClientEvent("event.studio.completed", { guest_count: Number(draft.guests || 50) });
       router.push("/cabinet");
       localStorage.removeItem(DRAFT_KEY);
     } catch (err) {
@@ -239,7 +244,14 @@ export default function NewEventPage() {
   }
 
   const s = STEPS[step];
-  const saveLabel = !online || saveStatus === "offline" ? "Без сети · сохранено на устройстве" : saveStatus === "saving" ? "Сохраняем…" : "Сохранено автоматически";
+  const saveLabel =
+    !online || saveStatus === "offline"
+      ? "Без сети · сохранено на устройстве"
+      : saveStatus === "saving"
+        ? "Сохраняем…"
+        : saveStatus === "error"
+          ? "Не удалось сохранить черновик"
+          : "Сохранено автоматически";
 
   if (!studioFlagReady) {
     return (

@@ -1,18 +1,28 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
 import { api, createOrgWithConfirm, setActiveOrg, setToken } from "@/lib/api";
+import { cabinetPathForKind } from "@/lib/cabinetRoutes";
 import { safeNext } from "@/lib/next";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "register" | "recover">("login");
+  const [mode, setMode] = useState<"login" | "register" | "recover" | "reset">("login");
+  const [resetToken, setResetToken] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState("");
   const [selectedRole, setSelectedRole] = useState("customer");
+
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("reset");
+    if (token) {
+      setResetToken(token);
+      setMode("reset");
+    }
+  }, []);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -21,6 +31,18 @@ export default function LoginPage() {
     setPending(true);
     const form = new FormData(e.currentTarget);
     try {
+      if (mode === "reset") {
+        await api("/auth/recover/confirm", {
+          method: "POST",
+          body: JSON.stringify({
+            token: resetToken,
+            password: String(form.get("password") || ""),
+          }),
+        });
+        setNotice("Пароль обновлён. Войдите с новым паролем.");
+        setMode("login");
+        return;
+      }
       if (mode === "recover") {
         await api("/auth/recover", {
           method: "POST",
@@ -55,11 +77,26 @@ export default function LoginPage() {
           city: "Москва",
         });
         setActiveOrg(org.id);
-      } else {
-        const me = await api<{ active_organization_id?: string }>("/me");
-        if (me.active_organization_id) setActiveOrg(me.active_organization_id);
+        const rawNext = new URLSearchParams(window.location.search).get("next");
+        const roleCabinet = cabinetPathForKind(kind);
+        const next = safeNext(rawNext, roleCabinet);
+        router.push(!rawNext || next === "/cabinet" ? roleCabinet : next);
+        return;
       }
-      router.push(safeNext(new URLSearchParams(window.location.search).get("next")));
+      const me = await api<{
+        organizations?: { id: string; kind: string }[];
+        active_organization_id?: string;
+      }>("/me");
+      const activeOrgId = me.active_organization_id || me.organizations?.[0]?.id;
+      if (activeOrgId) setActiveOrg(activeOrgId);
+      const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
+      const rawNext = new URLSearchParams(window.location.search).get("next");
+      const next = safeNext(rawNext);
+      if (!rawNext || next === "/cabinet") {
+        router.push(cabinetPathForKind(org?.kind || "customer"));
+      } else {
+        router.push(next);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка входа");
     } finally {
@@ -67,61 +104,46 @@ export default function LoginPage() {
     }
   }
 
+  const heading =
+    mode === "reset"
+      ? "Задайте новый пароль"
+      : mode === "recover"
+        ? "Вернём доступ к кабинету"
+        : mode === "login"
+          ? "Войти в Букер"
+          : "Создать кабинет";
+
+  const kicker =
+    mode === "reset"
+      ? "Подтверждение восстановления"
+      : mode === "recover"
+        ? "Восстановление доступа"
+        : mode === "login"
+          ? "Backstage Control Room"
+          : "Новый аккаунт";
+
   return (
     <main>
       <p className="brand-lockup-wrap">
         <BrandLockup />
       </p>
-      <p className="kicker">
-        {mode === "recover" ? "Восстановление доступа" : mode === "login" ? "Backstage Control Room" : "Новый аккаунт"}
-      </p>
-      <h1>
-        {mode === "recover"
-          ? "Вернём доступ к кабинету"
-          : mode === "login"
-            ? "Войти в Букер"
-            : "Создать кабинет"}
-      </h1>
-      {mode === "login" ? (
-        <details className="timeline">
-          <summary>Демонстрационные аккаунты</summary>
-          <p>Пароль для демовхода: password1. Код подтверждения в Deal Room: 123456.</p>
-          <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-            {(
-              [
-                ["customer@booker.test", "Заказчик"],
-                ["artist@booker.test", "Исполнитель"],
-                ["admin@booker.test", "Оператор"],
-              ] as const
-            ).map(([email, label]) => (
-              <button
-                key={email}
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  const form = document.querySelector<HTMLFormElement>("form.card");
-                  const mail = form?.querySelector<HTMLInputElement>('input[name="email"]');
-                  const pass = form?.querySelector<HTMLInputElement>('input[name="password"]');
-                  if (mail) mail.value = email;
-                  if (pass) pass.value = "password1";
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </p>
-        </details>
-      ) : (
+      <p className="kicker">{kicker}</p>
+      <h1>{heading}</h1>
+      {mode === "register" ? (
         <p className="timeline">Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи.</p>
-      )}
-      <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420 }} onSubmit={onSubmit}>
+      ) : mode === "reset" ? (
+        <p className="timeline">Введите новый пароль для аккаунта.</p>
+      ) : mode === "recover" ? (
+        <p className="timeline">Укажите email — отправим инструкцию, если аккаунт существует.</p>
+      ) : null}
+      <form className="card surface-glass" style={{ display: "grid", gap: 12, maxWidth: 420 }} onSubmit={onSubmit}>
         {mode === "register" ? (
           <>
             <label>
               Имя
               <input name="full_name" required />
             </label>
-            <fieldset className="role-picker">
+            <fieldset className="role-picker" data-testid="role-picker">
               <legend>Роль</legend>
               <input type="hidden" name="kind" value={selectedRole} />
               {[
@@ -134,6 +156,7 @@ export default function LoginPage() {
                   type="button"
                   className={`role-option ${selectedRole === value ? "on" : ""}`}
                   aria-pressed={selectedRole === value}
+                  data-testid={`role-option-${value}`}
                   onClick={() => setSelectedRole(value)}
                 >
                   <span><strong>{title}</strong><small>{description}</small></span>
@@ -143,26 +166,44 @@ export default function LoginPage() {
             </fieldset>
           </>
         ) : null}
-        <label>
-          Email
-          <input name="email" type="email" autoComplete="username" required />
-        </label>
+        {mode !== "reset" ? (
+          <label>
+            Email
+            <input name="email" type="email" autoComplete="username" required />
+          </label>
+        ) : null}
         {mode !== "recover" ? (
           <label>
-            Пароль
-            <input name="password" type="password" autoComplete="current-password" required minLength={8} />
+            {mode === "reset" ? "Новый пароль" : "Пароль"}
+            <input
+              name="password"
+              type="password"
+              autoComplete={mode === "register" || mode === "reset" ? "new-password" : "current-password"}
+              required
+              minLength={8}
+            />
           </label>
         ) : null}
         {mode === "register" ? (
           <>
-            <label className="unknown">
-              <input name="accept_offer" type="checkbox" required />
-              Принимаю <a href="/legal/offer">оферту</a> и правила использования сервиса.
-            </label>
-            <label className="unknown">
-              <input name="accept_privacy" type="checkbox" required />
-              Согласен с <a href="/legal/privacy">политикой обработки персональных данных</a>.
-            </label>
+            <div className="unknown">
+              <input id="accept_offer" name="accept_offer" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_offer" className="inline-label">
+                  Принимаю
+                </label>{" "}
+                <a href="/legal/offer">оферту</a> и правила использования сервиса.
+              </span>
+            </div>
+            <div className="unknown">
+              <input id="accept_privacy" name="accept_privacy" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_privacy" className="inline-label">
+                  Согласен
+                </label>{" "}
+                с <a href="/legal/privacy">политикой обработки персональных данных</a>.
+              </span>
+            </div>
             <label className="unknown">
               <input name="marketing_opt_in" type="checkbox" />
               Получать новости продукта и специальные предложения. Необязательно.
@@ -172,18 +213,34 @@ export default function LoginPage() {
         {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
         {notice ? <p className="timeline">{notice}</p> : null}
         <button type="submit" disabled={pending}>
-          {pending ? "Обрабатываем…" : mode === "recover" ? "Отправить инструкцию" : mode === "login" ? "Войти" : "Создать аккаунт"}
+          {pending
+            ? "Обрабатываем…"
+            : mode === "reset"
+              ? "Сохранить пароль"
+              : mode === "recover"
+                ? "Отправить инструкцию"
+                : mode === "login"
+                  ? "Войти"
+                  : "Создать аккаунт"}
         </button>
       </form>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button type="button" className="secondary" onClick={() => setMode(mode === "login" ? "register" : "login")}>
-          {mode === "login" ? "Создать аккаунт" : "Вернуться ко входу"}
-        </button>
-        {mode === "login" ? (
-          <button type="button" className="secondary" onClick={() => setMode("recover")}>
-            Забыли пароль?
+        {mode === "reset" ? (
+          <button type="button" className="secondary" onClick={() => setMode("login")}>
+            Вернуться ко входу
           </button>
-        ) : null}
+        ) : (
+          <>
+            <button type="button" className="secondary" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+              {mode === "login" ? "Создать аккаунт" : "Вернуться ко входу"}
+            </button>
+            {mode === "login" ? (
+              <button type="button" className="secondary" onClick={() => setMode("recover")}>
+                Забыли пароль?
+              </button>
+            ) : null}
+          </>
+        )}
       </p>
     </main>
   );

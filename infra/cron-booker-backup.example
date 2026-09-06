@@ -1,0 +1,2 @@
+# Example cron for VPS — install manually: sudo cp infra/cron-booker-backup.example /etc/cron.d/booker-backup
+15 2 * * * root /opt/booker/infra/backup-booker.sh >> /var/log/booker-backup.log 2>&1

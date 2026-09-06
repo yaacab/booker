@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Deal Room (демо)",
-  alternates: { canonical: "/deals/demo" },
+  title: "Deal Room",
+  alternates: { canonical: "/events/new" },
 };
 
 export default function DemoLayout({ children }: { children: React.ReactNode }) {
