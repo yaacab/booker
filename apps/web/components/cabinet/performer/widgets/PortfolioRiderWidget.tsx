@@ -83,6 +83,9 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
               <Link className="btn secondary" href={`${publicHref}#rider`}>
                 Райдер на сайте
               </Link>
+              <Link className="btn" href={`${publicHref}/share`} data-testid="performer-share-link">
+                Поделиться / QR
+              </Link>
             </div>
           ) : null}
 

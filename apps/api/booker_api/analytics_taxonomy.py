@@ -30,7 +30,7 @@ CLIENT_EVENT_GROUPS: dict[str, tuple[str, ...]] = {
         "cabinet.ical_imported",
         "cabinet.vacation_set",
     ),
-    "discovery": ("page.view", "search.performed", "deal.room.opened"),
+    "discovery": ("page.view", "search.performed", "deal.room.opened", "promo.event"),
 }
 
 # Funnel steps for admin dashboards (key → audit filter)
@@ -43,4 +43,5 @@ FUNNEL_STEPS: tuple[tuple[str, str, str | None], ...] = (
     ("hold.created", "hold.created", None),
     ("contract.signed", "contract.signed", None),
     ("payment.webhook", "payment.webhook", None),
+    ("promo.event", "promo.event", None),
 )

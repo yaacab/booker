@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, getActiveOrg, getToken, isWriteRole } from "@/lib/api";
@@ -8,6 +8,7 @@ import { CHIP } from "@/lib/copy";
 import { formatWhen, guestsLabel, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
+import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
 import { SlotList } from "@/components/SlotList";
 
 type Venue = {
@@ -220,6 +221,9 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
 
   return (
     <main>
+      <Suspense fallback={null}>
+        <PromoAttributionBeacon kind="venue" profileId={data.id} />
+      </Suspense>
       <p className="kicker">Профиль площадки</p>
       <h1>{data.name}</h1>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -236,6 +240,9 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
           )}
         </span>
         <FavoriteToggle targetType="venue" targetId={data.id} />
+        <Link className="btn secondary" href={`/venues/${data.id}/share`}>
+          Поделиться
+        </Link>
       </p>
       {data.address ? (
         <p className="timeline">

@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import { CHIP, categoryLabel } from "@/lib/copy";
 import { formatWhen, money, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
+import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
 import { SlotList } from "@/components/SlotList";
 
 type Slot = { id: string; starts_at: string; ends_at: string; status: string };
@@ -181,6 +183,9 @@ export function ArtistProfileClient() {
 
   return (
     <main>
+      <Suspense fallback={null}>
+        <PromoAttributionBeacon kind="artist" profileId={data.id} />
+      </Suspense>
       <p className="kicker">Профиль артиста</p>
       <h1>{data.name}</h1>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -189,6 +194,9 @@ export function ArtistProfileClient() {
           {data.verified ? <span className="chip ok">{CHIP.verified}</span> : <span className="chip wait">{CHIP.pending}</span>}
         </span>
         <FavoriteToggle targetType="artist" targetId={data.id} />
+        <Link className="btn secondary" href={`/artists/${data.id}/share`}>
+          Поделиться
+        </Link>
       </p>
       <p>{data.facts.note}</p>
       <p className="timeline">
