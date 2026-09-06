@@ -7,7 +7,7 @@ Prod deploy: **запрещён** до G3 / OK владельца
 
 ## Candidate SHA
 
-- Integration SHA: `2037a7a` (`2037a7ac2f157106e1a66104e3a51983017a6ec7`)
+- Integration SHA: `40e7072` (`40e7072dec8b8c45415185184cd2443a1549a238`)
 - Evidence: CI checks на **этом** SHA / PR, не на старом `master`
 
 ## Scope A+B (статус)
@@ -39,11 +39,11 @@ Prod deploy: **запрещён** до G3 / OK владельца
 
 ## Evidence checklist (G2)
 
-- [ ] CI green on candidate SHA (unit + critical e2e) — list expanded on `2037a7a`; **await PR checks green**
-- [x] Screenshots 1440/390 × 3 roles — `docs/screenshots/g2-roles/` (capture base `ef1f83b`, integrated `2037a7a`)
+- [ ] CI green on candidate SHA (unit + critical e2e) — list expanded on `40e7072`; **await PR checks green**
+- [x] Screenshots 1440/390 × 3 roles — `docs/screenshots/g2-roles/` (integrated `40e7072`)
 - [x] Сквозной сценарий заявка→оффер на SHA — `e2e/flow.spec.ts` + `e2e/deal-path.spec.ts` + `cabinets-cross-role.spec.ts`
 - [x] E01–E24 table filled; E25 = ожидает G3 — `docs/E01_E24_EVIDENCE.md`
-- [ ] No open mandatory A/B — residual PARTIAL depth (E01 guest→login, E06 offline, E12/E14 live PSP OWNER_BLOCKED ≠ A/B code gaps); Contour C stays disabled
+- [ ] No open mandatory A/B — residual PARTIAL (E01/E06/E12/E14/E15); Contour C OWNER_BLOCKED documented, not claimed done
 
 ### Proof pointers (a11y / backup)
 
