@@ -8,6 +8,7 @@ import type {
   CalendarConflict,
   ProfileCompleteness,
   VenueBooking,
+  VenueBookingStats,
   VenueDealRoom,
   VenueHallTarget,
   VenueRequest,
@@ -18,6 +19,10 @@ const UPCOMING_STATUSES = new Set(["Confirmed", "InProgress", "DateHeld", "Await
 const CONFLICT_STATUSES = new Set(["Confirmed", "InProgress", "DateHeld"]);
 const HOLD_SOON_MS = 48 * 3600_000;
 const CONFLICT_WINDOW_MS = 4 * 3600_000;
+const CONFIRMED_STATUSES = new Set(["Confirmed", "InProgress"]);
+const COMPLETED_STATUSES = new Set(["Completed"]);
+const CANCELLED_STATUSES = new Set(["Cancelled", "Declined", "Expired"]);
+const NEGOTIATION_STATUSES = new Set(["Negotiation", "DateHeld", "AwaitingContract", "AwaitingPayment"]);
 
 export function useVenueCabinetData() {
   const router = useRouter();
@@ -177,6 +182,29 @@ export function useVenueCabinetData() {
   const profileIncomplete =
     completeness?.applicable && completeness.score < 100 ? completeness : null;
 
+  const venueId = useMemo(() => {
+    const withVenue = halls.find((h) => h.venue_id);
+    return withVenue?.venue_id || "";
+  }, [halls]);
+
+  const bookingStats = useMemo((): VenueBookingStats => {
+    const nowMs = Date.now();
+    return {
+      total: bookings.length,
+      confirmed: bookings.filter((b) => CONFIRMED_STATUSES.has(b.status)).length,
+      inProgress: bookings.filter((b) => b.status === "InProgress").length,
+      negotiation: bookings.filter((b) => NEGOTIATION_STATUSES.has(b.status)).length,
+      upcoming: bookings.filter(
+        (b) =>
+          b.event_date &&
+          CONFIRMED_STATUSES.has(b.status) &&
+          new Date(b.event_date).getTime() >= nowMs - 86_400_000,
+      ).length,
+      completed: bookings.filter((b) => COMPLETED_STATUSES.has(b.status)).length,
+      cancelled: bookings.filter((b) => CANCELLED_STATUSES.has(b.status)).length,
+    };
+  }, [bookings]);
+
   const empty =
     ready &&
     !error &&
@@ -224,6 +252,10 @@ export function useVenueCabinetData() {
     calendarConflicts,
     profileIncomplete,
     halls,
+    venueId,
+    bookings,
+    bookingStats,
+    requestCount: requests.length,
     empty,
     offerBusy,
     sendOffer,
