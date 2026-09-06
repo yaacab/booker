@@ -30,9 +30,9 @@ test.describe("Immersive design acceptance", () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await page.getByRole("group", { name: "Тип поиска" }).getByRole("button", { name: "Площадка", exact: true }).click();
       await expect(page.getByLabel("Гостей от")).toBeVisible();
-      await expect(page.getByLabel("Категория", { exact: true })).toHaveCount(0);
+      await expect(page.getByRole("combobox", { name: "Категория", exact: true })).toHaveCount(0);
       await page.getByRole("button", { name: "Исполнитель", exact: true }).click();
-      await expect(page.getByLabel("Категория", { exact: true })).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Категория", exact: true })).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: true });
     });
   }
