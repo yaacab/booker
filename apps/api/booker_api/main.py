@@ -9,6 +9,7 @@ from booker_api.db import SessionLocal, engine, init_schema
 from booker_api.routers import (
     admin,
     analytics,
+    briefs,
     catalog,
     deals,
     favorites,
@@ -49,4 +50,5 @@ app.include_router(services.router)
 app.include_router(deals.router)
 app.include_router(payments.router)
 app.include_router(reviews.router)
+app.include_router(briefs.router)
 app.include_router(admin.router)

@@ -422,3 +422,45 @@ class Favorite(Base):
     target_type: Mapped[str] = mapped_column(String(16))  # artist | venue
     target_id: Mapped[str] = mapped_column(String(36), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PublicBrief(Base):
+    """Добровольный публичный бриф (E18): ограниченный снимок, не приватное событие."""
+
+    __tablename__ = "public_briefs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    event_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("events.id"), nullable=True, index=True
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    city: Mapped[str] = mapped_column(String(128), default="Москва")
+    date_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    date_to: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    role_needed: Mapped[str] = mapped_column(String(64), index=True)
+    guest_count_band: Mapped[str] = mapped_column(String(32), default="1-50")
+    public_notes: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    responses: Mapped[list["BriefResponse"]] = relationship(back_populates="brief")
+
+
+class BriefResponse(Base):
+    """Отклик поставщика на публичный бриф (E19): интерес/сообщение, без автоброни."""
+
+    __tablename__ = "brief_responses"
+    __table_args__ = (UniqueConstraint("brief_id", "supplier_org_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    brief_id: Mapped[str] = mapped_column(ForeignKey("public_briefs.id"), index=True)
+    supplier_org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    message: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="interested")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    brief: Mapped[PublicBrief] = relationship(back_populates="responses")
