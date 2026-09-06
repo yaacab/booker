@@ -31,6 +31,7 @@ export function usePerformerCabinetData() {
   const [dealRooms, setDealRooms] = useState<PerformerDealRoom[]>([]);
   const [completeness, setCompleteness] = useState<ProfileCompleteness | null>(null);
   const [offerBusy, setOfferBusy] = useState<string | null>(null);
+  const [artistId, setArtistId] = useState("");
 
   const load = useCallback(async () => {
     if (!getToken()) {
@@ -61,14 +62,19 @@ export function usePerformerCabinetData() {
       setOrgName(org.name);
       setRole(org.role || "");
       const q = `?organization_id=${encodeURIComponent(org.id)}`;
-      const [rq, bk, comp] = await Promise.all([
+      const [rq, bk, comp, targets] = await Promise.all([
         api<{ items: PerformerRequest[] }>(`/requests${q}`),
         api<{ items: PerformerBooking[] }>(`/bookings${q}`),
         api<ProfileCompleteness>(`/organizations/${encodeURIComponent(org.id)}/supply-completeness`),
+        api<{ items: { resource_type: string; resource_id: string }[] }>(
+          `/organizations/${encodeURIComponent(org.id)}/calendar-targets`,
+        ),
       ]);
       setRequests(rq.items);
       setBookings(bk.items);
       setCompleteness(comp);
+      const artist = targets.items.find((t) => t.resource_type === "artist");
+      setArtistId(artist?.resource_id || "");
       const activeBookings = bk.items.filter((b) => ACTIVE_DEAL_STATUSES.has(b.status));
       const rooms = await Promise.all(
         activeBookings.map((b) =>
@@ -211,6 +217,9 @@ export function usePerformerCabinetData() {
     orgName,
     orgId,
     role,
+    artistId,
+    requests,
+    bookings,
     newRequests,
     awaitingResponse,
     expiringOffers,

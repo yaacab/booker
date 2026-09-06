@@ -43,3 +43,32 @@ export type CalendarConflict = {
   conflict_with: string;
   conflict_booking_id: string;
 };
+
+export type PerformerService = {
+  id: string;
+  title: string;
+  category_code: string;
+  description: string;
+  honorarium_rub: number | null;
+};
+
+export type PerformerArtistProfile = {
+  id: string;
+  name: string;
+  city: string;
+  category: string;
+  verified: boolean;
+  media_url: string | null;
+  rider: Record<string, string>;
+  tariffs: { id: string; title: string; honorarium_rub: number }[];
+  slots: { id: string; status: string; starts_at: string; ends_at: string }[];
+};
+
+export type PerformerVacationItem = {
+  resource_type: string;
+  resource_id: string;
+  label: string;
+  active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+};
