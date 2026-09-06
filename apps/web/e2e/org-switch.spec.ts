@@ -11,6 +11,7 @@ async function switchWorkspace(page: Page, orgId: string, expectedPath: RegExp) 
   await expect(switcher).toBeVisible({ timeout: 15_000 });
   await switcher.selectOption(orgId);
   await page.waitForURL(expectedPath, { timeout: 20_000 });
+  await expect(switcher).toHaveValue(orgId, { timeout: 15_000 });
 }
 
 test.describe("E15 org/role workspace switch", () => {
@@ -31,11 +32,10 @@ test.describe("E15 org/role workspace switch", () => {
       await expect(page.getByRole("heading", { name: "Студия событий" })).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByText(seed.customer.orgName)).toBeVisible();
+      await expect(page.getByLabel("Рабочее пространство")).toHaveValue(seed.customer.orgId);
       await expect(page.getByText(seed.customer.eventTitle)).toBeVisible();
       await expect(page.getByText(seed.artist.eventTitle)).toHaveCount(0);
       await expect(page.getByText(seed.venue.eventTitle)).toHaveCount(0);
-      await expect(page.getByLabel("Рабочее пространство")).toBeVisible();
     });
 
     await test.step("switch → performer: кабинет и inbound title, без предыдущего", async () => {
@@ -43,7 +43,7 @@ test.describe("E15 org/role workspace switch", () => {
       await expect(page.getByRole("heading", { name: "Календарь исполнителя" })).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByText(seed.artist.orgName)).toBeVisible();
+      await expect(page.getByLabel("Рабочее пространство")).toHaveValue(seed.artist.orgId);
       await expect(page.getByRole("heading", { name: "Новые заявки" })).toBeVisible();
       await expect(page.getByText(seed.artist.eventTitle)).toBeVisible();
       await expect(page.getByText(seed.customer.eventTitle)).toHaveCount(0);
@@ -55,7 +55,7 @@ test.describe("E15 org/role workspace switch", () => {
       await expect(page.getByRole("heading", { name: "Пульт площадки" })).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByText(seed.venue.orgName)).toBeVisible();
+      await expect(page.getByLabel("Рабочее пространство")).toHaveValue(seed.venue.orgId);
       await expect(page.getByRole("heading", { name: "Новые заявки" })).toBeVisible();
       await expect(page.getByText(seed.venue.eventTitle)).toBeVisible();
       await expect(page.getByText(seed.customer.eventTitle)).toHaveCount(0);
