@@ -497,4 +497,168 @@ export async function seedCrossRoleEvent(request: APIRequestContext): Promise<Cr
   };
 }
 
+export type OrgSwitchSeed = {
+  user: AuthSession;
+  customer: { orgId: string; orgName: string; eventTitle: string };
+  artist: { orgId: string; orgName: string; eventTitle: string };
+  venue: { orgId: string; orgName: string; eventTitle: string };
+};
+
+/**
+ * Один пользователь в customer/artist/venue org — для E15 workspace switch.
+ * У каждой роли свой уникальный event title, видимый только в её кабинете.
+ */
+export async function seedOrgSwitchWorkspace(request: APIRequestContext): Promise<OrgSwitchSeed> {
+  const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const user = await register(request, `e2e-e15-${suffix}@booker.test`, "E15 Multi");
+  const peer = await register(request, `e2e-e15-peer-${suffix}@booker.test`, "E15 Peer");
+
+  const customerOrgName = `E15 Cust Org ${suffix}`;
+  const artistOrgName = `E15 Artist Org ${suffix}`;
+  const venueOrgName = `E15 Venue Org ${suffix}`;
+  const customerEventTitle = `E15-CUST-EVT-${suffix}`;
+  const artistEventTitle = `E15-ARTIST-EVT-${suffix}`;
+  const venueEventTitle = `E15-VENUE-EVT-${suffix}`;
+
+  const customerOrg = await postJson<{ id: string }>(request, "/orgs", user.token, {
+    name: customerOrgName,
+    kind: "customer",
+  });
+  const artistOrg = await postJson<{ id: string }>(request, "/orgs", user.token, {
+    name: artistOrgName,
+    kind: "artist",
+  });
+  const venueOrg = await postJson<{ id: string }>(request, "/orgs", user.token, {
+    name: venueOrgName,
+    kind: "venue",
+  });
+
+  await postJson<{ id: string }>(
+    request,
+    "/events",
+    user.token,
+    {
+      organization_id: customerOrg.id,
+      title: customerEventTitle,
+      event_date: "2026-12-20T18:00:00+00:00",
+      guest_count: 40,
+      budget_rub: 120_000,
+      city: "Москва",
+    },
+    customerOrg.id,
+  );
+
+  const artist = await postJson<{ id: string }>(
+    request,
+    "/artists",
+    user.token,
+    {
+      organization_id: artistOrg.id,
+      name: `E15 DJ ${suffix}`,
+      category: "dj",
+    },
+    artistOrg.id,
+  );
+  await postJson(
+    request,
+    `/artists/${artist.id}/tariffs`,
+    user.token,
+    { title: "Сет", honorarium_rub: 70_000 },
+    artistOrg.id,
+  );
+  await postJson(
+    request,
+    "/slots",
+    user.token,
+    {
+      resource_type: "artist",
+      resource_id: artist.id,
+      starts_at: "2026-12-21T18:00:00+00:00",
+      ends_at: "2026-12-21T22:00:00+00:00",
+    },
+    artistOrg.id,
+  );
+
+  const venue = await postJson<{ id: string; hall_id: string }>(
+    request,
+    "/venues",
+    user.token,
+    {
+      organization_id: venueOrg.id,
+      name: `E15 Hall ${suffix}`,
+      city: "Москва",
+      capacity: 100,
+    },
+    venueOrg.id,
+  );
+  await postJson(
+    request,
+    "/slots",
+    user.token,
+    {
+      resource_type: "hall",
+      resource_id: venue.hall_id,
+      starts_at: "2026-12-22T18:00:00+00:00",
+      ends_at: "2026-12-22T22:00:00+00:00",
+    },
+    venueOrg.id,
+  );
+
+  const peerOrg = await postJson<{ id: string }>(request, "/orgs", peer.token, {
+    name: `E15 Peer Cust ${suffix}`,
+    kind: "customer",
+  });
+
+  const artistInbound = await postJson<{ id: string }>(
+    request,
+    "/events",
+    peer.token,
+    {
+      organization_id: peerOrg.id,
+      title: artistEventTitle,
+      event_date: "2026-12-21T18:00:00+00:00",
+      guest_count: 60,
+      budget_rub: 150_000,
+      city: "Москва",
+    },
+    peerOrg.id,
+  );
+  await postJson(
+    request,
+    `/events/${artistInbound.id}/requests`,
+    peer.token,
+    { resource_type: "artist", resource_id: artist.id },
+    peerOrg.id,
+  );
+
+  const venueInbound = await postJson<{ id: string }>(
+    request,
+    "/events",
+    peer.token,
+    {
+      organization_id: peerOrg.id,
+      title: venueEventTitle,
+      event_date: "2026-12-22T18:00:00+00:00",
+      guest_count: 80,
+      budget_rub: 200_000,
+      city: "Москва",
+    },
+    peerOrg.id,
+  );
+  await postJson(
+    request,
+    `/events/${venueInbound.id}/requests`,
+    peer.token,
+    { resource_type: "venue", resource_id: venue.id },
+    peerOrg.id,
+  );
+
+  return {
+    user,
+    customer: { orgId: customerOrg.id, orgName: customerOrgName, eventTitle: customerEventTitle },
+    artist: { orgId: artistOrg.id, orgName: artistOrgName, eventTitle: artistEventTitle },
+    venue: { orgId: venueOrg.id, orgName: venueOrgName, eventTitle: venueEventTitle },
+  };
+}
+
 export { postJson, getJson };
