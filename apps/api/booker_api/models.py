@@ -358,6 +358,21 @@ class Dispute(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class Review(Base):
+    """Отзыв по завершённой сделке: один на бронь от автора, org_id — профиль контрагента."""
+
+    __tablename__ = "reviews"
+    __table_args__ = (UniqueConstraint("booking_id", "author_user_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
+    author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    rating: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class DealAttachment(Base):
     __tablename__ = "deal_attachments"
 
