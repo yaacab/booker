@@ -18,7 +18,7 @@ export function VenueOnboardingWidget({
       id: "halls",
       label: "Добавить зал с вместимостью",
       done: hasHalls,
-      href: "/cabinet/venue/calendar",
+      href: "/cabinet/venue/halls",
     },
     {
       id: "profile",

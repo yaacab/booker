@@ -50,3 +50,19 @@ export type VenueHallTarget = {
   label: string;
   venue_id?: string;
 };
+
+export type VenueHall = {
+  id: string;
+  name: string;
+  capacity: number;
+};
+
+export type VenueBookingStats = {
+  total: number;
+  confirmed: number;
+  inProgress: number;
+  negotiation: number;
+  upcoming: number;
+  completed: number;
+  cancelled: number;
+};
