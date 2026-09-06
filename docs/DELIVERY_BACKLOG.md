@@ -21,9 +21,9 @@ Evidence при закрытии: реализация → тест → резу
 | W1-SEO | metadata + sitemap | P0 | — | web | VERIFIED | SEO | unit | 6adf8c7 | — |
 | W1-HOME | Home dual search | P0 | W1-SEARCH | web | VERIFIED | §4.1 | e2e | 6adf8c7 | — |
 | W2-ONBOARD | Role onboarding | P0 | — | web+api | VERIFIED | §5 | e2e | onboarding.spec | — |
-| W2-CAB-CUST | Customer scenarios | P0 | W0-CAB | web | IN_PROGRESS | §11.2 | e2e | e578301 | depth |
-| W2-CAB-PERF | Performer scenarios | P0 | W0-CAB | web | IN_PROGRESS | §12 | e2e | shells | depth |
-| W2-CAB-VEN | Venue scenarios | P0 | W0-CAB | web | IN_PROGRESS | §13 | e2e | shells | depth |
+| W2-CAB-CUST | Customer scenarios | P0 | W0-CAB | web | VERIFIED | §11.2 | e2e | cabinet-customer.spec.ts | — |
+| W2-CAB-PERF | Performer scenarios | P0 | W0-CAB | web | VERIFIED | §12 | e2e | cabinet-performer.spec.ts | — |
+| W2-CAB-VEN | Venue scenarios | P0 | W0-CAB | web | VERIFIED | §13 | e2e | cabinet-venue.spec.ts | — |
 | W2-AUTOSAVE | Studio autosave | P0 | W0-FLAG | web | VERIFIED | E06 reload | e2e | studio-autosave | offline thin |
 | W2-DEAL-PATH | Request→offer→hold | P0 | — | api+web | VERIFIED | E07–E09 | api+e2e | deal-path in CI | — |
 | W2-MULTI-HALL | Atomic multi-hall | P1 | W2-DEAL | api | VERIFIED | E10 | race | 449e7e8 | — |
@@ -63,8 +63,9 @@ Base SHA для новых worktree: текущий integration HEAD после 
 | W3-BRIEF | agent-brief | w3-brief | 12e4192 | briefs | — | VERIFIED | api | 4bf519a |
 | W4-REVIEW | agent-rev | w4-review | ef27bdd | reviews | — | VERIFIED | api | 51214da |
 | W3-SHARE+COMPARE+W4-CLAIM/SUPPORT/NOTIF | coord | main wt | 4bf519a | shortlists, trust, outbox, compare/support UI | fav | VERIFIED | api 14 | this commit |
-| W2-CAB-PERF | — | — | HEAD | cabinet/performer/** | W0 | QUEUED | e2e | — |
-| W2-CAB-VEN | — | — | HEAD | cabinet/venue/** | W0 | QUEUED | e2e | — |
+| W2-CAB-PERF | coord | main wt | HEAD | cabinet/performer/** | W0 | VERIFIED | e2e | cabinet-performer |
+| W2-CAB-VEN | coord | main wt | HEAD | cabinet/venue/** | W0 | VERIFIED | e2e | cabinet-venue |
+| W2-CAB-CUST | coord | main wt | HEAD | cabinet/customer/** | W0 | VERIFIED | e2e | cabinet-customer |
 | W4-MSG-HUB | coord | main wt | 15d5880 | messages hub | deals | VERIFIED | api | integrated |
 | W3-SAVED+PROMO | agents | main wt | 4e262ab/c052b61 | saved search, QR | — | VERIFIED | api | integrated |
 | W5-EVIDENCE | agent/w5-evidence | w5-evidence | ef1f83b | E01_E24_EVIDENCE, DELIVERY_* | — | IN_PROGRESS | docs | this branch |

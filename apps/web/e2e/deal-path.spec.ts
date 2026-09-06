@@ -29,9 +29,8 @@ test.describe("Deal path E07–E09", () => {
   }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
 
+    // UI-path (awaiting-offer) + API negotiation: одна сущность quote с обеих сторон.
     const seed = await seedRequestAwaitingOffer(request);
-    // seedRequestAwaitingOffer не отдаёт customer — добираем через negotiation seed pattern
-    // Здесь UI-path: артист шлёт оффер, затем обе стороны видят один quote_id.
     const negotiation = await seedNegotiation(request, {
       honorariumRub: 88_000,
       terms: "E07: общий quote",

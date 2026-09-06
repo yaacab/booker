@@ -1,9 +1,35 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { API_BASE, DEMO_ACCOUNTS, DEMO_PASSWORD, apiHealth } from "./helpers";
+
+/** UI login with retry — parallel e2e often hits auth rate limit. */
+async function loginWithNext(page: Page, nextPath: string, expectedUrl: RegExp) {
+  await page.goto(`/login?next=${encodeURIComponent(nextPath)}`);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await page.locator('input[name="email"]').fill(DEMO_ACCOUNTS.customer);
+    await page.locator('input[name="password"]').fill(DEMO_PASSWORD);
+    await page.getByRole("button", { name: "Войти" }).click();
+    try {
+      await page.waitForURL(expectedUrl, { timeout: 12_000 });
+      return;
+    } catch {
+      const limited = await page.getByText(/Слишком много запросов/i).isVisible().catch(() => false);
+      if (!limited && attempt === 5) throw new Error(`login did not reach ${expectedUrl}`);
+      if (!limited) {
+        // brief settle then retry once more if still on login
+        if (!page.url().includes("/login")) throw new Error(`unexpected url after login: ${page.url()}`);
+      }
+      await page.waitForTimeout(2500 * (attempt + 1));
+      if (!page.url().includes("/login")) {
+        await page.goto(`/login?next=${encodeURIComponent(nextPath)}`);
+      }
+    }
+  }
+  throw new Error(`login exhausted retries for next=${nextPath}`);
+}
 
 /** E01: guest search filters (+ candidate) survive login via `next` URL persistence. */
 test.describe("E01 guest search → login persist", () => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
 
   test("filters set on /search survive login (next query)", async ({ page, request }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
@@ -24,12 +50,8 @@ test.describe("E01 guest search → login persist", () => {
     const returnPath = `${u.pathname}${u.search}`;
     expect(returnPath).toMatch(/\/search\?/);
 
-    await page.goto(`/login?next=${encodeURIComponent(returnPath)}`);
-    await page.locator('input[name="email"]').fill(DEMO_ACCOUNTS.customer);
-    await page.locator('input[name="password"]').fill(DEMO_PASSWORD);
-    await page.getByRole("button", { name: "Войти" }).click();
+    await loginWithNext(page, returnPath, /\/search/);
 
-    await expect(page).toHaveURL(/\/search/, { timeout: 20_000 });
     await expect(page).toHaveURL(/kind=artist/);
     await expect(page).toHaveURL(/format=club/);
     await expect(page).toHaveURL(/budget_max=150000/);
@@ -60,12 +82,8 @@ test.describe("E01 guest search → login persist", () => {
     const artistId = candidateUrl.pathname.split("/").pop();
     expect(artistId).toBeTruthy();
 
-    await page.goto(`/login?next=${encodeURIComponent(returnPath)}`);
-    await page.locator('input[name="email"]').fill(DEMO_ACCOUNTS.customer);
-    await page.locator('input[name="password"]').fill(DEMO_PASSWORD);
-    await page.getByRole("button", { name: "Войти" }).click();
+    await loginWithNext(page, returnPath, new RegExp(`/artists/${artistId}`));
 
-    await expect(page).toHaveURL(new RegExp(`/artists/${artistId}`), { timeout: 20_000 });
     await expect(page).toHaveURL(/format=club/);
     await expect(page).toHaveURL(/budget_max=200000/);
     await expect(page).toHaveURL(/kind=artist/);

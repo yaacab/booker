@@ -81,6 +81,9 @@ jobs:
             e2e/flow.spec.ts \
             e2e/deal-path.spec.ts \
             e2e/cabinets-cross-role.spec.ts \
+            e2e/cabinet-customer.spec.ts \
+            e2e/cabinet-performer.spec.ts \
+            e2e/cabinet-venue.spec.ts \
             e2e/org-switch.spec.ts \
             e2e/cabinet-a11y.spec.ts \
             e2e/studio-autosave.spec.ts \

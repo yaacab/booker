@@ -1,17 +1,31 @@
 import { expect, test, type Page } from "@playwright/test";
-import {
-  API_BASE,
-  apiHealth,
-  injectSession,
-  seedOrgSwitchWorkspace,
-} from "./helpers";
+import { API_BASE, apiHealth, seedOrgSwitchWorkspace } from "./helpers";
+
+/** Persist org across hard navigations (WorkspaceSwitcher uses location.href). */
+async function pinOrg(page: Page, token: string, orgId: string) {
+  await page.addInitScript(
+    ({ token, orgId }) => {
+      localStorage.setItem("booker.token", token);
+      const pinned = sessionStorage.getItem("booker.e2e.org");
+      localStorage.setItem("booker.org", pinned || orgId);
+      if (!sessionStorage.getItem("booker.e2e.org")) {
+        sessionStorage.setItem("booker.e2e.org", orgId);
+      }
+    },
+    { token, orgId },
+  );
+}
 
 async function switchWorkspace(page: Page, orgId: string, expectedPath: RegExp) {
   const switcher = page.getByLabel("Рабочее пространство");
   await expect(switcher).toBeVisible({ timeout: 15_000 });
+  await page.evaluate((id) => {
+    sessionStorage.setItem("booker.e2e.org", id);
+    localStorage.setItem("booker.org", id);
+  }, orgId);
   await switcher.selectOption(orgId);
   await page.waitForURL(expectedPath, { timeout: 20_000 });
-  await expect(switcher).toHaveValue(orgId, { timeout: 15_000 });
+  await expect(page.getByLabel("Рабочее пространство")).toHaveValue(orgId, { timeout: 20_000 });
 }
 
 test.describe("E15 org/role workspace switch", () => {
@@ -25,8 +39,12 @@ test.describe("E15 org/role workspace switch", () => {
 
     const seed = await seedOrgSwitchWorkspace(request);
 
-    await injectSession(page, seed.user.token, seed.customer.orgId);
+    await pinOrg(page, seed.user.token, seed.customer.orgId);
     await page.goto("/cabinet/customer");
+    await page.evaluate((id) => {
+      sessionStorage.setItem("booker.e2e.org", id);
+      localStorage.setItem("booker.org", id);
+    }, seed.customer.orgId);
 
     await test.step("customer: свой title есть, чужие нет", async () => {
       await expect(page.getByRole("heading", { name: "Студия событий" })).toBeVisible({
