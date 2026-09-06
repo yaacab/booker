@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { slotsFromDraft } from "./PuzzleBoard";
+import { puzzleTransitions, slotsFromDraft } from "./PuzzleBoard";
+
+test("puzzle motion distinguishes assembly, replacement and release without changing state", () => {
+  assert.deepEqual(puzzleTransitions("date:0|venue:1|talent-a:1", "date:1|venue:0|talent-b:1"), {
+    0: "assemble", 1: "release", 2: "assemble",
+  });
+  assert.deepEqual(puzzleTransitions("date:1|empty:0", "date:1|empty:0"), {});
+  assert.deepEqual(puzzleTransitions("empty-a:0", "empty-b:0"), {});
+});
 
 test("slotsFromDraft maps date, venue, and up to four talent roles into six slots", () => {
   const slots = slotsFromDraft({

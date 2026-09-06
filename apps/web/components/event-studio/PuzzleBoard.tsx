@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 export type PuzzleSlot = {
   id: string;
@@ -98,6 +98,7 @@ function labelPosition(index: number): { left: string; top: string } {
 }
 
 export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoardProps) {
+  const gradientId = useId().replace(/:/g, "");
   const padded = useMemo(
     () =>
       Array.from({ length: 6 }, (_, i) => slots[i] ?? {
@@ -113,30 +114,17 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
     [padded],
   );
 
-  const prevFilled = useRef<boolean[]>(padded.map((s) => s.filled));
-  const [snapping, setSnapping] = useState<Record<string, boolean>>({});
+  const previous = useRef(fillKey);
+  const [motion, setMotion] = useState<Record<number, "assemble" | "release">>({});
 
   useEffect(() => {
-    const next: Record<string, boolean> = {};
-    padded.forEach((slot, i) => {
-      const was = prevFilled.current[i];
-      if (slot.filled && !was) {
-        next[slot.id] = true;
-      }
-    });
-    prevFilled.current = padded.map((s) => s.filled);
-
-    if (Object.keys(next).length === 0) return;
-
-    if (reducedMotion) {
-      setSnapping({});
-      return;
-    }
-
-    setSnapping(next);
-    const t = window.setTimeout(() => setSnapping({}), 380);
+    const next = puzzleTransitions(previous.current, fillKey);
+    previous.current = fillKey;
+    setMotion(reducedMotion ? {} : next);
+    if (reducedMotion || Object.keys(next).length === 0) return;
+    const t = window.setTimeout(() => setMotion({}), 440);
     return () => window.clearTimeout(t);
-  }, [fillKey, padded, reducedMotion]);
+  }, [fillKey, reducedMotion]);
 
   const vbW = OX * 2 + COLS * W;
   const vbH = OY * 2 + ROWS * H;
@@ -160,7 +148,7 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
               return (
                 <linearGradient
                   key={`g-${slot.id}`}
-                  id={`puzzle-chrome-${i}`}
+                  id={`${gradientId}-chrome-${i}`}
                   gradientTransform={`rotate(${angle} 0.5 0.5)`}
                   x1="0"
                   y1="0"
@@ -175,13 +163,13 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
               );
             })}
             {padded.map((_, i) => (
-              <radialGradient key={`r-${i}`} id={`puzzle-chrome-sheen-${i}`} cx="32%" cy="28%" r="70%">
+              <radialGradient key={`r-${i}`} id={`${gradientId}-sheen-${i}`} cx="32%" cy="28%" r="70%">
                 <stop offset="0%" stopColor="#ffffff" stopOpacity="0.85" />
                 <stop offset="45%" stopColor="var(--chrome-hi, #f2f4f7)" stopOpacity="0.35" />
                 <stop offset="100%" stopColor="var(--chrome-lo, #6e7582)" stopOpacity="0.15" />
               </radialGradient>
             ))}
-            <filter id="puzzle-chrome-shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <filter id={`${gradientId}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="3" stdDeviation="3.5" floodColor="#4a5160" floodOpacity="0.35" />
             </filter>
           </defs>
@@ -191,31 +179,31 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
             const row = Math.floor(i / COLS);
             const slot = padded[i];
             const filled = slot.filled;
-            const isSnap = Boolean(snapping[slot.id]);
             return (
               <g
-                key={slot.id}
+                key={i}
                 className={[
                   "puzzle-piece",
                   filled ? "puzzle-piece--filled" : "puzzle-piece--ghost",
-                  isSnap ? "puzzle-piece--snapping" : "",
+                  motion[i] === "assemble" ? "puzzle-piece--snapping" : "",
+                  motion[i] === "release" ? "puzzle-piece--releasing" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
               >
                 <path
                   d={piecePath(col, row, sides)}
-                  fill={filled ? `url(#puzzle-chrome-${i})` : "rgba(184, 190, 200, 0.08)"}
+                  fill={filled ? `url(#${gradientId}-chrome-${i})` : "rgba(184, 190, 200, 0.08)"}
                   stroke={filled ? "var(--chrome-mid, #b8bec8)" : "var(--chrome-lo, #6e7582)"}
                   strokeWidth={filled ? 1.6 : 1.4}
                   strokeDasharray={filled ? undefined : "5 4"}
-                  filter={filled ? "url(#puzzle-chrome-shadow)" : undefined}
+                  filter={filled ? `url(#${gradientId}-shadow)` : undefined}
                   opacity={filled ? 1 : 0.55}
                 />
                 {filled ? (
                   <path
                     d={piecePath(col, row, sides)}
-                    fill={`url(#puzzle-chrome-sheen-${i})`}
+                    fill={`url(#${gradientId}-sheen-${i})`}
                     stroke="none"
                     pointerEvents="none"
                   />
@@ -252,6 +240,17 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
       </ul>
     </div>
   );
+}
+
+/** Visual transitions only; selection never implies a reservation. */
+export function puzzleTransitions(previous: string, current: string): Record<number, "assemble" | "release"> {
+  const before = previous.split("|");
+  return Object.fromEntries(current.split("|").flatMap<[number, "assemble" | "release"]>((slot, index) => {
+    if (slot === before[index]) return [];
+    if (slot.endsWith(":1")) return [[index, "assemble"]];
+    if (before[index]?.endsWith(":1")) return [[index, "release"]];
+    return [];
+  }));
 }
 
 /** Build six puzzle slots from Event Studio draft fields. */
