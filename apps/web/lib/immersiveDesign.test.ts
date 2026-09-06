@@ -6,6 +6,8 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 const theme = read("../app/immersive.css");
 const studio = read("../components/event-studio/event-studio-map.css");
 const home = read("../app/page.tsx");
+const hero = read("../components/ReferencePuzzleHero.tsx");
+const puzzles = read("../app/reference-puzzles.css");
 const token = (css: string, name: string) => {
   const value = css.match(new RegExp(`${name}:\\s*(#[a-fA-F0-9]{6})\\s*;`))?.[1];
   assert.ok(value, `Missing token ${name}`);
@@ -23,7 +25,7 @@ const contrast = (a: string, b: string) => {
   return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
 };
 
-test("dark theme text and hover tokens have readable contrast", () => {
+test("light reference theme text and hover tokens have readable contrast", () => {
   for (const foreground of ["--ink", "--muted", "--brand-dark"]) {
     for (const background of ["--canvas", "--surface", "--surface-2"]) {
       assert.ok(contrast(token(theme, foreground), token(theme, background)) >= 4.5, `${foreground} / ${background}`);
@@ -35,12 +37,12 @@ test("dark theme text and hover tokens have readable contrast", () => {
 test("studio text remains readable and time editor overrides light legacy fields", () => {
   assert.ok(contrast(token(studio, "--es-ink"), token(studio, "--es-paper")) >= 4.5);
   assert.ok(contrast(token(studio, "--es-muted"), token(studio, "--es-paper")) >= 4.5);
-  assert.match(studio, /\.event-studio-shell \.time-editor > label > input\s*\{[^}]*background: #202436/);
+  assert.match(studio, /\.event-studio-shell \.time-editor > label > input\s*\{[^}]*background: #ffffff/);
   assert.match(studio, /\.event-studio-shell \.stage-rail li button > span\s*\{[^}]*font-size: 14px/);
 });
 
 test("home opt-in studio links preserve the default-off classic wizard", () => {
-  assert.equal((home.match(/href="\/events\/new\?event_studio_map_v1=1"/g) ?? []).length, 2);
+  assert.equal(((home + hero).match(/href="\/events\/new\?event_studio_map_v1=1"/g) ?? []).length, 2);
   assert.match(home, /<HomeSearchForm \/>/);
   assert.match(home, /платежи на платформе отключены/);
 });
@@ -54,4 +56,14 @@ test("studio never assigns reference portraits or venue photos to real suppliers
 test("motion styles include a reduced-motion alternative", () => {
   assert.match(theme, /prefers-reduced-motion: reduce/);
   assert.match(studio, /prefers-reduced-motion: reduce/);
+  assert.match(puzzles, /prefers-reduced-motion: reduce/);
+});
+
+test("reference puzzles are accessible local toggles, not booking actions", () => {
+  assert.match(hero, /aria-pressed=\{selected === piece.id\}/);
+  assert.match(hero, /current === id \? null : id/);
+  assert.match(hero, /event.key === "Escape"/);
+  assert.match(hero, /Образы категорий, не реальные предложения/);
+  assert.doesNotMatch(hero, /\bfetch\(|\bapi\(|localStorage/);
+  assert.match(puzzles, /translateY\(-20px\)/);
 });

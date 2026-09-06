@@ -144,9 +144,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         <header className="top surface-glass">
           <Link className="brand" href="/" aria-label="Букер">
             <BrandLockup />
+            <span className="brand-tagline">Люди. Места. События.</span>
           </Link>
-          <nav className="nav-public" aria-label="Основное">
-            {!isSupply ? (
+          <nav className={`nav-public${!authed ? " nav-reference-public" : ""}`} aria-label="Основное">
+            {authed && !isSupply ? (
               <Link href="/search" aria-current={path.startsWith("/search") ? "page" : undefined}>
                 Каталог
               </Link>
@@ -167,9 +168,11 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 {primaryWorkLabel}
               </Link>
             ) : (
-              <Link href="/events/new" aria-current={path.startsWith("/events/new") ? "page" : undefined}>
-                Создать заявку
-              </Link>
+              <>
+                <Link href="/search?kind=artist">Артисты</Link>
+                <Link href="/search?kind=venue">Площадки</Link>
+                <Link href="/#process-title">Как это работает</Link>
+              </>
             )}
             {authed ? (
               <Link
@@ -256,11 +259,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               >
                 Выйти
               </button>
-            ) : (
-              <Link href={loginHref(path)}>Войти</Link>
-            )}
+            ) : null}
           </nav>
-          <div className="nav-mobile-auth">
+          <div className={`nav-mobile-auth${!authed ? " reference-login" : ""}`}>
             {authed ? (
               <button
                 type="button"
