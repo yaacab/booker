@@ -77,4 +77,7 @@ jobs:
             e2e/event-studio-map.spec.ts \
             e2e/supply-nav.spec.ts \
             e2e/search-filters.spec.ts \
+            e2e/flow.spec.ts \
+            e2e/cabinets-cross-role.spec.ts \
+            e2e/cabinet-a11y.spec.ts \
             --reporter=line

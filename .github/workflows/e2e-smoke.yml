@@ -41,4 +41,9 @@ jobs:
           npm run build
           npx next start -H 127.0.0.1 -p 3000 &
           for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
-          npx playwright test e2e/flow.spec.ts --reporter=line
+          npx playwright test \
+            e2e/flow.spec.ts \
+            e2e/cabinets-cross-role.spec.ts \
+            e2e/cabinet-a11y.spec.ts \
+            e2e/search-filters.spec.ts \
+            --reporter=line
