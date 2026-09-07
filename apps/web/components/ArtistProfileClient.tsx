@@ -10,6 +10,7 @@ import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
 import { SlotList } from "@/components/SlotList";
+import { ProfileMedia } from "@/components/ProfileMedia";
 
 type Slot = { id: string; starts_at: string; ends_at: string; status: string };
 type Artist = {
@@ -187,6 +188,7 @@ export function ArtistProfileClient() {
         <PromoAttributionBeacon kind="artist" profileId={data.id} />
       </Suspense>
       <header className="profile-overview">
+      <ProfileMedia src={data.media_url} name={data.name} />
       <Link className="profile-back" href="/search">← Вернуться в каталог</Link>
       <p className="kicker">Профиль артиста</p>
       <h1>{data.name}</h1>

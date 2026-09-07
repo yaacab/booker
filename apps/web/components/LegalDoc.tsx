@@ -11,11 +11,11 @@ function Inline({ text }: { text: string }) {
   );
 }
 
-function BlockView({ block }: { block: Block }) {
+function BlockView({ block, id }: { block: Block; id?: string }) {
   if (block.t === "h") {
-    if (block.level === 1) return <h1>{block.text}</h1>;
-    if (block.level === 2) return <h2>{block.text}</h2>;
-    return <h3>{block.text}</h3>;
+    if (block.level === 1) return <h1 id={id}>{block.text}</h1>;
+    if (block.level === 2) return <h2 id={id}>{block.text}</h2>;
+    return <h3 id={id}>{block.text}</h3>;
   }
   if (block.t === "ul") {
     return (
@@ -73,9 +73,14 @@ export function LegalDoc({ source }: { source: string }) {
         Платежи в пилотной версии отключены. Реквизиты оператора будут заполнены после юридической проверки.
         Все документы: <Link href="/legal">в общем разделе</Link>.
       </div>
-      {blocks.map((block, i) => (
-        <BlockView key={i} block={block} />
-      ))}
+      <div className="document-layout">
+        <nav className="document-toc" aria-label="Содержание документа"><strong>В этом документе</strong>
+          {blocks.map((block,i) => block.t === "h" && block.level === 2 ? <a key={i} href={`#section-${i}`}>{block.text}</a> : null)}
+        </nav>
+        <article className="document-body">{blocks.map((block, i) => (
+          <BlockView key={i} block={block} id={`section-${i}`} />
+        ))}</article>
+      </div>
     </main>
   );
 }

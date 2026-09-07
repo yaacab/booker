@@ -559,6 +559,7 @@ def search_catalog(
                 {
                     "id": artist.id,
                     "name": artist.name,
+                    "media_url": artist.media_url,
                     "city": artist.city,
                     "category": artist.category,
                     "verified": artist.verified,

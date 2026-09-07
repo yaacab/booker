@@ -9,8 +9,7 @@ export default function LegalIndexPage() {
       <p className="kicker">Правила сервиса</p>
       <h1>Правовые документы</h1>
       <div className="legal-banner">
-        Редакция {LEGAL_PACK_VERSION}. Черновики для человека с дипломом. Эквайринг не включаем, пока
-        не появится юрлицо в клеточках.
+        Редакция {LEGAL_PACK_VERSION}. Документы проходят юридическую проверку. Платежи в пилотной версии отключены.
       </div>
       <ul className="legal-index">
         {LEGAL_DOCS.map((doc) => (
@@ -23,7 +22,7 @@ export default function LegalIndexPage() {
         </li>
       </ul>
       <p className="timeline">
-        При входе в клуб две галочки обязательны. Рассылки — по желанию, мы не обидимся.
+        При регистрации необходимо принять условия сервиса и обработки персональных данных. Согласие на рассылки — отдельно и по желанию.
       </p>
     </main>
   );

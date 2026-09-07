@@ -115,11 +115,11 @@ export function CatalogFilters(props: CatalogFilterValues) {
 
   return (
     <aside className="filters card surface-glass">
-      <button type="button" className="filter-toggle" onClick={() => setOpen((v) => !v)}>
+      <button type="button" className="filter-toggle" aria-expanded={open} aria-controls="catalog-filter-body" onClick={() => setOpen((v) => !v)}>
         {open ? "Спрятать фильтр" : closedLabel}
       </button>
-      <div className={`filter-body${open ? " open" : ""}`}>
-        <h2 className="filter-title">Сузить охоту</h2>
+      <div id="catalog-filter-body" className={`filter-body${open ? " open" : ""}`}>
+        <h2 className="filter-title">Фильтры</h2>
         <form
           action="/search"
           method="get"
@@ -187,8 +187,9 @@ export function CatalogFilters(props: CatalogFilterValues) {
               </Link>
             ))}
           </nav>
-          <p className="timeline">Без слота в расписании сюда не пускаем. Жалко, но честно.</p>
-          <button type="submit">Показать живых</button>
+          {category ? <input type="hidden" name="category" value={category} /> : null}
+          <p className="timeline">Доступность и условия подтверждаются перед бронированием.</p>
+          <button type="submit">Показать варианты</button>
         </form>
       </div>
     </aside>

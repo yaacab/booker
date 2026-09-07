@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
+import { WorkspaceNavigation } from "@/components/WorkspaceNavigation";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { api, getActiveOrg, getToken, setToken, trackClientEvent } from "@/lib/api";
 import { orgKindToCabinetMode, supplyCalendarHref, supplyRequestsHref, type CabinetMode } from "@/lib/cabinetRoutes";
@@ -279,7 +280,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <div id="content" className="site-content" data-section={path.split("/")[1] || "home"}>{children}</div>
+        <div className={authed && /^\/(cabinet|profile|admin|deals|briefs|compare|s)(\/|$)/.test(path) ? "workspace-layout" : undefined}>
+          {authed && /^\/(cabinet|profile|admin|deals|briefs|compare|s)(\/|$)/.test(path) && <WorkspaceNavigation mode={cabinetMode} admin={admin} />}
+          <div id="content" className="site-content" data-section={path.split("/")[1] || "home"}>{children}</div>
+        </div>
         <footer className="site-footer surface-glass">
           <p>Букер объединяет заявку, свободный слот, предложение и подтверждения в одном рабочем пространстве.</p>
           <p>

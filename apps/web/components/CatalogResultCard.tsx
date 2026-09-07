@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { ProfileMedia } from "@/components/ProfileMedia";
 import { FavoriteToggle, type FavoriteTargetType } from "@/components/FavoriteToggle";
 import { CHIP, categoryLabel } from "@/lib/copy";
-import { formatDay, formatWhen, initials, money } from "@/lib/format";
+import { formatDay, formatWhen, money } from "@/lib/format";
 
 type CatalogItem = {
   id: string;
@@ -11,6 +12,7 @@ type CatalogItem = {
   city: string;
   category?: string;
   verified: boolean;
+  media_url?: string | null;
   open_slots?: number;
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
@@ -44,11 +46,9 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
 
   return (
     <article className={`card catalog-result catalog-result--${kind}`}>
+      <Link className="catalog-image-link" href={href} aria-label={`Открыть профиль: ${item.name}`}><ProfileMedia src={item.media_url} name={item.name} compact /></Link>
       <div className="card-head">
         <Link href={href} style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
-          <span className="avatar" aria-hidden>
-            {initials(item.name)}
-          </span>
           <strong>{item.name}</strong>
         </Link>
         <FavoriteToggle compact targetType={kind} targetId={item.id} />
@@ -87,6 +87,7 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
           <p className="timeline">цена по запросу</p>
         ) : null}
       </Link>
+      <Link className="btn catalog-open" href={href}>Выбрать дату</Link>
     </article>
   );
 }

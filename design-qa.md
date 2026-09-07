@@ -1,69 +1,68 @@
-# Lime reference QA — 2026-09-06
+# Reference interiors — 2026-09-07
 
-Source visual truth: `docs/design/lime-reference/source.jpeg` (1487x1058).
-Browser-rendered evidence: `docs/design/lime-reference/desktop.jpg`,
-`mobile-frame.jpg`, `selected.jpg`; paths relative to `docs/design/lime-reference/`.
-Comparison: `docs/design/lime-reference/comparison.png`.
-Desktop CSS viewport reported 1363x936, stored browser capture 1348x926;
-source scaled proportionately to 1363px wide, white padding below the shorter
-implementation. Both captures normalized to 1363px wide. No source crop.
-Mobile CSS viewport 390x844 in a same-origin iframe, cropped from a 1363x936 capture,
-not a physical-device test. Main route `/`, unauthenticated, light theme.
+final result: blocked
 
-## Comparison history
+## Source and implementation
 
-1. P1: legacy global button backdrop-filter and shadow created rectangular panels
-   around transparent puzzle assets. Reset backdrop-filter and box-shadow for hero
-   buttons, preserving alpha-aware drop-shadow. Post-fix desktop evidence shows
-   jigsaw silhouettes without rectangular frames.
-2. P2: excessive hero height pushed CTA below initial viewport. Reduced heading
-   size/line-height and placed desktop description beside heading rather than adding
-   another full row. Final desktop/selected evidence shows CTA within viewport.
-3. P2: login grouped with central nav unlike reference. Separated unauthenticated
-   login while keeping authenticated workspace/notification links intact. Final
-   selected evidence shows central glass navigation and separate login.
+Source visual truth: ten owner-uploaded JPEG sheets in the conversation, including
+`D670EE7D-BD4D-4EB3-813F-D0568270F7D5(1).jpeg` (catalog),
+`B14EC392-C47C-4A4F-86AE-5A59D5736144(1).jpeg` (login, deals and profile),
+`F7C7DF9F-976C-4D7E-AFF5-5A323D78FBB2(1).jpeg` (help and legal).
+Implementation: local Next.js preview at terminal.local:4173; this is not production.
+Browser viewport: 1348 × 926 screenshot pixels. Density normalization and matching
+source crops have not been completed. Browser screenshots of home, catalog error
+state, legal index, privacy document and login were inspected in the session;
+standalone screenshot files and combined source/implementation comparisons were
+not saved. This is not a passing fidelity review.
 
-## Fidelity surfaces
+## Implemented scope
 
-- Typography: local Manrope, bold three-line slogan, matching text hierarchy;
-  font-face weight range extended to 800. Not the exact unidentified source font.
-- Layout: left legend, three adjacent photo puzzle buttons, centered rounded CTA;
-  mobile keeps all three adjacent and replaces legend with accessible role buttons.
-- Colors: silver-white canvas, forest text, translucent lime CTA/glass photo edges.
-  Ink/muted/link token contrast is covered by unit tests. Semantic error/success
-  colors remain distinguishable; no black-purple theme in the changed visual layer.
-- Images: three independent generated raster illustrations with alpha, loaded and
-  sharp in browser. Human/venue subjects are not identical to the mock; decorative
-  offscreen glass fragments are omitted. These are illustrative category assets,
-  not verified or available supplier profiles. This is a reference-led implementation,
-  not a pixel-identical screenshot reproduction.
-- Copy: approved slogan retained verbatim. Labels are HTML, not baked into images.
-  No fabricated prices, availability, ratings or financial guarantees.
+| Area | Changes | Verification |
+| --- | --- | --- |
+| Catalog | Large heading, horizontal search, preserved filters, photo cards, date CTA | Error state rendered; populated state blocked by local API |
+| Artist profile | Published media panel, responsive profile header | TypeScript/build only |
+| Workspaces | Role-aware sidebar using existing routes, metrics and calendar grid styles | TypeScript/build only; authenticated states unverified |
+| Messages | Inbox rows and clear conversation action | TypeScript/build only |
+| Login | Two-column composition, existing decorative puzzle, glass form | Browser-rendered; no credentials submitted |
+| Legal | Document cards, sticky contents navigation, article layout | Index/privacy rendered; contents link tested |
+| Shared styling | Lime actions, focus, responsive grid rules | Build and existing unit tests |
 
-Focused comparison: source and implementation headline/puzzle-label regions
-inspected at full-size captures, in addition to the normalized full-view comparison.
-Reference supporting labels are small; implementation uses dark translucent label
-backplates for contrast, and hides secondary captions on narrow mobile screens.
+## Findings and remaining work
 
-## Behaviour and validation
+- P1: Populated catalog, profiles, Event Studio, deals and all role workspaces
+  still require screenshot comparison and targeted layout correction. Generic
+  stylesheet coverage does not prove that a page matches its supplied mockup.
+- P1: Reference portraits and venue photographs must not be presented as real
+  supplier portfolios. Artist cards now receive the existing public media_url;
+  missing media has an explicit empty state. Venue media needs a real data source.
+- P2: Mobile, keyboard traversal of the new sidebar, reduced-motion behavior and
+  animation performance on actual devices remain unverified in this pass.
+- P2: No combined full-view or focused-region source comparison has been completed.
 
-- Browser: click raises a piece; second click deselects; another selection releases
-  prior piece. Space activates and Escape clears. Mobile photographer selection
-  checked in 390px iframe. No horizontal desktop overflow.
-- Browser: artist/venue search toggle still exposes the correct fields.
-- Browser logs: inspected 50-error window; errors shown are browser-extension
-  metadata messages, not application errors.
-- TypeScript lint passed; 36 unit tests passed; production build passed.
-- E2E spec updated for click/switch/repeat/keyboard/reduced-motion. Full Playwright
-  CLI suite was not executed. Reduced-motion CSS is present and checked statically,
-  but real browser reduced-motion emulation remains a CI check.
-- Authenticated cabinets and backend transaction flows were not exercised. Shared
-  palette changes compile, but this report does not certify their end-to-end release.
+Required fidelity surfaces: typography and palette visually inspected on public
+screens; source font identity, exact spacing, density and image masks unverified.
+Copy uses real existing data and explicit empty/error states. Legal document
+contents were not rewritten. Image quality is only verified for the existing
+decorative login puzzle; actual supplier assets were unavailable locally.
 
-## Follow-up polish
+## Verification and environment
 
-P3: exact art-director photo selection, background glass decoration and optical
-font matching can be refined after owner review. Core interaction and light palette
-are ready for that review; this is not approval for production deployment.
+- Production Next.js build passed for all routes after stopping the preview.
+  An earlier simultaneous dev/build run failed because both used .next.
+- TypeScript passed; 42 existing unit tests passed.
+- No backend test result: local API dependencies were not installed; installation
+  reported that network approval was cancelled. No approval workaround attempted.
+- Browser console exposed missing legal files in the preview mount. For local
+  inspection only, existing docs/legal was copied to ignored apps/web/docs/legal.
+  The privacy page then rendered and its contents navigation worked.
+- Local API was unavailable; catalog correctly displayed its error state.
+- No authenticated actions, production deployment, master merge or DNS change.
 
-final result: passed
+## Completion checklist
+
+1. Run a local seeded API and backend tests in the normal development environment.
+2. Capture each reference route with customer, performer, venue and admin fixtures.
+3. Compare source and implementation together at matched viewport/density.
+4. Correct every remaining P1/P2 difference, then recapture and recompare.
+5. Verify mobile navigation, forms, keyboard focus and reduced motion.
+6. Mark passed only after those checks; publish production separately.

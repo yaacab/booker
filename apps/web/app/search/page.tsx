@@ -128,9 +128,17 @@ export default async function SearchPage({
     <main className="page-enter catalog-page">
       <header className="workspace-heading">
         <div><p className="kicker">Люди и места для вашего события</p>
-        <h1>Найдите свою команду</h1></div>
+        <h1>Найдите тех,<br />кто нужен именно вам</h1></div>
         <Link className="btn secondary" href="/cabinet/customer/favorites">Избранное</Link>
       </header>
+      <form className="catalog-searchbar" action="/search" method="get" aria-label="Быстрый поиск">
+        <label>Кого ищем<select name="kind" defaultValue={q.kind || ""}><option value="">Все участники</option><option value="artist">Артисты</option><option value="venue">Площадки</option></select></label>
+        <label>Дата<input type="date" name="date" defaultValue={q.date || ""} /></label>
+        <label>Город<input name="city" defaultValue={city} required /></label>
+        <label>Бюджет до, ₽<input type="number" name="budget_max" min="0" defaultValue={q.budget_max || ""} placeholder="Любой" /></label>
+        {Object.entries(q).filter(([key,value]) => value && !["kind","date","city","budget_max"].includes(key)).map(([key,value]) => <input key={key} type="hidden" name={key} value={value} />)}
+        <button type="submit">Найти</button>
+      </form>
       <div className="catalog-layout">
         <CatalogFilters
           city={city}
@@ -148,6 +156,7 @@ export default async function SearchPage({
           seating={q.seating}
         />
         <div>
+          {!error && <p className="catalog-count" role="status">Найдено вариантов: {items.length + venues.length}</p>}
           <p className="timeline">
             {city}
             {q.date ? ` · ${formatDay(`${q.date}T12:00:00+03:00`)}` : " · дата не выбрана — показываем ближайший свободный слот"}
