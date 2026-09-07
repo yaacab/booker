@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { formatWhen } from "@/lib/format";
 import { DashboardWidget } from "../../DashboardWidget";
+import { MonthCalendar } from "../../MonthCalendar";
 import type { PerformerBooking } from "../types";
 import { usePerformerCalendarOverview } from "../usePerformerCalendarOverview";
 
@@ -13,7 +14,7 @@ type CalendarOverviewWidgetProps = {
 };
 
 export function CalendarOverviewWidget({ orgId, artistId, bookings }: CalendarOverviewWidgetProps) {
-  const { openSlots, busySlots, activeVacation, confirmedDates, loading, error } = usePerformerCalendarOverview(
+  const { slots, openSlots, busySlots, activeVacation, confirmedDates, loading, error } = usePerformerCalendarOverview(
     orgId,
     artistId,
     bookings,
@@ -30,6 +31,7 @@ export function CalendarOverviewWidget({ orgId, artistId, bookings }: CalendarOv
     >
       {loading ? <p className="timeline">Загружаем календарь…</p> : null}
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
+      {!loading && !error ? <MonthCalendar entries={slots} /> : null}
 
       <ul className="timeline" data-testid="performer-calendar-overview">
         <li>Открытых слотов: {openSlots.length}</li>

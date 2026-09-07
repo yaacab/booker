@@ -73,6 +73,7 @@ export function usePerformerCalendarOverview(orgId: string, artistId: string, bo
   );
 
   return {
+    slots,
     openSlots,
     busySlots,
     activeVacation,

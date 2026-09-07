@@ -2,6 +2,50 @@
 
 final result: blocked
 
+## Continuation verification
+
+The backend dependency blocker is resolved: **200 backend tests passed, 2 skipped**.
+The local seed database was created successfully at a temporary path. API servers
+run in isolated execution environments and were not reachable from the supervised
+browser preview. A Unix-socket attempt returned an operation-not-permitted error;
+no escalation or workaround of that restriction was attempted.
+
+Additional implementation:
+- Shared month calendar for performer and venue halls, with selected-day details,
+  month navigation and explicit unknown availability. Overnight intervals and
+  Moscow timezone semantics have three regression tests.
+- Request selection, proposal-state filters and detail panel for performer and venue.
+- Compact workspace cards and Deal Room tabs, chat and quote styling.
+- Event Studio panel Escape handling, focus containment and restoration on narrow
+  screens, background scroll lock and live reduced-motion preference updates.
+- Calendar day allocation is memoized to avoid rebuilding it on every selection.
+
+**45 frontend unit tests passed**. TypeScript passed after the component changes.
+Final production build passed for all existing routes. The temporary fixture's
+stale generated type file was removed after its source was deleted; a clean
+subsequent build passed. No fixture route appears in the resulting route manifest.
+Browser inspection used a temporary, explicitly labelled component fixture route,
+not an authenticated user session or replacement production API. The fixture route
+was removed before production build and is not published. The date selection
+showed a booking spanning two days; request filtering selected the corresponding
+detail card. Navigation returned to the current month. No horizontal overflow was
+observed in the desktop fixture. These checks do not prove the full deal path.
+
+Calendar screenshot: `/workspace/scratch/booker-calendar-review.jpg`, 1348 × 926.
+Combined comparison: `/tmp/booker-calendar-comparison.jpg`, reference lower-left
+crop from the 72F67B2F sheet alongside the browser screenshot, normalized to fit
+743 × 528 each. Source and fixture have different data, scroll position and auth
+state; full-screen fidelity cannot be approved from this comparison. A later image
+was emitted in the browser session but did not synchronize to a local file.
+
+Comparison found inconsistent day margins inherited from shared styles (P2).
+The calendar now explicitly resets margins, hover transforms and shadows and sets
+equal minimum heights. The source also has denser spacing and additional product
+controls not present in the implementation. Post-fix browser recapture, mobile
+comparison and complete authenticated route coverage remain outstanding. The
+earlier whole-site findings below therefore remain open; this is not a passed
+whole-site visual acceptance or a production deployment.
+
 ## Source and implementation
 
 Source visual truth: ten owner-uploaded JPEG sheets in the conversation, including

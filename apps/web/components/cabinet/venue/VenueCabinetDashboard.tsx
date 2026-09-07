@@ -17,6 +17,8 @@ import { VenueHallsPanel } from "./widgets/VenueHallsPanel";
 import { VenueHallsWidget } from "./widgets/VenueHallsWidget";
 import { VenueOnboardingWidget } from "./widgets/VenueOnboardingWidget";
 import { VenueStatsWidget } from "./widgets/VenueStatsWidget";
+import { VenueMonthCalendar } from "./widgets/VenueMonthCalendar";
+import { RequestsInboxWidget } from "../performer/widgets/RequestsInboxWidget";
 
 export type VenueCabinetSection = "home" | "calendar" | "requests" | "halls" | "stats";
 
@@ -39,6 +41,7 @@ export function VenueCabinetDashboard({ section = "home" }: { section?: VenueCab
     venueId,
     bookingStats,
     requestCount,
+    requests,
     empty,
     offerBusy,
     sendOffer,
@@ -203,7 +206,10 @@ export function VenueCabinetDashboard({ section = "home" }: { section?: VenueCab
         <>
           <VenueCabinetSubNav />
           {showCalendar && orgId ? (
+            <>
+            {section === "calendar" && venueId ? <VenueMonthCalendar venueId={venueId} /> : null}
             <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="venue" />
+            </>
           ) : null}
         </>
       }
@@ -246,6 +252,7 @@ export function VenueCabinetDashboard({ section = "home" }: { section?: VenueCab
         <section className="cabinet-zone" aria-label="Заявки и сделки">
           <h2 className="cabinet-zone-title">Заявки и сделки</h2>
           <div className="cabinet-zone-grid">
+            {section === "requests" ? <RequestsInboxWidget requests={requests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} /> : null}
             <NewRequestsWidget
               requests={newRequests}
               role={role}

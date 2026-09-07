@@ -106,7 +106,7 @@
   transform-origin: center;
 }
 .puzzle-piece--filled path:first-child {
-  transition: opacity .2s ease, filter .25s ease;
+  transition: opacity .2s ease;
 }
 .puzzle-piece--ghost path {
   transition: opacity .2s ease;

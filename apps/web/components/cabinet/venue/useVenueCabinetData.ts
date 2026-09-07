@@ -256,6 +256,7 @@ export function useVenueCabinetData() {
     bookings,
     bookingStats,
     requestCount: requests.length,
+    requests,
     empty,
     offerBusy,
     sendOffer,

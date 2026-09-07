@@ -121,3 +121,76 @@
  .site-content .catalog-page h1 { font-size: clamp(32px,8vw,44px); }
 }
 @media (prefers-reduced-motion:reduce) { .workspace-sidebar a,.catalog-result { transition: none !important; } }
+
+/* Рабочие экраны: сначала действия и данные, затем дополнительные настройки. */
+.workspace-layout .cabinet-hero { padding: 0 0 24px; gap: 16px; border: 0; background: transparent; box-shadow: none; }
+.workspace-layout .cabinet-hero h1 { font-size: clamp(30px,3.2vw,46px); line-height: 1.05; letter-spacing: -.045em; }
+.workspace-layout .cabinet-lede { max-width: 65ch; font-size: 16px; }
+.workspace-layout .cabinet-metric { padding: 22px; border: 1px solid #fff; border-radius: 20px; background: #ffffffb3; }
+.workspace-layout .cabinet-metric-value { font-size: 36px; letter-spacing: -.04em; line-height: 1.1; }
+.workspace-layout :is(.dashboard-widget,.dashboard-action-card) { min-width: 0; }
+.workspace-layout .dashboard-action-card { gap: 12px; padding: 18px; border: 1px solid #e0e7da; border-radius: 16px; }
+.workspace-layout .dashboard-action-card strong { overflow-wrap: anywhere; }
+.workspace-layout .cabinet-inline-form { gap: 16px; padding: 18px; background: #f7faf3; border-radius: 16px; }
+.workspace-layout .cabinet-inline-form :is(input,select,textarea) { max-width: 100%; }
+.month-calendar { margin-block: 20px; padding: 20px; border: 1px solid #fff; border-radius: 22px; background: #ffffff75; }
+.month-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+.month-toolbar h3 { flex: 1; text-align: center; margin: 0; font-size: 18px; text-transform: capitalize; }
+.month-toolbar button { min-width: 44px; min-height: 44px; }
+.month-layout { display: grid; grid-template-columns: minmax(0,1fr) 210px; gap: 20px; }
+.month-weekdays,.month-days { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 5px; }
+.month-weekdays { margin-bottom: 10px; text-align: center; font-size: 14px; color: #607151; }
+.month-day { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; min-width: 0; min-height: 76px; padding: 9px; border: 1px solid #e1e8dc; border-radius: 9px; background: #f7faf4; color: #293b22; box-shadow: none; }
+.month-day span { font-size: 12px; line-height: 1.2; overflow-wrap: anywhere; }
+.month-day.available { background: #e8f5dc; }
+.month-day.occupied { background: #f8e9dd; }
+.month-day.adjacent { opacity: .55; }
+.month-day[aria-pressed="true"] { outline: 2px solid #739923; outline-offset: 1px; background: #edf8ce; }
+.month-day[aria-current="date"] strong { text-decoration: underline; text-underline-offset: 3px; }
+.month-legend { font-size: 13px; color: #59694b; line-height: 1.5; }
+.month-details { background: #f8fbf4; border: 1px solid white; border-radius: 16px; padding: 18px; overflow-wrap: anywhere; }
+.month-details h3 { font-size: 18px; margin-top: 0; }
+.month-details p { font-size: 14px; line-height: 1.6; }
+.month-details ul { list-style: none; padding: 0; }
+.month-details li + li { margin-top: 16px; border-top: 1px solid var(--ui-line); padding-top: 16px; }
+.request-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.request-filters button[aria-pressed="true"],.request-list button[aria-pressed="true"] { background: #ebf8ca; border-color: #cedf9f; color: #26391d; }
+.request-workspace { display: grid; grid-template-columns: minmax(200px,38%) minmax(0,1fr); gap: 22px; }
+.request-list { list-style: none; padding: 0; margin: 0; display: grid; align-content: start; gap: 8px; max-height: 560px; overflow-y: auto; }
+.request-list button { width: 100%; text-align: left; display: grid; gap: 8px; padding: 18px; border-radius: 14px; box-shadow: none; }
+.request-list span { font-size: 14px; font-weight: 400; }
+.request-detail { margin: 0; }
+.request-detail .dashboard-action-card { display: flex; flex-direction: column; align-items: flex-start; min-height: 260px; }
+.request-detail .dashboard-action-card > strong { font-size: 24px; }
+.request-detail .dashboard-action-card :is(button,.btn) { margin-top: auto; }
+.site-content[data-section="deals"] .deal-head h1 { font-size: clamp(30px,3.4vw,48px); line-height: 1.08; }
+.site-content[data-section="deals"] .tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
+.site-content[data-section="deals"] .tabs button { flex: 0 0 auto; border-radius: 24px; min-height: 44px; }
+.site-content[data-section="deals"] .tabs [aria-selected="true"] { background: var(--ui-lime); color: var(--ui-ink); }
+.site-content[data-section="deals"] .msg { max-width: 88%; padding: 16px 20px; margin-block: 12px; border-radius: 18px 18px 18px 4px; background: #edf4e5; line-height: 1.55; overflow-wrap: anywhere; }
+.site-content[data-section="deals"] .msg.system { max-width: 100%; background: transparent; color: #617151; font-size: 14px; border-bottom: 1px solid var(--ui-line); border-radius: 0; }
+.site-content[data-section="deals"] .chat-compose { padding-top: 20px; border-top: 1px solid var(--ui-line); }
+.site-content[data-section="deals"] .quote { border-radius: 22px; background: #f3f9e7; border-color: #dbe9c4; }
+.site-content :is(.dashboard-widget,.request-list button,.month-day,.catalog-result) { transition: transform 180ms ease-out, background-color 180ms ease-out, border-color 180ms ease-out; }
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {
+ .catalog-result:hover { transform: translateY(-3px); }
+ .request-list button:hover,.month-day:hover { border-color: #93af65; }
+}
+@media (max-width:1100px) { .month-layout { grid-template-columns: minmax(0,1fr); } }
+@media (max-width:600px) {
+ .request-workspace { grid-template-columns: minmax(0,1fr); }
+ .request-list { max-height: 240px; }
+ .month-day { min-height: 56px; padding: 5px; }
+ .month-day span { display: none; }
+ .month-calendar { padding: 12px; }
+ .month-toolbar { flex-wrap: wrap; }
+ .month-toolbar h3 { font-size: 16px; }
+ .workspace-layout .cabinet-metric { padding: 16px; }
+ .site-content[data-section="deals"] .msg { max-width: 100%; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .site-content :is(.dashboard-widget,.request-list button,.month-day,.catalog-result) { transition: none; transform: none; }
+}
+.site-content .month-day,.site-content .month-day:hover { box-shadow: none; transform: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.site-content:not([data-section="home"]) .month-day { margin: 0; min-height: 76px; text-align: left; }
+@media (max-width:600px) { .site-content:not([data-section="home"]) .month-day { min-height: 52px; } }

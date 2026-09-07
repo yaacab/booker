@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CityField } from "@/components/CityField";
 import { categoryLabel } from "@/lib/copy";
 import { formatDay, guestsLabel, money } from "@/lib/format";
@@ -117,10 +117,38 @@ export default function EventStudioMap({
   const [editingTime, setEditingTime] = useState(false);
   const [editingVenue, setEditingVenue] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotion = () => setReducedMotion(media.matches);
+    updateMotion();
+    media.addEventListener("change", updateMotion);
+    return () => media.removeEventListener("change", updateMotion);
   }, []);
+
+  useEffect(() => {
+    if (!panelOpen || !window.matchMedia("(max-width: 1180px)").matches) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('button[aria-label="Закрыть панель"]')?.focus({ preventScroll: true }));
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setPanelOpen(false); }
+      if (event.key !== "Tab") return;
+      const controls = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]') || []).filter(el => el.getClientRects().length > 0);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus({ preventScroll: true });
+    };
+  }, [panelOpen]);
 
   const selected = talents.filter((item) => draft.talentIds.includes(item.id));
   const venue = venues.find((item) => item.id === draft.venueId);
@@ -413,7 +441,7 @@ export default function EventStudioMap({
           </div>
         </section>
 
-        <aside className="talent-panel" aria-label="Добавить исполнителя">
+        <aside ref={panelRef} className="talent-panel" aria-label="Добавить исполнителя">
           <div className="panel-header">
             <button type="button" aria-label="Назад" onClick={() => setPanelOpen(false)}>
               ←
