@@ -50,6 +50,14 @@ export function isWriteRole(role?: string | null): boolean {
   return role === "owner" || role === "admin" || role === "manager";
 }
 
+/** Keep proxy HTML, exception bodies and validation input values out of product copy. */
+export function apiErrorMessage(status: number, detail: unknown): string {
+  if (status >= 500) return "Сервис временно недоступен. Попробуйте ещё раз позже.";
+  if (typeof detail === "string" && detail.trim() && detail.length <= 500 && !/<[a-z!/]/i.test(detail)) return detail;
+  if (Array.isArray(detail)) return "Проверьте заполненные поля и повторите отправку.";
+  return "Не удалось выполнить запрос. Обновите страницу или попробуйте позже.";
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json");
@@ -59,15 +67,15 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (org) headers.set("X-Booker-Org", org);
   const res = await fetch(`${apiBase()}${path}`, { ...init, headers });
   const text = await res.text();
-  let data: { detail?: unknown } = {};
+  let data: unknown = {};
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
-    data = { detail: text };
+    throw new ApiError(apiErrorMessage(res.status, undefined), res.status);
   }
   if (!res.ok) {
-    const detail = data.detail;
-    const message = typeof detail === "string" ? detail : text || res.statusText;
+    const detail = data && typeof data === "object" && "detail" in data ? data.detail : undefined;
+    const message = apiErrorMessage(res.status, detail);
     throw new ApiError(message, res.status);
   }
   return data as T;

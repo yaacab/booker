@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
+import { isWriteRole } from "@/lib/api";
 import { CabinetPageShell } from "../CabinetPageShell";
 import { SupplyCabinetSection } from "../SupplyCabinetSection";
 import { usePerformerCabinetData } from "./usePerformerCabinetData";
@@ -20,164 +21,74 @@ import { UpcomingPerformancesWidget } from "./widgets/UpcomingPerformancesWidget
 
 export type PerformerCabinetSection = "home" | "calendar" | "requests" | "services";
 
+const SECTION_COPY = {
+  home: ["Кабинет артиста", "Новые возможности. Больше событий. Твоя аудитория."],
+  calendar: ["Календарь артиста", "Управляйте доступностью, чтобы получать больше подходящих заявок."],
+  requests: ["Заявки артисту", "Новые запросы от клиентов. Отвечайте, создавайте предложения, получайте события."],
+  services: ["Услуги артиста", "Создавайте услуги. Покажите, что входит в выступление, — и упростите бронирование."],
+} as const;
+
 export function PerformerCabinetDashboard({ section = "home" }: { section?: PerformerCabinetSection }) {
   const {
-    ready,
-    error,
-    email,
-    orgName,
-    orgId,
-    role,
-    artistId,
-    requests,
-    bookings,
-    newRequests,
-    awaitingResponse,
-    expiringOffers,
-    activeHolds,
-    upcomingPerformances,
-    calendarConflicts,
-    profileIncomplete,
-    empty,
-    offerBusy,
-    sendOffer,
+    ready, error, email, orgName, orgId, role, artistId, requests, bookings,
+    newRequests, awaitingResponse, expiringOffers, activeHolds, upcomingPerformances,
+    calendarConflicts, profileIncomplete, profileCompleteness, offerBusy, sendOffer, reload,
   } = usePerformerCabinetData();
+  const [calendarRevision, setCalendarRevision] = useState(0);
+  const completenessScore = profileCompleteness?.score;
+  const [title, subtitle] = SECTION_COPY[section];
+  const actions = section === "calendar"
+    ? [{ href: "#calendar-manage", label: "Открыть свободные даты", primary: true }]
+    : section === "requests"
+      ? [{ href: "/cabinet/performer/calendar", label: "Открыть календарь" }]
+      : section === "services"
+        ? isWriteRole(role) ? [{ href: "#performer-service-form", label: "Добавить услугу", primary: true }] : []
+        : [{ href: artistId ? `/artists/${artistId}` : "/cabinet/performer/services", label: "Смотреть профиль" }];
 
-  const completenessScore = profileIncomplete?.score;
-  const showRequests = section === "home" || section === "requests";
-  const showCalendar = section === "home" || section === "calendar";
-  const showVitrine = section === "home" || section === "services";
-  const subtitle =
-    section === "calendar"
-      ? "Свободные слоты, ближайшие даты и конфликты календаря."
-      : section === "requests"
-        ? "Входящие заявки, предложения и удержания."
-        : section === "services"
-          ? "Услуги, тарифы и публичная витрина."
-          : "Календарь, гонорар и ответы на запросы. Вы не собираете события — вас бронируют.";
-
-  const actions =
-    section === "calendar"
-      ? [{ href: "#cabinet-widgets", label: "К слотам", primary: true }]
-      : section === "requests"
-        ? [{ href: "/cabinet/performer/calendar", label: "К календарю", primary: true }]
-        : section === "services"
-          ? [
-              { href: "/cabinet/performer/requests", label: "К заявкам", primary: true },
-              { href: "/cabinet/performer", label: "На главную" },
-            ]
-          : [
-              { href: "/cabinet/performer/requests", label: "К заявкам", primary: true },
-              { href: "/cabinet/performer/services", label: "Услуги и витрина" },
-            ];
-
-  return (
-    <CabinetPageShell
-      mode="performer"
-      kindKey="artist"
-      ready={ready}
-      error={error}
-      email={email}
-      orgName={orgName}
-      empty={empty && section === "home"}
-      emptyState={
-        <article className="card empty">
-          <h2>Пока тихо</h2>
-          <p>
-            Новые запросы, удержания и ближайшие даты появятся здесь. Держите календарь открытым — так вас чаще
-            бронируют.
-          </p>
-          <div className="cabinet-hero-actions">
-            <Link className="btn" href="/cabinet/performer/calendar">
-              Открыть календарь
-            </Link>
-            <Link className="btn secondary" href="/cabinet/performer/services">
-              Настроить витрину
-            </Link>
-          </div>
-        </article>
-      }
-      subtitle={subtitle}
-      metrics={[
-        { label: "Новые запросы", value: newRequests.length, tone: newRequests.length ? "wait" : "default" },
-        { label: "Ждут заказчика", value: awaitingResponse.length, tone: awaitingResponse.length ? "live" : "default" },
-        { label: "Ближайшие даты", value: upcomingPerformances.length, tone: "ok" },
-        {
-          label: "Профиль",
-          value: completenessScore != null ? `${completenessScore}%` : "—",
-          tone: completenessScore != null && completenessScore >= 80 ? "ok" : "wait",
-        },
-      ]}
-      actions={actions}
-      lead={
-        showCalendar && orgId ? (
-          <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="artist" />
-        ) : null
-      }
-      footer={
-        orgId ? (
-          <div id="supply">
-            <SupplyCabinetSection orgId={orgId} role={role} />
-          </div>
-        ) : null
-      }
-    >
-      {showVitrine && orgId ? (
-        <section className="cabinet-zone" aria-label="Витрина и услуги">
-          <h2 className="cabinet-zone-title">Витрина и услуги</h2>
-          <div className="cabinet-zone-grid">
-            <PortfolioRiderWidget orgId={orgId} role={role} />
-            <ServicesWidget orgId={orgId} role={role} compact={section === "home"} />
-          </div>
-        </section>
-      ) : null}
-
-      {showRequests ? (
-        <section className="cabinet-zone" aria-label="Входящие">
-          <h2 className="cabinet-zone-title">Входящие</h2>
-          <div className="cabinet-zone-grid">
-            {section === "home" ? (
-              <PerformerOnboardingWidget
-                profileComplete={!profileIncomplete}
-                hasOpenSlots={upcomingPerformances.length > 0 || activeHolds.length > 0}
-                hasRequests={newRequests.length + awaitingResponse.length > 0}
-              />
-            ) : null}
-            {section === "requests" ? (
-              <RequestsInboxWidget
-                requests={requests}
-                role={role}
-                offerBusy={offerBusy}
-                onSendOffer={(item) => void sendOffer(item)}
-              />
-            ) : (
-              <NewRequestsWidget
-                requests={newRequests}
-                role={role}
-                offerBusy={offerBusy}
-                onSendOffer={(item) => void sendOffer(item)}
-              />
-            )}
-            <AwaitingResponseWidget deals={awaitingResponse} />
-            <ExpiringOffersWidget deals={expiringOffers} />
-            <HoldsWidget holds={activeHolds} />
-          </div>
-        </section>
-      ) : null}
-
-      {showCalendar ? (
-        <section className="cabinet-zone" aria-label="Расписание">
-          <h2 className="cabinet-zone-title">Расписание</h2>
-          <div className="cabinet-zone-grid">
-            {orgId ? (
-              <CalendarOverviewWidget orgId={orgId} artistId={artistId} bookings={bookings} />
-            ) : null}
-            <UpcomingPerformancesWidget bookings={upcomingPerformances} />
-            <CalendarConflictsWidget conflicts={calendarConflicts} />
-            {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
-          </div>
-        </section>
-      ) : null}
-    </CabinetPageShell>
-  );
+  return <CabinetPageShell
+    mode="performer" kindKey="artist" section={section} title={title} subtitle={subtitle}
+    ready={ready} error={error} email={email} orgName={orgName} empty={false} emptyState={null}
+    actions={actions}
+    metrics={section === "home" ? [
+      { label: "Новые заявки", value: newRequests.length, hint: "требуют ответа", tone: newRequests.length ? "wait" : "default" },
+      { label: "Предстоящие выступления", value: upcomingPerformances.length, hint: "подтверждённые и активные", tone: "ok" },
+      { label: "Ждут заказчика", value: awaitingResponse.length, hint: "предложения отправлены" },
+      { label: "Профиль", value: completenessScore != null ? `${completenessScore}%` : "—", hint: "готовность к бронированию" },
+    ] : undefined}
+    lead={section === "calendar" && orgId ? <>
+      <CalendarOverviewWidget key={calendarRevision} orgId={orgId} artistId={artistId} bookings={bookings} />
+      <details className="workspace-disclosure" id="calendar-manage">
+        <summary>Открыть свободные даты <span aria-hidden="true">＋</span></summary>
+        <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="artist" onChanged={() => { setCalendarRevision(value => value + 1); void reload(); }} />
+      </details>
+    </> : section === "requests" ? <RequestsInboxWidget requests={requests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} />
+      : section === "services" && orgId ? <ServicesWidget orgId={orgId} role={role} />
+      : section === "home" ? <div className="workspace-overview-grid">
+        <UpcomingPerformancesWidget bookings={upcomingPerformances} />
+        {orgId ? <CalendarOverviewWidget orgId={orgId} artistId={artistId} bookings={bookings} compact /> : null}
+      </div> : null}
+    footer={orgId ? <details className="workspace-disclosure workspace-settings" id="supply-settings">
+      <summary>Настройки профиля, календаря и услуг <span aria-hidden="true">＋</span></summary>
+      <SupplyCabinetSection orgId={orgId} role={role} />
+    </details> : null}
+  >
+    {section === "home" ? <>
+      <section className="cabinet-zone-grid workspace-secondary-grid" aria-label="Заявки и профиль">
+        <NewRequestsWidget requests={newRequests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} />
+        {profileCompleteness ? <ProfileCompletenessWidget completeness={profileCompleteness} /> : <PerformerOnboardingWidget profileComplete={!profileIncomplete} hasOpenSlots={upcomingPerformances.length > 0 || activeHolds.length > 0} hasRequests={newRequests.length + awaitingResponse.length > 0} />}
+      </section>
+      {orgId ? <details className="workspace-disclosure">
+        <summary>Витрина, услуги и свободные даты <span aria-hidden="true">＋</span></summary>
+        <div className="cabinet-zone-grid"><PortfolioRiderWidget orgId={orgId} role={role} /><ServicesWidget orgId={orgId} role={role} compact /><OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="artist" /></div>
+      </details> : null}
+    </> : null}
+    {section === "services" && orgId ? <PortfolioRiderWidget orgId={orgId} role={role} /> : null}
+    {section === "calendar" && calendarConflicts.length > 0 ? <CalendarConflictsWidget conflicts={calendarConflicts} /> : null}
+    {(section === "home" || section === "requests") && (awaitingResponse.length > 0 || expiringOffers.length > 0 || activeHolds.length > 0) ? <section className="cabinet-zone-grid workspace-secondary-grid" aria-label="Предложения и удержания">
+      {awaitingResponse.length > 0 ? <AwaitingResponseWidget deals={awaitingResponse} /> : null}
+      {expiringOffers.length > 0 ? <ExpiringOffersWidget deals={expiringOffers} /> : null}
+      {activeHolds.length > 0 ? <HoldsWidget holds={activeHolds} /> : null}
+    </section> : null}
+    {section === "home" && calendarConflicts.length > 0 ? <CalendarConflictsWidget conflicts={calendarConflicts} /> : null}
+  </CabinetPageShell>;
 }

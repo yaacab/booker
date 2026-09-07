@@ -34,11 +34,11 @@ test("light reference theme text and hover tokens have readable contrast", () =>
   assert.ok(contrast("#ffffff", token(theme, "--brand-hover")) >= 4.5);
 });
 
-test("studio text remains readable and time editor overrides light legacy fields", () => {
+test("studio text and form fields remain readable", () => {
   assert.ok(contrast(token(studio, "--es-ink"), token(studio, "--es-paper")) >= 4.5);
   assert.ok(contrast(token(studio, "--es-muted"), token(studio, "--es-paper")) >= 4.5);
-  assert.match(studio, /\.event-studio-shell \.time-editor > label > input\s*\{[^}]*background: #ffffff/);
-  assert.match(studio, /\.event-studio-shell \.stage-rail li button > span\s*\{[^}]*font-size: 14px/);
+  assert.match(studio, /\.event-studio-shell :is\(input, select\)[^}]*background: #ffffff[^}]*color: var\(--es-ink\)/);
+  assert.match(studio, /\.stage-rail button[^}]*min-height: 52px/);
 });
 
 test("home opt-in studio links preserve the default-off classic wizard", () => {
@@ -50,7 +50,9 @@ test("home opt-in studio links preserve the default-off classic wizard", () => {
 test("studio never assigns reference portraits or venue photos to real suppliers", () => {
   const component = read("../components/event-studio/EventStudioMap.tsx");
   assert.doesNotMatch(component, /reference-portrait|portrait-\$|className="venue-visual"/);
-  assert.match(component, /Фото не добавлено/);
+  assert.match(component, /talent-initials/);
+  assert.match(component, /item.initials/);
+  assert.doesNotMatch(component, /<img|<Image/);
 });
 
 test("motion styles include a reduced-motion alternative", () => {
@@ -78,10 +80,10 @@ test("internal pages share the workspace skin without restyling the home", () =>
   assert.match(workspace, /prefers-reduced-motion:reduce/);
   assert.match(workspace, /\.deal-head :is\(h1,a\).*color: #243b2e/);
 });
-test("supplier profiles retain actions inside the shared overview", () => {
+test("supplier profiles retain booking, favorite and sharing actions", () => {
   for (const file of ["ArtistProfileClient.tsx", "VenueProfileClient.tsx"]) {
     const source = read("../components/" + file);
-    assert.match(source, /className="profile-overview"/);
+    assert.match(source, /id="profile-booking"/);
     assert.match(source, /<FavoriteToggle/);
     assert.match(source, /Поделиться/);
   }

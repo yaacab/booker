@@ -6,6 +6,11 @@ import "./cabinet-design.css";
 import "./reference-puzzles.css";
 import "./workspace-design.css";
 import "./reference-interiors.css";
+import "./chrome-reference-v2.css";
+import "./catalog-reference-v2.css";
+import "./deal-reference-v2.css";
+import "./workspace-reference-v2.css";
+import "./saved-searches-reference-v2.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
 

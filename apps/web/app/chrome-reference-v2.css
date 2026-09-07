@@ -1,0 +1,148 @@
+/* Reference compositions: information, account and shared chrome. */
+body { background: #edf1ef; }
+.top.surface-glass { background: #edf1eff2; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.workspace-sidebar nav a { gap: 10px; padding-inline: 12px; font-size: 13px; }
+.workspace-sidebar nav svg { flex-shrink: 0; }
+.workspace-help { background: linear-gradient(140deg,#e8eedf,#f5f8ed); border: 1px solid #fff; border-radius: 16px; padding: 18px 14px; }
+.workspace-help p { margin: 10px 0; }
+.reference-footer { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-top: 40px; padding: 28px 0; border: 0; background: transparent; box-shadow: none; }
+.footer-brand { display: flex; align-items: center; gap: 18px; }
+.footer-brand .brand-word { font-size: 28px; }
+.footer-brand .brand-lime-dot { font-size: 26px; }
+.footer-brand > span:last-child { font-size: 11px; color: #617166; }
+.reference-footer nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.reference-footer nav a { color: #55645b; font-size: 12px; min-height: 44px; display: inline-flex; align-items: center; }
+.reference-footer a:hover { color: #233d25; text-decoration: underline; text-underline-offset: 4px; }
+.site-content .reference-information { width: min(100%,960px); margin-inline: auto; }
+.site-content .information-heading h1 { font-size: clamp(42px,6.5vw,82px); font-weight: 800; letter-spacing: -.065em; line-height: .99; margin: 10px 0 20px; color: #18251c; }
+.site-content .information-heading h2 { font-size: clamp(22px,3vw,34px); font-weight: 550; letter-spacing: -.035em; margin: 0 0 16px; }
+.information-heading > p:last-child { color: #55665b; max-width: 55ch; margin-bottom: 22px; }
+.reference-puzzle-strip { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; width: min(100%,760px); margin: 8px auto 28px; }
+.reference-puzzle-strip figure { position: relative; margin: 0; min-width: 0; }
+.reference-puzzle-strip img { width: 118%; max-width: none; height: auto; display: block; margin-left: -9%; }
+.reference-puzzle-strip figcaption { position: absolute; left: 11%; right: 13%; bottom: 16%; border-radius: 8px; padding: 8px; background: #10251ccc; color: white; font-size: clamp(9px,1.4vw,17px); line-height: 1.25; font-weight: 600; }
+.site-content .support-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; background: #ffffffa6; border: 1px solid #fff; }
+.support-form h2, .support-form > label:last-of-type { grid-column: 1 / -1; }
+.support-form h2 { margin: 0; }
+.support-form :is(label,.information-form-row) { display: grid; gap: 8px; min-width: 0; }
+.support-form :is(input,select,textarea) { width: 100%; }
+.support-form button[type="submit"] { grid-column: 2; border-radius: 30px; }
+.support-signin,.support-contact,.information-help { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.support-signin h2,.support-contact h2,.information-help h2 { margin: 0; }
+.support-signin p { max-width: 52ch; margin-bottom: 0; }
+.support-signin .btn { flex-shrink: 0; }
+.site-content .support-contact { margin-top: 24px; background: #ffffff85; }
+.support-contact a { display: inline-flex; align-items: center; min-height: 44px; color: #344b35; }
+.support-tickets { margin-top: 32px; }
+.support-ticket-list { list-style: none; padding: 0; display: grid; gap: 10px; }
+.support-ticket-list li { display: grid; grid-template-columns: 90px minmax(0,1fr) auto auto; gap: 14px; align-items: center; background: #ffffff90; border: 1px solid white; border-radius: 16px; padding: 18px; }
+.support-ticket-list strong { min-width: 0; overflow-wrap: anywhere; }
+.support-ticket-number { font-size: 12px; color: #667363; }
+.support-notice { padding: 16px; border: 1px solid #baca9b; background: #eaf4d8; border-radius: 14px; }
+.information-help { background: #e7eedb; border: 1px solid #e0e8d1; border-radius: 18px; padding: 24px; margin-top: 28px; }
+.information-help p { margin: 0; }
+.information-help .btn { border-radius: 30px; flex-shrink: 0; }
+.site-content .legal-reference .legal-index { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 0; list-style: none; }
+.site-content .legal-reference .legal-index a { display: grid; grid-template-columns: 34px 1fr 20px; gap: 18px; min-height: 94px; padding: 20px 24px; background: #ffffffa6; border: 1px solid white; border-radius: 18px; }
+.legal-reference .legal-index a:hover { background: #f7fbe9; }
+.legal-reference .legal-index strong { font-size: 17px; }
+.legal-reference .legal-index small { display: block; font-weight: 400; color: #5d6a60; font-size: 13px; margin-top: 6px; }
+.document-icon { display: grid; place-items: center; width: 32px; height: 38px; border: 1px solid #72836c; border-radius: 6px; font-size: 22px; }
+.document-body { background: #ffffff70; border: 1px solid #fff; border-radius: 20px; padding: clamp(18px,3vw,36px); }
+.site-content .document-body h1 { font-size: clamp(28px,3vw,42px); }
+.site-content .document-toc { font-size: 13px; }
+.faq-search { display: flex; gap: 10px; align-items: center; margin: 26px 0 18px; }
+.faq-search label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.site-content .faq-search input { flex: 1; min-width: 0; border: 1px solid #fff; border-radius: 28px; background: #ffffffbd; padding-inline: 24px; min-height: 52px; }
+.faq-categories { display: flex; gap: 10px; flex-wrap: wrap; }
+.site-content .faq-categories button { border-radius: 28px; border: 1px solid #fff; background: #ffffff70; color: #2b3f2e; padding-inline: 22px; box-shadow: none; }
+.site-content .faq-categories .selected { background: #dbfb63; border-color: #d2ed8c; }
+.faq-result-count { font-size: 12px; color: #667363; }
+.site-content .faq-reference .accordion { border: 1px solid #fff; padding: 16px; background: #ffffff80; border-radius: 24px; }
+.faq-reference .accordion details { padding: 0; border: 0; border-bottom: 1px solid #e1e7df; }
+.faq-reference .accordion details:last-child { border-bottom: 0; }
+.faq-reference .accordion summary { padding: 18px; border-radius: 12px; font-weight: 600; font-size: 16px; min-height: 58px; }
+.faq-reference .accordion summary::after { content: "+"; font-size: 21px; font-weight: 400; margin-left: auto; flex-shrink: 0; }
+.faq-reference .accordion details[open] summary::after { content: "−"; }
+.faq-reference .accordion details[open] summary { background: #eaf5ce; }
+.faq-reference .accordion details > p { padding: 0 18px 18px; margin: 16px 0 0; max-width: 78ch; color: #4e6153; }
+.site-content .login-fields > .kicker { margin-top: 20px; }
+.site-content .login-fields h1 { font-size: clamp(30px,3.4vw,44px); font-weight: 800; margin: 12px 0 24px; }
+.site-content .login-fields form { background: #ffffff85; border-color: #fff; max-width: none !important; gap: 18px !important; }
+.login-fields form label { display: grid; gap: 8px; }
+.site-content .login-fields form .unknown { font-size: 13px; display: flex; gap: 10px; align-items: flex-start; margin: 0; }
+.site-content .login-fields .inline-label { display: inline; }
+.site-content .login-fields form button[type="submit"] { border-radius: 28px; min-height: 50px; }
+.reference-piece { will-change: auto; }
+.reference-empty { max-width: 860px; margin: 4vh auto; padding: clamp(24px,5vw,64px); border: 1px solid #fff; border-radius: 30px; background: #ffffff8c; }
+.reference-empty > p:last-child { display: flex; gap: 12px; flex-wrap: wrap; }
+.loading-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: 20px; }
+.loading-cards .skeleton { min-height: 240px; border: 1px solid #fff; border-radius: 22px; }
+.account-heading { margin-bottom: 28px; }
+.site-content .account-heading h1 { font-size: clamp(34px,4vw,54px); font-weight: 800; letter-spacing: -.05em; margin: 8px 0 12px; }
+.account-heading > p:last-child { margin: 0; color: #5f6d60; }
+.site-content .account-identity { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; background: #ffffff9c; border: 1px solid white; }
+.account-monogram { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: #e4efc9; font-size: 30px; flex-shrink: 0; }
+.account-identity :is(h2,p) { margin: 0; }
+.account-identity p { color: #5d6d60; overflow-wrap: anywhere; }
+.account-identity a { margin-left: auto; color: #3d5735; font-size: 13px; }
+.account-columns { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); gap: 24px; align-items: start; }
+.account-organizations { min-width: 0; }
+.account-organizations > h2 { margin-top: 0; }
+.site-content .account-organization { margin-top: 12px; padding: 20px; background: #ffffff90; border-color: #fff; }
+.site-content .account-organization.is-active { background: #ecf4da; border-color: #c6d7a6; }
+.account-organization strong { display: block; margin-bottom: 8px; }
+.site-content .account-create { display: grid; gap: 16px; background: #ffffffa0; border-color: #fff; }
+.account-create :is(h2,p) { margin: 0; }
+.account-create label { display: grid; gap: 8px; }
+.account-create :is(input,select) { width: 100%; }
+.briefs-columns { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(290px,1fr); gap: 28px; align-items: start; }
+.brief-search { display: grid; gap: 8px; }
+.brief-search input { width: 100%; }
+.brief-list { display: grid; gap: 18px; list-style: none; padding: 0; }
+.site-content .brief-card { background: #ffffffa1; border: 1px solid white; }
+.brief-card h2 { margin: 18px 0 10px; }
+.brief-meta { display: flex; align-items: center; gap: 16px; color: #51624b; font-size: 13px; }
+.brief-dates { color: #5c6d58; font-size: 13px; }
+.brief-card > p { overflow-wrap: anywhere; }
+.site-content .brief-publish { background: #f7faf2; border: 1px solid white; }
+.brief-publish summary { cursor: pointer; font-size: 20px; font-weight: 700; min-height: 44px; }
+.brief-form { display: grid; gap: 16px; }
+.brief-form label { display: grid; gap: 8px; min-width: 0; }
+.brief-form :is(input,select,textarea) { width: 100%; }
+.site-content[data-section="admin"] > main > .grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.site-content[data-section="admin"] > main > .grid > .card { background: #ffffff96; border-color: #fff; }
+.site-content[data-section="admin"] :is(ul,.mono) { overflow-wrap: anywhere; }
+@media (max-width:900px) {
+ .account-columns,.briefs-columns { grid-template-columns: 1fr; }
+ .reference-footer { flex-direction: column; align-items: flex-start; }
+ .workspace-help { display: none; }
+ .support-signin,.information-help { align-items: flex-start; flex-direction: column; }
+ .support-contact { flex-wrap: wrap; }
+}
+@media (max-width:600px) {
+ .account-identity { flex-wrap: wrap; }
+ .account-identity > div { min-width: 0; flex: 1; }
+ .account-identity a { margin-left: 0; flex-basis: 100%; }
+ .site-content[data-section="admin"] > main > .grid { grid-template-columns: 1fr; }
+ .site-content .information-heading h1 { font-size: clamp(36px,11vw,54px); }
+ .site-content .support-form { grid-template-columns: 1fr; }
+ .support-form button[type="submit"] { grid-column: 1; }
+ .faq-categories { gap: 8px; }
+ .site-content .faq-categories button { font-size: 12px; padding-inline: 12px; }
+ .site-content .faq-reference .accordion { padding: 6px; }
+ .faq-reference .accordion summary { font-size: 14px; padding: 16px 12px; }
+ .support-ticket-list li { grid-template-columns: 1fr auto; }
+ .support-ticket-list strong { grid-column: 1 / -1; grid-row: 2; overflow-wrap: anywhere; }
+ .site-content .legal-reference .legal-index a { grid-template-columns: 24px 1fr 14px; gap: 12px; padding: 18px 14px; }
+ .document-icon { width: 23px; height: 30px; }
+ .legal-reference .legal-index strong { font-size: 15px; }
+ .reference-footer nav { gap: 0 20px; }
+ .reference-puzzle-strip figcaption { padding: 5px; font-size: 9px; }
+ .information-help .btn,.support-signin .btn { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .reference-piece,.reference-piece::after { transition: none !important; }
+ .reference-piece[aria-pressed="true"] { transform: none !important; }
+ .reference-piece[aria-pressed="true"] .piece-label { outline: 2px solid #dbfb63; }
+}

@@ -24,6 +24,11 @@ export default function BriefsPage() {
   const [band, setBand] = useState("51-100");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [published, setPublished] = useState(false);
 
   async function load() {
     try {
@@ -32,6 +37,8 @@ export default function BriefsPage() {
       setError("");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Не удалось загрузить брифы");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -46,7 +53,14 @@ export default function BriefsPage() {
       setError("Нужен вход и активная организация заказчика");
       return;
     }
+    const starts = new Date(dateFrom);
+    const ends = new Date(dateTo);
+    if (!Number.isFinite(starts.getTime()) || !Number.isFinite(ends.getTime()) || ends <= starts) {
+      setError("Укажите начало и окончание события. Окончание должно быть позже начала.");
+      return;
+    }
     setBusy(true);
+    setPublished(false);
     try {
       await api("/briefs", {
         method: "POST",
@@ -57,12 +71,13 @@ export default function BriefsPage() {
           role_needed: roleNeeded,
           guest_count_band: band,
           public_notes: notes,
-          date_from: new Date().toISOString(),
-          date_to: new Date(Date.now() + 86400000).toISOString(),
+          date_from: starts.toISOString(),
+          date_to: ends.toISOString(),
         }),
       });
       setTitle("");
       setNotes("");
+      setPublished(true);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Ошибка публикации");
@@ -71,18 +86,26 @@ export default function BriefsPage() {
     }
   }
 
+  const roleLabels: Record<string, string> = { dj: "DJ", host: "Ведущий", venue: "Площадка", photographer: "Фотограф", cover_band: "Кавер-группа" };
+  const visible = items.filter((b) => `${b.title} ${b.city} ${roleLabels[b.role_needed] || b.role_needed}`.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru")));
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Открытые брифы</h1>
-      <p className="mt-2 text-sm opacity-80">
-        Добровольная публикация ограниченного запроса. Телефон, email и бюджет приватного
-        события сюда не попадают.
-      </p>
+    <main className="briefs-reference">
+      <header className="account-heading"><p className="kicker">Новые события — новые встречи</p><h1>Публичные брифы</h1><p>Найдите событие для своей команды или расскажите, кого ищете вы.</p></header>
 
-      {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
+      {error ? <p role="alert" style={{ color: "var(--danger)" }}>{error}</p> : null}
+      {published && <p role="status" className="support-notice">Бриф опубликован.</p>}
+      <div className="briefs-columns"><section className="briefs-results"><label className="brief-search">Найти бриф<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Название, город или специалист" /></label>
+      <p className="timeline" role="status">{loading ? "Загружаем брифы…" : `Найдено: ${visible.length}`}</p>
+      <ul className="brief-list">
+        {visible.map((b) => <li key={b.id} className="card brief-card"><div className="brief-meta"><span className="chip">{roleLabels[b.role_needed] || b.role_needed}</span><span>{b.city}</span></div><h2>{b.title}</h2><p className="brief-dates">{new Date(b.date_from).toLocaleDateString("ru-RU")} — {new Date(b.date_to).toLocaleDateString("ru-RU")} · {b.guest_count_band} гостей</p>{b.public_notes && <p>{b.public_notes}</p>}<span className="timeline">{b.status === "open" ? "Открыт для предложений" : b.status === "closed" ? "Закрыт" : b.status}</span></li>)}
+      </ul>
+      {!loading && !error && !visible.length && <div className="card"><h2>{query ? "Брифы не найдены" : "Первое событие — за вами"}</h2><p>{query ? "Попробуйте другой город или название." : "Опубликуйте запрос и расскажите, кого вы ищете для своего события."}</p></div>}
+      </section><details className="card brief-publish" open><summary>Опубликовать бриф</summary>
+      <p className="timeline">Эти данные будут видны всем. Телефон, email и бюджет вашего частного события сюда не переносятся.</p>
 
-      <form onSubmit={onPublish} className="mt-8 grid gap-3 border-t border-black/10 pt-6">
-        <h2 className="text-lg font-medium">Опубликовать бриф</h2>
+      <form onSubmit={onPublish} className="brief-form">
+        <label>Название события
         <input
           className="rounded border border-black/15 px-3 py-2"
           placeholder="Заголовок"
@@ -90,12 +113,14 @@ export default function BriefsPage() {
           onChange={(e) => setTitle(e.target.value)}
           required
         />
+        </label><label>Город
         <input
           className="rounded border border-black/15 px-3 py-2"
           placeholder="Город"
           value={city}
           onChange={(e) => setCity(e.target.value)}
         />
+        </label><label>Кого ищете
         <input
           className="rounded border border-black/15 px-3 py-2"
           placeholder="Роль (dj, host, venue…)"
@@ -103,6 +128,7 @@ export default function BriefsPage() {
           onChange={(e) => setRoleNeeded(e.target.value)}
           required
         />
+        </label><label>Количество гостей
         <select
           className="rounded border border-black/15 px-3 py-2"
           value={band}
@@ -113,6 +139,9 @@ export default function BriefsPage() {
           <option value="101-200">101–200 гостей</option>
           <option value="200+">200+</option>
         </select>
+        </label><label>Начало события<input type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} required /></label>
+        <label>Окончание события<input type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)} min={dateFrom || undefined} required /></label>
+        <label>О событии
         <textarea
           className="rounded border border-black/15 px-3 py-2"
           placeholder="Публичные заметки"
@@ -120,6 +149,7 @@ export default function BriefsPage() {
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
         />
+        </label>
         <button
           type="submit"
           disabled={busy}
@@ -128,19 +158,7 @@ export default function BriefsPage() {
           {busy ? "Публикация…" : "Опубликовать"}
         </button>
       </form>
-
-      <ul className="mt-10 space-y-4">
-        {items.map((b) => (
-          <li key={b.id} className="border-t border-black/10 pt-4">
-            <div className="font-medium">{b.title}</div>
-            <div className="mt-1 text-sm opacity-80">
-              {b.city} · {b.role_needed} · {b.guest_count_band} · {b.status}
-            </div>
-            {b.public_notes ? <p className="mt-2 text-sm">{b.public_notes}</p> : null}
-          </li>
-        ))}
-        {!items.length ? <li className="text-sm opacity-70">Пока нет открытых брифов.</li> : null}
-      </ul>
+      </details></div>
     </main>
   );
 }

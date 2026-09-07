@@ -10,6 +10,7 @@ import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
 import { SlotList } from "@/components/SlotList";
+import { ProfileMedia } from "@/components/ProfileMedia";
 
 type Venue = {
   id: string;
@@ -18,6 +19,7 @@ type Venue = {
   city: string;
   capacity: number;
   verified: boolean;
+  media_url?: string | null;
   address?: string;
   district?: string;
   metro?: string;
@@ -54,9 +56,14 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
   const [hallBusy, setHallBusy] = useState(false);
   const [hallError, setHallError] = useState("");
   const [halls, setHalls] = useState<HallItem[]>([]);
+  const [catalogHref, setCatalogHref] = useState("/search?kind=venue");
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
+    const backQuery = new URLSearchParams(q);
+    backQuery.delete("slot");
+    if (!backQuery.has("kind")) backQuery.set("kind", "venue");
+    setCatalogHref(`/search?${backQuery.toString()}`);
     setDay(q.get("date"));
     const fromEvent = q.get("event");
     if (fromEvent) setEventId(fromEvent);
@@ -201,7 +208,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
 
   if (!data) {
     return (
-      <main>
+      <main className="public-profile-reference">
         <h1>Площадка</h1>
         <p>{error || ""}</p>
         {!error ? (
@@ -220,157 +227,75 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
   const synthetic = data.availability_mode === "synthetic";
 
   return (
-    <main>
+    <main className="public-profile-reference venue-profile-reference page-enter">
       <Suspense fallback={null}>
         <PromoAttributionBeacon kind="venue" profileId={data.id} />
       </Suspense>
-      <header className="profile-overview">
-      <Link className="profile-back" href="/search">← Вернуться в каталог</Link>
-      <p className="kicker">Профиль площадки</p>
-      <h1>{data.name}</h1>
-      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <span>
-          {data.city} · до {guestsLabel(data.capacity)}{" "}
-          {data.listing_origin === "open_data" ? (
-            <span className="chip wait">{CHIP.openDataVenue}</span>
-          ) : synthetic ? (
-            <span className="chip wait">{CHIP.syntheticCalendar}</span>
-          ) : data.verified ? (
-            <span className="chip ok">{CHIP.verified}</span>
-          ) : (
-            <span className="chip wait">{CHIP.pending}</span>
-          )}
-        </span>
-        <FavoriteToggle targetType="venue" targetId={data.id} />
-        <Link className="btn secondary" href={`/venues/${data.id}/share`}>
-          Поделиться
-        </Link>
-      </p>
-      </header>
-      {data.address ? (
-        <p className="timeline">
-          {data.address}
-          {data.metro ? ` · м. ${data.metro}` : ""}
-          {data.district ? ` · ${data.district}` : ""}
-        </p>
-      ) : null}
-      {data.description ? <p>{data.description}</p> : null}
-      {synthetic ? (
-        <article className="card tint" role="note">
-          <strong>Календарь ориентировочный</strong>
-          <p>
-            Слоты на 30 дней созданы автоматически для отображения в каталоге. Доступность не подтверждена владельцем
-            площадки — перед сделкой оператор уточнит даты.
-          </p>
-          {data.source_url ? (
-            <p className="timeline">
-              Источник:{" "}
-              <a href={data.source_url} target="_blank" rel="noreferrer noopener">
-                {data.source_attribution || "открытые данные"}
-              </a>
-            </p>
-          ) : null}
-        </article>
-      ) : (
-        <p>{data.facts.note}</p>
-      )}
-      {halls.length ? (
-        <>
-          <h2>Залы</h2>
-          <ul>
-            {halls.map((hall, i) => (
-              <li key={hall.id || hall.name || i}>
-                {hall.name}
-                {hall.capacity != null ? ` · до ${hall.capacity} гостей` : ""}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-      {canManageHalls ? (
-        <form className="card" style={{ display: "grid", gap: 12, maxWidth: 420, marginTop: 12 }} onSubmit={createHall}>
-          <h2>Добавить зал</h2>
-          <label>
-            Название
-            <input value={hallName} onChange={(e) => setHallName(e.target.value)} required />
-          </label>
-          <label>
-            Вместимость
-            <input
-              type="number"
-              min={1}
-              value={hallCapacity}
-              onChange={(e) => setHallCapacity(e.target.value)}
-              required
-            />
-          </label>
-          {hallError ? <p style={{ color: "var(--danger)" }}>{hallError}</p> : null}
-          <button type="submit" disabled={hallBusy}>
-            {hallBusy ? "Сохраняем…" : "Создать зал"}
-          </button>
-        </form>
-      ) : null}
-      <h2>Тарифы</h2>
-      {data.tariffs.length ? (
-        <ul>
-          {data.tariffs.map((t) => (
-            <li key={t.id}>
-              {t.title}: {money(t.honorarium_rub)}
-              {synthetic ? " · ориентир" : ""}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="timeline">Цена по запросу — итог только в OfferVersion на сервере.</p>
-      )}
-      <h2>Календарь</h2>
-      <SlotList slots={data.slots} highlightDay={day} />
-      {authed && events.length > 0 ? (
-        <label style={{ display: "block", marginTop: 16 }}>
-          Событие
-          <select value={eventId} onChange={(e) => setEventId(e.target.value)}>
-            <option value="">Выберите событие</option>
-            {events.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title}
-                {item.event_date ? ` · ${formatWhen(item.event_date)}` : ""}
-                {item.city ? ` · ${item.city}` : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      {formError ? <p style={{ color: "var(--danger)" }}>{formError}</p> : null}
-      <p className="artist-desk-cta" style={{ marginTop: 16 }}>
-        {canSend ? (
-          <button type="button" onClick={() => void sendToEvent()} disabled={busy}>
-            {sendLabel}
-          </button>
-        ) : (
-          <Link className="btn" href={newEventHref}>
-            Создать заявку с этой площадкой
-          </Link>
-        )}
-        {canSend ? (
-          <>
-            {" "}
-            <Link className="btn secondary" href={newEventHref}>
-              Или создать новое событие
-            </Link>
-          </>
-        ) : null}
-      </p>
-      <div className="sticky-cta">
-        {canSend ? (
-          <button type="button" onClick={() => void sendToEvent()} disabled={busy}>
-            {sendLabel}
-          </button>
-        ) : (
-          <Link className="btn" href={newEventHref}>
-            Создать заявку с этой площадкой
-          </Link>
-        )}
+      <Link className="profile-back" href={catalogHref}><span aria-hidden="true">←</span> К поиску площадок</Link>
+      <div className="public-profile-layout">
+        <aside className="public-profile-rail">
+          <ProfileMedia src={data.media_url} name={data.name} />
+          <section className="profile-calendar-panel" aria-labelledby="venue-calendar-heading">
+            <div className="profile-section-heading"><h2 id="venue-calendar-heading">Ближайшие даты</h2><span>МСК</span></div>
+            {synthetic ? <p className="profile-calendar-notice">Календарь ориентировочный. Доступность уточнит оператор.</p> : null}
+            <SlotList slots={data.slots} highlightDay={day} />
+          </section>
+        </aside>
+        <div className="public-profile-content">
+          <header className="public-profile-heading">
+            <div>
+              <p className="profile-eyebrow">Площадка для событий</p>
+              <h1>{data.name}{data.verified ? <span className="profile-verified-mark" role="img" aria-label={CHIP.verified} title={CHIP.verified}>✓</span> : null}</h1>
+              <p className="profile-location"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" /><circle cx="12" cy="10" r="2" /></svg>{data.city}{data.address ? ` · ${data.address}` : ""}</p>
+              {data.metro || data.district ? <p className="profile-location-detail">{data.metro ? `м. ${data.metro}` : ""}{data.metro && data.district ? " · " : ""}{data.district}</p> : null}
+              {data.listing_origin === "open_data" ? <span className="chip wait">{CHIP.openDataVenue}</span> : synthetic ? <span className="chip wait">{CHIP.syntheticCalendar}</span> : !data.verified ? <span className="chip wait">{CHIP.pending}</span> : null}
+            </div>
+            <div className="public-profile-actions">
+              <a className="btn profile-primary-action" href="#profile-booking">Добавить в событие <span aria-hidden="true">→</span></a>
+              <div className="profile-secondary-actions"><FavoriteToggle targetType="venue" targetId={data.id} /><Link className="btn secondary" href={`/venues/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
+            </div>
+          </header>
+
+          <dl className="profile-facts-strip">
+            <div><dt>Вместимость</dt><dd>{data.capacity ? `До ${guestsLabel(data.capacity)}` : "Уточняется"}</dd></div>
+            <div><dt>Залов в профиле</dt><dd>{halls.length}</dd></div>
+            <div className="profile-fact-response"><dt>Профиль</dt><dd>{data.verified ? "Подтверждён" : "Не подтверждён"}</dd></div>
+          </dl>
+
+          <section className="public-profile-section">
+            <h2>О площадке</h2>
+            <p>{data.description || (synthetic ? "Детали площадки и доступные даты можно уточнить через оператора." : data.facts.note)}</p>
+            {synthetic ? <div className="profile-calendar-notice" role="note"><strong>Календарь ориентировочный</strong><p>Доступность не подтверждена владельцем площадки. Перед бронированием оператор уточнит даты.</p>{data.source_url ? <p className="profile-source-link">Источник: <a href={data.source_url} target="_blank" rel="noreferrer noopener">{data.source_attribution || "открытые данные"} ↗</a></p> : null}</div> : null}
+          </section>
+
+          {halls.length ? <section className="public-profile-section">
+            <div className="profile-section-heading"><h2>Залы и вместимость</h2><span>{halls.length} в профиле</span></div>
+            <ul className="profile-hall-grid">{halls.map((hall, index) => <li key={hall.id || hall.name || index}><div className="profile-hall-icon" aria-hidden="true"><svg viewBox="0 0 80 72"><path d="M12 61V20h56v41M8 61h64M25 20V11h30v9M31 61V45h18v16" /><rect x="21" y="29" width="9" height="8" rx="1" /><rect x="50" y="29" width="9" height="8" rx="1" /><path d="M36 11V6h8v5" /></svg><span>{String(index + 1).padStart(2, "0")}</span></div><strong>{hall.name || `Зал ${index + 1}`}</strong>{hall.capacity != null ? <span>До {guestsLabel(hall.capacity)}</span> : <span>Вместимость уточняется</span>}</li>)}</ul>
+          </section> : null}
+
+          {canManageHalls ? <form className="profile-booking-panel profile-hall-form" onSubmit={createHall}>
+            <h2>Добавить зал</h2>
+            <div className="profile-booking-fields"><label>Название<input value={hallName} onChange={(e) => setHallName(e.target.value)} required /></label><label>Вместимость<input type="number" min={1} value={hallCapacity} onChange={(e) => setHallCapacity(e.target.value)} required /></label></div>
+            {hallError ? <p className="profile-error" role="alert">{hallError}</p> : null}
+            <button type="submit" disabled={hallBusy}>{hallBusy ? "Сохраняем…" : "Создать зал"}</button>
+          </form> : null}
+
+          <section className="public-profile-section">
+            <div className="profile-section-heading"><h2>Стоимость аренды</h2><span>Предварительные условия</span></div>
+            {data.tariffs.length ? <ul className="profile-tariff-list">{data.tariffs.map((tariff) => <li key={tariff.id}><span>{tariff.title}</span><strong>{money(tariff.honorarium_rub)}{synthetic ? <small>Ориентир</small> : null}</strong></li>)}</ul> : <p className="timeline">Цена по запросу.</p>}
+            <p className="profile-small-note">Окончательная стоимость и условия — в предложении после заявки.</p>
+          </section>
+
+          <section className="profile-booking-panel" id="profile-booking" aria-labelledby="venue-booking-heading">
+            <div className="profile-section-heading"><h2 id="venue-booking-heading">Ваше событие здесь</h2><span aria-hidden="true">↗</span></div>
+            <p>Добавьте площадку в событие, чтобы согласовать дату и условия.</p>
+            {authed && events.length > 0 ? <label>Событие<select value={eventId} onChange={(e) => setEventId(e.target.value)}><option value="">Выберите событие</option>{events.map((item) => <option key={item.id} value={item.id}>{item.title}{item.event_date ? ` · ${formatWhen(item.event_date)}` : ""}{item.city ? ` · ${item.city}` : ""}</option>)}</select></label> : null}
+            {formError ? <p className="profile-error" role="alert">{formError}</p> : null}
+            <div className="profile-booking-actions">{canSend ? <button className="btn profile-primary-action" type="button" onClick={() => void sendToEvent()} disabled={busy}>{sendLabel}<span aria-hidden="true">→</span></button> : <Link className="btn profile-primary-action" href={newEventHref}>Создать заявку с этой площадкой<span aria-hidden="true">→</span></Link>}{canSend ? <Link className="profile-text-link" href={newEventHref}>Или создать новое событие ↗</Link> : null}</div>
+          </section>
+        </div>
       </div>
+      <div className="sticky-cta">{canSend ? <button type="button" onClick={() => void sendToEvent()} disabled={busy}>{sendLabel}</button> : <Link className="btn" href={newEventHref}>Создать заявку с этой площадкой</Link>}</div>
     </main>
   );
 }

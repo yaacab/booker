@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { CabinetPageShell } from "../CabinetPageShell";
 import { SupplyCabinetSection } from "../SupplyCabinetSection";
 import { AwaitingResponseWidget } from "../performer/widgets/AwaitingResponseWidget";
@@ -11,7 +11,6 @@ import { NewRequestsWidget } from "../performer/widgets/NewRequestsWidget";
 import { OpenSlotsWidget } from "../performer/widgets/OpenSlotsWidget";
 import { ProfileCompletenessWidget } from "../performer/widgets/ProfileCompletenessWidget";
 import { UpcomingPerformancesWidget } from "../performer/widgets/UpcomingPerformancesWidget";
-import { VenueCabinetSubNav } from "./VenueCabinetSubNav";
 import { useVenueCabinetData } from "./useVenueCabinetData";
 import { VenueHallsPanel } from "./widgets/VenueHallsPanel";
 import { VenueHallsWidget } from "./widgets/VenueHallsWidget";
@@ -21,260 +20,43 @@ import { VenueMonthCalendar } from "./widgets/VenueMonthCalendar";
 import { RequestsInboxWidget } from "../performer/widgets/RequestsInboxWidget";
 
 export type VenueCabinetSection = "home" | "calendar" | "requests" | "halls" | "stats";
+const SECTION_COPY = {
+  home: ["Кабинет площадки", "Управляйте залами, заявками и событиями. Больше людей на ваших местах."],
+  calendar: ["Календарь площадки", "Планируйте загрузку залов, управляйте бронированиями и доступностью."],
+  requests: ["Заявки площадке", "Входящие запросы на ваши залы. Обсуждайте детали и подтверждайте события."],
+  halls: ["Залы площадки", "У каждого пространства — свой календарь, вместимость и условия."],
+  stats: ["Статистика площадки", "Заявки, подтверждённые бронирования и ближайшие события."],
+} as const;
 
 export function VenueCabinetDashboard({ section = "home" }: { section?: VenueCabinetSection }) {
-  const {
-    ready,
-    error,
-    email,
-    orgName,
-    orgId,
-    role,
-    newRequests,
-    awaitingResponse,
-    expiringOffers,
-    activeHolds,
-    upcomingEvents,
-    calendarConflicts,
-    profileIncomplete,
-    halls,
-    venueId,
-    bookingStats,
-    requestCount,
-    requests,
-    empty,
-    offerBusy,
-    sendOffer,
-    reload,
-  } = useVenueCabinetData();
+  const { ready, error, email, orgName, orgId, role, newRequests, awaitingResponse, expiringOffers, activeHolds, upcomingEvents, calendarConflicts, profileIncomplete, profileCompleteness, halls, venueId, bookingStats, requestCount, requests, offerBusy, sendOffer, reload } = useVenueCabinetData();
+  const [calendarRevision, setCalendarRevision] = useState(0);
+  const realHalls = halls.filter(hall => hall.resource_type === "hall");
+  const [title, subtitle] = SECTION_COPY[section];
+  const calendarSetup = orgId ? <details className="workspace-disclosure" id="calendar-manage"><summary>Открыть свободные даты <span aria-hidden="true">＋</span></summary><OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="venue" onChanged={() => { setCalendarRevision(value => value + 1); void reload(); }} /></details> : null;
 
-  const hallCount = halls.filter((h) => h.resource_type === "hall").length;
-  const completenessScore = profileIncomplete?.score;
-  const hallsActive = hallCount > 0;
-  const slotsActive =
-    newRequests.length > 0 || activeHolds.length > 0 || upcomingEvents.length > 0;
-  const showRequests = section === "home" || section === "requests";
-  const showCalendar = section === "home" || section === "calendar";
-  const showSpace = section === "home" || section === "calendar";
-  const showHalls = section === "halls";
-  const showStats = section === "stats";
-  const subtitle =
-    section === "calendar"
-      ? "Залы, свободные слоты, даты и конфликты календаря."
-      : section === "requests"
-        ? "Входящие бронирования, предложения и удержания."
-        : section === "halls"
-          ? "Создание и просмотр залов — каждый зал со своим календарём."
-          : section === "stats"
-            ? "Сводка по бронированиям площадки — просмотры и воронка позже."
-            : "Залы, календарь и ответы на бронирования — рабочий стол площадки.";
-
-  const primaryAction =
-    section === "requests"
-      ? { href: "/cabinet/venue/calendar", label: "К календарю" }
-      : section === "halls"
-        ? { href: "/cabinet/venue/calendar", label: "К календарю" }
-        : section === "stats"
-          ? { href: "/cabinet/venue/requests", label: "К заявкам" }
-          : { href: "#cabinet-widgets", label: "К виджетам" };
-
-  const sectionEmpty =
-    section === "halls"
-      ? ready && !error && !venueId
-      : section === "stats"
-        ? ready && !error && bookingStats.total === 0 && requestCount === 0
-        : empty;
-
-  return (
-    <CabinetPageShell
-      mode="venue"
-      ready={ready}
-      error={error}
-      email={email}
-      orgName={orgName}
-      empty={sectionEmpty}
-      emptyState={
-        section === "halls" ? (
-          <article className="card empty">
-            <h2>Нет площадки</h2>
-            <p>
-              Сначала создайте площадку в блоке «Свободные слоты» на{" "}
-              <Link href="/cabinet/venue/calendar">календаре</Link>, затем добавьте залы.
-            </p>
-          </article>
-        ) : section === "stats" ? (
-          <article className="card empty">
-            <h2>Статистика появится позже</h2>
-            <p>После первых заявок и бронирований здесь будет сводка по /bookings.</p>
-          </article>
-        ) : (
-          <article className="card empty">
-            <h2>Пока тихо</h2>
-            <p>Добавьте зал и держите календарь открытым — новые заявки и удержания появятся здесь.</p>
-          </article>
-        )
-      }
-      subtitle={subtitle}
-      metrics={
-        section === "stats"
-          ? [
-              {
-                label: "Бронирования",
-                value: bookingStats.total,
-                tone: bookingStats.total ? "live" : "default",
-                glow: bookingStats.total > 0,
-              },
-              {
-                label: "Подтверждено",
-                value: bookingStats.confirmed,
-                tone: bookingStats.confirmed ? "ok" : "default",
-              },
-              {
-                label: "Ближайшие",
-                value: bookingStats.upcoming,
-                tone: bookingStats.upcoming ? "live" : "default",
-                glow: bookingStats.upcoming > 0,
-              },
-              {
-                label: "Заявки",
-                value: requestCount,
-                tone: requestCount ? "wait" : "default",
-              },
-            ]
-          : section === "halls"
-            ? [
-                {
-                  label: "Залы",
-                  value: hallCount,
-                  tone: hallCount ? "live" : "wait",
-                  hint: "ресурсы календаря",
-                  glow: hallsActive,
-                },
-                {
-                  label: "Новые заявки",
-                  value: newRequests.length,
-                  tone: newRequests.length ? "wait" : "default",
-                },
-                {
-                  label: "Удержания",
-                  value: activeHolds.length,
-                  tone: activeHolds.length ? "wait" : "default",
-                },
-                {
-                  label: "Профиль",
-                  value: completenessScore != null ? `${completenessScore}%` : "—",
-                  tone: completenessScore != null && completenessScore >= 80 ? "ok" : "wait",
-                  hint: "готовность к выдаче",
-                },
-              ]
-            : [
-                {
-                  label: "Залы",
-                  value: hallCount,
-                  tone: hallCount ? "live" : "wait",
-                  hint: "ресурсы календаря",
-                  glow: hallsActive,
-                },
-                {
-                  label: "Новые заявки",
-                  value: newRequests.length,
-                  tone: newRequests.length ? "wait" : "default",
-                  glow: slotsActive && newRequests.length > 0,
-                },
-                {
-                  label: "Удержания",
-                  value: activeHolds.length,
-                  tone: activeHolds.length ? "wait" : "default",
-                  glow: slotsActive && activeHolds.length > 0,
-                },
-                {
-                  label: "Профиль",
-                  value: completenessScore != null ? `${completenessScore}%` : "—",
-                  tone: completenessScore != null && completenessScore >= 80 ? "ok" : "wait",
-                  hint: "готовность к выдаче",
-                  glow: hallsActive || slotsActive,
-                },
-              ]
-      }
-      actions={[
-        { href: primaryAction.href, label: primaryAction.label, primary: true },
-        { href: "/cabinet/venue/messages", label: "Сообщения" },
-        ...(section !== "halls" ? [{ href: "/cabinet/venue/halls", label: "Залы" }] : []),
-        ...(section !== "stats" ? [{ href: "/cabinet/venue/stats", label: "Статистика" }] : []),
-      ]}
-      lead={
-        <>
-          <VenueCabinetSubNav />
-          {showCalendar && orgId ? (
-            <>
-            {section === "calendar" && venueId ? <VenueMonthCalendar venueId={venueId} /> : null}
-            <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="venue" />
-            </>
-          ) : null}
-        </>
-      }
-      footer={orgId ? <SupplyCabinetSection orgId={orgId} role={role} /> : null}
-    >
-      {showHalls ? (
-        <section className="cabinet-zone" aria-label="Управление залами">
-          <h2 className="cabinet-zone-title">Залы</h2>
-          <div className="cabinet-zone-grid">
-            <VenueHallsPanel venueId={venueId} venueName={orgName} role={role} />
-          </div>
-        </section>
-      ) : null}
-
-      {showStats ? (
-        <section className="cabinet-zone" aria-label="Статистика">
-          <h2 className="cabinet-zone-title">Статистика</h2>
-          <div className="cabinet-zone-grid">
-            <VenueStatsWidget stats={bookingStats} requestCount={requestCount} />
-          </div>
-        </section>
-      ) : null}
-
-      {showSpace ? (
-        <section className="cabinet-zone" aria-label="Пространство">
-          <h2 className="cabinet-zone-title">Пространство</h2>
-          <div className="cabinet-zone-grid">
-            <VenueOnboardingWidget
-              hasHalls={hallCount > 0}
-              profileComplete={!profileIncomplete}
-              hasRequests={newRequests.length + awaitingResponse.length > 0}
-            />
-            <VenueHallsWidget halls={halls} role={role} onChanged={() => void reload()} />
-            {profileIncomplete ? <ProfileCompletenessWidget completeness={profileIncomplete} /> : null}
-          </div>
-        </section>
-      ) : null}
-
-      {showRequests ? (
-        <section className="cabinet-zone" aria-label="Заявки и сделки">
-          <h2 className="cabinet-zone-title">Заявки и сделки</h2>
-          <div className="cabinet-zone-grid">
-            {section === "requests" ? <RequestsInboxWidget requests={requests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} /> : null}
-            <NewRequestsWidget
-              requests={newRequests}
-              role={role}
-              offerBusy={offerBusy}
-              onSendOffer={(item) => void sendOffer(item)}
-            />
-            <AwaitingResponseWidget deals={awaitingResponse} />
-            <ExpiringOffersWidget deals={expiringOffers} />
-            <HoldsWidget holds={activeHolds} />
-          </div>
-        </section>
-      ) : null}
-
-      {showCalendar ? (
-        <section className="cabinet-zone" aria-label="Расписание">
-          <h2 className="cabinet-zone-title">Расписание</h2>
-          <div className="cabinet-zone-grid">
-            <UpcomingPerformancesWidget bookings={upcomingEvents} />
-            <CalendarConflictsWidget conflicts={calendarConflicts} />
-          </div>
-        </section>
-      ) : null}
-    </CabinetPageShell>
-  );
+  return <CabinetPageShell mode="venue" section={section} title={title} subtitle={subtitle} ready={ready} error={error} email={email} orgName={orgName} empty={false} emptyState={null}
+    actions={section === "calendar" ? [{ href: "#calendar-manage", label: "Открыть свободные даты", primary: true }] : section === "requests" ? [{ href: "/cabinet/venue/calendar", label: "Открыть календарь" }] : [{ href: "/cabinet/venue/halls", label: "Управлять залами", primary: true }, { href: "/cabinet/venue/calendar", label: "Открыть календарь" }]}
+    metrics={section === "home" ? [
+      { label: "Новые заявки", value: newRequests.length, hint: "требуют ответа" },
+      { label: "Активные удержания", value: activeHolds.length, hint: "даты закреплены за заказчиком" },
+      { label: "Предстоящие события", value: upcomingEvents.length, hint: "подтверждённые и активные" },
+      { label: "Залы", value: realHalls.length, hint: "ваши пространства" },
+    ] : section === "stats" ? [
+      { label: "Бронирования", value: bookingStats.total }, { label: "Подтверждено", value: bookingStats.confirmed }, { label: "Ближайшие события", value: bookingStats.upcoming }, { label: "Заявки", value: requestCount },
+    ] : undefined}
+    lead={section === "calendar" ? <>{venueId ? <VenueMonthCalendar key={calendarRevision} venueId={venueId} hallNames={realHalls.map(hall => hall.label)} /> : <div className="workspace-soft-empty"><h2>Ваш календарь начинается с площадки</h2><p>Создайте площадку и добавьте залы, чтобы открыть свободные даты.</p></div>}{calendarSetup}</>
+      : section === "requests" ? <RequestsInboxWidget requests={requests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} />
+        : section === "halls" ? venueId ? <VenueHallsPanel venueId={venueId} venueName={orgName} role={role} /> : <div className="workspace-soft-empty"><h2>Сначала создайте площадку</h2><p>После этого вы сможете добавить залы и открыть свободные даты.</p>{calendarSetup}</div>
+          : section === "stats" ? <VenueStatsWidget stats={bookingStats} requestCount={requestCount} />
+            : <div className="workspace-overview-grid"><UpcomingPerformancesWidget bookings={upcomingEvents} title="Ближайшие события" />{profileCompleteness ? <ProfileCompletenessWidget completeness={profileCompleteness} /> : <VenueOnboardingWidget hasHalls={realHalls.length > 0} profileComplete={!profileIncomplete} hasRequests={newRequests.length + awaitingResponse.length > 0} />}</div>}
+    footer={orgId ? <details className="workspace-disclosure workspace-settings" id="supply-settings"><summary>Настройки площадки, календаря и услуг <span aria-hidden="true">＋</span></summary><SupplyCabinetSection orgId={orgId} role={role} /></details> : null}
+  >
+    {section === "home" ? <div className="cabinet-zone-grid workspace-secondary-grid"><NewRequestsWidget requests={newRequests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} /><VenueHallsWidget halls={halls} role={role} onChanged={() => void reload()} /></div> : null}
+    {(section === "home" || section === "requests") && (awaitingResponse.length > 0 || activeHolds.length > 0 || expiringOffers.length > 0) ? <div className="cabinet-zone-grid workspace-secondary-grid">
+      {awaitingResponse.length > 0 ? <AwaitingResponseWidget deals={awaitingResponse} /> : null}{activeHolds.length > 0 ? <HoldsWidget holds={activeHolds} /> : null}{expiringOffers.length > 0 ? <ExpiringOffersWidget deals={expiringOffers} /> : null}
+    </div> : null}
+    {(section === "home" || section === "calendar") && calendarConflicts.length > 0 ? <CalendarConflictsWidget conflicts={calendarConflicts} /> : null}
+    {section === "home" ? calendarSetup : null}
+  </CabinetPageShell>;
 }

@@ -9,12 +9,12 @@ export function DealRoomAccentGrid({ accents }: { accents: DealRoomAccentView[] 
         <article key={accent.id} className="card deal-accent-card" data-accent={accent.id}>
           <header className="deal-accent-head">
             <h3>{accent.title}</h3>
-            <p className="timeline">{accent.hint}</p>
+
           </header>
           <p>
             <strong>{accent.body}</strong>
           </p>
-          {accent.detail ? <p className="timeline">{accent.detail}</p> : null}
+          {accent.detail && !/^(quote_id|requirement_id|deal_id):/.test(accent.detail) ? <p className="timeline">{accent.detail}</p> : null}
         </article>
       ))}
     </div>

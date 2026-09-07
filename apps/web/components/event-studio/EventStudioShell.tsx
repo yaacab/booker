@@ -169,9 +169,11 @@ export default function EventStudioShell() {
   if (!hydrated) {
     return (
       <main className="event-studio-shell">
-        <p className="kicker">Event Studio Map</p>
-        <h1 className="event-studio-loading-title">Загрузка карты события</h1>
-        <div className="skeleton" style={{ minHeight: 240 }} />
+        <div className="studio-loading-panel" aria-busy="true">
+          <p className="studio-eyebrow">Конструктор события</p>
+          <h1 className="event-studio-loading-title">Загружаем ваши планы</h1>
+          <div className="skeleton" style={{ minHeight: 240 }} />
+        </div>
       </main>
     );
   }

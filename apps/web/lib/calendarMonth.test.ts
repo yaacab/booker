@@ -1,10 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { entriesOnDay, monthCells, moscowDay } from "./calendarMonth";
+import { calendarDayStatus, entriesOnDay, monthCells, moscowDay } from "./calendarMonth";
 
 test("calendar uses Moscow day across UTC midnight", () => {
   assert.equal(moscowDay("2026-09-06T22:00:00Z"), "2026-09-07");
   assert.equal(moscowDay("2026-09-07T00:00:00"), "2026-09-07");
+});
+
+test("day summary keeps active availability when a cancelled interval exists", () => {
+  const entry = { id: "slot", starts_at: "2026-09-07T18:00:00", ends_at: "2026-09-07T22:00:00" };
+  assert.equal(calendarDayStatus([{ ...entry, status: "cancelled" }, { ...entry, id: "open", status: "open" }]), "open");
+  assert.equal(calendarDayStatus([{ ...entry, status: "open" }, { ...entry, id: "hold", status: "held" }]), "held");
+  assert.equal(calendarDayStatus([{ ...entry, status: "held" }, { ...entry, id: "booked", status: "booked" }]), "booked");
+  assert.equal(calendarDayStatus([]), "unknown");
 });
 test("month grid starts Monday and includes leap day and year rollover", () => {
   const leap = monthCells(2024, 1);

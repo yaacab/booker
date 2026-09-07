@@ -30,14 +30,14 @@ export function ServicesWidget({ orgId, role, compact = false }: ServicesWidgetP
   return (
     <DashboardWidget
       title="Услуги"
-      hint="Прайс в каталоге — заказчик видит ориентир, счёт только в Deal Room"
+      hint="Ваши форматы выступлений и стоимость в каталоге"
       accent="performer"
-      isEmpty={!loading && services.length === 0}
-      empty="Добавьте услугу или выберите шаблон — без прайса вас реже находят в поиске."
+      span={compact ? "half" : "full"}
     >
       {loading ? <p className="timeline">Загружаем услуги…</p> : null}
+      {!loading && services.length === 0 ? <p className="dashboard-empty timeline">Добавьте первую услугу или выберите готовый шаблон.</p> : null}
       {services.length > 0 ? (
-        <ul className="dashboard-list" data-testid="performer-services-list">
+        <ul className="dashboard-list workspace-service-list" data-testid="performer-services-list">
           {services.map((s) => (
             <li key={s.id}>
               <article className="dashboard-action-card">
@@ -75,6 +75,7 @@ export function ServicesWidget({ orgId, role, compact = false }: ServicesWidgetP
           style={{ marginTop: 12 }}
           onSubmit={(e) => void createService(e)}
           data-testid="performer-service-form"
+          id="performer-service-form"
         >
           <label>
             Название

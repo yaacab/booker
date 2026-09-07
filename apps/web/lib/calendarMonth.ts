@@ -1,6 +1,18 @@
 import { parseBookerDate } from "./format";
 
-export type CalendarEntry = { id: string; starts_at: string; ends_at: string; status: string };
+export type CalendarEntry = { id: string; starts_at: string; ends_at: string; status: string; label?: string };
+
+export const CALENDAR_STATUS_LABELS: Record<string, string> = {
+  open: "Свободен", held: "Удержание", hold: "Удержание", booked: "Забронирован", busy: "Занят", blocked: "Недоступен", cancelled: "Отменён",
+};
+
+/** A cancelled interval does not override active availability on the same day. */
+export function calendarDayStatus(entries: CalendarEntry[]): string {
+  for (const status of ["booked", "busy", "blocked", "held", "hold", "open"]) {
+    if (entries.some(entry => entry.status === status)) return status;
+  }
+  return entries[0]?.status || "unknown";
+}
 
 export function moscowDay(value: string): string {
   const date = parseBookerDate(value);

@@ -251,6 +251,7 @@ export function useVenueCabinetData() {
     upcomingEvents,
     calendarConflicts,
     profileIncomplete,
+    profileCompleteness: completeness?.applicable ? completeness : null,
     halls,
     venueId,
     bookings,

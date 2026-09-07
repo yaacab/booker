@@ -12,6 +12,7 @@ export type PuzzleSlot = {
 export type PuzzleBoardProps = {
   slots: PuzzleSlot[];
   reducedMotion?: boolean;
+  onSlotSelect?: (slot: PuzzleSlot) => void;
 };
 
 /** Flat / tab / blank — matches wooden reference interlocking (form only). */
@@ -97,7 +98,7 @@ function labelPosition(index: number): { left: string; top: string } {
   return { left: `${(cx / vbW) * 100}%`, top: `${((vbH - OY * 0.42) / vbH) * 100}%` };
 }
 
-export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoardProps) {
+export default function PuzzleBoard({ slots, reducedMotion = false, onSlotSelect }: PuzzleBoardProps) {
   const gradientId = useId().replace(/:/g, "");
   const padded = useMemo(
     () =>
@@ -133,8 +134,6 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
     <div className={`puzzle-board${reducedMotion ? " puzzle-board--reduced" : ""}`}>
       <div
         className="puzzle-board-stage"
-        role="img"
-        aria-label="Сборка события: хромированный пазл из даты, площадки и ролей"
       >
         <svg
           className="puzzle-board-svg"
@@ -223,14 +222,13 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
                 className={`puzzle-label puzzle-label--${side}${slot.filled ? " is-filled" : ""}`}
                 style={{ left: pos.left, top: pos.top }}
               >
-                <strong>{slot.label}</strong>
-                {slot.detail ? <span>{slot.detail}</span> : null}
+                {onSlotSelect ? <button type="button" onClick={() => onSlotSelect(slot)} aria-label={`${slot.label}: ${slot.detail || (slot.filled ? "выбрано" : "добавить")}`}><strong>{slot.label}</strong>{slot.detail ? <span>{slot.detail}</span> : null}</button> : <><strong>{slot.label}</strong>{slot.detail ? <span>{slot.detail}</span> : null}</>}
               </li>
             );
           })}
         </ul>
       </div>
-      {/* Текстовая версия для скринридеров: визуальные подписи скрыты под role="img". */}
+      {/* Состояние сборки доступно отдельно от интерактивных подписей. */}
       <ul className="sr-only">
         {padded.map((slot) => (
           <li key={`sr-${slot.id}`}>

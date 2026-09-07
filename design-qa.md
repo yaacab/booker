@@ -1,112 +1,90 @@
-# Reference interiors — 2026-09-07
+# BukerGo reference redesign — 2026-09-07
 
 final result: blocked
 
-## Continuation verification
+This report supersedes earlier iteration notes. Code has been rebuilt across the
+site, but this is not a passed whole-site visual acceptance or a production release.
+The owner authorized publication. Deployment is blocked by missing SSH capability
+in this environment, not by a claim that the VPS is offline.
 
-The backend dependency blocker is resolved: **200 backend tests passed, 2 skipped**.
-The local seed database was created successfully at a temporary path. API servers
-run in isolated execution environments and were not reachable from the supervised
-browser preview. A Unix-socket attempt returned an operation-not-permitted error;
-no escalation or workaround of that restriction was attempted.
+## Visual source
 
-Additional implementation:
-- Shared month calendar for performer and venue halls, with selected-day details,
-  month navigation and explicit unknown availability. Overnight intervals and
-  Moscow timezone semantics have three regression tests.
-- Request selection, proposal-state filters and detail panel for performer and venue.
-- Compact workspace cards and Deal Room tabs, chat and quote styling.
-- Event Studio panel Escape handling, focus containment and restoration on narrow
-  screens, background scroll lock and live reduced-motion preference updates.
-- Calendar day allocation is memoized to avoid rebuilding it on every selection.
+Ten owner-uploaded JPEG reference sheets: D670 (catalog), 23F (public profiles),
+43F (workspaces/favorites/saved searches), 72F/A7A (calendars/requests/services),
+5D2 (Studio/events/briefs), B14 (shortlist/deals/login/profile), F7C (support/FAQ/legal),
+E68/3D5 (legal documents). Files were inspected locally. Existing brand puzzle
+photographs are decorative; real supplier cards only use published API media.
 
-**45 frontend unit tests passed**. TypeScript passed after the component changes.
-Final production build passed for all existing routes. The temporary fixture's
-stale generated type file was removed after its source was deleted; a clean
-subsequent build passed. No fixture route appears in the resulting route manifest.
-Browser inspection used a temporary, explicitly labelled component fixture route,
-not an authenticated user session or replacement production API. The fixture route
-was removed before production build and is not published. The date selection
-showed a booking spanning two days; request filtering selected the corresponding
-detail card. Navigation returned to the current month. No horizontal overflow was
-observed in the desktop fixture. These checks do not prove the full deal path.
+## Implemented compositions
 
-Calendar screenshot: `/workspace/scratch/booker-calendar-review.jpg`, 1348 × 926.
-Combined comparison: `/tmp/booker-calendar-comparison.jpg`, reference lower-left
-crop from the 72F67B2F sheet alongside the browser screenshot, normalized to fit
-743 × 528 each. Source and fixture have different data, scroll position and auth
-state; full-screen fidelity cannot be approved from this comparison. A later image
-was emitted in the browser session but did not synchronize to a local file.
-
-Comparison found inconsistent day margins inherited from shared styles (P2).
-The calendar now explicitly resets margins, hover transforms and shadows and sets
-equal minimum heights. The source also has denser spacing and additional product
-controls not present in the implementation. Post-fix browser recapture, mobile
-comparison and complete authenticated route coverage remain outstanding. The
-earlier whole-site findings below therefore remain open; this is not a passed
-whole-site visual acceptance or a production deployment.
-
-## Source and implementation
-
-Source visual truth: ten owner-uploaded JPEG sheets in the conversation, including
-`D670EE7D-BD4D-4EB3-813F-D0568270F7D5(1).jpeg` (catalog),
-`B14EC392-C47C-4A4F-86AE-5A59D5736144(1).jpeg` (login, deals and profile),
-`F7C7DF9F-976C-4D7E-AFF5-5A323D78FBB2(1).jpeg` (help and legal).
-Implementation: local Next.js preview at terminal.local:4173; this is not production.
-Browser viewport: 1348 × 926 screenshot pixels. Density normalization and matching
-source crops have not been completed. Browser screenshots of home, catalog error
-state, legal index, privacy document and login were inspected in the session;
-standalone screenshot files and combined source/implementation comparisons were
-not saved. This is not a passing fidelity review.
-
-## Implemented scope
-
-| Area | Changes | Verification |
+| Area | Concrete changes | Evidence |
 | --- | --- | --- |
-| Catalog | Large heading, horizontal search, preserved filters, photo cards, date CTA | Error state rendered; populated state blocked by local API |
-| Artist profile | Published media panel, responsive profile header | TypeScript/build only |
-| Workspaces | Role-aware sidebar using existing routes, metrics and calendar grid styles | TypeScript/build only; authenticated states unverified |
-| Messages | Inbox rows and clear conversation action | TypeScript/build only |
-| Login | Two-column composition, existing decorative puzzle, glass form | Browser-rendered; no credentials submitted |
-| Legal | Document cards, sticky contents navigation, article layout | Index/privacy rendered; contents link tested |
-| Shared styling | Lime actions, focus, responsive grid rules | Build and existing unit tests |
+| Catalog and profiles | Segmented search, category sidebar, puzzle-cut media, photo/content columns, factual summaries and booking area | `apps/web/app/catalog-reference-v2.css`, `CatalogFilters`, `CatalogResultCard`, `ArtistProfileClient`, `VenueProfileClient` |
+| Role workspaces | Section-specific headings, metrics, next event, sidebar icons, secondary configuration disclosures | `components/cabinet/**`, `workspace-reference-v2.css` |
+| Calendar | Performer month/list views, venue weekly hall matrix, month navigation, selected-day inspector, timezone labels | `MonthCalendar`, `VenueMonthCalendar`, `lib/calendarMonth.test.ts` |
+| Requests/messages | Master/detail requests with real status groups; conversation rows | `RequestsInboxWidget`, `MessagesHubClient` |
+| Studio | Editable basics, puzzle selection, actual selected team, requirements, budget footer, catalog drawer | `components/event-studio/**` |
+| Deals/events | Progress, participants, tabbed content, confirmation/quote hierarchy and accessible mobile sheets | `app/deals/[id]/page.tsx`, `app/events/[id]/page.tsx`, `deal-reference-v2.css` |
+| Favorites/shortlists/compare | Real profile cards, type filters, selection and comparison table, safe empty states | `FavoritesListClient`, `SharedShortlistClient`, `app/compare/page.tsx` |
+| Saved searches | Compact rows, notification switches preserving explicit consent, secondary creation form | `app/cabinet/customer/saved-searches/page.tsx`, `saved-searches-reference-v2.css` |
+| Account/briefs | Account identity and workspace columns; brief cards, search and labelled publish form with chosen dates | `app/profile/page.tsx`, `app/briefs/page.tsx` |
+| Help/legal/login | Reference typography, decorative puzzle strip, FAQ search and audience filters, support form/statuses, document list/contents and glass login | `chrome-reference-v2.css`, corresponding routes |
+| Global states | Consistent loaders/errors/footer; role-neutral pending navigation; readable API errors without HTML/server exception bodies | `PageLoading`, `SiteChrome`, `lib/api.test.ts` |
 
-## Findings and remaining work
+## Browser evidence and corrections
 
-- P1: Populated catalog, profiles, Event Studio, deals and all role workspaces
-  still require screenshot comparison and targeted layout correction. Generic
-  stylesheet coverage does not prove that a page matches its supplied mockup.
-- P1: Reference portraits and venue photographs must not be presented as real
-  supplier portfolios. Artist cards now receive the existing public media_url;
-  missing media has an explicit empty state. Venue media needs a real data source.
-- P2: Mobile, keyboard traversal of the new sidebar, reduced-motion behavior and
-  animation performance on actual devices remain unverified in this pass.
-- P2: No combined full-view or focused-region source comparison has been completed.
+Preview: terminal.local:4173 (local supervised Next.js preview; not production).
+Desktop screenshots were inspected at 1348 x 926. Narrow checks used a 390px iframe
+(375px content width with scrollbar), not a real phone or an emulated device.
 
-Required fidelity surfaces: typography and palette visually inspected on public
-screens; source font identity, exact spacing, density and image masks unverified.
-Copy uses real existing data and explicit empty/error states. Legal document
-contents were not rewritten. Image quality is only verified for the existing
-decorative login puzzle; actual supplier assets were unavailable locally.
+- FAQ: search returns explicit no-results state; role filter returns nine venue
+  answers; disclosure opens. Narrow FAQ had equal clientWidth/scrollWidth (375px).
+- Support: public login/contact state and decorative puzzle strip inspected.
+- Catalog: search controls and error state inspected. API-connected results were
+  not available in the preview.
+- Studio: title edit reached saved state and survived reload. Mobile catalog opens
+  as a dialog and closes with Escape. Rechecked corrected translucent backdrop,
+  flat stage controls and readable puzzle labels. Date input persistence was not
+  established in the browser pass; two simultaneous drafts and native input
+  automation made that observation inconclusive.
+- Calendar/requests: a temporary explicitly labelled synthetic component fixture
+  rendered the real widgets. Selecting September 23 showed a booking ending at
+  02:00 on September 24; new-request filtering selected its matching detail.
+  These are component checks, not authenticated end-to-end role workflows.
+- Screenshot findings corrected: inherited button shadows/backdrops; crowded
+  puzzle labels; narrow calendar status wrapping (now dots with full accessible
+  labels and selected-day detail); wrong-role links during pending role lookup;
+  long support subjects overflowing; notification Escape focus stealing.
+- Motion uses transform/opacity, scoped transitions and reduced-motion rules.
+  Main puzzle layers no longer request permanent will-change. Real device FPS,
+  reduced-motion emulation and full keyboard traversal were not measured.
 
-## Verification and environment
+Screenshot files emitted by the cloud browser did not synchronize to local scratch;
+no broken file links are included. Source and implementation were visually
+inspected in the session, but a saved normalized combined comparison for this
+iteration is missing. This required fidelity gate remains blocked.
 
-- Production Next.js build passed for all routes after stopping the preview.
-  An earlier simultaneous dev/build run failed because both used .next.
-- TypeScript passed; 42 existing unit tests passed.
-- No backend test result: local API dependencies were not installed; installation
-  reported that network approval was cancelled. No approval workaround attempted.
-- Browser console exposed missing legal files in the preview mount. For local
-  inspection only, existing docs/legal was copied to ignored apps/web/docs/legal.
-  The privacy page then rendered and its contents navigation worked.
-- Local API was unavailable; catalog correctly displayed its error state.
-- No authenticated actions, production deployment, master merge or DNS change.
+## Verification
 
-## Completion checklist
+- Frontend unit suite: 47 passed, including calendar boundary/status behavior,
+  readable contrast tokens, puzzle state transitions, idempotency and safe errors.
+- TypeScript: passed.
+- Production build: passed for all existing routes. No local fixture route in the build output. Autoprefixer reported a non-fatal `align-items: start` compatibility warning in Studio CSS.
+- API suite: 200 passed, 2 skipped, 2 dependency deprecation warnings. Dependencies
+  were installed in the ignored local virtualenv and the complete suite was rerun.
+- Static agent review: original deal/event endpoint templates and saved-search
+  handlers/confirm/consent retained. Catalog SSR checks covered 12 context fields,
+  unknown categories, travel=false and missing/synthetic media.
+- The existing mobile e2e assertion was updated from complementary to dialog.
+  Full Playwright E01–E25 was not run in this environment.
+- Temporary fixture and mobile harness were removed before production build.
 
-1. Run a local seeded API and backend tests in the normal development environment.
-2. Capture each reference route with customer, performer, venue and admin fixtures.
-3. Compare source and implementation together at matched viewport/density.
-4. Correct every remaining P1/P2 difference, then recapture and recompare.
-5. Verify mobile navigation, forms, keyboard focus and reduced motion.
-6. Mark passed only after those checks; publish production separately.
+## Remaining gates
+
+1. Seeded, API-connected screenshots of every role, profile, deal and populated
+   catalog/shortlist state, with normalized side-by-side reference comparison.
+2. Full authenticated user paths, mobile keyboard/reduced motion and device
+   animation performance. Do not infer these from component fixtures or tsc.
+3. Production preflight, effective runtime configuration, backup, staged build,
+   release switch and post-deploy verification on the VPS. See
+   `docs/ops/DESIGN_RELEASE_RUNBOOK.md`. No master merge, DNS or payments changes.

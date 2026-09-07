@@ -227,6 +227,7 @@ export function usePerformerCabinetData() {
     upcomingPerformances,
     calendarConflicts,
     profileIncomplete,
+    profileCompleteness: completeness?.applicable ? completeness : null,
     empty,
     offerBusy,
     sendOffer,
