@@ -37,7 +37,7 @@
 .event-studio-actions a { display: inline-flex; align-items: center; gap: 4px; color: var(--es-ink); text-decoration: none; padding: 10px; border: 1px solid #ffffffbd; border-radius: 10px; background: #ffffff61; }
 .event-studio-actions a:first-child { color: var(--es-muted); background: transparent; border-color: transparent; }
 .event-studio-actions .es-icon { width: 15px; height: 15px; }
-.studio-heading { padding: 24px 36px 26px; display: flex; justify-content: space-between; align-items: start; gap: 22px; }
+.studio-heading { padding: 24px 36px 26px; display: flex; justify-content: space-between; align-items: flex-start; gap: 22px; }
 .event-studio-shell .studio-eyebrow { margin: 0 0 14px; color: var(--es-muted); font-size: 11px; }
 .studio-eyebrow span { margin-inline: 9px; color: #9ba692; }
 .event-studio-shell .studio-heading h1 { max-width: 660px; margin: 0; font-size: clamp(36px, 4.2vw, 62px); font-weight: 800; letter-spacing: -.06em; line-height: 1.02; }
@@ -54,7 +54,7 @@
 .stage-rail .active button { color: var(--es-ink); font-weight: 700; }
 .stage-rail .active button > span { background: var(--es-lime); }
 .es-icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
-.event-map { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "basics puzzle" "venue team" "terms terms" "summary summary"; gap: 20px; align-items: start; padding: 26px 36px 44px; }
+.event-map { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "basics puzzle" "venue team" "terms terms" "summary summary"; gap: 20px; align-items: flex-start; padding: 26px 36px 44px; }
 .event-map > * { min-width: 0; scroll-margin-top: 30px; }
 .event-studio-shell .map-card { padding: 22px; background: #ffffff94; border: 1px solid #ffffffda; border-radius: 18px; box-shadow: var(--es-shadow); }
 .map-card-focus { outline: 1px solid #b6cc8e; outline-offset: 2px; }

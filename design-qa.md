@@ -88,3 +88,43 @@ iteration is missing. This required fidelity gate remains blocked.
 3. Production preflight, effective runtime configuration, backup, staged build,
    release switch and post-deploy verification on the VPS. See
    `docs/ops/DESIGN_RELEASE_RUNBOOK.md`. No master merge, DNS or payments changes.
+
+## Reference completion follow-up — 2026-09-08
+
+The ten newly attached numbered sheets were opened in this session. They confirm
+this same visual direction. Additional implementation:
+
+- Both profile-sharing routes: split title/benefits and real profile preview,
+  published media/facts, segmented sharing modes, compact QR/link controls,
+  request cancellation, retry and clipboard fallback. Existing UTM/hall/tariff
+  links and analytics remain intact.
+- Operator: real queue counts, searchable profile rows, section navigation,
+  journal table, existing metrics/payment/second-factor forms. All request
+  endpoints and mutation payloads preserved. Removed the duplicate outer role
+  sidebar on this route. No invented dispute queue or metric counts.
+- Legal documents: extracted existing title, added branded photographic strip,
+  preserved every source block and original section IDs/legal notices.
+- Root error: neutral copy and matching palette; removed unsupported assurance
+  about data integrity. Removed permanent puzzle will-change; fixed Studio CSS
+  flex alignment compatibility warning.
+
+Browser evidence: desktop 1348 x 926; a 390 x 780 iframe for narrow layout
+(the rendered content excludes a scrollbar). Sharing error state, successful QR
+render, source switching, manual-copy fallback and operator journal switching
+were exercised. Legal document title, images and body rendered. Narrow sharing
+and operator views were inspected visually. Browser frame DOM size measurement
+was unavailable, so no automated overflow measurement is claimed. No auth or
+production state was changed. Temporary mobile harness was removed.
+
+The observed error log entries were from the browser extension. This is not a
+claim that every route has no console errors. Populated profile/queue states and
+normalized same-state source/implementation comparisons remain unverified;
+therefore the whole-site result remains **blocked**, not completed acceptance.
+The current changes add no generated supplier identities, reviews or ratings.
+
+Verification: TypeScript passed; 47 frontend unit tests passed. Production build
+result recorded below after completion. API was unchanged in this follow-up;
+the 200 passing / 2 skipped API result above belongs to the previous iteration.
+
+Follow-up production build: passed (36 static pages plus dynamic routes). One
+non-fatal existing Autoprefixer warning remains for `align-items: end` in Studio.

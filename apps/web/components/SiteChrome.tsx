@@ -301,8 +301,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <div className={authed && /^\/(cabinet|profile|admin|deals|briefs|compare|s)(\/|$)/.test(path) ? "workspace-layout" : undefined}>
-          {authed && /^\/(cabinet|profile|admin|deals|briefs|compare|s)(\/|$)/.test(path) && <WorkspaceNavigation mode={cabinetMode} admin={admin} />}
+        <div className={authed && /^\/(cabinet|profile|deals|briefs|compare|s)(\/|$)/.test(path) ? "workspace-layout" : undefined}>
+          {authed && /^\/(cabinet|profile|deals|briefs|compare|s)(\/|$)/.test(path) && <WorkspaceNavigation mode={cabinetMode} admin={admin} />}
           <div id="content" className="site-content" data-section={path.split("/")[1] || "home"}>{children}</div>
         </div>
         <footer className="site-footer surface-glass reference-footer">

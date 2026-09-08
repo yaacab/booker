@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReferencePuzzleStrip } from "@/components/ReferencePuzzleStrip";
 import { LEGAL_PACK_VERSION, parseLegalMarkdown, splitInline, type Block } from "@/lib/legal";
 
 function Inline({ text }: { text: string }) {
@@ -63,11 +64,18 @@ function BlockView({ block, id }: { block: Block; id?: string }) {
 
 export function LegalDoc({ source }: { source: string }) {
   const blocks = parseLegalMarkdown(source);
+  const titleIndex = blocks.findIndex(block => block.t === "h" && block.level === 1);
+  const title = blocks[titleIndex];
   return (
     <main className="page-enter legal-doc">
       <p className="timeline">
         <Link href="/legal">Правовые документы</Link>
       </p>
+      <header className="legal-document-heading">
+        {title && <BlockView block={title} id={`section-${titleIndex}`} />}
+        <p>Правила и договорённости, к которым можно вернуться в любой момент.</p>
+      </header>
+      <div className="legal-document-art"><ReferencePuzzleStrip /></div>
       <div className="legal-banner">
         Редакция {LEGAL_PACK_VERSION}. До завершения юридической проверки документ считается черновиком и не является действующей офертой или консультацией.
         Платежи в пилотной версии отключены. Реквизиты оператора будут заполнены после юридической проверки.
@@ -78,7 +86,7 @@ export function LegalDoc({ source }: { source: string }) {
           {blocks.map((block,i) => block.t === "h" && block.level === 2 ? <a key={i} href={`#section-${i}`}>{block.text}</a> : null)}
         </nav>
         <article className="document-body">{blocks.map((block, i) => (
-          <BlockView key={i} block={block} id={`section-${i}`} />
+          i === titleIndex ? null : <BlockView key={i} block={block} id={`section-${i}`} />
         ))}</article>
       </div>
     </main>

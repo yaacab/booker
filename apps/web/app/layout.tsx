@@ -11,6 +11,7 @@ import "./catalog-reference-v2.css";
 import "./deal-reference-v2.css";
 import "./workspace-reference-v2.css";
 import "./saved-searches-reference-v2.css";
+import "./completion-reference.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
 
