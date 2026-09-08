@@ -1,0 +1,113 @@
+/* Buker Reference V3 — visual layer based on approved light/lime/puzzle screens. */
+:root {
+  --ref-bg: #f4f7f2;
+  --ref-surface: rgba(255,255,255,.78);
+  --ref-surface-solid: #fbfcfa;
+  --ref-ink: #111810;
+  --ref-muted: #687066;
+  --ref-line: rgba(17,24,16,.09);
+  --ref-lime: #d9ff35;
+  --ref-lime-strong: #caff16;
+  --ref-lime-soft: #efffc1;
+  --ref-green: #5d9d25;
+  --ref-danger: #d95b67;
+  --ref-radius: 22px;
+  --ref-radius-sm: 14px;
+  --ref-shadow: 0 18px 60px rgba(36,55,31,.06), inset 0 1px 0 rgba(255,255,255,.8);
+}
+
+body {
+  background:
+    radial-gradient(circle at 72% 0%, rgba(217,255,53,.055), transparent 27rem),
+    linear-gradient(180deg,#f7faf6 0%,var(--ref-bg) 100%);
+  color: var(--ref-ink);
+}
+
+.wrap { max-width: 1480px; }
+.top {
+  background: rgba(247,250,246,.82);
+  border-bottom-color: rgba(17,24,16,.06);
+  box-shadow: none;
+}
+.nav-public { padding: 5px; border: 1px solid var(--ref-line); border-radius: 16px; background: rgba(255,255,255,.68); }
+.nav-public a { border-radius: 12px; color: var(--ref-ink); }
+.nav-public a:hover,.nav-public a[aria-current="page"] { background:#fff; color:var(--ref-ink); }
+
+:is(.card,.surface-glass,.dashboard-widget,.cabinet-metric,.deal-head,.deal-summary,.supply-section) {
+  background: var(--ref-surface);
+  border-color: var(--ref-line);
+  border-radius: var(--ref-radius);
+  box-shadow: var(--ref-shadow);
+}
+
+:is(h1,.hero h1,.cabinet-hero h1,.deal-head h1) {
+  color: var(--ref-ink);
+  font-weight: 700;
+  letter-spacing: -.055em;
+  line-height: .98;
+}
+
+.btn:not(.secondary):not(.btn-glass),
+button.btn:not(.secondary):not(.btn-glass),
+a.btn:not(.secondary):not(.btn-glass) {
+  color: var(--ref-ink);
+  border-color: rgba(151,188,20,.22);
+  background: linear-gradient(180deg,#e7ff72 0%,var(--ref-lime) 100%);
+  box-shadow: 0 9px 24px rgba(183,224,30,.23), inset 0 1px 0 rgba(255,255,255,.8);
+  border-radius: 999px;
+  font-weight: 700;
+}
+.btn:not(.secondary):not(.btn-glass):hover { background: var(--ref-lime-strong); color: var(--ref-ink); transform: translateY(-1px); }
+.btn.secondary,.btn-glass,a.btn.secondary,a.btn.btn-glass,button.btn-glass {
+  color: var(--ref-ink)!important;
+  background: rgba(255,255,255,.72)!important;
+  border-color: var(--ref-line)!important;
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+:is(input,select,textarea) {
+  background: rgba(255,255,255,.78);
+  color: var(--ref-ink);
+  border-color: var(--ref-line);
+  border-radius: var(--ref-radius-sm);
+}
+:is(input,select,textarea):focus { border-color:#b8df27; box-shadow:0 0 0 3px rgba(202,255,22,.18); }
+
+.chip { border-radius:999px; }
+.chip.ok { color:#477d21!important; background:#ecfbdc!important; border-color:#d6efc3!important; }
+.chip.wait { color:#806419!important; background:#fff7d9!important; border-color:#f1e2a7!important; }
+.chip.bad { color:#a44150!important; background:#fff0f1!important; border-color:#f3d3d7!important; }
+
+/* All role workspaces share one visual language in V3. */
+.cabinet-v2.cabinet-customer,
+.cabinet-v2.cabinet-performer,
+.cabinet-v2.cabinet-venue {
+  --cabinet-accent: var(--ref-lime-strong);
+  --cabinet-accent-soft: var(--ref-lime-soft);
+}
+.cabinet-v2 .cabinet-hero { background:var(--ref-surface); border-color:var(--ref-line); border-radius:var(--ref-radius); }
+.cabinet-v2 .cabinet-hero::before { background:var(--ref-lime-strong); }
+.cabinet-v2 .cabinet-role-pill,
+.cabinet-v2 .supply-cabinet-nav a[aria-current="page"] { color:var(--ref-ink); background:var(--ref-lime-soft); border-color:transparent; }
+.cabinet-v2 .cabinet-hero-actions .btn:not(.secondary) { color:var(--ref-ink); background:var(--ref-lime); border-color:var(--ref-lime); }
+.cabinet-v2 .cabinet-metric,.cabinet-v2 .dashboard-widget { background:var(--ref-surface); border-color:var(--ref-line); box-shadow:var(--ref-shadow); }
+.cabinet-v2 .cabinet-alert { color:#a44150; background:#fff0f1; border-color:#f3d3d7; }
+
+.deal-head { background:var(--ref-surface); border-color:var(--ref-line); }
+:is(.cabinet-v2,.deal-shell,.deal-head,.deal-accent-grid,.deal-summary) :is(.chip.ok,.chip.wait,.chip.bad) { text-shadow:none; }
+
+/* Puzzle is a brand device: lime edge + soft lift, without dark/chrome treatment. */
+:is(.chrome-puzzle,.puzzle-card,.puzzle-piece) {
+  filter: drop-shadow(0 10px 18px rgba(85,104,42,.12));
+}
+:is(.chrome-puzzle,.puzzle-card,.puzzle-piece) img {
+  outline: 2px solid rgba(202,255,22,.78);
+  outline-offset: -2px;
+}
+
+@media (max-width:767px) {
+  .wrap { padding-inline:14px; }
+  .top { min-height:58px; }
+  :is(.card,.surface-glass,.dashboard-widget,.cabinet-metric,.deal-head,.deal-summary,.supply-section) { border-radius:18px; }
+}
