@@ -1,0 +1,20 @@
+/* Reference V3 profile — spacious editorial header + compact booking rail. */
+.profile-v3 { max-width: 1180px; margin: 0 auto; padding: 28px 0 80px; }
+.profile-v3-hero { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr); gap:24px; align-items:stretch; margin-bottom:26px; }
+.profile-v3-main { position:relative; min-height:320px; padding:clamp(26px,4vw,52px); overflow:hidden; background:linear-gradient(145deg,rgba(255,255,255,.94),rgba(244,248,241,.76)); border:1px solid var(--ref-line); border-radius:30px; box-shadow:var(--ref-shadow); }
+.profile-v3-main::after { content:""; position:absolute; width:210px; height:210px; right:-72px; bottom:-80px; border:34px solid var(--ref-lime); border-radius:42px; transform:rotate(18deg); opacity:.88; }
+.profile-v3 .kicker { display:inline-flex; margin:0 0 18px; padding:7px 11px; border-radius:999px; background:var(--ref-lime-soft); color:#536b16; font:600 11px/1 var(--mono); letter-spacing:.08em; text-transform:uppercase; }
+.profile-v3 h1 { position:relative; z-index:1; max-width:760px; margin:0 0 16px; font-size:clamp(48px,7vw,92px); }
+.profile-v3-meta { position:relative; z-index:1; display:flex; gap:9px; align-items:center; flex-wrap:wrap; color:var(--ref-muted); }
+.profile-v3-note { position:relative; z-index:1; max-width:700px; margin-top:26px; font-size:17px; line-height:1.65; }
+.profile-v3-aside { display:flex; flex-direction:column; justify-content:space-between; gap:18px; padding:24px; background:var(--ref-ink); color:#f8fbf5; border-radius:30px; box-shadow:0 20px 60px rgba(17,24,16,.15); }
+.profile-v3-aside .timeline { color:#b9c0b5; }
+.profile-v3-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.profile-v3-aside .btn.secondary { background:rgba(255,255,255,.1)!important; color:#fff!important; border-color:rgba(255,255,255,.12)!important; }
+.profile-v3-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:0 0 32px; }
+.profile-v3-grid .card { min-height:190px; padding:22px; }
+.profile-v3-grid .card h2 { margin-top:0; font-size:19px; }
+.profile-v3-booking { padding:clamp(20px,3vw,32px); background:rgba(255,255,255,.62); border:1px solid var(--ref-line); border-radius:28px; box-shadow:var(--ref-shadow); }
+.profile-v3-booking > h2 { margin-top:0; font-size:clamp(25px,3vw,36px); letter-spacing:-.04em; }
+.profile-v3 .artist-desk-cta button,.profile-v3 .sticky-cta button { border:0; border-radius:999px; background:var(--ref-lime); color:var(--ref-ink); font:700 15px/1 "Manrope",sans-serif; padding:15px 22px; box-shadow:0 10px 26px rgba(183,224,30,.24); }
+@media(max-width:820px){.profile-v3{padding-top:14px}.profile-v3-hero{grid-template-columns:1fr}.profile-v3-main{min-height:280px;border-radius:24px}.profile-v3-aside{border-radius:24px}.profile-v3-grid{grid-template-columns:1fr}.profile-v3 h1{font-size:clamp(44px,14vw,70px)}.profile-v3-booking{border-radius:22px}}
