@@ -1,0 +1,16 @@
+[Unit]
+Description=BukerGo private development web
+After=network.target booker-demo-api.service
+[Service]
+Type=simple
+User=booker
+Group=booker
+WorkingDirectory=/opt/booker/apps/web
+Environment=NODE_ENV=production
+Environment=BOOKER_DEMO_GATEWAY=1
+Environment=BOOKER_INTERNAL_API_URL=http://127.0.0.1:8031
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3032
+Restart=on-failure
+NoNewPrivileges=true
+[Install]
+WantedBy=multi-user.target
