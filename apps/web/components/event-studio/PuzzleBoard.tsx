@@ -74,11 +74,15 @@ function piecePath(col: number, row: number, sides: [Side, Side, Side, Side]): s
   const y = OY + row * H;
   const [top, right, bottom, left] = sides;
   return [
-    `M ${x} ${y}`,
-    hEdge(x, y, x + W, top, -1),
-    vEdge(x + W, y, y + H, right, 1),
-    hEdge(x + W, y + H, x, bottom, 1),
-    vEdge(x, y + H, y, left, -1),
+    `M ${x+10} ${y}`,
+    hEdge(x+10, y, x + W-10, top, -1),
+    `Q ${x+W} ${y} ${x+W} ${y+10}`,
+    vEdge(x + W, y+10, y + H-10, right, 1),
+    `Q ${x+W} ${y+H} ${x+W-10} ${y+H}`,
+    hEdge(x + W-10, y + H, x+10, bottom, 1),
+    `Q ${x} ${y+H} ${x} ${y+H-10}`,
+    vEdge(x, y + H-10, y+10, left, -1),
+    `Q ${x} ${y} ${x+10} ${y}`,
     "Z",
   ].join(" ");
 }
@@ -186,7 +190,7 @@ export default function PuzzleBoard({ slots, reducedMotion = false, onSlotSelect
                   .filter(Boolean)
                   .join(" ")}
               >
-                {filled ? <path d={piecePath(col,row,sides)} transform="translate(0 7)" fill="#64796a" /> : null}
+                <path d={piecePath(col,row,sides)} transform="translate(0 7)" fill="#64796a" />
                 <path
                   d={piecePath(col, row, sides)}
                   fill={`url(#${gradientId}-chrome-${i})`}
@@ -194,7 +198,7 @@ export default function PuzzleBoard({ slots, reducedMotion = false, onSlotSelect
                   strokeWidth={filled ? 1.6 : 1.4}
                   strokeDasharray={undefined}
                   filter={filled ? `url(#${gradientId}-shadow)` : undefined}
-                  opacity={filled ? 1 : 0.65}
+                  opacity={filled ? 1 : 0.9}
                 />
                 {filled ? (
                   <path
