@@ -41,3 +41,9 @@ html[data-edition="black"] .workspace-sidebar a[aria-current="page"]{background:
 html[data-edition="black"] .nav-public{background:#202b23!important;border-color:#50634d!important}html[data-edition="black"] .nav-public a:hover,html[data-edition="black"] .nav-public a[aria-current="page"]{background:#d9fa79!important;color:#25351c!important}html[data-edition="black"] .reference-login a{background:#253629!important;color:#e2f2d1!important;border-color:#69815b!important}html[data-edition="black"] .assembly-page h1 em{color:#b8cf94}
 @media(max-width:760px){.assembly-page{display:block}.assembly-editor{margin-top:22px}.assembly-page>header h1{font-size:38px!important}.assembly-board .puzzle-board-stage{margin:20px 0}}
 html[data-edition="black"] .catalog-result :is(.catalog-price,.catalog-price span,.catalog-card-location,.catalog-card-location span,.catalog-card-address,.catalog-card-date,.catalog-card-facts,.catalog-card-facts span){color:#d6e5ce!important}html[data-edition="black"] .catalog-result .catalog-card-facts span{background:#32452e!important;border-color:#536a46!important}html[data-edition="black"] .catalog-result .catalog-open{background:#d9fa79!important;color:#26361a!important}html[data-edition="black"] .catalog-result .catalog-open span{color:#26361a!important}html[data-edition="black"] .profile-media-empty :is(span,small,strong){color:#d6e8c9!important}
+
+.demo-credentials { margin: 16px 0; padding: 16px; border: 1px solid var(--line); border-radius: 16px; }
+.demo-credentials summary { cursor: pointer; font-weight: 600; }
+.demo-credentials code { overflow-wrap: anywhere; user-select: all; }
+.demo-credentials form { display: grid; gap: 12px; margin-top: 16px; }
+.demo-credentials label { display: grid; gap: 6px; }
