@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MOSCOW_DISTRICTS, MOSCOW_METRO } from "@/lib/moscowDistricts";
 import { CATEGORY, categoryLabel } from "@/lib/copy";
-import { trackClientEvent } from "@/lib/api";
+import { apiBase, trackClientEvent } from "@/lib/api";
 
 export type CategoryChip = { code: string; title: string };
 
@@ -65,7 +65,7 @@ export function CatalogFilters(props: CatalogFilterValues) {
       return;
     }
     let cancelled = false;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/categories`)
+    fetch(`${apiBase()}/categories`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items?: { code?: string; title?: string }[] }) => {
         const items = Array.isArray(data.items) ? data.items : [];
@@ -95,6 +95,7 @@ export function CatalogFilters(props: CatalogFilterValues) {
     .join(" · ");
 
   const reset = new URLSearchParams({ city });
+  if (kind) reset.set("kind", kind);
   if (event) reset.set("event", event);
   if (requirement) reset.set("requirement", requirement);
   if (exclude) reset.set("exclude", exclude);
@@ -129,12 +130,12 @@ export function CatalogFilters(props: CatalogFilterValues) {
           <fieldset className="catalog-filter-group catalog-category-options">
             <legend>Категории</legend>
             <label className="catalog-filter-option">
-              <input type="radio" name="category" value="" defaultChecked={!category} onChange={(e) => e.currentTarget.form?.requestSubmit()} />
+              <input type="radio" name="category" value="" defaultChecked={!category} />
               <span>Все категории</span>
             </label>
-            {cats.map((c) => (
+            {cats.filter((c) => kind === "venue" ? c.code === "venue" : kind === "artist" ? c.code !== "venue" : true).map((c) => (
               <label key={c.code} className="catalog-filter-option">
-                <input type="radio" name="category" value={c.code} defaultChecked={category === c.code} onChange={(e) => e.currentTarget.form?.requestSubmit()} />
+                <input type="radio" name="category" value={c.code} defaultChecked={category === c.code} />
                 <span>{c.title || categoryLabel(c.code)}</span>
               </label>
             ))}

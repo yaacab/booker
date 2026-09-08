@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from booker_api.calendar import MSK, calendar_day_bounds, open_slots_unmasked, overlapping_slots
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
+from booker_api.demo_calendar import ensure_demo_day
 from booker_api.models import (
     Artist,
     ArtistTariff,
@@ -503,6 +504,7 @@ def search_catalog(
     db: Session = Depends(get_db),
 ):
     """В выдаче только профили с календарём. Занятые слоты не считаются свободными."""
+    ensure_demo_day(db, date or now())
     excluded = {item.strip() for item in (exclude or "").split(",") if item.strip()}
     kind_l = (kind or "").strip().lower() or None
     include_artists = kind_l != "venue" and (not category or category != "venue")

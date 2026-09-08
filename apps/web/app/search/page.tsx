@@ -20,6 +20,7 @@ export async function generateMetadata({
 }
 
 const API =
+  (process.env.BOOKER_DEMO_GATEWAY === "1" ? "http://127.0.0.1:8031" : undefined) ||
   process.env.BOOKER_INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   "http://127.0.0.1:8000";
@@ -50,7 +51,7 @@ function fallbackCategories(): CategoryChip[] {
 
 async function loadCategories(): Promise<CategoryChip[]> {
   try {
-    const res = await fetch(`${API}/categories`, { cache: "no-store" });
+    const res = await fetch(`${API}/categories`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
     if (!res.ok) return fallbackCategories();
     const data = await res.json();
     const items = Array.isArray(data.items) ? data.items : [];
@@ -88,7 +89,8 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<SearchQuery>;
 }) {
-  const q = await searchParams;
+  const raw = await searchParams;
+  const q = { ...raw, category: raw.kind === "venue" || (raw.kind === "artist" && raw.category === "venue") ? undefined : raw.category };
   const city = q.city || "Москва";
   const extra = new URLSearchParams();
   extra.set("city", city);
@@ -123,14 +125,14 @@ export default async function SearchPage({
   let venues: SearchItem[] = [];
   let error: string | null = null;
   const [catalogRes, categories] = await Promise.all([
-    fetch(`${API}/catalog/search?${params.toString()}`, { cache: "no-store" }).catch(() => null),
+    fetch(`${API}/catalog/search?${params.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(8000) }).catch(() => null),
     loadCategories(),
   ]);
   try {
     if (catalogRes?.ok) {
       const data = await catalogRes.json();
-      items = data.items ?? [];
-      venues = data.venues ?? [];
+      items = Array.isArray(data.items) ? data.items : [];
+      venues = Array.isArray(data.venues) ? data.venues : [];
     } else error = "Каталог временно недоступен.";
   } catch {
     error = "Каталог временно недоступен.";

@@ -47,3 +47,43 @@ html[data-edition="black"] .catalog-result :is(.catalog-price,.catalog-price spa
 .demo-credentials code { overflow-wrap: anywhere; user-select: all; }
 .demo-credentials form { display: grid; gap: 12px; margin-top: 16px; }
 .demo-credentials label { display: grid; gap: 6px; }
+
+/* Explicit surface/text pairs prevent the global dark theme from splitting fields. */
+html:not([data-edition="black"]) { color-scheme: light; }
+html .team-legend button,
+html .team-legend button strong { color: #24351c !important; }
+html .team-legend button { background: #d9fa79; padding: 10px; }
+html .catalog-reference .catalog-search-field,
+html .catalog-reference .filter-toggle,
+html .catalog-reference .catalog-filters form {
+  background: var(--edition-panel) !important;
+  color: var(--edition-text) !important;
+  border-color: var(--edition-line) !important;
+}
+html .site-content .catalog-reference .catalog-search-field input {
+  background: transparent !important;
+  color: var(--edition-text) !important;
+  font-size: 16px;
+  min-height: 36px;
+  border: 0 !important;
+}
+html .catalog-search-field > svg { stroke: var(--edition-text); }
+.catalog-filters *, .catalog-search-field { box-sizing: border-box; }
+.catalog-filters fieldset, .catalog-filters label { min-width: 0; }
+.catalog-filters input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+.catalog-filters select { width: 100%; max-width: 100%; min-width: 0; font-size: 16px; }
+html .catalog-filter-option { min-height: 44px; cursor: pointer; }
+html .catalog-filter-option input[type="radio"] {
+  appearance: auto; width: 20px; height: 20px; flex: 0 0 20px;
+  accent-color: #78972a; cursor: pointer;
+}
+html .catalog-filter-group { background: transparent !important; }
+html .catalog-reference .catalog-find,
+html .catalog-reference .catalog-apply-filters { color: #24351c !important; }
+@media (max-width: 900px) {
+  html .catalog-reference .catalog-filters form { grid-template-columns: minmax(0, 1fr); }
+  html .catalog-reference .catalog-filters form > * { grid-column: 1; grid-row: auto; min-width: 0; }
+  html .catalog-reference .catalog-additional-filters { grid-template-columns: minmax(0, 1fr); }
+  html .catalog-reference .catalog-filter-group > label:not(.catalog-filter-option) { display: grid; gap: 8px; }
+  html .catalog-reference .catalog-search-field { border-radius: 12px; border: 1px solid var(--edition-line); }
+}

@@ -10,6 +10,7 @@ Environment=PYTHONPATH=/opt/booker/apps/api
 Environment=BOOKER_DATABASE_URL=sqlite:////var/lib/booker-demo/demo.db
 Environment=BOOKER_UPLOAD_DIR=/var/lib/booker-demo/uploads
 Environment=BOOKER_PAYMENT_PROVIDER=stub
+Environment=BOOKER_DEMO_OPEN_CALENDAR=1
 Environment=BOOKER_EMAIL_PROVIDER=disabled
 Environment=BOOKER_SMS_PROVIDER=disabled
 Environment=BOOKER_PUSH_PROVIDER=disabled
