@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { DemoBanner } from "./DemoBanner";
+import { EditionToggle } from "./EditionToggle";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
@@ -69,7 +71,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setAuthed(Boolean(getToken()));
-    setAdmin(localStorage.getItem(ADMIN_KEY) === "1");
+    setAdmin(sessionStorage.getItem("booker.demo.token") ? sessionStorage.getItem("booker.demo.admin") === "1" : localStorage.getItem(ADMIN_KEY) === "1");
     setNotificationsOpen(false);
   }, [path]);
 
@@ -148,13 +150,14 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   if (fullScreenStudio) {
     return (
       <div id="content" key="event-studio-fullscreen" className="studio-fullscreen-root">
-        {children}
+        <DemoBanner /><EditionToggle />{children}
       </div>
     );
   }
 
   return (
     <>
+      <DemoBanner />
       <div id="scroll-progress" className="scroll-progress" aria-hidden />
       <a className="skip" href="#content">
         К содержанию
@@ -190,7 +193,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <>
                 <Link href="/search?kind=artist">Артисты</Link>
                 <Link href="/search?kind=venue">Площадки</Link>
-                <Link href="/#process-title">Как это работает</Link>
+                <Link href="/assemble">Собрать событие</Link>
               </>
             )}
             {authed ? (
@@ -283,6 +286,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               </button>
             ) : null}
           </nav>
+          <EditionToggle />
           <div className={`nav-mobile-auth${!authed ? " reference-login" : ""}`}>
             {authed ? (
               <button
@@ -307,7 +311,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </div>
         <footer className="site-footer surface-glass reference-footer">
           <Link href="/" className="footer-brand" aria-label="Букер — главная"><BrandLockup /><span>Люди. Места. События.</span></Link>
-          <nav aria-label="Информация о сервисе"><Link href="/legal/privacy">Конфиденциальность</Link><Link href="/legal">Документы</Link><Link href="/faq">Вопросы и ответы</Link><Link href="/support">Поддержка</Link></nav>
+          <nav aria-label="Информация о сервисе"><Link href="/dev/cabinets">Демо-кабинеты</Link><Link href="/legal/privacy">Конфиденциальность</Link><Link href="/legal">Документы</Link><Link href="/faq">Вопросы и ответы</Link><Link href="/support">Поддержка</Link></nav>
         </footer>
       </div>
       <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">

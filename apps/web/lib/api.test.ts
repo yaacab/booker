@@ -18,3 +18,16 @@ test("API errors preserve actionable conflicts without exposing HTML or server e
   assert.doesNotMatch(apiErrorMessage(422, [{ msg: "Invalid", input: "private@example.test" }]), /private/);
   assert.ok(apiErrorMessage(200, undefined));
 });
+
+test("demo sessions use the isolated API and leave a real session intact", async () => {
+ const {apiBase,getToken,getActiveOrg,setActiveOrg,setToken}=await import("./api");
+ const memory=()=>{const m=new Map<string,string>();return {getItem:(k:string)=>m.get(k)||null,setItem:(k:string,v:string)=>m.set(k,v),removeItem:(k:string)=>m.delete(k)}};
+ const local=memory(),session=memory();
+ const original=Object.fromEntries(["window","localStorage","sessionStorage"].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+ try{Object.defineProperty(globalThis,"window",{configurable:true,value:{}});Object.defineProperty(globalThis,"localStorage",{configurable:true,value:local});Object.defineProperty(globalThis,"sessionStorage",{configurable:true,value:session});
+ local.setItem("booker.token","real-token");local.setItem("booker.org","real-org");session.setItem("booker.demo.token","demo-token");
+ assert.equal(apiBase(),"/development-api");assert.equal(getToken(),"demo-token");assert.equal(getActiveOrg(),null);
+ setActiveOrg("demo-org");assert.equal(getActiveOrg(),"demo-org");assert.equal(local.getItem("booker.org"),"real-org");
+ setToken(null);assert.equal(getToken(),"real-token");assert.equal(getActiveOrg(),"real-org");assert.equal(session.getItem("booker.demo.token"),null);
+ }finally{for(const key of Object.keys(original)){if(original[key])Object.defineProperty(globalThis,key,original[key]!);else Reflect.deleteProperty(globalThis,key)}}
+});

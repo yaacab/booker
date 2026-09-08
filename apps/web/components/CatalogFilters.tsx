@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MOSCOW_DISTRICTS, MOSCOW_METRO } from "@/lib/moscowDistricts";
 import { CATEGORY, categoryLabel } from "@/lib/copy";
 import { trackClientEvent } from "@/lib/api";
 
@@ -9,6 +10,8 @@ export type CategoryChip = { code: string; title: string };
 
 export type CatalogFilterValues = {
   city: string;
+  district?: string;
+  metro?: string;
   date?: string;
   category?: string;
   categories?: CategoryChip[];
@@ -122,6 +125,7 @@ export function CatalogFilters(props: CatalogFilterValues) {
           {requirement ? <input type="hidden" name="requirement" value={requirement} /> : null}
           {exclude ? <input type="hidden" name="exclude" value={exclude} /> : null}
 
+          <fieldset className="catalog-filter-group"><legend>Район и метро Москвы</legend><datalist id="catalog-districts">{MOSCOW_DISTRICTS.map(x=><option key={x} value={x}/>)}</datalist><datalist id="catalog-metro">{MOSCOW_METRO.map(x=><option key={x} value={x}/>)}</datalist><label>Район<input list="catalog-districts" name="district" defaultValue={props.district || ""} placeholder="Например, Хамовники" maxLength={128}/></label><label>Метро<input list="catalog-metro" name="metro" defaultValue={props.metro || ""} placeholder="Например, Парк культуры" maxLength={128}/></label><p className="timeline">Фильтр расположения применяется к площадкам. Выезд специалиста согласуется отдельно.</p></fieldset>
           <fieldset className="catalog-filter-group catalog-category-options">
             <legend>Категории</legend>
             <label className="catalog-filter-option">

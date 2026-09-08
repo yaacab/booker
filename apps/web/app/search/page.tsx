@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MoscowMap } from "@/components/MoscowMap";
 import { CatalogFilters, type CategoryChip } from "@/components/CatalogFilters";
 import { CatalogResultCard } from "@/components/CatalogResultCard";
 import { CATEGORY, categoryLabel, PILOT_CITIES } from "@/lib/copy";
@@ -37,6 +38,7 @@ type SearchItem = {
   tariffs?: { honorarium_rub: number }[];
   address?: string;
   metro?: string;
+  district?: string;
   availability_mode?: string;
   listing_origin?: string;
   matching_halls?: { id: string; name: string; capacity: number }[];
@@ -65,6 +67,8 @@ async function loadCategories(): Promise<CategoryChip[]> {
 }
 
 type SearchQuery = {
+  district?: string;
+  metro?: string;
   city?: string;
   date?: string;
   category?: string;
@@ -99,6 +103,8 @@ export default async function SearchPage({
   if (q.budget_max) extra.set("budget_max", q.budget_max);
   if (q.guests) extra.set("guests", q.guests);
   if (q.seating) extra.set("seating", q.seating);
+  if(q.district) extra.set("district",q.district);
+  if(q.metro) extra.set("metro",q.metro);
   const itemQs = extra.toString();
   const params = new URLSearchParams();
   params.set("city", city);
@@ -111,6 +117,8 @@ export default async function SearchPage({
   if (q.budget_max) params.set("budget_max", q.budget_max);
   if (q.guests) params.set("guests", q.guests);
   if (q.seating) params.set("seating", q.seating);
+  if(q.district) params.set("district",q.district);
+  if(q.metro) params.set("metro",q.metro);
   let items: SearchItem[] = [];
   let venues: SearchItem[] = [];
   let error: string | null = null;
@@ -160,6 +168,8 @@ export default async function SearchPage({
       <div className="catalog-layout">
         <CatalogFilters
           key={JSON.stringify(q)}
+          district={q.district}
+          metro={q.metro}
           city={city}
           date={q.date}
           category={q.category}
@@ -224,6 +234,7 @@ export default async function SearchPage({
               </p>
             </article>
           ) : null}
+          {city === "Москва" && q.kind !== "artist" ? <MoscowMap venues={venues} district={q.district || q.metro} /> : null}
           {items.length > 0 ? (
             <>
               {venues.length > 0 ? <h2 className="catalog-section-title">Артисты</h2> : null}

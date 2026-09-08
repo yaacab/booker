@@ -1,0 +1,27 @@
+[Unit]
+Description=BukerGo isolated development cabinets
+After=network.target
+[Service]
+Type=simple
+User=booker-demo
+Group=booker-demo
+WorkingDirectory=/opt/booker/apps/api
+Environment=PYTHONPATH=/opt/booker/apps/api
+Environment=BOOKER_DATABASE_URL=sqlite:////var/lib/booker-demo/demo.db
+Environment=BOOKER_UPLOAD_DIR=/var/lib/booker-demo/uploads
+Environment=BOOKER_PAYMENT_PROVIDER=stub
+Environment=BOOKER_EMAIL_PROVIDER=disabled
+Environment=BOOKER_SMS_PROVIDER=disabled
+Environment=BOOKER_PUSH_PROVIDER=disabled
+Environment=BOOKER_IN_APP_PROVIDER=dev
+Environment=BOOKER_REQUIRE_ADMIN_2FA_ENFORCED=false
+ExecStart=/opt/booker/.venv/bin/uvicorn booker_api.main:app --host 127.0.0.1 --port 8031
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/booker-demo
+InaccessiblePaths=/opt/booker/data /etc/booker
+[Install]
+WantedBy=multi-user.target

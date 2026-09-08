@@ -41,10 +41,12 @@ test("studio text and form fields remain readable", () => {
   assert.match(studio, /\.stage-rail button[^}]*min-height: 52px/);
 });
 
-test("home opt-in studio links preserve the default-off classic wizard", () => {
-  assert.equal(((home + hero).match(/href="\/events\/new\?event_studio_map_v1=1"/g) ?? []).length, 2);
-  assert.match(home, /<HomeSearchForm \/>/);
-  assert.match(home, /платежи на платформе отключены/);
+test("home offers direct search and assembly while keeping the classic wizard", () => {
+  const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.ok(home.includes('/search?kind=artist'));
+  assert.ok(home.includes('/assemble'));
+  const assembly = readFileSync(new URL("../app/assemble/page.tsx", import.meta.url), "utf8");
+  assert.ok(assembly.includes('/events/new?event_studio_map_v1=1'));
 });
 
 test("studio never assigns reference portraits or venue photos to real suppliers", () => {

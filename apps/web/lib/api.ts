@@ -3,6 +3,7 @@ const ORG_KEY = "booker.org";
 
 export function apiBase(): string {
   if (typeof window !== "undefined") {
+    if (sessionStorage.getItem("booker.demo.token")) return "/development-api";
     return process.env.NEXT_PUBLIC_API_URL || "/api";
   }
   return (
@@ -14,22 +15,32 @@ export function apiBase(): string {
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem("booker.demo.token") || localStorage.getItem(TOKEN_KEY);
 }
 
 export function getActiveOrg(): string | null {
   if (typeof window === "undefined") return null;
+  if (sessionStorage.getItem("booker.demo.token")) return sessionStorage.getItem("booker.demo.org");
   return localStorage.getItem(ORG_KEY);
 }
 
 export function setActiveOrg(id: string | null): void {
   if (typeof window === "undefined") return;
+  if (sessionStorage.getItem("booker.demo.token")) {
+    if(id) sessionStorage.setItem("booker.demo.org",id); else sessionStorage.removeItem("booker.demo.org");
+    return;
+  }
   if (id) localStorage.setItem(ORG_KEY, id);
   else localStorage.removeItem(ORG_KEY);
 }
 
 export function setToken(token: string | null): void {
   if (typeof window === "undefined") return;
+  if (sessionStorage.getItem("booker.demo.token")) {
+    if(token)sessionStorage.setItem("booker.demo.token",token);
+    else for(const key of ["booker.demo.token","booker.demo.org","booker.demo.admin"])sessionStorage.removeItem(key);
+    return;
+  }
   if (token) localStorage.setItem(TOKEN_KEY, token);
   else {
     localStorage.removeItem(TOKEN_KEY);

@@ -131,6 +131,7 @@ export default function LoginPage() {
       </p>
       <p className="kicker">{kicker}</p>
       <h1>{heading}</h1>
+      <p><a className="btn secondary" href="/dev/cabinets">Войти в демо-кабинет без пароля →</a></p>
       {mode === "register" ? (
         <p className="timeline">Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи.</p>
       ) : mode === "reset" ? (

@@ -1,9 +1,10 @@
 "use client";
+import { AddToAssembly } from "./AddToAssembly";
 
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, getActiveOrg, getToken, isWriteRole } from "@/lib/api";
+import { apiBase, api, getActiveOrg, getToken, isWriteRole } from "@/lib/api";
 import { CHIP } from "@/lib/copy";
 import { formatWhen, guestsLabel, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -70,7 +71,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
     setAuthed(Boolean(getToken()));
     void params.then((p) => {
       setVenueId(p.id);
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/venues/${p.id}`)
+      fetch(`${apiBase()}/venues/${p.id}`)
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найдена"))))
         .then((venue: Venue) => {
           setData(venue);
@@ -252,7 +253,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
             </div>
             <div className="public-profile-actions">
               <a className="btn profile-primary-action" href="#profile-booking">Добавить в событие <span aria-hidden="true">→</span></a>
-              <div className="profile-secondary-actions"><FavoriteToggle targetType="venue" targetId={data.id} /><Link className="btn secondary" href={`/venues/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
+              <div className="profile-secondary-actions"><AddToAssembly id={data.id} kind="venue" /><FavoriteToggle targetType="venue" targetId={data.id} /><Link className="btn secondary" href={`/venues/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
             </div>
           </header>
 

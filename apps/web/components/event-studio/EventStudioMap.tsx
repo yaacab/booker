@@ -1,4 +1,5 @@
 "use client";
+import { MoscowMap } from "@/components/MoscowMap";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CityField } from "@/components/CityField";
@@ -287,6 +288,8 @@ export default function EventStudioMap({
               <div className="studio-section-head"><span className="studio-step"><Icon name="place" /></span><h2>Место встречи</h2></div>
               <h3>{venue?.name || (draft.venueId ? "Выбранная площадка" : "Где всё случится?")}</h3>
               <p>{venue ? venue.city : draft.venueId ? "Площадка недоступна в текущем каталоге" : "Выберите пространство под ваш формат"}</p>
+              <label>Район Москвы<input value={draft.district || ""} placeholder="Например, Хамовники" onChange={e => update({...draft,district:e.target.value})}/></label>
+              <MoscowMap venues={venues.filter(v=>!draft.district || v.district?.toLocaleLowerCase().includes(draft.district.toLocaleLowerCase()))} district={draft.district} onSelect={setVenue}/>
               {venues.length ? (
                 <label className="studio-venue-field">Площадка
                   <select id="venue-select" value={draft.venueId || ""} onChange={(e) => setVenue(e.target.value)}>

@@ -91,11 +91,7 @@ function labelPosition(index: number): { left: string; top: string } {
   const cx = OX + col * W + W / 2;
   const cy = OY + row * H + H / 2;
 
-  // Labels sit in gutters beside pieces — never drawn on chrome surfaces.
-  if (col === 0) return { left: `${((OX * 0.48) / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
-  if (col === 2) return { left: `${((vbW - OX * 0.48) / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
-  if (row === 0) return { left: `${(cx / vbW) * 100}%`, top: `${((OY * 0.42) / vbH) * 100}%` };
-  return { left: `${(cx / vbW) * 100}%`, top: `${((vbH - OY * 0.42) / vbH) * 100}%` };
+  return { left: `${(cx / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
 }
 
 export default function PuzzleBoard({ slots, reducedMotion = false, onSlotSelect }: PuzzleBoardProps) {
@@ -155,9 +151,9 @@ export default function PuzzleBoard({ slots, reducedMotion = false, onSlotSelect
                   y2="1"
                 >
                   <stop offset="0%" stopColor="var(--chrome-hi, #f2f4f7)" />
-                  <stop offset="38%" stopColor="var(--chrome-mid, #b8bec8)" />
+                  <stop offset="25%" stopColor="#f5fff9" /><stop offset="45%" stopColor="#7b9184" /><stop offset="49%" stopColor="#526b5a" /><stop offset="52%" stopColor="#f1fff1" />
                   <stop offset="62%" stopColor="var(--chrome-hi, #f2f4f7)" />
-                  <stop offset="100%" stopColor="var(--chrome-lo, #6e7582)" />
+                  <stop offset="83%" stopColor="#b2c9b5" /><stop offset="100%" stopColor="#effff0" />
                 </linearGradient>
               );
             })}
@@ -190,14 +186,15 @@ export default function PuzzleBoard({ slots, reducedMotion = false, onSlotSelect
                   .filter(Boolean)
                   .join(" ")}
               >
+                {filled ? <path d={piecePath(col,row,sides)} transform="translate(0 7)" fill="#64796a" /> : null}
                 <path
                   d={piecePath(col, row, sides)}
-                  fill={filled ? `url(#${gradientId}-chrome-${i})` : "rgba(184, 190, 200, 0.08)"}
+                  fill={`url(#${gradientId}-chrome-${i})`}
                   stroke={filled ? "var(--chrome-mid, #b8bec8)" : "var(--chrome-lo, #6e7582)"}
                   strokeWidth={filled ? 1.6 : 1.4}
-                  strokeDasharray={filled ? undefined : "5 4"}
+                  strokeDasharray={undefined}
                   filter={filled ? `url(#${gradientId}-shadow)` : undefined}
-                  opacity={filled ? 1 : 0.55}
+                  opacity={filled ? 1 : 0.65}
                 />
                 {filled ? (
                   <path

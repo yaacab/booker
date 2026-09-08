@@ -1,9 +1,10 @@
 "use client";
+import { AddToAssembly } from "./AddToAssembly";
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { api, getToken } from "@/lib/api";
+import { apiBase, api, getToken } from "@/lib/api";
 import { CHIP, categoryLabel } from "@/lib/copy";
 import { formatWhen, money, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -69,7 +70,7 @@ export function ArtistProfileClient() {
     setWantedDay(day);
     if (fromEvent) setEventId(fromEvent);
     if (fromReq) setRequirementId(fromReq);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/artists/${params.id}`)
+    fetch(`${apiBase()}/artists/${params.id}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найден"))))
       .then((json: Artist) => {
         setData(json);
@@ -214,7 +215,7 @@ export function ArtistProfileClient() {
             </div>
             <div className="public-profile-actions">
               <a className="btn profile-primary-action" href="#profile-booking">Добавить в событие <span aria-hidden="true">→</span></a>
-              <div className="profile-secondary-actions"><FavoriteToggle targetType="artist" targetId={data.id} /><Link className="btn secondary" href={`/artists/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
+              <div className="profile-secondary-actions"><AddToAssembly id={data.id} kind="artist" /><FavoriteToggle targetType="artist" targetId={data.id} /><Link className="btn secondary" href={`/artists/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
             </div>
           </header>
 
