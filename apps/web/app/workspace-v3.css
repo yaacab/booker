@@ -1,0 +1,54 @@
+/* Reference V3 shared workspaces */
+.v3-shell{max-width:1320px;margin:0 auto;padding:24px 0 80px}
+.v3-shell>main,.v3-shell>section{min-width:0}
+.v3-shell h1{font-size:clamp(44px,6vw,76px);margin:8px 0 24px}
+.v3-shell .grid{gap:14px}
+.v3-shell .card,.v3-shell .dashboard-widget,.v3-shell .deal-head,.v3-shell .deal-summary{border-radius:24px}
+.v3-shell .tabs{display:flex;gap:8px;flex-wrap:wrap;padding:6px;background:rgba(255,255,255,.6);border:1px solid var(--ref-line);border-radius:16px}
+.v3-shell .tabs button,.v3-shell .tabs a{border-radius:12px}
+.v3-shell table{background:rgba(255,255,255,.72);border-radius:16px;overflow:hidden}
+.v3-shell th{background:#f5f8f2;color:var(--ref-muted)}
+.v3-shell tr+tr td{border-top:1px solid var(--ref-line)}
+
+/* Deal Room: keep information density but use light editorial surfaces. */
+.deal-v3 .deal-shell{display:grid;gap:16px}
+.deal-v3 .deal-head{padding:24px;background:linear-gradient(145deg,#fff,#f5f8f2);border:1px solid var(--ref-line);box-shadow:var(--ref-shadow)}
+.deal-v3 .deal-head h1{font-size:clamp(38px,5vw,64px)}
+.deal-v3 .msg,.deal-v3 .quote,.deal-v3 .timeline{border-radius:16px}
+.deal-v3 .msg.chat{border-left:3px solid var(--ref-lime-strong);background:#fff}
+.deal-v3 .quote{background:var(--ref-lime-soft);border-color:#dcefa0}
+.deal-v3 .deal-aside .card{background:rgba(255,255,255,.8)}
+
+/* Event constructor: build flow reads as a studio board. */
+.event-builder-v3{max-width:1380px;margin:0 auto;padding:18px 0 90px}
+.event-builder-v3 main{min-width:0}
+.event-builder-v3 h1{font-size:clamp(46px,7vw,86px)}
+.event-builder-v3 .card{border-radius:24px}
+.event-builder-v3 :is(button,.btn):not(.secondary){border-radius:999px}
+.event-builder-v3 progress{accent-color:var(--ref-lime-strong)}
+
+/* Cabinet/admin: clean command-center language. */
+.cabinet-v3,.admin-v3{max-width:1380px;margin:0 auto;padding:18px 0 88px}
+.cabinet-v3 .cabinet-v2,.admin-v3 main{min-width:0}
+.cabinet-v3 .dashboard-widget,.admin-v3 .card{background:rgba(255,255,255,.8);border-color:var(--ref-line);box-shadow:var(--ref-shadow)}
+.admin-v3 table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--ref-line);border-radius:18px;overflow:hidden}
+.admin-v3 th,.admin-v3 td{padding:12px 14px;text-align:left}
+
+/* Venue profile without rewriting booking/business logic. */
+main:not(.profile-v3):has(.artist-desk-cta){max-width:1180px;margin:0 auto;padding:26px 0 84px}
+main:not(.profile-v3):has(.artist-desk-cta)>h1{font-size:clamp(48px,7vw,84px);margin:8px 0 16px}
+main:not(.profile-v3):has(.artist-desk-cta)>.kicker{display:inline-flex;padding:7px 11px;border-radius:999px;background:var(--ref-lime-soft);color:#536b16}
+main:not(.profile-v3):has(.artist-desk-cta)>.card{margin:18px 0;padding:22px}
+main:not(.profile-v3):has(.artist-desk-cta)>h2{margin-top:34px;font-size:28px;letter-spacing:-.035em}
+
+/* Legal and FAQ stay readable, not dashboard-like. */
+.legal-doc{max-width:900px;margin:0 auto;padding-bottom:90px}
+.legal-doc h1{font-size:clamp(40px,6vw,66px)}
+.legal-doc h2{margin-top:42px;font-size:28px;letter-spacing:-.035em}
+.legal-doc p,.legal-doc li{font-size:16px;line-height:1.75}
+.legal-banner{padding:18px 20px;border:1px solid #dcefa0;border-radius:18px;background:var(--ref-lime-soft);color:#435020}
+.legal-table-wrap{overflow:auto;border:1px solid var(--ref-line);border-radius:18px;background:#fff}
+.legal-table{width:100%;border-collapse:collapse}
+.legal-table th,.legal-table td{padding:12px 14px;border-bottom:1px solid var(--ref-line);text-align:left}
+
+@media(max-width:767px){.v3-shell,.event-builder-v3,.cabinet-v3,.admin-v3,main:not(.profile-v3):has(.artist-desk-cta){padding-inline:4px}.deal-v3 .deal-head{padding:18px}.admin-v3{overflow-x:hidden}.legal-doc{padding-inline:2px}}
