@@ -4,5 +4,5 @@ export const metadata = {
 };
 
 export default function CabinetLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <div className="cabinet-v3">{children}</div>;
 }
