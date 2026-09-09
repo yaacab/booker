@@ -10,7 +10,7 @@
 .v3-shell th{background:#f5f8f2;color:var(--ref-muted)}
 .v3-shell tr+tr td{border-top:1px solid var(--ref-line)}
 
-/* Deal Room: keep information density but use light editorial surfaces. */
+/* Deal Room */
 .deal-v3 .deal-shell{display:grid;gap:16px}
 .deal-v3 .deal-head{padding:24px;background:linear-gradient(145deg,#fff,#f5f8f2);border:1px solid var(--ref-line);box-shadow:var(--ref-shadow)}
 .deal-v3 .deal-head h1{font-size:clamp(38px,5vw,64px)}
@@ -19,7 +19,7 @@
 .deal-v3 .quote{background:var(--ref-lime-soft);border-color:#dcefa0}
 .deal-v3 .deal-aside .card{background:rgba(255,255,255,.8)}
 
-/* Event constructor: build flow reads as a studio board. */
+/* Event constructor */
 .event-builder-v3{max-width:1380px;margin:0 auto;padding:18px 0 90px}
 .event-builder-v3 main{min-width:0}
 .event-builder-v3 h1{font-size:clamp(46px,7vw,86px)}
@@ -27,21 +27,51 @@
 .event-builder-v3 :is(button,.btn):not(.secondary){border-radius:999px}
 .event-builder-v3 progress{accent-color:var(--ref-lime-strong)}
 
-/* Cabinet/admin: clean command-center language. */
+/* Cabinet/admin */
 .cabinet-v3,.admin-v3{max-width:1380px;margin:0 auto;padding:18px 0 88px}
 .cabinet-v3 .cabinet-v2,.admin-v3 main{min-width:0}
 .cabinet-v3 .dashboard-widget,.admin-v3 .card{background:rgba(255,255,255,.8);border-color:var(--ref-line);box-shadow:var(--ref-shadow)}
 .admin-v3 table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--ref-line);border-radius:18px;overflow:hidden}
 .admin-v3 th,.admin-v3 td{padding:12px 14px;text-align:left}
 
-/* Venue profile without rewriting booking/business logic. */
+/* Venue profile */
 main:not(.profile-v3):has(.artist-desk-cta){max-width:1180px;margin:0 auto;padding:26px 0 84px}
 main:not(.profile-v3):has(.artist-desk-cta)>h1{font-size:clamp(48px,7vw,84px);margin:8px 0 16px}
 main:not(.profile-v3):has(.artist-desk-cta)>.kicker{display:inline-flex;padding:7px 11px;border-radius:999px;background:var(--ref-lime-soft);color:#536b16}
 main:not(.profile-v3):has(.artist-desk-cta)>.card{margin:18px 0;padding:22px}
 main:not(.profile-v3):has(.artist-desk-cta)>h2{margin-top:34px;font-size:28px;letter-spacing:-.035em}
 
-/* Legal and FAQ stay readable, not dashboard-like. */
+/* Messages */
+.messages-v3{max-width:1100px;margin:0 auto;padding:28px 0 90px}
+.messages-v3-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:26px}
+.messages-v3 h1{font-size:clamp(48px,7vw,82px);margin:6px 0 8px}
+.messages-v3-list{display:grid;gap:12px}
+.messages-v3-card{padding:22px;background:rgba(255,255,255,.82)}
+.messages-v3-card-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.messages-v3-card h2{margin:4px 0 6px;font-size:24px;letter-spacing:-.035em}
+.messages-v3-dot{width:12px;height:12px;border-radius:50%;background:var(--ref-lime-strong);box-shadow:0 0 0 7px rgba(202,255,22,.18)}
+.messages-v3-preview{margin:16px 0 18px;padding:14px 16px;background:#f7f9f5;border:1px solid var(--ref-line);border-radius:14px}
+.messages-v3-preview p{margin:0}
+.messages-v3-empty{padding:34px}
+
+/* Favorites / shortlist */
+.favorites-v3{max-width:1160px;margin:0 auto;padding:28px 0 90px}
+.favorites-v3-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:20px}
+.favorites-v3 h1{font-size:clamp(48px,7vw,82px);margin:6px 0 8px}
+.favorites-v3-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.favorites-v3-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0}
+.favorites-v3-stats article{padding:18px 20px;border:1px solid var(--ref-line);border-radius:18px;background:rgba(255,255,255,.72);display:flex;flex-direction:column;gap:4px}
+.favorites-v3-stats strong{font-size:30px;letter-spacing:-.04em}
+.favorites-v3-stats span{color:var(--ref-muted);font-size:13px}
+.favorites-v3-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:24px}
+.favorites-v3-card{position:relative;min-height:210px;padding:22px;overflow:hidden}
+.favorites-v3-card:after{content:"";position:absolute;width:90px;height:90px;right:-30px;bottom:-34px;border:16px solid var(--ref-lime);border-radius:24px;transform:rotate(18deg);opacity:.7}
+.favorites-v3-card>*{position:relative;z-index:1}
+.favorites-v3-card-type{display:inline-flex;padding:6px 10px;border-radius:999px;background:var(--ref-lime-soft);font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.favorites-v3-card h2{font-size:26px;letter-spacing:-.04em;margin:16px 0 8px}
+.favorites-v3-empty{margin-top:22px;padding:34px}
+
+/* Legal and FAQ */
 .legal-doc{max-width:900px;margin:0 auto;padding-bottom:90px}
 .legal-doc h1{font-size:clamp(40px,6vw,66px)}
 .legal-doc h2{margin-top:42px;font-size:28px;letter-spacing:-.035em}
@@ -51,4 +81,10 @@ main:not(.profile-v3):has(.artist-desk-cta)>h2{margin-top:34px;font-size:28px;le
 .legal-table{width:100%;border-collapse:collapse}
 .legal-table th,.legal-table td{padding:12px 14px;border-bottom:1px solid var(--ref-line);text-align:left}
 
-@media(max-width:767px){.v3-shell,.event-builder-v3,.cabinet-v3,.admin-v3,main:not(.profile-v3):has(.artist-desk-cta){padding-inline:4px}.deal-v3 .deal-head{padding:18px}.admin-v3{overflow-x:hidden}.legal-doc{padding-inline:2px}}
+@media(max-width:767px){
+ .v3-shell,.event-builder-v3,.cabinet-v3,.admin-v3,main:not(.profile-v3):has(.artist-desk-cta),.messages-v3,.favorites-v3{padding-inline:4px}
+ .deal-v3 .deal-head{padding:18px}.admin-v3{overflow-x:hidden}.legal-doc{padding-inline:2px}
+ .messages-v3-head,.favorites-v3-head{align-items:flex-start;flex-direction:column}
+ .favorites-v3-stats{grid-template-columns:1fr 1fr 1fr}
+ .favorites-v3-grid{grid-template-columns:1fr}
+}
