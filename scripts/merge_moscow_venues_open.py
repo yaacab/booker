@@ -35,7 +35,9 @@ def _slug_name(name: str) -> str:
 
 def _norm_addr(address: str) -> str:
     s = (address or "").lower().replace("ё", "е")
-    s = re.sub(r"\b(ул\.?|улица|пр-?т\.?|проспект|пер\.?|переулок|наб\.?|шоссе|д\.?)\b", " ", s)
+    s = re.sub(
+        r"\b(ул\.?|улица|пр-?т\.?|проспект|пер\.?|переулок|наб\.?|шоссе|д\.?)\b", " ", s
+    )
     s = re.sub(r"[^a-z0-9а-я]+", " ", s, flags=re.IGNORECASE)
     return re.sub(r"\s+", " ", s).strip()
 
@@ -79,6 +81,48 @@ def _catalog_row(row: dict) -> dict:
             out["tariff_from_rub"] = int(row["tariff_from_rub"])
         except (TypeError, ValueError):
             pass
+    # Keep optional enrichment fields intact. The importer stores structured
+    # venue attributes and photo provenance when a source provides them.
+    for key in (
+        "alternative_name",
+        "venue_type",
+        "administrative_district",
+        "lat",
+        "lon",
+        "area_sqm",
+        "capacity_banquet",
+        "capacity_reception",
+        "capacity_theatre",
+        "minimum_spend_rub",
+        "deposit_rub",
+        "price_per_person_rub",
+        "booking_terms",
+        "own_catering_allowed",
+        "own_alcohol_allowed",
+        "corkage_fee",
+        "cuisine",
+        "parking",
+        "has_stage",
+        "has_sound",
+        "has_light",
+        "has_screen_projector",
+        "has_dressing_rooms",
+        "has_wifi",
+        "accessible",
+        "noise_restrictions",
+        "latest_event_time",
+        "phone",
+        "email",
+        "official_website",
+        "social_links",
+        "event_contact",
+        "number_of_halls",
+        "halls",
+        "sources",
+        "photos",
+    ):
+        if row.get(key) is not None:
+            out[key] = row[key]
     # Drop null capacity for cleaner JSON
     if out["capacity"] is None:
         del out["capacity"]
@@ -122,7 +166,13 @@ def merge(
             if _slug_name(existing["name"]) != slug:
                 continue
             ex_addr = _norm_addr(existing.get("address") or "")
-            if not addr_n or not ex_addr or addr_n == ex_addr or addr_n in ex_addr or ex_addr in addr_n:
+            if (
+                not addr_n
+                or not ex_addr
+                or addr_n == ex_addr
+                or addr_n in ex_addr
+                or ex_addr in addr_n
+            ):
                 return False
         keys.add(key)
         if url:
@@ -193,7 +243,9 @@ def main() -> int:
         "venues": merged,
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.out.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(f"wrote {n} venues -> {args.out}", file=sys.stderr)
     return 0 if n >= TARGET_MIN else 2
 

@@ -24,6 +24,7 @@ from booker_api.routers.deals import _transition
 from booker_api.routers.payments import capture_payment_as_succeeded
 from booker_api.schemas import DisputeIn, RefundIn, TotpEnableIn, VerifyIn
 from booker_api.security import audit, current_user, now, require_admin, require_admin_2fa
+from booker_api.venue_catalog import change_partnership_status
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -197,8 +198,22 @@ def decide_verification(
         target = db.get(Venue, body.target_id)
     if not target:
         raise HTTPException(404, "Цель верификации не найдена")
-    target.verified = body.approve
-    target.verified_status = "approved" if body.approve else "rejected"
+    if isinstance(target, Venue):
+        fallback_status = (
+            "unverified_listing"
+            if target.source_type == "automated_import"
+            else "claimed"
+        )
+        change_partnership_status(
+            db,
+            target,
+            "verified" if body.approve else fallback_status,
+            changed_by=user.id,
+            comment=body.notes,
+        )
+        target.verified_status = "approved" if body.approve else "rejected"
+    else:
+        target.verified = body.approve
     row = Verification(
         target_type=body.target_type,
         target_id=body.target_id,

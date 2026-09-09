@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from booker_api.calendar import MSK, calendar_day_bounds, open_slots_unmasked, overlapping_slots
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
+from booker_api.ical_import import calendar_targets, import_ical_source
 from booker_api.models import (
     Artist,
     ArtistTariff,
@@ -23,20 +24,6 @@ from booker_api.models import (
     VenueHall,
     VenueTariff,
 )
-
-
-def _supplier_deals_count(db: Session, org_id: str) -> int:
-    return (
-        db.query(Booking)
-        .join(Offer, Booking.offer_id == Offer.id)
-        .join(Request, Offer.request_id == Request.id)
-        .filter(
-            Request.supplier_org_id == org_id,
-            Booking.status.in_(("Confirmed", "InProgress", "Completed")),
-        )
-        .count()
-    )
-from booker_api.ical_import import calendar_targets, import_ical_source
 from booker_api.schemas import (
     ArtistIn,
     IcalImportIn,
@@ -58,8 +45,22 @@ from booker_api.security import (
     require_org_writer,
 )
 from booker_api.vacation import clear_vacation, set_vacation, vacation_status
+from booker_api.venue_catalog import public_disclosure
 
 router = APIRouter(tags=["catalog"])
+
+def _supplier_deals_count(db: Session, org_id: str) -> int:
+    return (
+        db.query(Booking)
+        .join(Offer, Booking.offer_id == Offer.id)
+        .join(Request, Offer.request_id == Request.id)
+        .filter(
+            Request.supplier_org_id == org_id,
+            Booking.status.in_(("Confirmed", "InProgress", "Completed")),
+        )
+        .count()
+    )
+
 
 
 def _catalog_iso(dt: datetime | None) -> str | None:
@@ -108,6 +109,8 @@ def _halls_for_venue(db: Session, venue_id: str) -> list[VenueHall]:
 
 
 def _venue_in_catalog(db: Session, venue: Venue) -> bool:
+    if venue.moderation_status != "published":
+        return False
     halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
     hall_ids = [hall.id for hall in halls]
     if not hall_ids:
@@ -578,6 +581,8 @@ def search_catalog(
     if include_venues:
         seating_l = (seating or "").strip().lower() or None
         for venue in db.query(Venue).filter(Venue.city == city).all():
+            if venue.moderation_status != "published":
+                continue
             if venue.id in excluded:
                 continue
             halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
@@ -641,6 +646,9 @@ def search_catalog(
                     "metro": getattr(venue, "metro", "") or "",
                     "availability_mode": getattr(venue, "availability_mode", "owner") or "owner",
                     "listing_origin": getattr(venue, "listing_origin", "owner") or "owner",
+                    "source_type": venue.source_type,
+                    "partnership_status": venue.partnership_status,
+                    "public_disclosure": public_disclosure(venue),
                     "capacity": venue.capacity,
                     "matching_halls": [_hall_item(h) for h in matching],
                     "open_slots": len(pool),
@@ -655,6 +663,8 @@ def search_catalog(
 def get_venue(venue_id: str, db: Session = Depends(get_db)):
     venue = db.get(Venue, venue_id)
     if not venue:
+        raise HTTPException(404, "Площадка не найдена")
+    if venue.moderation_status != "published":
         raise HTTPException(404, "Площадка не найдена")
     halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
     tariffs = db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).all()
@@ -682,6 +692,12 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
         "source_attribution": getattr(venue, "source_attribution", "") or "",
         "listing_origin": getattr(venue, "listing_origin", "owner") or "owner",
         "availability_mode": getattr(venue, "availability_mode", "owner") or "owner",
+        "source_type": venue.source_type,
+        "partnership_status": venue.partnership_status,
+        "public_disclosure": public_disclosure(venue),
+        "data_freshness_status": venue.data_freshness_status,
+        "official_website": venue.official_website,
+        "details": json.loads(venue.details_json or "{}"),
         "facts": {
             "note": (
                 "Календарь ориентировочный: слоты синтетические, доступность не подтверждена владельцем."

@@ -124,6 +124,31 @@ class Venue(Base):
     source_attribution: Mapped[str] = mapped_column(String(128), default="")
     listing_origin: Mapped[str] = mapped_column(String(32), default="owner")  # open_data|owner|seed
     availability_mode: Mapped[str] = mapped_column(String(32), default="owner")  # synthetic|owner
+    venue_type: Mapped[str] = mapped_column(String(64), default="")
+    administrative_district: Mapped[str] = mapped_column(String(32), default="")
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    phone: Mapped[str] = mapped_column(String(64), default="")
+    email: Mapped[str] = mapped_column(String(255), default="")
+    official_website: Mapped[str] = mapped_column(String(512), default="")
+    source_type: Mapped[str] = mapped_column(String(32), default="owner_submission")
+    partnership_status: Mapped[str] = mapped_column(String(32), default="claimed")
+    is_partner: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_claimed: Mapped[bool] = mapped_column(Boolean, default=True)
+    moderation_status: Mapped[str] = mapped_column(String(32), default="published")
+    completeness_score: Mapped[int] = mapped_column(Integer, default=0)
+    details_json: Mapped[str] = mapped_column(Text, default="{}")
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    partnership_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_crawled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    data_freshness_status: Mapped[str] = mapped_column(String(32), default="needs_review")
 
 
 class VenueHall(Base):
@@ -133,6 +158,78 @@ class VenueHall(Base):
     venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id"), index=True)
     name: Mapped[str] = mapped_column(String(255))
     capacity: Mapped[int] = mapped_column(Integer, default=50)
+
+
+class VenueSource(Base):
+    __tablename__ = "venue_sources"
+    __table_args__ = (UniqueConstraint("venue_id", "field_name", "source_url"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id"), index=True)
+    field_name: Mapped[str] = mapped_column(String(255))
+    source_url: Mapped[str] = mapped_column(String(1024))
+    source_kind: Mapped[str] = mapped_column(String(64))
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class VenuePhoto(Base):
+    __tablename__ = "venue_photos"
+    __table_args__ = (UniqueConstraint("venue_id", "photo_url"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id"), index=True)
+    photo_url: Mapped[str] = mapped_column(String(1024))
+    photo_source_url: Mapped[str] = mapped_column(String(1024))
+    photo_rights_status: Mapped[str] = mapped_column(String(32), default="unknown")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class VenueStatusHistory(Base):
+    __tablename__ = "venue_status_history"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id"), index=True)
+    old_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    new_status: Mapped[str] = mapped_column(String(32))
+    changed_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    comment: Mapped[str] = mapped_column(Text, default="")
+
+
+class VenueImportBatch(Base):
+    __tablename__ = "venue_import_batches"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    sequence_number: Mapped[int] = mapped_column(Integer)
+    city: Mapped[str] = mapped_column(String(128), default="Москва")
+    category: Mapped[str] = mapped_column(String(64), default="mixed")
+    administrative_district: Mapped[str] = mapped_column(String(32), default="all")
+    status: Mapped[str] = mapped_column(String(32), default="running")
+    found_count: Mapped[int] = mapped_column(Integer, default=0)
+    new_count: Mapped[int] = mapped_column(Integer, default=0)
+    duplicate_count: Mapped[int] = mapped_column(Integer, default=0)
+    published_count: Mapped[int] = mapped_column(Integer, default=0)
+    needs_review_count: Mapped[int] = mapped_column(Integer, default=0)
+    with_contacts_count: Mapped[int] = mapped_column(Integer, default=0)
+    with_prices_count: Mapped[int] = mapped_column(Integer, default=0)
+    with_photos_count: Mapped[int] = mapped_column(Integer, default=0)
+    with_official_website_count: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str] = mapped_column(Text, default="")
+
+
+class VenueDuplicateCandidate(Base):
+    __tablename__ = "venue_duplicate_candidates"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("venue_import_batches.id"), index=True)
+    incoming_key: Mapped[str] = mapped_column(String(255))
+    existing_venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id"), index=True)
+    score: Mapped[float] = mapped_column(Float)
+    reasons_json: Mapped[str] = mapped_column(Text, default="[]")
+    resolution: Mapped[str] = mapped_column(String(32), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class ArtistTariff(Base):

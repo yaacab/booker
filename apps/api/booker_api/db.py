@@ -65,6 +65,49 @@ def ensure_missing_columns(bind) -> None:
     _add_column_if_missing(
         bind, "venues", "availability_mode", "availability_mode VARCHAR(32) DEFAULT 'owner'"
     )
+    _add_column_if_missing(bind, "venues", "venue_type", "venue_type VARCHAR(64) DEFAULT ''")
+    _add_column_if_missing(
+        bind,
+        "venues",
+        "administrative_district",
+        "administrative_district VARCHAR(32) DEFAULT ''",
+    )
+    _add_column_if_missing(bind, "venues", "latitude", "latitude FLOAT")
+    _add_column_if_missing(bind, "venues", "longitude", "longitude FLOAT")
+    _add_column_if_missing(bind, "venues", "phone", "phone VARCHAR(64) DEFAULT ''")
+    _add_column_if_missing(bind, "venues", "email", "email VARCHAR(255) DEFAULT ''")
+    _add_column_if_missing(
+        bind, "venues", "official_website", "official_website VARCHAR(512) DEFAULT ''"
+    )
+    _add_column_if_missing(
+        bind, "venues", "source_type", "source_type VARCHAR(32) DEFAULT 'owner_submission'"
+    )
+    _add_column_if_missing(
+        bind, "venues", "partnership_status", "partnership_status VARCHAR(32) DEFAULT 'claimed'"
+    )
+    _add_column_if_missing(bind, "venues", "is_partner", "is_partner BOOLEAN DEFAULT 0")
+    _add_column_if_missing(bind, "venues", "is_claimed", "is_claimed BOOLEAN DEFAULT 1")
+    _add_column_if_missing(
+        bind, "venues", "moderation_status", "moderation_status VARCHAR(32) DEFAULT 'published'"
+    )
+    _add_column_if_missing(
+        bind, "venues", "completeness_score", "completeness_score INTEGER DEFAULT 0"
+    )
+    _add_column_if_missing(bind, "venues", "details_json", "details_json TEXT DEFAULT '{}'")
+    _add_column_if_missing(bind, "venues", "verified_at", f"verified_at {ts_type}")
+    _add_column_if_missing(bind, "venues", "verified_by", "verified_by VARCHAR(36)")
+    _add_column_if_missing(
+        bind, "venues", "partnership_started_at", f"partnership_started_at {ts_type}"
+    )
+    _add_column_if_missing(bind, "venues", "status_changed_at", f"status_changed_at {ts_type}")
+    _add_column_if_missing(bind, "venues", "last_verified_at", f"last_verified_at {ts_type}")
+    _add_column_if_missing(bind, "venues", "last_crawled_at", f"last_crawled_at {ts_type}")
+    _add_column_if_missing(
+        bind,
+        "venues",
+        "data_freshness_status",
+        "data_freshness_status VARCHAR(32) DEFAULT 'needs_review'",
+    )
 
 
 def ensure_sqlite_columns(bind) -> None:

@@ -37,6 +37,9 @@ type SearchItem = {
   metro?: string;
   availability_mode?: string;
   listing_origin?: string;
+  source_type?: string;
+  partnership_status?: string;
+  public_disclosure?: string | null;
   matching_halls?: { id: string; name: string; capacity: number }[];
 };
 

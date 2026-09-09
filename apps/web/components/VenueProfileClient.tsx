@@ -26,6 +26,11 @@ type Venue = {
   source_attribution?: string;
   listing_origin?: string;
   availability_mode?: string;
+  source_type?: string;
+  partnership_status?: string;
+  public_disclosure?: string | null;
+  data_freshness_status?: string;
+  official_website?: string;
   facts: { note: string };
   tariffs: { id: string; title: string; honorarium_rub: number }[];
   slots: { id: string; hall: string; starts_at: string; ends_at?: string; status: string }[];
@@ -231,8 +236,8 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <span>
           {data.city} · до {guestsLabel(data.capacity)}{" "}
-          {data.listing_origin === "open_data" ? (
-            <span className="chip wait">{CHIP.openDataVenue}</span>
+          {data.public_disclosure ? (
+            <span className="chip wait">{data.public_disclosure}</span>
           ) : synthetic ? (
             <span className="chip wait">{CHIP.syntheticCalendar}</span>
           ) : data.verified ? (

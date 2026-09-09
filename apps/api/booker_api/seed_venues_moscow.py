@@ -22,9 +22,17 @@ from booker_api.models import (
     User,
     Venue,
     VenueHall,
+    VenueImportBatch,
+    VenueStatusHistory,
     VenueTariff,
 )
 from booker_api.security import audit, hash_password, now
+from booker_api.venue_catalog import (
+    apply_automated_metadata,
+    duplicate_score,
+    record_photos,
+    record_source,
+)
 
 MSK = timezone(timedelta(hours=3))
 OPEN_CATALOG_ORG = "Букер · открытый каталог Москва"
@@ -88,11 +96,41 @@ def _find_existing(db: Session, *, name: str, source_url: str, org_id: str) -> V
         )
         if hit:
             return hit
-    return (
-        db.query(Venue)
-        .filter(Venue.organization_id == org_id, Venue.name == name)
-        .one_or_none()
+    exact = (
+        db.query(Venue).filter(Venue.organization_id == org_id, Venue.name == name).one_or_none()
     )
+    if exact:
+        return exact
+    incoming = {"name": name, "source_url": source_url}
+    candidates = []
+    for venue in db.query(Venue).filter(Venue.organization_id == org_id).all():
+        score, _ = duplicate_score(incoming, venue)
+        if score >= 0.72:
+            candidates.append((score, venue))
+    return max(candidates, key=lambda item: item[0])[1] if candidates else None
+
+
+def _upsert_halls(db: Session, venue: Venue, row: dict, capacity: int) -> list[VenueHall]:
+    specs = [item for item in (row.get("halls") or []) if isinstance(item, dict)]
+    if not specs:
+        specs = [{"name": "Основной зал", "capacity": capacity}]
+    halls: list[VenueHall] = []
+    for index, spec in enumerate(specs, start=1):
+        name = str(spec.get("name") or f"Зал {index}").strip()
+        hall_capacity = int(spec.get("capacity") or capacity)
+        hall = (
+            db.query(VenueHall)
+            .filter(VenueHall.venue_id == venue.id, VenueHall.name == name)
+            .one_or_none()
+        )
+        if hall is None:
+            hall = VenueHall(venue_id=venue.id, name=name, capacity=hall_capacity)
+            db.add(hall)
+            db.flush()
+        else:
+            hall.capacity = hall_capacity
+        halls.append(hall)
+    return halls
 
 
 def _synthetic_slots(db: Session, hall_id: str, *, days: int = 30) -> int:
@@ -135,9 +173,32 @@ def import_moscow_venues(db: Session) -> dict:
     payload = _load_payload()
     org, user = _ensure_shared_org(db)
     venues_in = payload.get("venues") or []
+    checked_at = now()
+    version = int(payload.get("version") or 1)
+    batch_meta = payload.get("batch") or {}
+    batch_id = str(payload.get("batch_id") or f"moscow-open-v{version}")
+    batch = db.get(VenueImportBatch, batch_id)
+    if batch is None:
+        batch = VenueImportBatch(
+            id=batch_id,
+            sequence_number=version,
+            city=str(payload.get("city") or "Москва"),
+            category=str(batch_meta.get("category") or "mixed"),
+            administrative_district=str(batch_meta.get("administrative_district") or "all"),
+        )
+        db.add(batch)
+    batch.status = "running"
+    batch.started_at = checked_at
+    batch.completed_at = None
     created_venues = 0
     updated_venues = 0
     slots_created = 0
+    published_count = 0
+    needs_review_count = 0
+    with_contacts_count = 0
+    with_prices_count = 0
+    with_photos_count = 0
+    with_official_website_count = 0
 
     for row in venues_in:
         name = str(row.get("name") or "").strip()
@@ -145,6 +206,7 @@ def import_moscow_venues(db: Session) -> dict:
             continue
         source_url = str(row.get("source_url") or "").strip()
         venue = _find_existing(db, name=name, source_url=source_url, org_id=org.id)
+        is_new = venue is None
         capacity = int(row.get("capacity") or 100)
         fields = {
             "address": str(row.get("address") or ""),
@@ -157,16 +219,22 @@ def import_moscow_venues(db: Session) -> dict:
             "availability_mode": "synthetic",
             "city": "Москва",
             "capacity": capacity,
-            "verified": False,
-            "verified_status": "pending",
         }
-        if venue is None:
+        if is_new:
             venue = Venue(organization_id=org.id, name=name, **fields)
+            apply_automated_metadata(venue, row, is_new=True, checked_at=checked_at)
             db.add(venue)
             db.flush()
-            hall = VenueHall(venue_id=venue.id, name="Основной зал", capacity=capacity)
-            db.add(hall)
-            db.flush()
+            db.add(
+                VenueStatusHistory(
+                    venue_id=venue.id,
+                    old_status=None,
+                    new_status="unverified_listing",
+                    changed_by=user.id,
+                    changed_at=checked_at,
+                    comment="Карточка создана автоматическим импортом",
+                )
+            )
             created_venues += 1
             audit(
                 db,
@@ -179,14 +247,35 @@ def import_moscow_venues(db: Session) -> dict:
         else:
             for key, value in fields.items():
                 setattr(venue, key, value)
-            hall = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).order_by(VenueHall.name).first()
-            if not hall:
-                hall = VenueHall(venue_id=venue.id, name="Основной зал", capacity=capacity)
-                db.add(hall)
-                db.flush()
-            else:
-                hall.capacity = capacity
+            apply_automated_metadata(venue, row, is_new=False, checked_at=checked_at)
             updated_venues += 1
+
+        halls = _upsert_halls(db, venue, row, capacity)
+        record_source(db, venue, row, checked_at)
+        record_photos(db, venue, row)
+        if row.get("phone") or row.get("email") or row.get("event_contact"):
+            with_contacts_count += 1
+        if any(
+            row.get(key)
+            for key in (
+                "tariff_from_rub",
+                "minimum_spend_rub",
+                "deposit_rub",
+                "price_per_person_rub",
+            )
+        ):
+            with_prices_count += 1
+        if any(
+            isinstance(photo, dict) and photo.get("photo_url") and photo.get("photo_source_url")
+            for photo in (row.get("photos") or [])
+        ):
+            with_photos_count += 1
+        if row.get("official_website"):
+            with_official_website_count += 1
+        if venue.moderation_status == "published":
+            published_count += 1
+        else:
+            needs_review_count += 1
 
         tariff_from = row.get("tariff_from_rub")
         if tariff_from is not None:
@@ -197,7 +286,9 @@ def import_moscow_venues(db: Session) -> dict:
             if amount and amount > 0:
                 tariff = (
                     db.query(VenueTariff)
-                    .filter(VenueTariff.venue_id == venue.id, VenueTariff.title == "Аренда (ориентир)")
+                    .filter(
+                        VenueTariff.venue_id == venue.id, VenueTariff.title == "Аренда (ориентир)"
+                    )
                     .one_or_none()
                 )
                 if tariff is None:
@@ -211,19 +302,38 @@ def import_moscow_venues(db: Session) -> dict:
                 else:
                     tariff.honorarium_rub = amount
 
-        hall = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).order_by(VenueHall.name).first()
-        assert hall is not None
-        # Curated wave-1 (with tariff hint) keeps 30d; OSM/mos bulk uses 14d to limit DB size.
+        # Curated wave-1 (with tariff hint) keeps 30d; OSM/mos bulk uses 14d.
         slot_days = 30 if row.get("tariff_from_rub") is not None else 14
-        slots_created += _synthetic_slots(db, hall.id, days=slot_days)
+        if venue.moderation_status == "published":
+            for hall in halls:
+                slots_created += _synthetic_slots(db, hall.id, days=slot_days)
 
+    batch.status = "completed"
+    batch.found_count = len(venues_in)
+    batch.new_count = created_venues
+    batch.duplicate_count = 0
+    batch.published_count = published_count
+    batch.needs_review_count = needs_review_count
+    batch.with_contacts_count = with_contacts_count
+    batch.with_prices_count = with_prices_count
+    batch.with_photos_count = with_photos_count
+    batch.with_official_website_count = with_official_website_count
+    batch.completed_at = now()
+    batch.notes = str(payload.get("license_note") or "")
     db.commit()
     return {
+        "batch_id": batch_id,
         "org_id": org.id,
         "created_venues": created_venues,
         "updated_venues": updated_venues,
         "slots_created": slots_created,
         "total_in_file": len(venues_in),
+        "published": published_count,
+        "needs_review": needs_review_count,
+        "with_contacts": with_contacts_count,
+        "with_prices": with_prices_count,
+        "with_photos": with_photos_count,
+        "with_official_website": with_official_website_count,
     }
 
 

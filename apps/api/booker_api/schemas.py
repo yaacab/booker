@@ -156,6 +156,16 @@ class VerifyIn(BaseModel):
     notes: str = ""
 
 
+class VenueStatusIn(BaseModel):
+    partnership_status: str
+    comment: str = Field(default="", max_length=2000)
+
+
+class VenueModerationIn(BaseModel):
+    moderation_status: str
+    comment: str = Field(default="", max_length=2000)
+
+
 PILOT_SERVICE_CATEGORIES = (
     "dj",
     "host",

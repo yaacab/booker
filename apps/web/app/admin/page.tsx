@@ -36,6 +36,8 @@ type Dashboards = {
 };
 type PeriodMetrics = Record<string, Metric | PaymentMetric | Dashboards> & { dashboards?: Dashboards };
 type Metrics = { periods: { "7": PeriodMetrics; "30": PeriodMetrics } };
+type VenueCatalogRow = { id: string; name: string; address: string; source_type: string; partnership_status: string; is_claimed: boolean; moderation_status: string; completeness_score: number; data_freshness_status: string };
+type VenueCatalogReport = { total: number; automated: number; unverified: number; verified: number; partners: number; published: number; needs_review: number };
 
 const ACTION: Record<string, string> = {
   "slot.created": "слот",
@@ -85,6 +87,10 @@ export default function AdminPage() {
   const [externalPaymentId, setExternalPaymentId] = useState("");
   const [externalBusy, setExternalBusy] = useState(false);
   const [externalNotice, setExternalNotice] = useState("");
+  const [venueRows, setVenueRows] = useState<VenueCatalogRow[]>([]);
+  const [venueReport, setVenueReport] = useState<VenueCatalogReport | null>(null);
+  const [catalogBusy, setCatalogBusy] = useState<string | null>(null);
+  const [venueComments, setVenueComments] = useState<Record<string, string>>({});
 
   async function load() {
     if (!getToken()) {
@@ -92,16 +98,20 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [me, q, a, m] = await Promise.all([
+      const [me, q, a, m, catalogRows, catalogReport] = await Promise.all([
         api<{ totp_enabled?: boolean }>("/me"),
         api<Queue>("/admin/verifications"),
         api<Audit>("/admin/audit"),
         api<Metrics>("/admin/metrics"),
+        api<{ items: VenueCatalogRow[] }>("/admin/venue-catalog/venues?limit=50"),
+        api<VenueCatalogReport>("/admin/venue-catalog/report"),
       ]);
       setTotpEnabled(Boolean(me.totp_enabled));
       setQueue(q);
       setAudit(a.items.slice(0, 20));
       setMetrics(m);
+      setVenueRows(catalogRows.items);
+      setVenueReport(catalogReport);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Нет доступа");
@@ -160,6 +170,42 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : "Не удалось подтвердить оплату");
     } finally {
       setExternalBusy(false);
+    }
+  }
+
+  async function changeVenueStatus(id: string, partnershipStatus: string) {
+    setCatalogBusy(id + ":status");
+    try {
+      await api("/admin/venue-catalog/venues/" + encodeURIComponent(id) + "/status", {
+        method: "POST",
+        body: JSON.stringify({
+          partnership_status: partnershipStatus,
+          comment: venueComments[id]?.trim() || "Изменено оператором",
+        }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось изменить статус площадки");
+    } finally {
+      setCatalogBusy(null);
+    }
+  }
+
+  async function changeVenueModeration(id: string, moderationStatus: string) {
+    setCatalogBusy(id + ":moderation");
+    try {
+      await api("/admin/venue-catalog/venues/" + encodeURIComponent(id) + "/moderation", {
+        method: "POST",
+        body: JSON.stringify({
+          moderation_status: moderationStatus,
+          comment: venueComments[id]?.trim() || "Изменено оператором",
+        }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось изменить модерацию");
+    } finally {
+      setCatalogBusy(null);
     }
   }
 
@@ -236,6 +282,50 @@ export default function AdminPage() {
             {externalNotice ? <p className="timeline">{externalNotice}</p> : null}
           </form>
         </article>
+        <article className="card" style={{ gridColumn: "1 / -1" }}>
+          <h2>Каталог площадок</h2>
+          {venueReport ? (
+            <p className="timeline">
+              Всего: {venueReport.total} · опубликовано: {venueReport.published} · на проверке: {venueReport.needs_review} · подтверждено: {venueReport.verified} · партнеры: {venueReport.partners}
+            </p>
+          ) : null}
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr><th>Площадка</th><th>Источник</th><th>Сотрудничество</th><th>Подтверждена</th><th>Качество</th><th>Комментарий</th><th>Модерация</th></tr></thead>
+              <tbody>
+                {venueRows.map((row) => (
+                  <tr key={row.id}>
+                    <td><strong>{row.name}</strong><br /><span className="timeline">{row.address}</span></td>
+                    <td>{row.source_type === "automated_import" ? "Автоматический импорт" : row.source_type}</td>
+                    <td>
+                      <select value={row.partnership_status} disabled={catalogBusy?.startsWith(row.id)} onChange={(e) => void changeVenueStatus(row.id, e.target.value)}>
+                        <option value="unverified_listing">Нет договоренности</option>
+                        <option value="claimed">Карточка заявлена</option>
+                        <option value="verified">Данные подтверждены</option>
+                        <option value="partner">Партнер</option>
+                      </select>
+                    </td>
+                    <td>{row.is_claimed ? "Да" : "Нет"}</td>
+                    <td>{row.completeness_score}% · {row.data_freshness_status}</td>
+                    <td>
+                      <input
+                        aria-label={"Комментарий к " + row.name}
+                        value={venueComments[row.id] ?? ""}
+                        onChange={(e) => setVenueComments((current) => ({ ...current, [row.id]: e.target.value }))}
+                        placeholder="Например: представитель подтвердил данные"
+                      />
+                    </td>
+                    <td>
+                      <button type="button" disabled={catalogBusy?.startsWith(row.id) || row.moderation_status === "published"} onClick={() => void changeVenueModeration(row.id, "published")}>Опубликовать</button>{" "}
+                      <button type="button" className="secondary" disabled={catalogBusy?.startsWith(row.id) || row.moderation_status === "needs_review"} onClick={() => void changeVenueModeration(row.id, "needs_review")}>На проверку</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
         <article className="card">
           <h2>Верификация</h2>
           {queue ? (
