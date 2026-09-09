@@ -5,6 +5,8 @@ import "./immersive.css";
 import "./cabinet-design.css";
 import "./reference-v3.css";
 import "./profile-v3.css";
+import "./catalog-v3.css";
+import "./workspace-v3.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
 
