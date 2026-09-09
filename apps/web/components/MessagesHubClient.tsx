@@ -46,7 +46,7 @@ export function MessagesHubClient({ backHref }: { backHref: string }) {
 
   if (!getToken()) {
     return (
-      <main>
+      <main className="messages-v3">
         <p className="kicker">Букер</p>
         <h1>Сообщения</h1>
         <p>
@@ -59,31 +59,41 @@ export function MessagesHubClient({ backHref }: { backHref: string }) {
   }
 
   return (
-    <main>
-      <p className="kicker">Центр сообщений</p>
-      <h1>Сообщения</h1>
-      <p className="timeline">Переписки по сделкам. Без спама и без чужих deal room.</p>
-      <p>
+    <main className="messages-v3">
+      <div className="messages-v3-head">
+        <div>
+          <p className="kicker">Центр сообщений</p>
+          <h1>Сообщения</h1>
+          <p className="timeline">Переписки по сделкам. Без спама и без чужих deal room.</p>
+        </div>
         <Link className="btn secondary" href={backHref}>
           К кабинету
         </Link>
-      </p>
+      </div>
       {!ready ? <p>Загрузка…</p> : null}
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       {ready && !error && items.length === 0 ? (
-        <article className="card empty" style={{ marginTop: 16 }}>
+        <article className="card empty messages-v3-empty">
           <h2>Пока тихо</h2>
           <p>Когда появится сделка с перепиской, она будет здесь.</p>
         </article>
       ) : null}
-      <div className="grid" style={{ marginTop: 16 }}>
+      <div className="messages-v3-list">
         {items.map((it) => (
-          <article className="card" key={it.booking_id}>
-            <h2>{it.event_title || "Сделка"}</h2>
+          <article className="card messages-v3-card" key={it.booking_id}>
+            <div className="messages-v3-card-top">
+              <div>
+                <p className="kicker">{it.booking_status}</p>
+                <h2>{it.event_title || "Сделка"}</h2>
+              </div>
+              <span className="messages-v3-dot" aria-hidden />
+            </div>
             <p className="timeline">
-              {it.customer_org} ↔ {it.supplier_org} · {it.booking_status}
+              {it.customer_org} ↔ {it.supplier_org}
             </p>
-            {it.last_message ? <p>{it.last_message.body}</p> : <p>Нет сообщений</p>}
+            <div className="messages-v3-preview">
+              {it.last_message ? <p>{it.last_message.body}</p> : <p>Нет сообщений</p>}
+            </div>
             <Link className="btn" href={it.deal_path}>
               Открыть Deal Room
             </Link>

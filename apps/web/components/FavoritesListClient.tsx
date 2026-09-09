@@ -47,7 +47,7 @@ export function FavoritesListClient() {
 
   if (!ready) {
     return (
-      <main>
+      <main className="favorites-v3">
         <p className="kicker">Букер</p>
         <h1>Избранное</h1>
         <div className="grid">
@@ -60,7 +60,7 @@ export function FavoritesListClient() {
 
   if (!getToken()) {
     return (
-      <main>
+      <main className="favorites-v3">
         <p className="kicker">Букер</p>
         <h1>Избранное</h1>
         <p>{error}</p>
@@ -73,88 +73,71 @@ export function FavoritesListClient() {
     );
   }
 
+  const artistItems = items.filter((i) => i.target_type === "artist");
+  const venueItems = items.filter((i) => i.target_type === "venue");
+
   return (
-    <main>
-      <p className="kicker">Кабинет заказчика</p>
-      <h1>Избранное</h1>
-      <p className="timeline">
-        Сохранённые артисты и площадки. Добавление в избранное не создаёт заявку и не бронирует слот.
-      </p>
-      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-        <Link className="btn secondary" href="/cabinet/customer">
-          К кабинету
-        </Link>
-        <Link className="btn" href="/search">
-          Каталог
-        </Link>
-        {items.filter((i) => i.target_type === "artist").length >= 2 ? (
-          <Link
-            className="btn secondary"
-            href={`/compare?type=artist&ids=${items
-              .filter((i) => i.target_type === "artist")
-              .slice(0, 4)
-              .map((i) => i.target_id)
-              .join(",")}`}
-          >
+    <main className="favorites-v3">
+      <section className="favorites-v3-head">
+        <div>
+          <p className="kicker">Кабинет заказчика</p>
+          <h1>Избранное</h1>
+          <p className="timeline">Сохранённые артисты и площадки. Сохранение не создаёт заявку и не бронирует слот.</p>
+        </div>
+        <div className="favorites-v3-actions">
+          <Link className="btn secondary" href="/cabinet/customer">К кабинету</Link>
+          <Link className="btn" href="/search">Каталог</Link>
+        </div>
+      </section>
+
+      <div className="favorites-v3-stats">
+        <article><strong>{artistItems.length}</strong><span>артистов</span></article>
+        <article><strong>{venueItems.length}</strong><span>площадок</span></article>
+        <article><strong>{items.length}</strong><span>всего</span></article>
+      </div>
+
+      <div className="favorites-v3-actions">
+        {artistItems.length >= 2 ? (
+          <Link className="btn secondary" href={`/compare?type=artist&ids=${artistItems.slice(0, 4).map((i) => i.target_id).join(",")}`}>
             Сравнить артистов
           </Link>
         ) : null}
-        {items.filter((i) => i.target_type === "venue").length >= 2 ? (
-          <Link
-            className="btn secondary"
-            href={`/compare?type=venue&ids=${items
-              .filter((i) => i.target_type === "venue")
-              .slice(0, 4)
-              .map((i) => i.target_id)
-              .join(",")}`}
-          >
+        {venueItems.length >= 2 ? (
+          <Link className="btn secondary" href={`/compare?type=venue&ids=${venueItems.slice(0, 4).map((i) => i.target_id).join(",")}`}>
             Сравнить площадки
           </Link>
         ) : null}
-      </p>
+      </div>
+
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       {!error && items.length === 0 ? (
-        <article className="card empty" style={{ marginTop: 20 }}>
+        <article className="card empty favorites-v3-empty">
           <h2>Пока пусто</h2>
           <p>Отметьте артиста или площадку кнопкой «В избранное» в каталоге или на профиле.</p>
-          <Link className="btn" href="/search">
-            Открыть каталог
-          </Link>
+          <Link className="btn" href="/search">Открыть каталог</Link>
         </article>
       ) : null}
+
       {items.length > 0 ? (
-        <div className="grid" style={{ marginTop: 20 }}>
+        <div className="favorites-v3-grid">
           {items.map((item) => {
-            const href =
-              item.target_type === "artist"
-                ? `/artists/${item.target_id}`
-                : `/venues/${item.target_id}`;
+            const href = item.target_type === "artist" ? `/artists/${item.target_id}` : `/venues/${item.target_id}`;
             const kind = item.target_type === "artist" ? "Артист" : "Площадка";
             return (
-              <article className="card" key={item.id}>
-                <div className="card-head">
-                  <strong>
-                    <Link href={href}>{item.name || item.target_id}</Link>
-                  </strong>
-                </div>
-                <p className="timeline">
-                  {kind}
-                  {item.city ? ` · ${item.city}` : ""}
-                </p>
-                <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                  <Link className="btn" href={href}>
-                    Открыть
-                  </Link>
+              <article className="card favorites-v3-card" key={item.id}>
+                <div className="favorites-v3-card-type">{kind}</div>
+                <h2><Link href={href}>{item.name || item.target_id}</Link></h2>
+                <p className="timeline">{item.city || "Город не указан"}</p>
+                <div className="favorites-v3-actions">
+                  <Link className="btn" href={href}>Открыть</Link>
                   <FavoriteToggle
                     targetType={item.target_type}
                     targetId={item.target_id}
                     onChanged={(favorited) => {
-                      if (!favorited) {
-                        setItems((prev) => prev.filter((row) => row.id !== item.id));
-                      }
+                      if (!favorited) setItems((prev) => prev.filter((row) => row.id !== item.id));
                     }}
                   />
-                </p>
+                </div>
               </article>
             );
           })}
