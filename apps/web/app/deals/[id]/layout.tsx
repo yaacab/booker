@@ -4,5 +4,5 @@ export const metadata = {
 };
 
 export default function DealLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <div className="v3-shell deal-v3">{children}</div>;
 }
