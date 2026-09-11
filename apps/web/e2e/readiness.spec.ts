@@ -9,8 +9,8 @@ test("главная: обе темы, пазлы, мобильная вёрст
   for(const width of [1440,768,390]){
     await page.setViewportSize({width,height:1000});
     await page.goto("/");
-    await expect(page.getByRole("heading",{level:1})).toContainText("Работа для артистов");
-    await expect(page.getByRole("link",{name:/Мне нужен артист/})).toBeVisible();
+    await expect(page.getByRole("heading",{level:1})).toContainText("Талант найдёт");
+    await expect(page.getByRole("link",{name:/Тебе нужен артист/})).toBeVisible();
     await page.getByRole("button",{name:/Событие Ваша идея/}).click();
     await expect(page.locator("#artist-first-detail")).toContainText("Выберите артиста");
     for(const edition of ["light","black"]){
@@ -59,7 +59,11 @@ test("заказчик и артист: поиск → заявка → пред
   for(const [ctx,account] of [[customerContext,customer],[artistContext,artist]] as const){await ctx.addInitScript(({token,org})=>{localStorage.setItem("booker.token",token);localStorage.setItem("booker.org",org);},{token:account.token,org:account.org.id});}
   const customerPage=await customerContext.newPage(),artistPage=await artistContext.newPage();
   const base=process.env.BOOKER_WEB_URL||"http://127.0.0.1:4316";
+  let favoriteReads=0;
+  customerPage.on("request",r=>{if(new URL(r.url()).pathname.endsWith("/favorites")&&r.method()==="GET")favoriteReads++});
   await customerPage.goto(base+"/search?kind=artist&category=dj");
+  await expect(customerPage.locator(".catalog-card-favorite button").first()).toBeEnabled();
+  expect(favoriteReads).toBe(1);
   await customerPage.locator('input[type="date"][name="date"]').fill(start.toISOString().slice(0,10));
   await customerPage.locator('input[type="date"][name="date"]').press("Enter");
   await expect(customerPage).toHaveURL(new RegExp(`date=${start.toISOString().slice(0,10)}`));
@@ -161,5 +165,71 @@ test("регистрация выбирает правильный кабине�
     await expect(page).toHaveURL(new RegExp(`/cabinet/${role==="artist"?"performer":"customer"}`));
     await noOverflow(page);
     await ctx.close();
+  }
+});
+
+test("вход и регистрация: ширина блоков и контраст ролей в обеих темах",async({page},info)=>{
+  for(const mode of ["login","register"]){
+    await page.goto(`/login?mode=${mode}`);
+    if(mode==="register")await expect(page.getByTestId("role-picker")).toBeVisible();
+    for(const width of [1611,1024,768,390]){
+      await page.setViewportSize({width,height:914});
+      for(const edition of ["light","black"]){
+        if(await page.locator("html").getAttribute("data-edition")!==edition)await page.getByRole("button",{name:"Black Edition",exact:true}).click();
+        await noOverflow(page);
+        if(width>900){
+          const story=await page.locator(".login-story").boundingBox();
+          const title=await page.locator(".login-story h2").boundingBox();
+          expect(story).not.toBeNull();expect(title).not.toBeNull();
+          expect(title!.x-story!.x).toBeGreaterThan(24);
+          expect(story!.x+story!.width-title!.x-title!.width).toBeGreaterThan(24);
+        }
+        if(mode==="register"){
+          const contrast=await page.locator(".role-option").evaluateAll(buttons=>{
+            const luminance=(color:string)=>{
+              const rgb=color.match(/[\d.]+/g)!.slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4});
+              return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
+            };
+            return buttons.flatMap(button=>["strong","small"].map(tag=>{
+              const a=luminance(getComputedStyle(button).backgroundColor),b=luminance(getComputedStyle(button.querySelector(tag)!).color);
+              return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+            }));
+          });
+          expect(Math.min(...contrast)).toBeGreaterThanOrEqual(4.5);
+        }
+        await page.screenshot({path:info.outputPath(`${mode}-${width}-${edition}.png`),fullPage:true,animations:"disabled"});
+      }
+    }
+  }
+});
+
+test("подсказки тестовых кабинетов и первый шаг артиста",async({page,context},info)=>{
+  await context.grantPermissions(["clipboard-read","clipboard-write"]);
+  for(const width of [1440,390]){
+    await page.setViewportSize({width,height:900});
+    await page.goto("/dev/cabinets");
+    const cards=page.locator(".demo-cabinets-page .assembly-editor");
+    await expect(cards).toHaveCount(4);
+    const boxes=await cards.evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}}));
+    for(let a=0;a<boxes.length;a++)for(let b=a+1;b<boxes.length;b++)expect(boxes[a].x+boxes[a].w<=boxes[b].x||boxes[b].x+boxes[b].w<=boxes[a].x||boxes[a].y+boxes[a].h<=boxes[b].y||boxes[b].y+boxes[b].h<=boxes[a].y).toBe(true);
+    await cards.first().getByText("Логин и пароль для проверки",{exact:true}).click();
+    await expect(cards.first().locator("code").first()).toHaveText("customer@booker.test");
+    await cards.first().getByRole("button",{name:"Скопировать логин: Заказчик",exact:true}).click();
+    expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe("customer@booker.test");
+    await cards.first().getByRole("button",{name:"Скопировать пароль: Заказчик",exact:true}).click();
+    expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe("password1");
+    await expect(page.getByRole("button",{name:"Открыть кабинет →",exact:true})).toHaveCount(0);
+    await noOverflow(page);
+    await page.screenshot({path:info.outputPath(`demo-${width}.png`),fullPage:true,animations:"disabled"});
+    await page.goto("/briefs");
+    await expect(page.getByRole("heading",{level:1})).toContainText("Ты артист?");
+    await expect(page.locator(".brief-list")).toHaveCount(0);
+    await page.getByLabel("Твоё направление").selectOption("dj");
+    await page.getByLabel("Город выступления").fill("НетТакогоГородаДляПроверки");
+    await page.getByRole("button",{name:/Подобрать варианты/}).click();
+    await expect(page.getByRole("heading",{name:"Пока нет предложений по этим условиям"})).toBeVisible();
+    await expect(page.locator(".briefs-results").getByRole("link",{name:/Создать профиль артиста/})).toBeVisible();
+    await noOverflow(page);
+    await page.screenshot({path:info.outputPath(`artist-guide-${width}.png`),fullPage:true,animations:"disabled"});
   }
 });

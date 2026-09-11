@@ -40,6 +40,9 @@ export default function BriefsPage() {
   const [categoryFilter,setCategoryFilter] = useState("");
   const [view,setView] = useState("all");
   const [accessReady,setAccessReady] = useState(false);
+  const [started,setStarted] = useState(false);
+  const [guideCity,setGuideCity] = useState("Москва");
+  const [matchedCity,setMatchedCity] = useState("");
 
   async function load() {
     try {
@@ -56,6 +59,7 @@ export default function BriefsPage() {
   useEffect(() => {
     const initialQuery=new URLSearchParams(window.location.search);
     setQuery(initialQuery.get("q")||"");
+    setStarted(initialQuery.has("q")||initialQuery.has("category"));
     setCategoryFilter(initialQuery.get("category")||"");
     void load();
     if(!getToken()){setAccessReady(true);return;}
@@ -118,16 +122,18 @@ export default function BriefsPage() {
   }
 
   const source = view==="mine" ? Array.from(new Map([...items,...history].map(b=>[b.id,b])).values()) : items;
-  const visible = source.filter((b) => (view!=="mine"||(org?.kind==="customer"?b.organization_id===org.id:sent.includes(b.id))) && (!categoryFilter||b.role_needed===categoryFilter) && `${b.title} ${b.city} ${categoryLabel(b.role_needed)}`.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru")));
+  const visible = source.filter((b) => (view!=="mine"||(org?.kind==="customer"?b.organization_id===org.id:sent.includes(b.id))) && (!matchedCity||b.city.toLocaleLowerCase("ru").includes(matchedCity.toLocaleLowerCase("ru"))) && (!categoryFilter||b.role_needed===categoryFilter) && `${b.title} ${b.city} ${categoryLabel(b.role_needed)}`.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru")));
 
   return (
-    <main className="briefs-reference">
-      <header className="account-heading"><p className="kicker">Букер · работа для артистов</p><h1>{org?.kind==="customer"?"Заказы и отклики артистов":"Найти работу"}</h1><p>Выбирайте подходящие события, откликайтесь и обсуждайте выступления с заказчиками.</p></header>
-      {org&&<div className="artist-first-actions" role="group" aria-label="Список заказов"><button aria-pressed={view==="all"} onClick={()=>setView("all")}>Все заказы</button><button className="secondary" aria-pressed={view==="mine"} onClick={()=>setView("mine")}>{org.kind==="customer"?"Мои заказы":"Мои отклики"}</button></div>}
+    <main className="briefs-reference artist-guide-page">
+      <header className="account-heading"><p className="kicker">Букер · артистам</p><h1>{org?.kind==="customer"?"Заказы и отклики артистов":"Ты артист? Давай подберём тебе варианты."}</h1><p>{org?.kind==="customer"?"Расскажите о событии и обсудите предложения артистов.":"Расскажи, чем занимаешься и где хочешь выступать. Посмотрим открытые предложения заказчиков."}</p></header>
+      {accessReady&&org?.kind!=="customer"&&<section className="artist-guide" aria-labelledby="artist-guide-title"><div><p className="eyebrow">Начнём с тебя</p><h2 id="artist-guide-title">Какое выступление ищем?</h2><p>Подборка учитывает специализацию и город. Откликнуться можно из кабинета артиста.</p><ol className="artist-guide-steps"><li><span>01</span> Выбери направление</li><li><span>02</span> Посмотри предложения</li><li><span>03</span> Обсуди детали с заказчиком</li></ol></div><form onSubmit={e=>{e.preventDefault();setMatchedCity(guideCity.trim());setQuery("");setView("all");setStarted(true);requestAnimationFrame(()=>document.getElementById("artist-options")?.scrollIntoView({block:"start",behavior:"instant"}))}}><label>Твоё направление<select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option value="">Все направления</option>{Object.entries(CATEGORY).filter(([id])=>id!=="venue").map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Город выступления<input value={guideCity} onChange={e=>setGuideCity(e.target.value)} placeholder="Например, Москва" required /></label><button type="submit">Подобрать варианты <span aria-hidden="true">↗</span></button></form></section>}
+      {accessReady&&!started&&org?.kind!=="customer"&&<div className="artist-guide-next"><Link href={org?"/cabinet/performer":"/login?mode=register&role=artist&next=%2Fcabinet%2Fperformer"}><strong>Пусть заказчики найдут тебя</strong><span>Добавь программу, фотографии и свободные даты в свой профиль. ↗</span></Link><Link href="/search?kind=venue"><strong>Присматриваешь место для выступления?</strong><span>Посмотри подборку площадок с фотографиями. Доступность уточняется. ↗</span></Link></div>}
+      {org&&<div className="artist-first-actions" role="group" aria-label="Список заказов"><button aria-pressed={view==="all"} onClick={()=>{setView("all");setStarted(true)}}>Все заказы</button><button className="secondary" aria-pressed={view==="mine"} onClick={()=>{setView("mine");setStarted(true)}}>{org.kind==="customer"?"Мои заказы":"Мои отклики"}</button></div>}
 
       {error ? <p role="alert" style={{ color: "var(--danger)" }}>{error}</p> : null}
       {published && <p role="status" className="support-notice">Заказ опубликован. Артисты могут отправлять отклики.</p>}
-      <div className="briefs-columns"><section className="briefs-results"><label className="brief-search">Найти заказ<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Название, город или специалист" /></label>
+      {(started||org?.kind==="customer")&&<div className="briefs-columns" id="artist-options"><section className="briefs-results"><label className="brief-search">Найти заказ<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Название, город или специалист" /></label>
       <label className="brief-search">Специализация<select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option value="">Все специализации</option>{Object.entries(CATEGORY).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
       <p className="timeline" role="status">{loading ? "Загружаем заказы…" : `Найдено: ${visible.length}`}</p>
       <ul className="brief-list">
@@ -135,7 +141,7 @@ export default function BriefsPage() {
           {org?.id===b.organization_id?<BriefResponses briefId={b.id} date={b.date_from}/>:org?.kind==="artist"||org?.kind==="venue"?<BriefReply briefId={b.id} orgId={org.id} closed={b.status!=="open"} alreadySent={sent.includes(b.id)} onSent={()=>setSent(s=>[...s,b.id])}/>:accessReady&&!org&&b.status==="open"?<p><Link className="btn secondary" href="/login?mode=register&role=artist&next=%2Fbriefs">Войти как артист и откликнуться</Link></p>:null}
         </li>)}
       </ul>
-      {!loading && !error && !visible.length && <div className="card"><h2>{view==="mine"?org?.kind==="customer"?"Вы ещё не публиковали заказы":"У вас пока нет откликов":"Подходящих заказов пока нет"}</h2><p>{view==="mine"&&org?.kind!=="customer"?"Откройте все заказы и выберите событие, на котором хотите выступить.":"Попробуйте другую специализацию или загляните позже."}</p></div>}
+      {!loading && !error && !visible.length && <div className="card"><h2>{view==="mine"?org?.kind==="customer"?"Вы ещё не публиковали заказы":"У вас пока нет откликов":"Пока нет предложений по этим условиям"}</h2><p>{view==="mine"&&org?.kind!=="customer"?"Откройте все заказы и выберите событие, на котором хотите выступить.":"Попробуйте другой город или направление. А пока можно заполнить профиль, чтобы заказчики могли пригласить вас сами."}</p>{org?.kind!=="customer"&&<Link className="btn secondary" href={org?"/cabinet/performer":"/login?mode=register&role=artist&next=%2Fcabinet%2Fperformer"}>{org?"Дополнить профиль":"Создать профиль артиста"} ↗</Link>}</div>}
       </section>{org?.kind==="customer"?<details className="card brief-publish" open><summary>Опубликовать заказ</summary>
       <p className="timeline">Эти данные будут видны всем. Телефон, email и бюджет вашего частного события сюда не переносятся.</p>
 
@@ -187,7 +193,7 @@ export default function BriefsPage() {
           {busy ? "Публикация…" : "Опубликовать"}
         </button>
       </form>
-      </details>:<aside className="card brief-publish"><h2>{org?"Ваше следующее выступление":"Вам нужен артист?"}</h2><p>{org?"Покажите заказчику, почему ваша программа подходит его событию. Заполненный профиль и свободные даты помогут договориться быстрее.":"Опубликуйте заказ и получите отклики от артистов."}</p><Link className="btn secondary" href={org?`/cabinet/${org.kind==="venue"?"venue":"performer"}`:"/login?mode=register&role=customer&next=%2Fbriefs"}>{org?"В мой кабинет":"Создать заказ"}</Link></aside>}</div>
+      </details>:<aside className="card brief-publish"><h2>{"Покажи, что умеешь"}</h2><p>{"Программа, фотографии и свободные даты помогают заказчику выбрать тебя. Добавь их в профиль артиста."}</p><Link className="btn secondary" href={org?`/cabinet/${org.kind==="venue"?"venue":"performer"}`:"/login?mode=register&role=artist&next=%2Fcabinet%2Fperformer"}>{org?"В мой кабинет":"Создать профиль артиста"}</Link></aside>}</div>}
     </main>
   );
 }

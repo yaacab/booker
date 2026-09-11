@@ -45,3 +45,11 @@ Browser tests require separately running web and API against an isolated databas
 - The existing browser bundles leave Event Studio Map unset (default off). Candidate keeps it off; `/assemble` and its Moscow map remain available. Public API uses external payment; private demo uses stub. No payment or service-environment changes are part of this release.
 
 Preview screenshots are local working artifacts under `/home/art67/booker/outputs/artist-first-preview`; they do not prove deployment to bukergo.ru.
+
+## Published baseline and subsequent review
+
+Baseline `5590ed7d890fd401e14678fc8ff7692783b8d5e6` was published on 11 September. Four services and thirteen public routes passed. Schema rehearsal preserved existing values; previous code could read the upgraded database copies. Private test tokens remain invalid against the public API. A subsequent burst revealed 71 SQLite connection-pool timeouts.
+
+Current corrections: file SQLite uses request-scoped connections; concurrent favorites reads are shared per account/organization. Homepage now has two explicit role entries, a four-piece chrome composition, padded category/process cards and mobile role selection before decoration. “Артистам” leads to direction/city selection and useful empty-result actions. Login contrast and spacing are corrected. All four demo cards are visible separately, with copyable, explicitly test-only credentials; public passwordless access stays disabled.
+
+Validation: local production build and TypeScript passed; 54 frontend tests, 212 API tests with 2 skips, five browser scenarios including shared deal, role registration, login contrast, test credential clipboard and artist empty results. Pending: candidate concurrent HTTP check and release acceptance. User-approved venue discovery with photos, source attribution, availability clarification and a real district map is still in progress. The overall goal is not complete.

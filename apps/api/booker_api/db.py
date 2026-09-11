@@ -3,6 +3,8 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.engine import make_url
+from sqlalchemy.pool import NullPool
 
 from booker_api.config import settings
 
@@ -117,7 +119,19 @@ def ensure_sqlite_columns(bind) -> None:
 def make_engine(url: str | None = None):
     db_url = url or settings.database_url
     connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
-    return create_engine(db_url, connect_args=connect_args, future=True)
+    parsed = make_url(db_url)
+    file_sqlite = (
+        parsed.get_backend_name() == "sqlite"
+        and parsed.database not in (None, "", ":memory:")
+        and not parsed.database.startswith("file::memory:")
+        and parsed.query.get("mode") != "memory"
+    )
+    # Sync authentication and endpoints run in separate worker phases. A small
+    # QueuePool can block every worker at checkout before authenticated requests
+    # get a worker to finish and return their connection. SQLite file connections
+    # are cheap; close each with its request instead of queuing workers for them.
+    options = {"poolclass": NullPool} if file_sqlite else {}
+    return create_engine(db_url, connect_args=connect_args, future=True, **options)
 
 
 def run_migrations(url: str | None = None) -> None:
