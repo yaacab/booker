@@ -10,7 +10,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "next": "^15.1.0",
+    "next": "^15.5.25",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -20,8 +20,13 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.16.0",
-    "eslint-config-next": "^15.1.0",
+    "eslint-config-next": "^15.5.25",
     "typescript": "^5.7.0",
     "tsx": "^4.19.0"
+  },
+  "overrides": {
+    "postcss": "8.5.23",
+    "sharp": "0.35.4",
+    "js-yaml": "4.3.2"
   }
 }
