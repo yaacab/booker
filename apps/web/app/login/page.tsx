@@ -17,6 +17,9 @@ export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState("customer");
 
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get("mode") === "register") setMode("register");
+    if (query.get("role") === "artist") setSelectedRole("artist");
     const token = new URLSearchParams(window.location.search).get("reset");
     if (token) {
       setResetToken(token);

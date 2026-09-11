@@ -24,7 +24,7 @@ export function NewRequestsWidget({ requests, role, offerBusy, onSendOffer }: Ne
       title="Новые заявки"
       hint="Запросы, которые ждут вашего предложения"
       isEmpty={requests.length === 0}
-      empty="Нет новых заявок — откройте свободные слоты и дождитесь запроса заказчика."
+      empty="Пока нет личных заявок. Найдите подходящий заказ в разделе «Найти работу» и отправьте отклик."
     >
       <ul className="dashboard-list">
         {requests.map((r) => (
@@ -36,10 +36,10 @@ export function NewRequestsWidget({ requests, role, offerBusy, onSendOffer }: Ne
               <span className="timeline">Стоимость в каталоге: {money(r.honorarium_rub)}</span>
               {r.booking_id ? (
                 <Link className="btn" href={`/deals/${r.booking_id}`}>
-                  Открыть Deal Room
+                  Открыть договорённости
                 </Link>
               ) : role === "viewer" ? (
-                <p className="timeline">Только просмотр: оффер отправляет менеджер</p>
+                <p className="timeline">Только просмотр: предложение отправляет менеджер</p>
               ) : (
                 <button type="button" disabled={offerBusy === r.id} onClick={() => onSendOffer(r)}>
                   {offerBusy === r.id ? "Отправляем…" : "Отправить предложение"}

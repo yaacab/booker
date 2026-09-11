@@ -1316,6 +1316,25 @@ def deal_room(
     sup_org = db.get(Organization, req.supplier_org_id)
     role = "customer" if membership_ok(db, user, event.organization_id) else "supplier"
     workspace_kind = "customer" if role == "customer" else (sup_org.kind if sup_org else "artist")
+    action_required_from = []
+    next_step = _next_step(booking.status)
+    if booking.status == "Negotiation":
+        if not version.customer_ack:
+            action_required_from.append("customer")
+        if not version.supplier_ack:
+            action_required_from.append("supplier")
+        if version.customer_ack and version.supplier_ack:
+            action_required_from = ["customer"]
+            next_step = "Удержать согласованную дату"
+    elif booking.status in {"DateHeld", "AwaitingContract"}:
+        if not contract or not contract.customer_signed:
+            action_required_from.append("customer")
+        if not contract or not contract.supplier_signed:
+            action_required_from.append("supplier")
+    elif booking.status == "AwaitingPayment":
+        action_required_from.append("customer")
+    elif booking.status == "Dispute":
+        action_required_from.append("platform")
     return {
         "booking_id": booking.id,
         "offer_id": offer.id,
@@ -1325,6 +1344,8 @@ def deal_room(
         "role": role,
         "workspace_kind": workspace_kind,
         "event_title": event.title,
+        "event_date": event.event_date.isoformat() if event.event_date else None,
+        "action_required_from": action_required_from,
         "tabs": ["chat", "terms", "documents", "payments", "dispute"],
         "dispute_categories": [
             {"id": "no_show", "label": "Неявка"},
@@ -1333,7 +1354,7 @@ def deal_room(
             {"id": "payment", "label": "Платёж"},
             {"id": "cancel", "label": "Отмена"},
         ],
-        "next_step": _next_step(booking.status),
+        "next_step": next_step,
         "participants": [
             {"role": "customer", "name": cust_org.name if cust_org else "Заказчик", "duty": "оплата и условия"},
             {"role": "supplier", "name": sup_org.name if sup_org else "Исполнитель", "duty": "дата и услуга"},

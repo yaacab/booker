@@ -31,7 +31,7 @@ const SECTION_COPY = {
 export function PerformerCabinetDashboard({ section = "home" }: { section?: PerformerCabinetSection }) {
   const {
     ready, error, email, orgName, orgId, role, artistId, requests, bookings,
-    newRequests, awaitingResponse, expiringOffers, activeHolds, upcomingPerformances,
+    newRequests, awaitingResponse, negotiations, expiringOffers, activeHolds, upcomingPerformances,
     calendarConflicts, profileIncomplete, profileCompleteness, offerBusy, sendOffer, reload,
   } = usePerformerCabinetData();
   const [calendarRevision, setCalendarRevision] = useState(0);
@@ -43,7 +43,7 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
       ? [{ href: "/cabinet/performer/calendar", label: "Открыть календарь" }]
       : section === "services"
         ? isWriteRole(role) ? [{ href: "#performer-service-form", label: "Добавить услугу", primary: true }] : []
-        : [{ href: artistId ? `/artists/${artistId}` : "/cabinet/performer/services", label: "Смотреть профиль" }];
+        : [{ href: "/briefs", label: "Найти работу", primary: true }, { href: artistId ? `/artists/${artistId}` : "/cabinet/performer/services", label: "Смотреть профиль" }];
 
   return <CabinetPageShell
     mode="performer" kindKey="artist" section={section} title={title} subtitle={subtitle}
@@ -64,8 +64,8 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
     </> : section === "requests" ? <RequestsInboxWidget requests={requests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} />
       : section === "services" && orgId ? <ServicesWidget orgId={orgId} role={role} />
       : section === "home" ? <div className="workspace-overview-grid">
-        <UpcomingPerformancesWidget bookings={upcomingPerformances} />
-        {orgId ? <CalendarOverviewWidget orgId={orgId} artistId={artistId} bookings={bookings} compact /> : null}
+        <NewRequestsWidget requests={newRequests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} />
+        {activeHolds.length ? <HoldsWidget holds={activeHolds} /> : negotiations.length ? <AwaitingResponseWidget deals={negotiations} /> : <UpcomingPerformancesWidget bookings={upcomingPerformances} />}
       </div> : null}
     footer={orgId ? <details className="workspace-disclosure workspace-settings" id="supply-settings">
       <summary>Настройки профиля, календаря и услуг <span aria-hidden="true">＋</span></summary>
@@ -74,7 +74,8 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
   >
     {section === "home" ? <>
       <section className="cabinet-zone-grid workspace-secondary-grid" aria-label="Заявки и профиль">
-        <NewRequestsWidget requests={newRequests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} />
+        {activeHolds.length>0||negotiations.length>0?<UpcomingPerformancesWidget bookings={upcomingPerformances} />:null}
+        {orgId ? <CalendarOverviewWidget orgId={orgId} artistId={artistId} bookings={bookings} compact /> : null}
         {profileCompleteness ? <ProfileCompletenessWidget completeness={profileCompleteness} /> : <PerformerOnboardingWidget profileComplete={!profileIncomplete} hasOpenSlots={upcomingPerformances.length > 0 || activeHolds.length > 0} hasRequests={newRequests.length + awaitingResponse.length > 0} />}
       </section>
       {orgId ? <details className="workspace-disclosure">
@@ -84,10 +85,10 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
     </> : null}
     {section === "services" && orgId ? <PortfolioRiderWidget orgId={orgId} role={role} /> : null}
     {section === "calendar" && calendarConflicts.length > 0 ? <CalendarConflictsWidget conflicts={calendarConflicts} /> : null}
-    {(section === "home" || section === "requests") && (awaitingResponse.length > 0 || expiringOffers.length > 0 || activeHolds.length > 0) ? <section className="cabinet-zone-grid workspace-secondary-grid" aria-label="Предложения и удержания">
-      {awaitingResponse.length > 0 ? <AwaitingResponseWidget deals={awaitingResponse} /> : null}
-      {expiringOffers.length > 0 ? <ExpiringOffersWidget deals={expiringOffers} /> : null}
-      {activeHolds.length > 0 ? <HoldsWidget holds={activeHolds} /> : null}
+    {(section === "home" && negotiations.length>0 && activeHolds.length>0 || section === "requests" && (negotiations.length > 0 || expiringOffers.length > 0 || activeHolds.length > 0)) ? <section className="cabinet-zone-grid workspace-secondary-grid" aria-label="Предложения и удержания">
+      {negotiations.length > 0 && (section!=="home"||activeHolds.length>0) ? <AwaitingResponseWidget deals={negotiations} /> : null}
+      {expiringOffers.length > 0 && section!=="home" ? <ExpiringOffersWidget deals={expiringOffers} /> : null}
+      {activeHolds.length > 0 && section!=="home" ? <HoldsWidget holds={activeHolds} /> : null}
     </section> : null}
     {section === "home" && calendarConflicts.length > 0 ? <CalendarConflictsWidget conflicts={calendarConflicts} /> : null}
   </CabinetPageShell>;

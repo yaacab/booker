@@ -90,6 +90,31 @@ def test_price_only_from_server(client):
     assert version["quote_id"] == version["id"]
 
 
+def test_shared_deal_summary_and_action_owner(client):
+    ctx = setup_negotiation(client)
+    path = f"/deal-room/{ctx['booking_id']}"
+    customer = client.get(path, headers=auth_header(ctx["customer"]["token"])).json()
+    supplier = client.get(path, headers=auth_header(ctx["owner"]["token"])).json()
+    for field in ("booking_id", "event_title", "event_date", "participants", "status", "next_step", "action_required_from", "messages"):
+        assert customer[field] == supplier[field]
+    assert customer["event_date"].startswith("2026-09-01T18:00:00")
+    assert customer["action_required_from"] == ["customer", "supplier"]
+    ack = client.post(f"/offers/{ctx['offer']['id']}/ack", json={"side": "supplier"}, headers=auth_header(ctx["owner"]["token"]))
+    assert ack.status_code == 200
+    room = client.get(path, headers=auth_header(ctx["customer"]["token"])).json()
+    assert room["action_required_from"] == ["customer"]
+    ack_both(client, ctx)
+    room = client.get(path, headers=auth_header(ctx["customer"]["token"])).json()
+    assert room["next_step"] == "Удержать согласованную дату"
+    held = client.post(f"/bookings/{ctx['booking_id']}/hold", headers=auth_header(ctx["customer"]["token"]))
+    assert held.status_code == 200
+    customer = client.get(path, headers=auth_header(ctx["customer"]["token"])).json()
+    supplier = client.get(path, headers=auth_header(ctx["owner"]["token"])).json()
+    assert customer["status"] == supplier["status"] == "DateHeld"
+    assert customer["hold"] == supplier["hold"]
+    assert customer["action_required_from"] == supplier["action_required_from"] == ["customer", "supplier"]
+
+
 def test_new_version_not_active_until_ack(client):
     ctx = setup_negotiation(client)
     first = ack_both(client, ctx)

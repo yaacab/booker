@@ -16,19 +16,7 @@ export type PerformerBooking = {
   event_date?: string;
 };
 
-export type PerformerDealRoom = {
-  booking_id: string;
-  event_title: string;
-  status: string;
-  quote: {
-    quote_id: string;
-    honorarium_rub: number;
-    total_rub: number;
-    customer_ack: boolean;
-    supplier_ack: boolean;
-  };
-  hold?: { status: string; expires_at: string } | null;
-};
+export type PerformerDealRoom = import("../DealCard").CabinetDeal;
 
 export type ProfileCompleteness = {
   score: number;

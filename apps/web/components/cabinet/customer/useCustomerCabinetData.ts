@@ -97,7 +97,7 @@ export function useCustomerCabinetData() {
   const newOffers = useMemo(
     () =>
       dealRooms.filter(
-        (d) => d.status === "Negotiation" && d.quote.supplier_ack && !d.quote.customer_ack,
+        (d) => d.status === "Negotiation",
       ),
     [dealRooms],
   );

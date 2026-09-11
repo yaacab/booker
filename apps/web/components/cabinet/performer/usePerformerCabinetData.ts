@@ -100,8 +100,8 @@ export function usePerformerCabinetData() {
   const newRequests = useMemo(
     () =>
       requests
-        .filter((r) => !r.offer_id && !r.booking_id)
-        .sort((a, b) => (b.event_date || "").localeCompare(a.event_date || "")),
+        .filter((r) => !r.offer_id && !r.booking_id && !["Cancelled", "Declined", "Expired", "Completed"].includes(r.status))
+        .sort((a, b) => (a.event_date || "").localeCompare(b.event_date || "")),
     [requests],
   );
 
@@ -222,6 +222,7 @@ export function usePerformerCabinetData() {
     bookings,
     newRequests,
     awaitingResponse,
+    negotiations: dealRooms.filter(d=>d.status==="Negotiation"),
     expiringOffers,
     activeHolds,
     upcomingPerformances,

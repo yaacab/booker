@@ -21,8 +21,8 @@ export function WorkspaceNavigation({ mode, admin }: { mode: CabinetMode | null;
   const role = mode;
   const root = `/cabinet/${role}`;
   const links = !role ? [["/cabinet", "Моё пространство"]] : role === "customer"
-    ? [[root,"Обзор"],[`${root}/messages`,"Сообщения"],[`${root}/favorites`,"Избранное"],[`${root}/saved-searches`,"Сохранённый поиск"],["/briefs","Публичные брифы"]]
-    : [[root,"Обзор"],[`${root}/calendar`,"Календарь"],[`${root}/requests`,"Заявки"],[`${root}/messages`,"Сообщения"],...(role === "venue" ? [[`${root}/halls`,"Залы"],[`${root}/stats`,"Статистика"]] : [[`${root}/services`,"Услуги"]])];
+    ? [[root,"Обзор"],[`${root}/messages`,"Сообщения"],[`${root}/favorites`,"Избранное"],[`${root}/saved-searches`,"Сохранённый поиск"],["/briefs","Заказы и отклики"]]
+    : [[root,"Обзор"],...(role==="performer"?[["/briefs","Найти работу"]]:[]),[`${root}/calendar`,"Календарь"],[`${root}/requests`,"Заявки"],[`${root}/messages`,"Сообщения"],...(role === "venue" ? [[`${root}/halls`,"Залы"],[`${root}/stats`,"Статистика"]] : [[`${root}/services`,"Услуги"]])];
   return <aside className="workspace-sidebar">
     <p className="workspace-nav-caption">Ваше пространство</p>
     <nav aria-label="Навигация рабочего пространства">

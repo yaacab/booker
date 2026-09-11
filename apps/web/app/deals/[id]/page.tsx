@@ -142,7 +142,9 @@ export default function DealPage() {
   const side = current.role;
   const accentKind = orgKindToDealRoomAccentKind(current.workspace_kind ?? (side === "customer" ? "customer" : "artist"));
   const people = current.participants ?? [];
-  const action = nextAction(current.status);
+  const bothAgreed=current.quote.customer_ack&&current.quote.supplier_ack;
+  const alreadyAgreed=side==="customer"?current.quote.customer_ack:current.quote.supplier_ack;
+  const action = current.status==="Negotiation"&&bothAgreed?{kind:"hold",label:"Удержать дату"}:current.status==="Negotiation"&&alreadyAgreed?{kind:"wait",label:"Открыть переписку"}:nextAction(current.status);
   const actionLabel = action.kind === "ack" ? "Подтвердить условия" : action.kind === "contract" ? (current.contract ? "Подписать договор" : "Подготовить договор") : action.kind === "receive" ? "День события" : action.kind === "operator" ? "Связаться с оператором" : action.label;
   const idx = STAGE_ORDER.indexOf(current.status);
   const inPipeline = idx >= 0;
@@ -179,6 +181,14 @@ export default function DealPage() {
   }
 
   async function runNext() {
+    if(action.kind==="hold"){
+      await act(()=>api(`/bookings/${current.booking_id}/hold`,{method:"POST"}));
+      return;
+    }
+    if(action.kind==="wait"){
+      setTab("chat");
+      return;
+    }
     if (action.kind === "ack") {
       await act(() => api(`/offers/${current.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) }));
       return;

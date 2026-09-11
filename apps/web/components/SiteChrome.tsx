@@ -191,9 +191,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               </Link>
             ) : (
               <>
-                <Link href="/search?kind=artist">Артисты</Link>
-                <Link href="/search?kind=venue">Площадки</Link>
-                <Link href="/assemble">Собрать событие</Link>
+                <Link href="/search?kind=artist">Найти артиста</Link>
+                <Link href="/briefs">Найти работу</Link>
+                <Link href="/#process-title">Как это работает</Link>
               </>
             )}
             {authed ? (

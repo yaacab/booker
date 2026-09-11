@@ -19,9 +19,9 @@ export function CustomerCabinetDashboard() {
 
   return <CabinetPageShell mode="customer" title={name ? `Привет, ${name}!` : "Мой кабинет"} ready={ready} error={error} email={email} orgName={orgName} empty={false} emptyState={null}
     subtitle={nextEvent ? "Ваше следующее событие скоро. Всё под контролем." : "Ваши события, предложения и договорённости — в одном месте."}
-    actions={[{ href: "/events/new", label: "Новое событие", primary: true }]}
+    actions={[{ href: "/search?kind=artist", label: "Найти артиста", primary: true }, {href:"/briefs",label:"Заказы и отклики"}]}
     leadBeforeMetrics
-    lead={nextEvent ? <article className="customer-next-event">
+    lead={newOffers.length||expiringHolds.length?<section className="cabinet-zone-grid workspace-customer-grid" aria-label="Требуется ваше действие">{expiringHolds.length>0&&<ExpiringHoldsWidget holds={expiringHolds}/>} {newOffers.length>0&&<NewOffersWidget offers={newOffers}/>}</section>:nextEvent ? <article className="customer-next-event">
       <div className="customer-event-art" aria-hidden="true"><span /><span /><span /></div>
       <div className="customer-next-event-copy"><p>{formatWhen(nextEvent.event_date)}</p><h2>{nextEvent.title}</h2>{nextEvent.city ? <p><CabinetIcon name="pin" />{nextEvent.city}</p> : null}<span className="customer-event-status">{STATUS_LABEL[nextEvent.status] || nextEvent.status}</span></div>
       <Link className="btn secondary" href={`/events/${nextEvent.id}`}>Перейти к событию <CabinetIcon name="arrow" /></Link>
@@ -33,8 +33,7 @@ export function CustomerCabinetDashboard() {
       { label: "Удержания", value: expiringHolds.length },
     ]}
   >
-    <section className="cabinet-zone-grid workspace-customer-grid" aria-label="Подготовка событий"><NewOffersWidget offers={newOffers} /><DraftsWidget drafts={drafts} />{expiringHolds.length > 0 ? <ExpiringHoldsWidget holds={expiringHolds} /> : null}</section>
-    {upcomingEvents.length > 1 ? <UpcomingEventsWidget events={upcomingEvents.slice(1)} /> : null}
-    <details className="workspace-disclosure" open={showStartCard || undefined}><summary>Подготовка к первому событию <span aria-hidden="true">＋</span></summary><CustomerOnboardingWidget hasName={Boolean(fullName)} hasContact={Boolean(email)} hasEventWithCity={hasEventWithCity} hasOffers={newOffers.length > 0} /><div className="workspace-quick-links"><Link href="/search">Найти артистов и площадки →</Link><Link href="/cabinet/customer/favorites">Избранное →</Link></div></details>
+    <section className="cabinet-zone-grid workspace-customer-grid" aria-label="Подготовка событий">{drafts.length>0&&<DraftsWidget drafts={drafts} />}{upcomingEvents.length > (newOffers.length||expiringHolds.length?0:1) ? <UpcomingEventsWidget events={newOffers.length||expiringHolds.length?upcomingEvents:upcomingEvents.slice(1)} /> : null}</section>
+    <details className="workspace-disclosure" open={showStartCard || undefined}><summary>Подготовка к первому событию <span aria-hidden="true">＋</span></summary><CustomerOnboardingWidget hasName={Boolean(fullName)} hasContact={Boolean(email)} hasEventWithCity={hasEventWithCity} hasOffers={newOffers.length > 0} /><div className="workspace-quick-links"><Link href="/search?kind=artist">Найти артиста →</Link><Link href="/cabinet/customer/favorites">Избранное →</Link></div></details>
   </CabinetPageShell>;
 }

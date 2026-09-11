@@ -44,7 +44,7 @@ test("studio text and form fields remain readable", () => {
 test("home offers direct search and assembly while keeping the classic wizard", () => {
   const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.ok(home.includes('/search?kind=artist'));
-  assert.ok(home.includes('/assemble'));
+  assert.ok(read("../components/ArtistFirstHero.tsx").includes('/assemble'));
   const assembly = readFileSync(new URL("../app/assemble/page.tsx", import.meta.url), "utf8");
   assert.ok(assembly.includes('/events/new?event_studio_map_v1=1'));
 });
