@@ -31,6 +31,11 @@ type Venue = {
   public_disclosure?: string | null;
   data_freshness_status?: string;
   official_website?: string;
+  photos?: {
+    url: string;
+    source_url?: string;
+    rights_status?: "licensed" | "official_permission";
+  }[];
   facts: { note: string };
   tariffs: { id: string; title: string; honorarium_rub: number }[];
   slots: { id: string; hall: string; starts_at: string; ends_at?: string; status: string }[];
@@ -260,6 +265,31 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
         </p>
       ) : null}
       {data.description ? <p>{data.description}</p> : null}
+      {data.photos?.length ? (
+        <section aria-labelledby="venue-photos-title">
+          <h2 id="venue-photos-title">Фотографии площадки</h2>
+          <div className="venue-gallery">
+            {data.photos.map((photo, index) => (
+              <figure className="venue-gallery-item" key={photo.url}>
+                <img
+                  src={photo.url}
+                  alt={`${data.name}: фотография ${index + 1}`}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                />
+                {photo.source_url ? (
+                  <figcaption>
+                    <a href={photo.source_url} target="_blank" rel="noreferrer noopener">
+                      Источник и лицензия
+                    </a>
+                  </figcaption>
+                ) : null}
+              </figure>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {synthetic ? (
         <article className="card tint" role="note">
           <strong>Календарь ориентировочный</strong>

@@ -120,6 +120,12 @@ def _catalog_row(row: dict) -> dict:
         "halls",
         "sources",
         "photos",
+        "research_checked_at",
+        "research_status",
+        "research_http_status",
+        "research_title",
+        "research_event_signals",
+        "research_price_evidence",
     ):
         if row.get(key) is not None:
             out[key] = row[key]

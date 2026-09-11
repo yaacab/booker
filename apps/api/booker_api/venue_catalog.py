@@ -16,6 +16,10 @@ from booker_api.models import Venue, VenuePhoto, VenueSource, VenueStatusHistory
 PARTNERSHIP_STATUSES = frozenset({"unverified_listing", "claimed", "verified", "partner"})
 MODERATION_STATUSES = frozenset({"published", "needs_review", "rejected", "archived"})
 PUBLICATION_THRESHOLD = 55
+PUBLISHABLE_PHOTO_RIGHTS = frozenset({"licensed", "official_permission"})
+PRICE_FIELDS = frozenset(
+    {"price", "tariff", "tariff_from_rub", "minimum_spend_rub", "price_per_person_rub"}
+)
 
 
 def normalize_text(value: str | None) -> str:
@@ -56,25 +60,62 @@ def completeness_score(row: dict) -> int:
     score += 15 if _meaningful_address(str(row.get("address") or "")) else 0
     score += 10 if row.get("source_url") or row.get("sources") else 0
     score += 10 if row.get("capacity") else 0
-    score += 10 if row.get("tariff_from_rub") else 0
+    score += 10 if has_sourced_price(row) else 0
     description = str(row.get("description") or "").strip()
     if description and description != "Площадка из Wikidata (Москва)":
         score += 7
     score += 5 if str(row.get("district") or "").strip() else 0
     score += 5 if str(row.get("metro") or "").strip() else 0
     score += 8 if str(row.get("official_website") or "").strip() else 0
-    score += 5 if row.get("phone") or row.get("email") else 0
-    score += 5 if row.get("photos") else 0
+    score += 5 if row.get("phone") or row.get("email") or row.get("event_contact") else 0
+    score += 5 if has_publishable_photo(row) else 0
     lat, lon = coordinates(row)
     score += 5 if lat is not None and lon is not None else 0
     return min(score, 100)
 
 
+def has_sourced_price(row: dict) -> bool:
+    has_amount = any(
+        row.get(key) not in (None, "", 0)
+        for key in ("tariff_from_rub", "minimum_spend_rub", "price_per_person_rub")
+    )
+    if not has_amount:
+        return False
+    for source in row.get("sources") or []:
+        if not isinstance(source, dict) or not str(source.get("source_url") or "").strip():
+            continue
+        fields = {
+            token.strip().casefold()
+            for token in re.split(r"[,;|]", str(source.get("field_name") or ""))
+            if token.strip()
+        }
+        if fields & PRICE_FIELDS:
+            return True
+    return False
+
+
+def has_publishable_photo(row: dict) -> bool:
+    return any(
+        isinstance(photo, dict)
+        and str(photo.get("photo_url") or "").strip()
+        and str(photo.get("photo_source_url") or "").strip()
+        and str(photo.get("photo_rights_status") or "") in PUBLISHABLE_PHOTO_RIGHTS
+        for photo in (row.get("photos") or [])
+    )
+
+
 def moderation_status(row: dict) -> str:
+    description = str(row.get("description") or "").strip()
     essentials = bool(
         row.get("name")
         and _meaningful_address(str(row.get("address") or ""))
         and (row.get("source_url") or row.get("sources"))
+        and len(description) >= 80
+        and description != "Площадка из Wikidata (Москва)"
+        and str(row.get("official_website") or "").strip()
+        and (row.get("phone") or row.get("email") or row.get("event_contact"))
+        and has_sourced_price(row)
+        and has_publishable_photo(row)
     )
     return (
         "published"
@@ -137,6 +178,15 @@ def apply_automated_metadata(
             "social_links",
             "event_contact",
             "number_of_halls",
+            "rank",
+            "performance_evidence",
+            "tariff_unit",
+            "research_checked_at",
+            "research_status",
+            "research_http_status",
+            "research_title",
+            "research_event_signals",
+            "research_price_evidence",
         )
         if row.get(key) is not None
     }
@@ -188,7 +238,7 @@ def record_source(db: Session, venue: Venue, row: dict, checked_at: datetime) ->
 
 
 def record_photos(db: Session, venue: Venue, row: dict) -> None:
-    allowed_rights = {"official_permission", "licensed", "unknown", "do_not_publish"}
+    allowed_rights = PUBLISHABLE_PHOTO_RIGHTS | {"unknown", "do_not_publish"}
     for order, photo in enumerate(row.get("photos") or []):
         photo_url = str(photo.get("photo_url") or "").strip()
         source_url = str(photo.get("photo_source_url") or "").strip()

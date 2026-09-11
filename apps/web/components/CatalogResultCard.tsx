@@ -21,6 +21,11 @@ type CatalogItem = {
   source_type?: string;
   partnership_status?: string;
   public_disclosure?: string | null;
+  cover_photo?: {
+    url: string;
+    source_url?: string;
+    rights_status?: "licensed" | "official_permission";
+  } | null;
   matching_halls?: { id: string; name: string; capacity: number }[];
 };
 
@@ -49,9 +54,20 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
     <article className={`card catalog-result catalog-result--${kind}`}>
       <div className="card-head">
         <Link href={href} style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
-          <span className="avatar" aria-hidden>
-            {initials(item.name)}
-          </span>
+          {kind === "venue" && item.cover_photo?.url ? (
+            <img
+              className="catalog-cover"
+              src={item.cover_photo.url}
+              alt={`Фото площадки «${item.name}»`}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <span className="avatar" aria-hidden>
+              {initials(item.name)}
+            </span>
+          )}
           <strong>{item.name}</strong>
         </Link>
         <FavoriteToggle compact targetType={kind} targetId={item.id} />

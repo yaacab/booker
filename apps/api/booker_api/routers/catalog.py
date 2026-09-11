@@ -22,6 +22,7 @@ from booker_api.models import (
     User,
     Venue,
     VenueHall,
+    VenuePhoto,
     VenueTariff,
 )
 from booker_api.schemas import (
@@ -106,6 +107,48 @@ def _slot_item(slot: AvailabilitySlot, *, hall: str | None = None) -> dict:
 
 def _halls_for_venue(db: Session, venue_id: str) -> list[VenueHall]:
     return db.query(VenueHall).filter(VenueHall.venue_id == venue_id).order_by(VenueHall.name).all()
+
+
+def _public_venue_photos(db: Session, venue_id: str) -> list[dict]:
+    rows = (
+        db.query(VenuePhoto)
+        .filter(
+            VenuePhoto.venue_id == venue_id,
+            VenuePhoto.photo_rights_status.in_(("licensed", "official_permission")),
+        )
+        .order_by(VenuePhoto.sort_order, VenuePhoto.id)
+        .all()
+    )
+    return [
+        {
+            "url": row.photo_url,
+            "source_url": row.photo_source_url,
+            "rights_status": row.photo_rights_status,
+        }
+        for row in rows
+    ]
+
+
+def _research_venue_photos(db: Session, venue_id: str) -> list[dict]:
+    rows = (
+        db.query(VenuePhoto)
+        .filter(
+            VenuePhoto.venue_id == venue_id,
+            VenuePhoto.photo_rights_status.in_(
+                ("licensed", "official_permission", "unknown")
+            ),
+        )
+        .order_by(VenuePhoto.sort_order, VenuePhoto.id)
+        .all()
+    )
+    return [
+        {
+            "url": row.photo_url,
+            "source_url": row.photo_source_url,
+            "rights_status": row.photo_rights_status,
+        }
+        for row in rows
+    ]
 
 
 def _venue_in_catalog(db: Session, venue: Venue) -> bool:
@@ -631,6 +674,7 @@ def search_catalog(
                 continue
             nxt = min(pool, key=lambda s: aware(s.starts_at))
             tariffs = db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).all()
+            photos = _public_venue_photos(db, venue.id)
             if budget_max is not None and kind_l == "venue":
                 floor = _min_tariff(tariffs)
                 if floor is not None and floor > budget_max:
@@ -654,9 +698,77 @@ def search_catalog(
                     "open_slots": len(pool),
                     "next_open_at": _catalog_iso(nxt.starts_at),
                     "tariffs": [{"honorarium_rub": t.honorarium_rub} for t in tariffs],
+                    "cover_photo": photos[0] if photos else None,
                 }
             )
     return {"items": results, "venues": venue_results}
+
+
+@router.get("/catalog/demo/venues")
+def list_investor_demo_venues(
+    city: str = Query("Москва"),
+    limit: int = Query(300, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """Research cards for the clearly labelled private investor demo.
+
+    This endpoint is intentionally separate from /catalog/search: imported
+    venues have no invented availability and remain outside the live catalog.
+    """
+    rows = (
+        db.query(Venue)
+        .filter(Venue.city == city, Venue.source_type == "automated_import")
+        .all()
+    )
+    items = []
+    for venue in rows:
+        try:
+            details = json.loads(venue.details_json or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            details = {}
+        if details.get("research_status") != "investor_demo_verified_listing":
+            continue
+        tariffs = (
+            db.query(VenueTariff)
+            .filter(VenueTariff.venue_id == venue.id)
+            .order_by(VenueTariff.honorarium_rub)
+            .all()
+        )
+        photos = _research_venue_photos(db, venue.id)
+        if not tariffs or not photos:
+            continue
+        items.append(
+            {
+                "id": venue.id,
+                "rank": details.get("rank") or 9999,
+                "name": venue.name,
+                "city": venue.city,
+                "address": venue.address or "",
+                "metro": venue.metro or "",
+                "description": venue.description or "",
+                "capacity": venue.capacity,
+                "area_sqm": details.get("area_sqm"),
+                "venue_type": venue.venue_type or "event_space",
+                "performance_evidence": details.get("performance_evidence") or [],
+                "has_stage": details.get("has_stage") is True,
+                "has_sound": details.get("has_sound") is True,
+                "has_light": details.get("has_light") is True,
+                "tariff_from_rub": min(t.honorarium_rub for t in tariffs),
+                "tariff_unit": details.get("tariff_unit") or "hour",
+                "source_url": venue.source_url or "",
+                "source_attribution": venue.source_attribution or "",
+                "cover_photo": photos[0],
+                "photos": photos,
+                "photo_notice": "Внешние фото из карточки источника; права для публичной публикации не заявлены.",
+                "availability_note": "Свободные даты и итоговую смету подтверждает площадка.",
+            }
+        )
+    items.sort(key=lambda item: (item["rank"], item["name"]))
+    return {
+        "mode": "investor_demo_research",
+        "count": min(len(items), limit),
+        "items": items[:limit],
+    }
 
 
 @router.get("/venues/{venue_id}")
@@ -668,6 +780,7 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Площадка не найдена")
     halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
     tariffs = db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).all()
+    photos = _public_venue_photos(db, venue.id)
     slots = []
     for hall in halls:
         for s in (
@@ -706,6 +819,7 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
             )
         },
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
+        "photos": photos,
         "halls": [_hall_item(h) for h in halls],
         "slots": slots,
     }

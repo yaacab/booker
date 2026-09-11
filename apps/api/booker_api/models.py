@@ -123,7 +123,7 @@ class Venue(Base):
     source_url: Mapped[str] = mapped_column(String(512), default="")
     source_attribution: Mapped[str] = mapped_column(String(128), default="")
     listing_origin: Mapped[str] = mapped_column(String(32), default="owner")  # open_data|owner|seed
-    availability_mode: Mapped[str] = mapped_column(String(32), default="owner")  # synthetic|owner
+    availability_mode: Mapped[str] = mapped_column(String(32), default="owner")  # research|owner
     venue_type: Mapped[str] = mapped_column(String(64), default="")
     administrative_district: Mapped[str] = mapped_column(String(32), default="")
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
