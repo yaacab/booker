@@ -54,6 +54,9 @@ export default function BriefsPage() {
   }
 
   useEffect(() => {
+    const initialQuery=new URLSearchParams(window.location.search);
+    setQuery(initialQuery.get("q")||"");
+    setCategoryFilter(initialQuery.get("category")||"");
     void load();
     if(!getToken()){setAccessReady(true);return;}
     let cancelled=false;

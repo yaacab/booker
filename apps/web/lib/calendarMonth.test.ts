@@ -22,9 +22,9 @@ test("month grid starts Monday and includes leap day and year rollover", () => {
   assert.equal(monthCells(2026, 0)[0], "2025-12-29");
 });
 test("overnight slots occupy both days but midnight end excludes next day", () => {
-  const entries = [{ id:"one", status:"booked", starts_at:"2026-09-07T22:00:00", ends_at:"2026-09-08T02:00:00" }];
+  const entries = [{ id:"one", status:"booked", starts_at:"2026-09-07T22:00:00+03:00", ends_at:"2026-09-08T02:00:00+03:00" }];
   assert.equal(entriesOnDay(entries,"2026-09-07").length, 1);
   assert.equal(entriesOnDay(entries,"2026-09-08").length, 1);
   assert.equal(entriesOnDay(entries,"2026-09-09").length, 0);
-  assert.equal(entriesOnDay([{...entries[0],ends_at:"2026-09-08T00:00:00"}],"2026-09-08").length, 0);
+  assert.equal(entriesOnDay([{...entries[0],ends_at:"2026-09-08T00:00:00+03:00"}],"2026-09-08").length, 0);
 });

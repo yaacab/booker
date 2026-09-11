@@ -1,0 +1,40 @@
+/* Explicit workspace tokens override the older light-only reference sheets. */
+html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) {
+  color: var(--edition-text);
+  --catalog-ink: #edf3e8;
+  --catalog-muted: #b1c1b2;
+}
+html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) :is(p,small,summary,figcaption,.timeline,.kicker,.profile-small-note,.profile-back,.profile-location,.profile-location-detail,.deal-head-meta,.event-section-title>span,.profile-section-heading>span,.profile-facts-strip dt) {
+  color: #bdcdbb !important;
+}
+html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) :is(button,.btn) {
+  background: #d9fa79 !important;
+  color: #203010 !important;
+  border-color: #b2ce68 !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+}
+html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) :is(button.secondary,.btn.secondary,.tabs button,.text-button,.deal-text-link) {
+  background: #28392b !important;
+  color: #e0efd2 !important;
+  border-color: #52684d !important;
+}
+html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) :is(button,.btn) :is(strong,small,span) { color: inherit !important; }
+html[data-edition="black"] .site-content :is(.tabs button[aria-selected="true"],.request-filters button[aria-pressed="true"]) { border-bottom-color:#d9fa79 !important; color:#d9fa79 !important; }
+html[data-edition="black"] .site-content :is(.deal-progress,.deal-head-meta>a,.deal-actions-menu>summary,.event-readiness,.profile-facts-strip,.profile-fact-chips>span,.profile-tariff-list>li,.profile-rider-card,.profile-calendar-panel,.sticky-cta,.sheet,.msg,.chat-compose input) {
+  background: #202e23 !important;
+  color: #edf3e8 !important;
+  border-color: #465b40 !important;
+  box-shadow: none !important;
+}
+html[data-edition="black"] .site-content .msg.chat { background:#2d422b !important; }
+html[data-edition="black"] .site-content .tabs { background:#18231a !important; border-color:#465b40 !important; }
+html[data-edition="black"] .site-content :is(input,textarea,select) { background:#152018 !important; color:#eef6e9 !important; border-color:#56694f !important; }
+html[data-edition="black"] .site-content ::placeholder { color:#a8bba2 !important; opacity:1; }
+html[data-edition="black"] .site-content .profile-calendar-panel .slot-groups>section { background:#253629 !important; border-color:#465b40 !important; }
+html[data-edition="black"] .site-content .profile-calendar-panel .slot-btn { background:#2d422b !important; color:#e0efd2 !important; }
+html[data-edition="black"] .site-content .profile-calendar-panel .slot-btn.on { background:#d9fa79 !important; color:#203010 !important; }
+html[data-edition="black"] .site-content .profile-calendar-panel .slot-btn .chip { background:transparent !important; color:inherit !important; }
+html[data-edition="black"] .site-content .deal-reference-page .sticky-cta .kicker { color:#d9fa79 !important; }
+.site-content .public-profile-reference :is(.profile-small-note,.profile-calendar-panel .slot-day,.profile-facts-strip dt) { font-size:12px; }
+@media(max-width:760px){.deal-progress{grid-template-columns:repeat(5,minmax(110px,1fr));overflow-x:auto;scrollbar-width:thin}.deal-progress strong{overflow-wrap:normal;word-break:normal}}

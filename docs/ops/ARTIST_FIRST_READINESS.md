@@ -17,21 +17,31 @@ Working branch: `codex/artist-first-readiness`. This checkpoint is not a product
 - Shared deal card in both cabinets: event date, participants, server status, party expected to act, hold expiry, server price, last message and one link to continue.
 - Incoming requests and negotiations are prioritized. Created proposals remain visible before artist acknowledgement. Archived requests are excluded from new requests. Agreed offers lead to holding the date.
 - Profile action overflow fixed; chrome labels remain dark in Black Edition; compact mobile header.
+- Upcoming events show missing artist roles with contextual search links. Artists see relevant open jobs by city and category. Cancelled bookings no longer fill staffing requirements.
+- Profile, request, deal and both cabinets have readable Black Edition surfaces, buttons and calendars. Requests show artist names; the deal heading shows its event.
+- Registration copy explains finding artists and work; role links select the correct account type.
+- UTC is normalized before SQLite drops input offsets and attached on read. Moscow conversion is explicit; no historical date rows are rewritten. Completed-performance counts exclude merely confirmed future bookings; unsupported response-time claims were removed.
 
 ## Completed checks
 
-- Final production build and TypeScript check passed. Frontend unit suite: 48 passed after cabinet edits.
-- Full API suite: 206 passed, 2 skipped. Includes new protected response history and shared summary assertions, hold expiry/conflict and authorization coverage. Two warnings concern the installed test client's deprecated integration.
-- Browser: two passing tests in `apps/web/e2e/readiness.spec.ts`. Homepage at 1440/768/390 pixels in both themes and reduced motion. Isolated two-role flow: search → profile → UI request → UI offer → acknowledgements → message → hold; identical API quote/status/hold for both parties. Both cabinets checked at 390 pixels. Public order creation, artist response, owner review and closed response history also passed.
+- Final production build and TypeScript check passed. Frontend unit suite: 51 passed.
+- Full API suite: 210 passed, 2 skipped. Includes protected response history, shared summary assertions, UTC round trips, hold expiry/conflict, completed-performance counts and authorization coverage. Two warnings concern the installed test client's deprecated integration.
+- Browser: three passing tests in `apps/web/e2e/readiness.spec.ts`. Homepage at 1440/768/390 pixels in both themes and reduced motion. Isolated two-role flow: category/date search → profile → UI request → UI offer → acknowledgements → message → hold; identical quote/status/event date/hold for both parties and a real 24-hour TTL. Search, profile, request, deal and both cabinets checked at 1440/390 in both editions. Missing-role priorities, matching jobs, public order creation, artist response, owner review and closed response history passed. UI registration for each role creates its organization and opens the correct cabinet.
 - Venue validator: 300 valid records / 300 unique sources. External images were not rechecked online in this run.
 
 Browser tests require separately running web and API against an isolated database; never point them at production. `playwright.readiness.config.ts` defaults to web `127.0.0.1:4316`, API `127.0.0.1:8035`. Override with `BOOKER_WEB_URL`, `BOOKER_API_URL`, and optionally `BOOKER_BROWSER_EXECUTABLE`. Traces may contain test session tokens and are ignored by Git.
 
 ## Remaining before release
 
-1. Audit the legacy date convention. `lib/format.ts` interprets naive API datetimes as Moscow wall time; `security.aware()` interprets naive database datetimes as UTC. SQLite drops supplied offsets, and slot/event input paths differ. The shared-flow test verifies both parties agree but does not establish correct UTC/Moscow conversion. Verify round trips, hold TTL and existing production data semantics before changing them or publishing.
-2. Finish visual review of the profile, request and deal screens at mobile/tablet widths in both themes; the current browser checks are not a full page-by-page review.
-3. Verify missing-supplier priorities, private development role hints and the selected release against actual production API/schema. Apply the dedicated release and rollback procedure; do not use the legacy script that seeds production.
-4. Keep production payments disabled until the existing legal and partner gates are satisfied. Keep the demo gateway on its private service only.
+1. Rehearse additive venue schema initialization and old/new API compatibility on a private restored production database. Stage the exact reviewed commit and validate it before switching directories; never seed production.
+2. Verify private development role hints and isolation against production, then perform the dedicated backup/switch/rollback and live acceptance procedure.
+3. Preserve production external-payment mode and the existing legal/partner gates. Keep the demo gateway on its private service only.
+
+## Production preflight evidence
+
+- Live marker: `8ebf469`; all four public/private services active. API dependencies and web lockfile match the candidate byte-for-byte. Node 20.20.2 / npm 10.8.2.
+- All 364 tracked baseline web/API files exist. Only a test differs (the server lacks newer district/metro assertions); no live-only application hotfix, local environment file, runtime data or symlink was found in the application directories. Generated egg-info is expendable; virtualenv/data/config remain in place.
+- Read-only date audit: 1 event, 1 request, 0 bookings/holds, 5,277 slots (60 artist, 5,217 hall). Sources: 5,216 synthetic slots and 61 seed slots, no imported iCal/vacation offsets; seed and synthetic writers use UTC. The only event uses the slot-copying quick-request path. No historical offset conversion is needed; raw timestamps remain unchanged.
+- The existing browser bundles leave Event Studio Map unset (default off). Candidate keeps it off; `/assemble` and its Moscow map remain available. Public API uses external payment; private demo uses stub. No payment or service-environment changes are part of this release.
 
 Preview screenshots are local working artifacts under `/home/art67/booker/outputs/artist-first-preview`; they do not prove deployment to bukergo.ru.

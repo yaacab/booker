@@ -58,7 +58,7 @@ def _supplier_deals_count(db: Session, org_id: str) -> int:
         .join(Request, Offer.request_id == Request.id)
         .filter(
             Request.supplier_org_id == org_id,
-            Booking.status.in_(("Confirmed", "InProgress", "Completed")),
+            Booking.status == "Completed",
         )
         .count()
     )
@@ -68,15 +68,12 @@ def _supplier_deals_count(db: Session, org_id: str) -> int:
 def _catalog_iso(dt: datetime | None) -> str | None:
     """Serialize slot times with an explicit MSK offset.
 
-    SQLite often returns naive datetimes; without an offset, Next.js SSR on UTC
-    hosts and browsers in Europe/Moscow parse them differently and the catalog
-    page fails hydration (React #418).
+    UTC persistence is converted to Moscow for display. Legacy offsetless UTC
+    values must not be relabelled as Moscow wall time (a three-hour shift).
     """
     if dt is None:
         return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=MSK).isoformat()
-    return dt.astimezone(MSK).isoformat()
+    return aware(dt).astimezone(MSK).isoformat()
 
 
 def _hall_item(hall: VenueHall) -> dict:
@@ -867,8 +864,8 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
         "rider": rider,
         "facts": {
             "deals": _supplier_deals_count(db, artist.organization_id),
-            "response": "в пилоте обычно за пару часов",
-            "note": "Рейтинг из восьми факторов подождёт. Сначала десять живых отзывов, потом цирк.",
+            "response": "пока нет данных",
+            "note": "Артист пока не добавил описание программы. Уточните состав, длительность выступления и технические требования перед подтверждением.",
         },
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
         "slots": [_slot_item(s) for s in slots],

@@ -14,6 +14,7 @@ import "./saved-searches-reference-v2.css";
 import "./completion-reference.css";
 import "./editions.css";
 import "./artist-first.css";
+import "./black-workspaces.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
 

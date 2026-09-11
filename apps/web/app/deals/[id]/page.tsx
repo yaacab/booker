@@ -7,7 +7,7 @@ import { DealRoomSummary } from "@/components/deal-room/DealRoomSummary";
 import { HoldCountdown } from "@/components/HoldCountdown";
 import { api, trackClientEvent } from "@/lib/api";
 import { orgKindToDealRoomAccentKind } from "@/lib/dealRoomAccents";
-import { money } from "@/lib/format";
+import { money, formatWhen } from "@/lib/format";
 import { nextAction, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
 
 const TABS = [
@@ -30,6 +30,7 @@ type Room = {
   workspace_kind?: string;
   next_step: string;
   event_title?: string;
+  event_date?: string;
   participants?: { role: string; name: string; duty: string }[];
   hold?: { status: string; expires_at: string } | null;
   quote: {
@@ -266,8 +267,8 @@ export default function DealPage() {
       <div ref={bodyRef} className="deal-page-body">
       <header className="deal-head">
         <Link className="deal-back" href="/cabinet">← К списку сделок</Link>
-        <div className="deal-title-row"><h1 title={room.booking_id}>Сделка #{room.booking_id.slice(0, 8)}</h1><span className={`chip ${room.status === "Confirmed" || room.status === "Completed" ? "ok" : room.status === "Cancelled" || room.status === "Dispute" ? "bad" : "wait"}`}>{STATUS_LABEL[room.status] || room.status}</span></div>
-        <p className="deal-event-title">{room.event_title || "Детали вашего события"}</p>
+        <div className="deal-title-row"><h1 title={room.booking_id}>{room.event_title || "Договорённости"}</h1><span className={`chip ${room.status === "Confirmed" || room.status === "Completed" ? "ok" : room.status === "Cancelled" || room.status === "Dispute" ? "bad" : "wait"}`}>{STATUS_LABEL[room.status] || room.status}</span></div>
+        <p className="deal-event-title">{room.event_date?`${formatWhen(room.event_date)} · МСК`:"Детали вашего события"}</p>
         <div className="deal-head-meta"><span>Вы — {accentKind === "customer" ? "заказчик" : accentKind === "venue" ? "площадка" : "исполнитель"}</span>{room.event_id ? <Link href={`/events/${room.event_id}`}>К событию <span aria-hidden="true">↗</span></Link> : null}</div>
       </header>
       <ol className="deal-progress" aria-label="Этапы сделки">

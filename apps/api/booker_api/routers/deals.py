@@ -269,11 +269,14 @@ def get_event(event_id: str, user: User = Depends(current_user), db: Session = D
                 version = db.get(OfferVersion, offer.active_version_id)
                 if version:
                     quote_id = version.id
+        resource_model = Artist if req.resource_type == "artist" else VenueHall if req.resource_type == "hall" else Venue
+        resource = db.get(resource_model, req.resource_id)
         item = {
             "id": req.id,
             "status": req.status,
             "resource_type": req.resource_type,
             "resource_id": req.resource_id,
+            "resource_name": resource.name if resource else "Исполнитель",
             "requirement_id": getattr(req, "requirement_id", None),
             "booking_id": booking.id if booking else None,
         }

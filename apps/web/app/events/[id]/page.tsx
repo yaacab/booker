@@ -35,6 +35,7 @@ type DraftItem = {
 type EventRequest = EventRequestLite & {
   resource_type?: string;
   resource_id?: string;
+  resource_name?: string;
 };
 
 type EventDetail = {
@@ -608,7 +609,7 @@ export default function EventPage() {
                           <span className="timeline"> — нужно ещё {step.openSlots}</span>
                         ) : null}
                         <p className="timeline">
-                          Блокирует: {BLOCKER_LABEL[step.blocker]}
+                          Следующий шаг: {BLOCKER_LABEL[step.blocker]}
                           {step.filled > 0 ? ` (${step.filled} из ${step.need} закрыто)` : null}
                         </p>
                         {step.openRequests.map((item) => (
@@ -660,17 +661,15 @@ export default function EventPage() {
       </div>
       {looseRequests.length > 0 ? (
         <>
-          <h2>Заявки без роли в составе</h2>
+          <h2>Приглашённые отдельно</h2>
           <article className="card tint">
             <p className="timeline">
-              {looseRequests.length} заявок не привязаны к позициям состава — их не видно в карточках ролей выше.
-              Привяжите через каталог («Найти на эту дату» у нужной роли) или закройте лишние в Deal Room.
+              Здесь ваши прямые приглашения из профилей. Ответы и договорённости сохраняются в каждой заявке.
             </p>
             <div className="grid">
               {looseRequests.map((item) => (
                 <article className="card" key={item.id}>
-                  <strong>{KIND_LABEL[item.resource_type || ""] || item.resource_type || "Заявка"}</strong>
-                  <p className="timeline mono">id {item.id.slice(0, 8)}…</p>
+                  <strong>{item.resource_name || KIND_LABEL[item.resource_type || ""] || "Заявка"}</strong>
                   <RequestDeal item={item} />
                 </article>
               ))}

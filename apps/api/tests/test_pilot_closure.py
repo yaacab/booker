@@ -3,7 +3,7 @@ from tests.test_offers import ack_both, setup_negotiation
 from tests.test_payments import _awaiting_payment
 
 
-def test_artist_facts_deals_count_after_confirm(client):
+def test_confirmed_booking_is_not_a_completed_performance(client):
     ctx = _awaiting_payment(client)
     ch = auth_header(ctx["customer"]["token"])
     assert (
@@ -15,7 +15,9 @@ def test_artist_facts_deals_count_after_confirm(client):
         == 200
     )
     artist = client.get(f"/artists/{ctx['artist']['id']}").json()
-    assert artist["facts"]["deals"] >= 1
+    room = client.get(f"/deal-room/{ctx['booking_id']}", headers=ch).json()
+    assert room["status"] == "Confirmed"
+    assert artist["facts"]["deals"] == 0
 
 
 def test_deal_room_links_event_and_lists_documents(client):

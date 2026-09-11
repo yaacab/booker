@@ -127,14 +127,14 @@ export default function LoginPage() {
 
   return (
     <main className="login-layout">
-      <aside className="login-story" aria-label="О Букере"><p className="kicker">Люди. Места. События.</p><h2>Всё начинается<br />с вашей идеи.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Соберите команду, обсудите детали и сохраните договорённости в одном месте.</p></aside>
+      <aside className="login-story" aria-label="О Букере"><p className="kicker">Артисты. Работа. События.</p><h2>Ваше следующее<br />выступление — здесь.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Находите артистов и заказы, обсуждайте детали и сохраняйте договорённости в одном месте.</p></aside>
       <section className="login-fields">
       <p className="brand-lockup-wrap">
         <BrandLockup />
       </p>
       <p className="kicker">{kicker}</p>
       <h1>{heading}</h1>
-      <p><a className="btn secondary" href="/dev/cabinets">Войти в демо-кабинет без пароля →</a></p>
+      <p><a className="btn secondary" href="/dev/cabinets">Демонстрационные кабинеты →</a></p>
       {mode === "register" ? (
         <p className="timeline">Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи.</p>
       ) : mode === "reset" ? (
@@ -153,8 +153,8 @@ export default function LoginPage() {
               <legend>Роль</legend>
               <input type="hidden" name="kind" value={selectedRole} />
               {[
-                ["customer", "Заказчик", "Ищу артиста или площадку"],
-                ["artist", "Артист / менеджер", "Управляю датами и предложениями"],
+                ["customer", "Заказчик", "Ищу артистов для своего события"],
+                ["artist", "Артист / менеджер", "Ищу заказы и управляю выступлениями"],
                 ["venue", "Площадка", "Размещаю пространство и слоты"],
               ].map(([value, title, description]) => (
                 <button

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { isWriteRole } from "@/lib/api";
 import { CabinetPageShell } from "../CabinetPageShell";
 import { SupplyCabinetSection } from "../SupplyCabinetSection";
+import { ArtistOpportunities } from "../PlanningPriorities";
 import { usePerformerCabinetData } from "./usePerformerCabinetData";
 import { AwaitingResponseWidget } from "./widgets/AwaitingResponseWidget";
 import { CalendarConflictsWidget } from "./widgets/CalendarConflictsWidget";
@@ -73,6 +74,7 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
     </details> : null}
   >
     {section === "home" ? <>
+      <ArtistOpportunities artistId={artistId}/>
       <section className="cabinet-zone-grid workspace-secondary-grid" aria-label="Заявки и профиль">
         {activeHolds.length>0||negotiations.length>0?<UpcomingPerformancesWidget bookings={upcomingPerformances} />:null}
         {orgId ? <CalendarOverviewWidget orgId={orgId} artistId={artistId} bookings={bookings} compact /> : null}
