@@ -79,3 +79,16 @@ The local production build passed. Five browser scenarios passed together (homep
 ## Deployment dependency correction
 
 The server's clean install surfaced newly published advisories in the previously pinned dependencies. The release candidate now resolves Next.js and eslint-config-next 15.5.25, sharp 0.35.4, PostCSS 8.5.23 and js-yaml 4.3.2. Next.js explicitly accepts sharp ^0.35.4; its Node requirement is compatible with server Node 20.20.2. PostCSS and js-yaml overrides keep patched versions within their existing major versions. The isolated lock-file audit reports zero vulnerabilities. Server build, image conversion and browser checks must pass on this revised candidate before switching. No production dependencies were changed in place.
+
+## Published and accepted: 18b2b0c
+
+On 11 September 2026, application commit `18b2b0c1c272481019ec816e3dd08555bcecf664` was published to bukergo.ru after explicit owner authorization for GitHub, SCP, server build and cutover. All 408 candidate source files (including runtime legal documents and both venue datasets) matched the reviewed commit. The legal documents were unchanged from the prior release and were verified and copied within the server for the candidate; production retained those identical documents.
+
+- Clean server install: Next.js 15.5.25; npm audit reported 0 known vulnerabilities. TypeScript, 54 frontend tests and production build passed. AVIF encoding/decoding and PNG conversion passed with sharp 0.35.4.
+- Isolated server API: 240/240 requests succeeded at concurrency 80 (2.46 seconds total). This is a controlled test, not a general capacity guarantee.
+- Both database copies retained existing values across schema initialization and were readable by the old application: 44 tables each; 6,435 production rows and 210 demo rows at rehearsal time.
+- Server candidate: 13 HTTP routes and all 6 browser scenarios passed, including the complete two-party flow. The browser assertion now waits for the successful hold response before reading both parties' states; the progress-step label alone was already visible before completion on a slower network.
+- Final database/upload snapshots and previous application directories were retained. Four services switched in 7.88 seconds, with automatic application rollback prepared. No production seeding or payment configuration change occurred.
+- Public acceptance: 21 checks passed, covering public routes and every legal page, compiled graphite styles, the puzzle photo and API health. Browser screenshots of the live homepage (both editions), login (desktop/mobile) and venue discovery were inspected. Release marker matches 18b2b0c; four services are active. Post-switch logs contained zero observed Traceback, QueuePool, HTTP 500 or ERROR entries at acceptance time.
+
+The requested artist/customer redesign and deployment are complete within the original eight-point plan. Payments remain external in the pilot; legal approval and live acquiring retain their existing separate gates. Research venues remain noindex discovery with availability clarification rather than unverified booking inventory. Public passwordless admin access remains disabled.

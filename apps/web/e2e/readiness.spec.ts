@@ -105,7 +105,9 @@ test("заказчик и артист: поиск → заявка → пред
   await customerPage.locator(".chat-compose button").click();
   await artistPage.reload();
   await expect(artistPage.getByText("Проверка: выступление согласовано на выбранную дату.").first()).toBeVisible();
+  const holdResponse=customerPage.waitForResponse(r=>r.url().endsWith(`/bookings/${bookingId}/hold`)&&r.request().method()==="POST");
   await customerPage.locator("button:visible").filter({hasText:/^Удержать дату$/}).first().click();
+  expect((await holdResponse).ok()).toBeTruthy();
   await expect(customerPage.getByText("Дата удерживается",{exact:true}).first()).toBeVisible();
   const customerRoom=await get(`/deal-room/${bookingId}`,customer.token),artistRoom=await get(`/deal-room/${bookingId}`,artist.token);
   for(const key of ["status","event_date","quote","hold","action_required_from","messages"])expect(customerRoom[key]).toEqual(artistRoom[key]);
