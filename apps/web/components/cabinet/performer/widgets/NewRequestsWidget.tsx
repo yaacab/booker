@@ -22,7 +22,7 @@ export function NewRequestsWidget({ requests, role, offerBusy, onSendOffer }: Ne
   return (
     <DashboardWidget
       title="Новые заявки"
-      hint="Входящие запросы без оффера"
+      hint="Запросы, которые ждут вашего предложения"
       isEmpty={requests.length === 0}
       empty="Нет новых заявок — откройте свободные слоты и дождитесь запроса заказчика."
     >
@@ -33,7 +33,7 @@ export function NewRequestsWidget({ requests, role, offerBusy, onSendOffer }: Ne
               <strong>{r.event_title}</strong>
               <span className={`chip ${chipCls(r.status)}`}>{STATUS_LABEL[r.status] || r.status}</span>
               {r.event_date ? <span className="mono">{formatWhen(r.event_date)}</span> : null}
-              <span className="timeline">витрина {money(r.honorarium_rub)} — это ещё не счёт</span>
+              <span className="timeline">Стоимость в каталоге: {money(r.honorarium_rub)}</span>
               {r.booking_id ? (
                 <Link className="btn" href={`/deals/${r.booking_id}`}>
                   Открыть Deal Room

@@ -4,6 +4,9 @@ export type EventStudioDraft = {
   title: string;
   kind: string;
   city: string;
+  district?: string;
+  address?: string;
+  metro?: string;
   date: string;
   startsAt: string;
   endsAt: string;
@@ -32,6 +35,9 @@ export type VenueItem = {
   id: string;
   name: string;
   city: string;
+  district?: string;
+  address?: string;
+  metro?: string;
   honorariumFrom: number | null;
   availabilityLabel?: string;
 };

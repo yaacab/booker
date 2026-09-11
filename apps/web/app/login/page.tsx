@@ -123,12 +123,15 @@ export default function LoginPage() {
           : "Новый аккаунт";
 
   return (
-    <main>
+    <main className="login-layout">
+      <aside className="login-story" aria-label="О Букере"><p className="kicker">Люди. Места. События.</p><h2>Всё начинается<br />с вашей идеи.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Соберите команду, обсудите детали и сохраните договорённости в одном месте.</p></aside>
+      <section className="login-fields">
       <p className="brand-lockup-wrap">
         <BrandLockup />
       </p>
       <p className="kicker">{kicker}</p>
       <h1>{heading}</h1>
+      <p><a className="btn secondary" href="/dev/cabinets">Войти в демо-кабинет без пароля →</a></p>
       {mode === "register" ? (
         <p className="timeline">Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи.</p>
       ) : mode === "reset" ? (
@@ -242,6 +245,7 @@ export default function LoginPage() {
           </>
         )}
       </p>
+      </section>
     </main>
   );
 }

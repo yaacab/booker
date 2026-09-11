@@ -4,13 +4,13 @@ export const metadata = { title: "Нет такой страницы" };
 
 export default function NotFound() {
   return (
-    <main>
-      <p className="kicker">404. Даже слот свободнее.</p>
-      <h1>Этой страницы нет. И не было.</h1>
-      <p className="timeline">Либо опечатка, либо кто-то слишком творчески набрал адрес.</p>
+    <main className="reference-empty">
+      <p className="kicker">Ошибка 404</p>
+      <h1>Страница не найдена</h1>
+      <p className="timeline">Проверьте адрес или продолжите подбор команды в каталоге.</p>
       <p>
         <Link className="btn" href="/">
-          Унести ноги на главную
+          На главную
         </Link>
         {" "}
         <Link className="btn secondary" href="/search">

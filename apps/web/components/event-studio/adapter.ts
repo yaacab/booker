@@ -10,6 +10,8 @@ import type {
 } from "./types";
 import { EMPTY_DRAFT } from "./types";
 
+function draftStorage(): Storage { return typeof sessionStorage !== "undefined" && sessionStorage.getItem("booker.demo.token") ? sessionStorage : localStorage; }
+
 const DRAFT_KEY = "booker.eventStudioMapDraft";
 
 export const EVENT_STUDIO_DRAFT_STORAGE_KEY = DRAFT_KEY;
@@ -25,6 +27,9 @@ type CatalogItem = {
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
   availability_mode?: string;
+  district?: string;
+  address?: string;
+  metro?: string;
 };
 
 type CatalogResponse = {
@@ -89,6 +94,7 @@ export function mapCatalogVenue(item: CatalogItem): VenueItem {
     id: item.id,
     name: item.name,
     city: item.city,
+    district: item.district, address: item.address, metro: item.metro,
     honorariumFrom: minHonorarium(item.tariffs),
     availabilityLabel: synthetic ? "Календарь ориентировочный" : undefined,
   };
@@ -131,7 +137,7 @@ export type StoredDraft = {
 export function loadStoredDraft(): StoredDraft | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(DRAFT_KEY);
+    const raw = draftStorage().getItem(DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredDraft;
     if (!parsed.draft) return null;
@@ -146,12 +152,12 @@ export function loadStoredDraft(): StoredDraft | null {
 
 export function saveStoredDraft(draft: EventStudioDraft): StoredDraft {
   const payload: StoredDraft = { draft, savedAt: new Date().toISOString() };
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+  draftStorage().setItem(DRAFT_KEY, JSON.stringify(payload));
   return payload;
 }
 
 export function clearStoredDraft(): void {
-  localStorage.removeItem(DRAFT_KEY);
+  draftStorage().removeItem(DRAFT_KEY);
 }
 
 export function bumpDraftVersion(draft: EventStudioDraft): EventStudioDraft {

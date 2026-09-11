@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MOSCOW_DISTRICTS, MOSCOW_METRO } from "@/lib/moscowDistricts";
 import { CATEGORY, categoryLabel } from "@/lib/copy";
-import { moscowToday } from "@/lib/format";
-import { trackClientEvent } from "@/lib/api";
-import { CityField } from "@/components/CityField";
+import { apiBase, trackClientEvent } from "@/lib/api";
 
 export type CategoryChip = { code: string; title: string };
 
 export type CatalogFilterValues = {
   city: string;
+  district?: string;
+  metro?: string;
   date?: string;
   category?: string;
   categories?: CategoryChip[];
@@ -27,23 +28,6 @@ export type CatalogFilterValues = {
 
 function fallbackCategories(): CategoryChip[] {
   return Object.entries(CATEGORY).map(([code, title]) => ({ code, title }));
-}
-
-function searchHref(base: CatalogFilterValues, cat?: string | null) {
-  const p = new URLSearchParams();
-  p.set("city", base.city);
-  if (base.date) p.set("date", base.date);
-  if (cat) p.set("category", cat);
-  if (base.event) p.set("event", base.event);
-  if (base.requirement) p.set("requirement", base.requirement);
-  if (base.exclude) p.set("exclude", base.exclude);
-  if (base.kind) p.set("kind", base.kind);
-  if (base.format) p.set("format", base.format);
-  if (base.travel) p.set("travel", base.travel);
-  if (base.budget_max) p.set("budget_max", base.budget_max);
-  if (base.guests) p.set("guests", base.guests);
-  if (base.seating) p.set("seating", base.seating);
-  return `/search?${p.toString()}`;
 }
 
 export function CatalogFilters(props: CatalogFilterValues) {
@@ -63,14 +47,11 @@ export function CatalogFilters(props: CatalogFilterValues) {
     seating,
   } = props;
   const [open, setOpen] = useState(false);
-  // min date only after mount — avoid SSR/client calendar-day drift near midnight.
-  const [minDate, setMinDate] = useState<string | undefined>(undefined);
   const [cats, setCats] = useState<CategoryChip[]>(
     categories?.length ? categories : fallbackCategories(),
   );
 
   useEffect(() => {
-    setMinDate(moscowToday());
     const mq = window.matchMedia("(min-width: 900px)");
     const sync = () => setOpen(mq.matches);
     sync();
@@ -84,7 +65,7 @@ export function CatalogFilters(props: CatalogFilterValues) {
       return;
     }
     let cancelled = false;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/categories`)
+    fetch(`${apiBase()}/categories`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items?: { code?: string; title?: string }[] }) => {
         const items = Array.isArray(data.items) ? data.items : [];
@@ -113,82 +94,87 @@ export function CatalogFilters(props: CatalogFilterValues) {
     .filter(Boolean)
     .join(" · ");
 
+  const reset = new URLSearchParams({ city });
+  if (kind) reset.set("kind", kind);
+  if (event) reset.set("event", event);
+  if (requirement) reset.set("requirement", requirement);
+  if (exclude) reset.set("exclude", exclude);
+
   return (
-    <aside className="filters card surface-glass">
-      <button type="button" className="filter-toggle" onClick={() => setOpen((v) => !v)}>
-        {open ? "Спрятать фильтр" : closedLabel}
+    <aside className="filters catalog-filters">
+      <button type="button" className="filter-toggle" aria-expanded={open} aria-controls="catalog-filter-body" onClick={() => setOpen((v) => !v)}>
+        <span>Фильтры <span className="catalog-filter-summary">{closedLabel}</span></span>
+        <span aria-hidden="true">{open ? "−" : "+"}</span>
       </button>
-      <div className={`filter-body${open ? " open" : ""}`}>
-        <h2 className="filter-title">Сузить охоту</h2>
+      <div id="catalog-filter-body" className={`filter-body${open ? " open" : ""}`}>
         <form
           action="/search"
           method="get"
-          onSubmit={() => {
-            trackClientEvent("search.performed", { city, category: category || "all", kind: kind || "all" });
+          onSubmit={(event) => {
+            const values = new FormData(event.currentTarget);
+            trackClientEvent("search.performed", {
+              city: String(values.get("city") || city),
+              category: String(values.get("category") || "all"),
+              kind: String(values.get("kind") || "all"),
+            });
           }}
         >
-          <CityField name="city" defaultValue={city} />
-          <label>
-            Дата
-            <input name="date" type="date" min={minDate} defaultValue={date || ""} />
-          </label>
-          <label>
-            Тип
-            <select name="kind" defaultValue={kind || ""}>
-              <option value="">Артисты и площадки</option>
-              <option value="artist">Только исполнители</option>
-              <option value="venue">Только площадки</option>
-            </select>
-          </label>
-          <label>
-            Формат (исполнитель)
-            <input name="format" type="text" placeholder="wedding, club…" defaultValue={format || ""} />
-          </label>
-          <label>
-            Бюджет до, ₽
-            <input name="budget_max" type="number" min={0} placeholder="например 80000" defaultValue={budget_max || ""} />
-          </label>
-          <label>
-            Выезд
-            <select name="travel" defaultValue={travel || ""}>
-              <option value="">Не важно</option>
-              <option value="true">Только с выездом</option>
-              <option value="false">Без выезда</option>
-            </select>
-          </label>
-          <label>
-            Гостей от (зал)
-            <input name="guests" type="number" min={1} placeholder="80" defaultValue={guests || ""} />
-          </label>
-          <label>
-            Рассадка / зал (подсказка)
-            <input name="seating" type="text" placeholder="банкет, театр…" defaultValue={seating || ""} />
-          </label>
+          <input type="hidden" name="city" value={city} />
+          {date ? <input type="hidden" name="date" value={date} /> : null}
+          {kind ? <input type="hidden" name="kind" value={kind} /> : null}
           {event ? <input type="hidden" name="event" value={event} /> : null}
           {requirement ? <input type="hidden" name="requirement" value={requirement} /> : null}
           {exclude ? <input type="hidden" name="exclude" value={exclude} /> : null}
-          <p className="filter-label">Категория</p>
-          <nav className="category-chips" aria-label="Категории">
-            <Link
-              href={searchHref({ ...props, category: undefined }, null)}
-              className={`chip${category ? "" : " on"}`}
-              aria-current={category ? undefined : "page"}
-            >
-              Все
-            </Link>
-            {cats.map((c) => (
-              <Link
-                key={c.code}
-                href={searchHref(props, c.code)}
-                className={`chip${category === c.code ? " on" : ""}`}
-                aria-current={category === c.code ? "page" : undefined}
-              >
-                {c.title || categoryLabel(c.code)}
-              </Link>
+
+          <fieldset className="catalog-filter-group"><legend>Район и метро Москвы</legend><datalist id="catalog-districts">{MOSCOW_DISTRICTS.map(x=><option key={x} value={x}/>)}</datalist><datalist id="catalog-metro">{MOSCOW_METRO.map(x=><option key={x} value={x}/>)}</datalist><label>Район<input list="catalog-districts" name="district" defaultValue={props.district || ""} placeholder="Например, Хамовники" maxLength={128}/></label><label>Метро<input list="catalog-metro" name="metro" defaultValue={props.metro || ""} placeholder="Например, Парк культуры" maxLength={128}/></label><p className="timeline">Фильтр расположения применяется к площадкам. Выезд специалиста согласуется отдельно.</p></fieldset>
+          <fieldset className="catalog-filter-group catalog-category-options">
+            <legend>Категории</legend>
+            <label className="catalog-filter-option">
+              <input type="radio" name="category" value="" defaultChecked={!category} />
+              <span>Все категории</span>
+            </label>
+            {cats.filter((c) => kind === "venue" ? c.code === "venue" : kind === "artist" ? c.code !== "venue" : true).map((c) => (
+              <label key={c.code} className="catalog-filter-option">
+                <input type="radio" name="category" value={c.code} defaultChecked={category === c.code} />
+                <span>{c.title || categoryLabel(c.code)}</span>
+              </label>
             ))}
-          </nav>
-          <p className="timeline">Без слота в расписании сюда не пускаем. Жалко, но честно.</p>
-          <button type="submit">Показать живых</button>
+            {category && !cats.some((c) => c.code === category) ? <label className="catalog-filter-option"><input type="radio" name="category" value={category} defaultChecked /><span>{categoryLabel(category)}</span></label> : null}
+          </fieldset>
+          <fieldset className="catalog-filter-group">
+            <legend>Бюджет, ₽</legend>
+            <label className="catalog-budget-input">
+              <span>До</span>
+              <input aria-label="Бюджет до, ₽" name="budget_max" type="number" min={0} placeholder="Любой бюджет" defaultValue={budget_max || ""} />
+            </label>
+          </fieldset>
+          <fieldset className="catalog-filter-group">
+            <legend>Выезд за город</legend>
+            {[{ value: "", label: "Не важно" }, { value: "false", label: "Только по городу" }, { value: "true", label: "Готовы выезжать" }].map((choice) => (
+              <label key={choice.value} className="catalog-filter-option">
+                <input type="radio" name="travel" value={choice.value} defaultChecked={(travel || "") === choice.value} />
+                <span>{choice.label}</span>
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className="catalog-filter-group catalog-additional-filters">
+            <legend>Для вашего события</legend>
+            <label>
+              Формат (исполнитель)
+              <input name="format" type="text" placeholder="wedding, club…" defaultValue={format || ""} />
+            </label>
+            <label>
+              Гостей от (зал)
+              <input name="guests" type="number" min={1} placeholder="Любое количество" defaultValue={guests || ""} />
+            </label>
+            <label>
+              Рассадка
+              <input name="seating" type="text" placeholder="Банкет, театр…" defaultValue={seating || ""} />
+            </label>
+          </fieldset>
+          <button type="submit" className="catalog-apply-filters">Показать варианты</button>
+          <Link className="catalog-reset-filters" href={`/search?${reset.toString()}`}><span aria-hidden="true">↺</span> Сбросить фильтры</Link>
+          <p className="timeline catalog-filter-note">Доступность и условия подтверждаются перед бронированием.</p>
         </form>
       </div>
     </aside>

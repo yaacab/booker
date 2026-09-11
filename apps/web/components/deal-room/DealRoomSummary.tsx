@@ -34,28 +34,11 @@ export function DealRoomSummary({ accentKind, room, actionKind }: DealRoomSummar
 
   return (
     <section className="card deal-summary surface-glass">
-      <p className="kicker">Сводка сделки</p>
-      <p className="mono" data-testid="deal-room-ids">
-        {room.booking_id} · quote_id: {room.quote.quote_id}
-      </p>
-      <p>
-        Статус брони: <strong>{STATUS_LABEL[room.status] || room.status}</strong>
-      </p>
-      {room.event_id ? (
-        <p>
-          <Link href={`/events/${room.event_id}`}>{room.event_title || "Событие"}</Link>
-        </p>
-      ) : (
-        <p className="timeline">Событие не привязано</p>
-      )}
-      <p>
-        <span className="kicker">Следующее действие</span>
-        <br />
-        {room.next_step}
-        <br />
-        <span className="timeline">{nextActionHint(actionKind)}</span>
-      </p>
+      <div className="deal-content-heading"><h2>Сводка сделки</h2><span className="chip wait">{STATUS_LABEL[room.status] || room.status}</span></div>
+      <div className="deal-next-step"><span className="deal-next-mark" aria-hidden="true">↗</span><div><p className="kicker">Следующее действие</p><strong>{room.next_step}</strong><p className="timeline">{actionKind === "ack" ? "Подтвердите актуальное предложение. Для продолжения нужно согласие обеих сторон." : actionKind === "contract" ? "Подпишите договор кодом из уведомлений." : nextActionHint(actionKind)}</p></div></div>
+      <div className="deal-confirmations" aria-label="Подтверждение предложения"><div><span aria-hidden="true">{room.quote.customer_ack ? "✓" : "◷"}</span><span><strong>Заказчик</strong><small>{room.quote.customer_ack ? "Условия подтверждены" : "Ожидаем подтверждение"}</small></span></div><div><span aria-hidden="true">{room.quote.supplier_ack ? "✓" : "◷"}</span><span><strong>Исполнитель</strong><small>{room.quote.supplier_ack ? "Условия подтверждены" : "Ожидаем подтверждение"}</small></span></div></div>
       <DealRoomAccentGrid accents={accents} />
+      <div className="deal-summary-footer">{room.event_id ? <Link href={`/events/${room.event_id}`}>{room.event_title || "Событие"} ↗</Link> : <span>Событие не привязано</span>}<details><summary>Реквизиты сделки</summary><p className="mono" data-testid="deal-room-ids">{room.booking_id} · quote_id: {room.quote.quote_id}</p></details></div>
     </section>
   );
 }

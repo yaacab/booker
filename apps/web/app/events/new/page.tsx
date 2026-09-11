@@ -78,7 +78,7 @@ export default function NewEventPage() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(DRAFT_KEY);
+      const raw = (sessionStorage.getItem("booker.demo.token") ? sessionStorage : localStorage).getItem(DRAFT_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as {
           draft?: Draft;
@@ -142,7 +142,7 @@ export default function NewEventPage() {
     setSaveStatus(navigator.onLine ? "saving" : "offline");
     const timer = window.setTimeout(() => {
       try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, unknown, step, roofName, savedAt: new Date().toISOString() }));
+        (sessionStorage.getItem("booker.demo.token") ? sessionStorage : localStorage).setItem(DRAFT_KEY, JSON.stringify({ draft, unknown, step, roofName, savedAt: new Date().toISOString() }));
         setSaveStatus(navigator.onLine ? "saved" : "offline");
       } catch {
         setSaveStatus("error");
@@ -235,7 +235,7 @@ export default function NewEventPage() {
       });
       trackClientEvent("event.studio.completed", { guest_count: Number(draft.guests || 50) });
       router.push("/cabinet");
-      localStorage.removeItem(DRAFT_KEY);
+      (sessionStorage.getItem("booker.demo.token") ? sessionStorage : localStorage).removeItem(DRAFT_KEY);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось сохранить");
     } finally {

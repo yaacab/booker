@@ -28,7 +28,7 @@ export default function HomePage() {
   return (
     <main className="page-enter immersive-home">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <ReferencePuzzleHero />
+      <section className="entry-paths" aria-label="С чего начнём"><Link href="/search?kind=artist"><span className="eyebrow">01 / ТОЧНО В ЦЕЛЬ</span><h2>Найти специалиста</h2><p>Диджей, ведущий, фотограф — когда нужен кто-то конкретный.</p><span className="entry-action">Выбрать специалиста ↗</span></Link><Link href="/assemble"><span className="eyebrow">02 / ВСЁ ВМЕСТЕ</span><h2>Собрать событие</h2><p>Место, люди и атмосфера. Ваше событие из хромовых пазлов.</p><span className="entry-action">Начать сборку ↗</span></Link></section><ReferencePuzzleHero />
       <section id="discover" className="discovery-section" aria-labelledby="discover-title">
         <div className="section-heading">
           <div><p className="eyebrow">01 / Найдите своих</p><h2 id="discover-title">Начните с нужной даты</h2></div>
@@ -45,7 +45,7 @@ export default function HomePage() {
         </div>
       </section>
       <section className="home-process" aria-labelledby="process-title">
-        <div className="section-heading"><div><p className="eyebrow">02 / От идеи к событию</p><h2 id="process-title">Меньше переписок.<br />Больше ясности.</h2></div><Link className="intro-link" href="/events/new?event_studio_map_v1=1">Открыть студию <span aria-hidden="true">↗</span></Link></div>
+        <div className="section-heading"><div><p className="eyebrow">02 / От идеи к событию</p><h2 id="process-title">Меньше переписок.<br />Больше ясности.</h2></div><Link className="intro-link" href="/assemble">Открыть студию <span aria-hidden="true">↗</span></Link></div>
         <div className="process-grid">
         <article>
           <span className="process-number">01</span><h3>Найдите совпадение</h3>

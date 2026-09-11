@@ -33,7 +33,7 @@ test.describe("Event Studio Map v1", () => {
     const toggle = page.locator(".mobile-panel-toggle");
     await expect(toggle).toBeVisible();
     await toggle.click();
-    await expect(page.getByRole("complementary", { name: "Добавить исполнителя" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Добавить исполнителя" })).toBeVisible();
     await expect(page.getByLabel("Поиск исполнителя")).toBeVisible();
     await page.getByLabel("Закрыть панель").click();
     await expect(toggle).toBeVisible();

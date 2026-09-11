@@ -10,6 +10,7 @@ from booker_api.calendar import MSK, calendar_day_bounds, open_slots_unmasked, o
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
 from booker_api.ical_import import calendar_targets, import_ical_source
+from booker_api.demo_calendar import ensure_demo_day
 from booker_api.models import (
     Artist,
     ArtistTariff,
@@ -544,9 +545,12 @@ def search_catalog(
     guests: int | None = Query(None, ge=1, description="Minimum hall capacity"),
     seating: str | None = Query(None, description="Optional seating hint; filters halls/venues mentioning it"),
     kind: str | None = Query(None, description="artist | venue — narrow dual search"),
+    district: str | None = Query(None, max_length=128),
+    metro: str | None = Query(None, max_length=128),
     db: Session = Depends(get_db),
 ):
     """В выдаче только профили с календарём. Занятые слоты не считаются свободными."""
+    ensure_demo_day(db, date or now())
     excluded = {item.strip() for item in (exclude or "").split(",") if item.strip()}
     kind_l = (kind or "").strip().lower() or None
     include_artists = kind_l != "venue" and (not category or category != "venue")
@@ -605,6 +609,7 @@ def search_catalog(
                 {
                     "id": artist.id,
                     "name": artist.name,
+                    "media_url": artist.media_url,
                     "city": artist.city,
                     "category": artist.category,
                     "verified": artist.verified,
@@ -625,6 +630,10 @@ def search_catalog(
         seating_l = (seating or "").strip().lower() or None
         for venue in db.query(Venue).filter(Venue.city == city).all():
             if venue.moderation_status != "published":
+                continue
+            if district and district.strip().casefold() not in (venue.district or "").casefold():
+                continue
+            if metro and metro.strip().casefold() not in (venue.metro or "").casefold():
                 continue
             if venue.id in excluded:
                 continue
@@ -687,6 +696,7 @@ def search_catalog(
                     "category": "venue",
                     "verified": venue.verified,
                     "address": getattr(venue, "address", "") or "",
+                    "district": getattr(venue, "district", "") or "",
                     "metro": getattr(venue, "metro", "") or "",
                     "availability_mode": getattr(venue, "availability_mode", "owner") or "owner",
                     "listing_origin": getattr(venue, "listing_origin", "owner") or "owner",

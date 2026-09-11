@@ -148,6 +148,8 @@ def test_search_synthetic_venue_flag_present(client):
         row = db.get(Venue, venue["id"])
         assert row is not None
         row.availability_mode = "synthetic"
+        row.district = "Хамовники"
+        row.metro = "Парк культуры"
         db.commit()
     finally:
         db.close()
@@ -167,6 +169,14 @@ def test_search_synthetic_venue_flag_present(client):
     res = client.get("/catalog/search", params={"city": "Москва", "kind": "venue"}).json()
     syn = next(v for v in res["venues"] if v["name"] == "Синтетика Холл")
     assert syn["availability_mode"] == "synthetic"
+    assert syn["district"] == "Хамовники"
+    matching = client.get("/catalog/search", params={"district":" хамовники ","metro":"КУЛЬТУРЫ"}).json()
+    assert venue["id"] in {v["id"] for v in matching["venues"]}
+    other = client.get("/catalog/search", params={"district":"Якиманка"}).json()
+    assert venue["id"] not in {v["id"] for v in other["venues"]}
+    wrong_metro = client.get("/catalog/search", params={"district":"Хамовники", "metro":"Сокол"}).json()
+    assert venue["id"] not in {v["id"] for v in wrong_metro["venues"]}
+
 
 
 def test_search_next_open_at_includes_timezone_offset(client):

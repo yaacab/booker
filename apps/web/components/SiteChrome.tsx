@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { DemoBanner } from "./DemoBanner";
+import { EditionToggle } from "./EditionToggle";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
+import { WorkspaceNavigation } from "@/components/WorkspaceNavigation";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { api, getActiveOrg, getToken, setToken, trackClientEvent } from "@/lib/api";
 import { orgKindToCabinetMode, supplyCalendarHref, supplyRequestsHref, type CabinetMode } from "@/lib/cabinetRoutes";
@@ -41,6 +44,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState(false);
   const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLSpanElement>(null);
   const [notifications, setNotifications] = useState<
     { id: string; subject?: string | null; body?: string | null }[]
   >([]);
@@ -50,8 +54,25 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [fullScreenStudio, setFullScreenStudio] = useState(false);
 
   useEffect(() => {
+    if (!notificationsOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!notificationsRef.current?.contains(event.target as Node)) setNotificationsOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNotificationsOpen(false);
+        if (notificationsRef.current?.contains(document.activeElement)) notificationsRef.current.querySelector("button")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => { document.removeEventListener("pointerdown", closeOutside); document.removeEventListener("keydown", closeOnEscape); };
+  }, [notificationsOpen]);
+
+  useEffect(() => {
     setAuthed(Boolean(getToken()));
-    setAdmin(localStorage.getItem(ADMIN_KEY) === "1");
+    setAdmin(sessionStorage.getItem("booker.demo.token") ? sessionStorage.getItem("booker.demo.admin") === "1" : localStorage.getItem(ADMIN_KEY) === "1");
+    setNotificationsOpen(false);
   }, [path]);
 
   useEffect(() => {
@@ -129,13 +150,14 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   if (fullScreenStudio) {
     return (
       <div id="content" key="event-studio-fullscreen" className="studio-fullscreen-root">
-        {children}
+        <DemoBanner /><EditionToggle />{children}
       </div>
     );
   }
 
   return (
     <>
+      <DemoBanner />
       <div id="scroll-progress" className="scroll-progress" aria-hidden />
       <a className="skip" href="#content">
         К содержанию
@@ -171,7 +193,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <>
                 <Link href="/search?kind=artist">Артисты</Link>
                 <Link href="/search?kind=venue">Площадки</Link>
-                <Link href="/#process-title">Как это работает</Link>
+                <Link href="/assemble">Собрать событие</Link>
               </>
             )}
             {authed ? (
@@ -201,11 +223,12 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               </Link>
             ) : null}
             {authed ? (
-              <span style={{ position: "relative" }}>
+              <span ref={notificationsRef} style={{ position: "relative" }}>
                 <button
                   type="button"
                   className="linkish"
                   aria-expanded={notificationsOpen}
+                  aria-controls="notification-list"
                   onClick={() => setNotificationsOpen((open) => !open)}
                 >
                   Уведомления
@@ -218,7 +241,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 {notificationsOpen ? (
                   <div
                     className="card surface-glass"
-                    role="menu"
+                    id="notification-list"
+                    role="region"
+                    aria-label="Уведомления"
                     style={{
                       position: "absolute",
                       right: 0,
@@ -261,6 +286,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               </button>
             ) : null}
           </nav>
+          <EditionToggle />
           <div className={`nav-mobile-auth${!authed ? " reference-login" : ""}`}>
             {authed ? (
               <button
@@ -279,22 +305,13 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <div id="content" className="site-content" data-section={path.split("/")[1] || "home"}>{children}</div>
-        <footer className="site-footer surface-glass">
-          <p>Букер объединяет заявку, свободный слот, предложение и подтверждения в одном рабочем пространстве.</p>
-          <p>
-            <Link href="/legal/offer">Оферта</Link>
-            {" · "}
-            <Link href="/legal/privacy">Персональные данные</Link>
-            {" · "}
-            <Link href="/legal/disputes">Споры</Link>
-            {" · "}
-            <Link href="/legal/cookies">Cookie-файлы</Link>
-            {" · "}
-            <Link href="/faq">Помощь</Link>
-            {" · "}
-            <a href="mailto:hello@bukergo.ru">hello@bukergo.ru</a>
-          </p>
+        <div className={authed && /^\/(cabinet|profile|deals|briefs|compare|s)(\/|$)/.test(path) ? "workspace-layout" : undefined}>
+          {authed && /^\/(cabinet|profile|deals|briefs|compare|s)(\/|$)/.test(path) && <WorkspaceNavigation mode={cabinetMode} admin={admin} />}
+          <div id="content" className="site-content" data-section={path.split("/")[1] || "home"}>{children}</div>
+        </div>
+        <footer className="site-footer surface-glass reference-footer">
+          <Link href="/" className="footer-brand" aria-label="Букер — главная"><BrandLockup /><span>Люди. Места. События.</span></Link>
+          <nav aria-label="Информация о сервисе"><Link href="/dev/cabinets">Демо-кабинеты</Link><Link href="/legal/privacy">Конфиденциальность</Link><Link href="/legal">Документы</Link><Link href="/faq">Вопросы и ответы</Link><Link href="/support">Поддержка</Link></nav>
         </footer>
       </div>
       <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">

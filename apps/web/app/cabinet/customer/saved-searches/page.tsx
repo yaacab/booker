@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { loginHref } from "@/lib/next";
 
@@ -37,6 +37,8 @@ export default function CustomerSavedSearchesPage() {
   const [items, setItems] = useState<SavedSearchItem[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const createRef = useRef<HTMLDetailsElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
   const load = () =>
     api<{ items: SavedSearchItem[] }>("/saved-searches")
@@ -130,11 +132,13 @@ export default function CustomerSavedSearchesPage() {
 
   if (!ready) {
     return (
-      <main>
-        <p className="kicker">Букер</p>
-        <h1>Сохранённые поиски</h1>
-        <div className="grid">
-          <div className="skeleton" />
+      <main className="saved-searches-reference">
+        <header className="saved-searches-heading">
+          <div><p className="kicker">Кабинет заказчика</p><h1>Сохранённые поиски</h1></div>
+        </header>
+        <p role="status">Загружаем ваши подборки…</p>
+        <div className="saved-searches-loading" aria-hidden="true">
+          <div className="skeleton" /><div className="skeleton" /><div className="skeleton" />
         </div>
       </main>
     );
@@ -142,41 +146,120 @@ export default function CustomerSavedSearchesPage() {
 
   if (!getToken()) {
     return (
-      <main>
-        <p className="kicker">Букер</p>
-        <h1>Сохранённые поиски</h1>
-        <p>{error}</p>
-        <p>
+      <main className="saved-searches-reference">
+        <header className="saved-searches-heading">
+          <div><p className="kicker">Кабинет заказчика</p><h1>Сохранённые поиски</h1></div>
+        </header>
+        <section className="saved-searches-empty">
+          <p>{error}</p>
           <Link className="btn" href={loginHref("/cabinet/customer/saved-searches")}>
-            Войти
+            Войти в кабинет →
           </Link>
-        </p>
+        </section>
       </main>
     );
   }
 
   return (
-    <main>
-      <p className="kicker">Кабинет заказчика</p>
-      <h1>Сохранённые поиски</h1>
-      <p className="timeline">
-        Параметры каталога для быстрого возврата. Уведомления — только по явному согласию.
-      </p>
-      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-        <Link className="btn secondary" href="/cabinet/customer">
-          К кабинету
-        </Link>
-        <Link className="btn" href="/search">
-          Каталог
-        </Link>
-      </p>
+    <main className="saved-searches-reference">
+      <header className="saved-searches-heading">
+        <div>
+          <p className="kicker">Кабинет заказчика</p>
+          <h1>Сохранённые поиски</h1>
+          <p>Ваши параметры подбора — чтобы быстро вернуться к поиску.</p>
+        </div>
+        <button
+          className="btn saved-searches-new"
+          type="button"
+          aria-controls="saved-search-create"
+          onClick={() => {
+            if (createRef.current) createRef.current.open = true;
+            nameRef.current?.focus();
+          }}
+        >
+          <span aria-hidden="true">＋</span> Новый поиск
+        </button>
+      </header>
 
-      <article className="card" style={{ marginTop: 20 }}>
-        <h2>Новый поиск</h2>
-        <form onSubmit={onSubmit} className="grid" style={{ gap: 12 }}>
+      {error ? <p className="saved-searches-error" role="alert">{error}</p> : null}
+
+      {items.length > 0 ? (
+        <section aria-label="Ваши сохранённые поиски">
+          <div className="saved-searches-list-heading">
+            <p>Сохранено: <strong>{items.length}</strong></p>
+            <Link href="/search">Открыть каталог <span aria-hidden="true">↗</span></Link>
+          </div>
+          <ul className="saved-searches-list">
+            {items.map((item) => {
+              const createdAt = item.created_at && Number.isFinite(Date.parse(item.created_at))
+                ? new Date(item.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+                : null;
+              const description = [
+                item.query_params.kind === "artist" ? "Артисты" : item.query_params.kind === "venue" ? "Площадки" : null,
+                item.query_params.city,
+                item.query_params.format && `формат ${item.query_params.format}`,
+                item.query_params.guests && `от ${item.query_params.guests} гостей`,
+                item.query_params.budget_max != null && `бюджет до ${item.query_params.budget_max.toLocaleString("ru-RU")} ₽`,
+              ].filter(Boolean).join(" · ") || "Без фильтров";
+              return (
+                <li key={item.id} className="saved-search-row">
+                  <Link className="saved-search-result" href={item.search_path} aria-label={`Открыть в каталоге: ${item.name}`} aria-describedby={`saved-search-details-${item.id}`}>
+                    <span className={`saved-search-art${item.query_params.kind === "venue" ? " saved-search-art-venue" : ""}`} aria-hidden="true">
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                        {item.query_params.kind === "venue" ? <><path d="M3 21V9l9-6 9 6v12M2 21h20M9 21v-6h6v6" /><path d="M7 10h1m8 0h1M7 13h1m8 0h1" /></> : item.query_params.kind === "artist" ? <><rect x="9" y="2" width="6" height="13" rx="3" /><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8" /></> : <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></>}
+                      </svg>
+                    </span>
+                    <span className="saved-search-copy">
+                      <strong>{item.name}</strong>
+                      <span className="saved-search-description" id={`saved-search-details-${item.id}`}>{description}</span>
+                      {createdAt ? <span className="saved-search-created">Сохранён {createdAt}</span> : null}
+                    </span>
+                    <span className="saved-search-arrow" aria-hidden="true">↗</span>
+                  </Link>
+                  <div className="saved-search-controls">
+                    <button
+                      className="secondary saved-search-notify"
+                      type="button"
+                      role="switch"
+                      aria-checked={item.notify_consent}
+                      aria-label={`Уведомления для поиска «${item.name}»`}
+                      onClick={() => toggleConsent(item, !item.notify_consent)}
+                    >
+                      <span className="saved-search-switch" aria-hidden="true"><span /></span>
+                      <span>Уведомления<span className="saved-search-notify-state">{item.notify_consent ? "Включены" : "Выключены"}</span></span>
+                    </button>
+                    <button
+                      className="secondary saved-search-remove"
+                      type="button"
+                      aria-label={`Удалить поиск «${item.name}»`}
+                      onClick={() => remove(item.id)}
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : !error ? (
+        <section className="saved-searches-empty">
+          <span className="saved-searches-empty-icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="10" cy="10" r="6" /><path d="m15 15 6 6M7 10h6m-3-3v6" /></svg>
+          </span>
+          <h2>Пока нет сохранённых поисков</h2>
+          <p>Сохраните город, формат и другие параметры подбора. Они появятся здесь, и вы сможете вернуться к ним в один клик.</p>
+          <Link href="/search">Посмотреть каталог <span aria-hidden="true">→</span></Link>
+        </section>
+      ) : null}
+
+      <details className="saved-search-create" id="saved-search-create" ref={createRef}>
+        <summary><span><strong>Новый сохранённый поиск</strong><span>Название и параметры вашей подборки</span></span><span className="saved-search-create-plus" aria-hidden="true">＋</span></summary>
+        <form onSubmit={onSubmit} className="saved-search-form">
           <label>
             Название
             <input
+              ref={nameRef}
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="DJ на корпоратив"
@@ -227,92 +310,42 @@ export default function CustomerSavedSearchesPage() {
               <option value="venue">Площадка</option>
             </select>
           </label>
-          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={form.notify_consent}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  notify_consent: e.target.checked,
-                  consent: e.target.checked ? f.consent : false,
-                }))
-              }
-            />
-            Уведомлять о новых результатах
-          </label>
-          {form.notify_consent ? (
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <fieldset className="saved-search-consent">
+            <legend>Уведомления по этому поиску</legend>
+            <label className="saved-search-check">
               <input
                 type="checkbox"
-                checked={form.consent}
-                onChange={(e) => setForm((f) => ({ ...f, consent: e.target.checked }))}
+                checked={form.notify_consent}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    notify_consent: e.target.checked,
+                    consent: e.target.checked ? f.consent : false,
+                  }))
+                }
               />
-              Я согласен(на) получать уведомления по этому поиску
+              <span>Уведомлять о новых результатах</span>
             </label>
-          ) : null}
-          <p>
+            {form.notify_consent ? (
+              <label className="saved-search-check">
+                <input
+                  type="checkbox"
+                  checked={form.consent}
+                  onChange={(e) => setForm((f) => ({ ...f, consent: e.target.checked }))}
+                />
+                <span>Я согласен(на) получать уведомления по этому поиску</span>
+              </label>
+            ) : null}
+            <p>Уведомления включаются только с вашего явного согласия. Его можно отозвать в любой момент.</p>
+          </fieldset>
+          <div className="saved-search-form-actions">
             <button className="btn" type="submit" disabled={saving}>
               {saving ? "Сохраняем…" : "Сохранить поиск"}
             </button>
-          </p>
+          </div>
         </form>
-      </article>
-
-      {error ? <p style={{ color: "var(--danger)", marginTop: 16 }}>{error}</p> : null}
-
-      {!error && items.length === 0 ? (
-        <article className="card empty" style={{ marginTop: 20 }}>
-          <h2>Пока нет сохранённых поисков</h2>
-          <p>Сохраните параметры каталога — вернуться к ним можно в один клик.</p>
-        </article>
-      ) : null}
-
-      {items.length > 0 ? (
-        <div className="grid" style={{ marginTop: 20 }}>
-          {items.map((item) => (
-            <article className="card" key={item.id}>
-              <div className="card-head">
-                <strong>{item.name}</strong>
-              </div>
-              <p className="timeline">
-                {[
-                  item.query_params.city,
-                  item.query_params.format && `формат ${item.query_params.format}`,
-                  item.query_params.guests && `от ${item.query_params.guests} гостей`,
-                  item.query_params.budget_max &&
-                    `до ${item.query_params.budget_max.toLocaleString("ru-RU")} ₽`,
-                  item.query_params.kind === "artist"
-                    ? "артисты"
-                    : item.query_params.kind === "venue"
-                      ? "площадки"
-                      : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "Без фильтров"}
-              </p>
-              <p className="timeline">
-                Уведомления: {item.notify_consent ? "включены" : "выключены"}
-              </p>
-              <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                <Link className="btn" href={item.search_path}>
-                  Открыть в каталоге
-                </Link>
-                <button
-                  className="btn secondary"
-                  type="button"
-                  onClick={() => toggleConsent(item, !item.notify_consent)}
-                >
-                  {item.notify_consent ? "Выключить уведомления" : "Включить уведомления"}
-                </button>
-                <button className="btn secondary" type="button" onClick={() => remove(item.id)}>
-                  Удалить
-                </button>
-              </p>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      </details>
+      <p className="saved-searches-back"><Link href="/cabinet/customer">← К кабинету заказчика</Link></p>
     </main>
   );
 }

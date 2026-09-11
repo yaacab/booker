@@ -44,12 +44,12 @@ const ACTION: Record<string, string> = {
   "request.created": "заявка",
   "requirement.created": "требование",
   "offer.created": "оффер",
-  "offer.ack": "кивок",
+  "offer.ack": "подтверждение предложения",
   "offer.version": "новая версия цены",
   "hold.created": "hold",
   "dispute.opened": "спор",
   "verification.decided": "верификация",
-  "workspace.switched": "смена workspace",
+  "workspace.switched": "смена рабочего пространства",
   "service.created": "услуга",
   "hall.created": "зал",
 };
@@ -57,7 +57,7 @@ const ACTION: Record<string, string> = {
 const FUNNEL_LABELS: Record<string, string> = {
   "request.created": "Заявки",
   "offer.created": "Офферы",
-  "workspace.switched": "Смены workspace",
+  "workspace.switched": "Смены пространства",
   "service.created": "Услуги",
   "hall.created": "Залы",
   "client.event": "Клиентские события",
@@ -76,6 +76,8 @@ const FUNNEL_STEP_LABELS: Record<string, string> = {
 };
 
 export default function AdminPage() {
+  const [section, setSection] = useState("queue");
+  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [queue, setQueue] = useState<Queue | null>(null);
   const [audit, setAudit] = useState<Audit["items"]>([]);
@@ -210,14 +212,16 @@ export default function AdminPage() {
   }
 
   function renderTargets(targetType: "artist" | "venue", title: string, items: VerifyTarget[]) {
+    const filtered = items.filter(item => item.name.toLocaleLowerCase("ru").includes(search.toLocaleLowerCase("ru")));
     return (
-      <>
-        <h3>{title}</h3>
-        {items.map((item) => {
+      <section className="operator-target-group">
+        <h3>{title} <span>{items.length}</span></h3>
+        {filtered.map((item) => {
           const key = `${targetType}:${item.id}`;
           return (
-            <p key={item.id}>
-              {item.name} · {item.status === "pending" ? "ожидает проверки" : item.status}{" "}
+            <div className="operator-target" key={item.id}>
+              <div><Link href={`/${targetType === "artist" ? "artists" : "venues"}/${encodeURIComponent(item.id)}`}>{item.name}</Link><span className="operator-status">{item.status === "pending" ? "Ожидает проверки" : item.status}</span></div>
+              <div className="operator-target-actions">
               <button type="button" disabled={busyKey === key} onClick={() => void decide(targetType, item.id, true)}>
                 Подтвердить
               </button>{" "}
@@ -229,60 +233,38 @@ export default function AdminPage() {
               >
                 Отказать
               </button>
-            </p>
+              </div>
+            </div>
           );
         })}
-        {items.length === 0 ? <p>Очередь пуста.</p> : null}
-      </>
+        {filtered.length === 0 ? <p className="operator-empty">{items.length ? "Нет профилей с таким именем." : "Сейчас нет профилей для проверки."}</p> : null}
+      </section>
     );
   }
 
+  const sections = [
+    ["queue", "Проверка профилей"], ["venues", "Каталог площадок"], ["audit", "Журнал действий"],
+    ["metrics", "Статистика"], ["payment", "Внешняя оплата"], ["security", "Второй фактор"],
+  ];
+
   return (
-    <main>
-      <p className="kicker">Операторский контур</p>
-      <h1>Пульт управления</h1>
-      <p className="timeline">Спорные ситуации рассматривает оператор. Действия сохраняются в журнале аудита.</p>
-      {error ? (
-        <p>
-          {error}. <Link href={loginHref("/admin")}>Войти</Link>
-        </p>
-      ) : null}
-      <div className="grid">
-        <article className="card tint">
-          <h2>Второй фактор</h2>
-          {totpEnabled ? (
-            <p className="timeline">TOTP включён. Для возвратов укажите код в запросе.</p>
-          ) : (
-            <form onSubmit={enableTotp} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
-              <p className="timeline">Пилот: задайте 6+ символов как код второго фактора.</p>
-              <label>
-                Код TOTP
-                <input value={totpSecret} onChange={(e) => setTotpSecret(e.target.value)} minLength={6} required />
-              </label>
-              <button type="submit" disabled={totpBusy}>
-                {totpBusy ? "Сохраняем…" : "Включить 2FA"}
-              </button>
-            </form>
-          )}
-        </article>
-        <article className="card">
-          <h2>External-оплата</h2>
-          <form onSubmit={confirmExternalPayment} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
-            <label>
-              Payment id
-              <input
-                value={externalPaymentId}
-                onChange={(e) => setExternalPaymentId(e.target.value)}
-                required
-              />
-            </label>
-            <button type="submit" disabled={externalBusy}>
-              {externalBusy ? "Подтверждаем…" : "Подтвердить external-оплату"}
-            </button>
-            {externalNotice ? <p className="timeline">{externalNotice}</p> : null}
-          </form>
-        </article>
-        <article className="card" style={{ gridColumn: "1 / -1" }}>
+    <main className="operator-reference">
+      <header className="operator-heading"><div><p className="eyebrow">Рабочее пространство</p><h1>Панель оператора</h1><p>Проверки профилей, статистика и история действий в Букере.</p></div><button type="button" className="btn secondary" onClick={() => void load()}>Обновить данные</button></header>
+      {error && <p className="operator-error" role="alert">{error}. <Link href={loginHref("/admin")}>Войти в аккаунт оператора</Link></p>}
+      <dl className="operator-summary">
+        <div><dt>В очереди</dt><dd>{queue ? queue.queue.length : "—"}</dd><span>На рассмотрении</span></div>
+        <div><dt>Артисты</dt><dd>{queue ? queue.artists.length : "—"}</dd><span>Проверка профилей</span></div>
+        <div><dt>Площадки</dt><dd>{queue ? (queue.venues ?? []).length : "—"}</dd><span>Проверка профилей</span></div>
+        <div><dt>Записи журнала</dt><dd>{queue ? audit.length : "—"}</dd><span>Последние действия</span></div>
+      </dl>
+      <div className="operator-workspace">
+        <nav className="operator-nav" aria-label="Разделы панели оператора">
+          {sections.map(([id, label]) => <button key={id} type="button" aria-pressed={section === id} aria-controls={`operator-${id}`} onClick={() => setSection(id)}>{label}</button>)}
+          <Link href="/cabinet">Мой кабинет</Link>
+          <Link href="/support">Поддержка</Link>
+        </nav>
+        <div className="operator-panels">
+<section id="operator-venues" hidden={section !== "venues"} aria-label="Каталог площадок" className="operator-panel">        <article className="card" style={{ gridColumn: "1 / -1" }}>
           <h2>Каталог площадок</h2>
           {venueReport ? (
             <p className="timeline">
@@ -324,31 +306,16 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
-        </article>
-
-        <article className="card">
-          <h2>Верификация</h2>
-          {queue ? (
-            <>
-              {renderTargets("artist", "Артисты", queue.artists ?? [])}
-              {renderTargets("venue", "Площадки", queue.venues ?? [])}
-            </>
-          ) : !error ? (
-            <p className="timeline">Загрузка очереди…</p>
-          ) : null}
-        </article>
-        <article className="card">
-          <h2>Споры</h2>
-          <p>Категория и материалы поступают из Deal Room. Решение принимает оператор.</p>
-        </article>
-        <article className="card tint">
-          <h2>Риск</h2>
-          <p>Прямой перевод вне платформы, просроченный hold, отказ платежа — в журнале.</p>
-        </article>
-        <article className="card">
-          <h2>Поддержка</h2>
-          <p>Пилот: живой оператор, цель ответа в рабочее окно — 30 минут на срыв даты.</p>
-        </article>
+        </article></section>
+          <section id="operator-queue" hidden={section !== "queue"} aria-label="Проверка профилей" className="operator-panel">
+            <div className="operator-panel-heading"><h2>Проверка профилей</h2><label>Найти профиль<input type="search" placeholder="Имя или название" value={search} onChange={e => setSearch(e.target.value)} /></label></div>
+            {queue ? <>{renderTargets("artist", "Артисты", queue.artists ?? [])}{renderTargets("venue", "Площадки", queue.venues ?? [])}</> : <p>{error ? "Очередь доступна после входа оператора." : "Загружаем очередь…"}</p>}
+          </section>
+          <section id="operator-audit" hidden={section !== "audit"} aria-label="Журнал действий" className="operator-panel">
+            <h2>Журнал действий</h2><p>Последние 20 записей. Действия оператора сохраняются автоматически.</p>
+            {audit.length ? <div className="operator-table-scroll" tabIndex={0} role="region" aria-label="Записи журнала"><table><thead><tr><th scope="col">Действие</th><th scope="col">Объект</th><th scope="col">Дата</th></tr></thead><tbody>{audit.map(row => <tr key={row.id}><td>{ACTION[row.action] || row.action}</td><td>{row.entity_type}</td><td>{formatWhen(row.created_at)}</td></tr>)}</tbody></table></div> : <p>{error ? "Журнал доступен после входа оператора." : "Пока нет записей для отображения."}</p>}
+          </section>
+          <section id="operator-metrics" hidden={section !== "metrics"} aria-label="Статистика" className="operator-panel">
         <article className="card">
           <h2>Воронка пилота</h2>
           <p className="timeline">Агрегаты из журнала аудита за 7 и 30 дней.</p>
@@ -380,7 +347,7 @@ export default function AdminPage() {
               ))}
             </div>
           ) : (
-            <p>Загрузка метрик…</p>
+            <p>{error ? "Метрики недоступны." : "Загрузка метрик…"}</p>
           )}
         </article>
         {metrics?.periods["7"]?.dashboards ? (
@@ -437,16 +404,49 @@ export default function AdminPage() {
             })}
           </article>
         ) : null}
+
+          </section>
+          <section id="operator-payment" hidden={section !== "payment"} aria-label="Внешняя оплата" className="operator-panel">
         <article className="card">
-          <h2>Аудит</h2>
-          <ul>
-            {audit.map((row) => (
-              <li key={row.id} className="mono">
-                {ACTION[row.action] || row.action} · {row.entity_type} · {formatWhen(row.created_at)}
-              </li>
-            ))}
-          </ul>
+          <h2>Внешняя оплата</h2>
+          <form onSubmit={confirmExternalPayment} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
+            <label>
+              Идентификатор платежа
+              <input
+                value={externalPaymentId}
+                onChange={(e) => setExternalPaymentId(e.target.value)}
+                required
+              />
+            </label>
+            <button type="submit" disabled={externalBusy}>
+              {externalBusy ? "Подтверждаем…" : "Подтвердить внешнюю оплату"}
+            </button>
+            {externalNotice ? <p className="timeline">{externalNotice}</p> : null}
+          </form>
         </article>
+
+          </section>
+          <section id="operator-security" hidden={section !== "security"} aria-label="Второй фактор" className="operator-panel">
+        <article className="card tint">
+          <h2>Второй фактор</h2>
+          {totpEnabled ? (
+            <p className="timeline">TOTP включён. Для возвратов укажите код в запросе.</p>
+          ) : (
+            <form onSubmit={enableTotp} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
+              <p className="timeline">Пилот: задайте 6+ символов как код второго фактора.</p>
+              <label>
+                Код TOTP
+                <input type="password" autoComplete="off" value={totpSecret} onChange={(e) => setTotpSecret(e.target.value)} minLength={6} required />
+              </label>
+              <button type="submit" disabled={totpBusy}>
+                {totpBusy ? "Сохраняем…" : "Включить 2FA"}
+              </button>
+            </form>
+          )}
+        </article>
+
+          </section>
+        </div>
       </div>
     </main>
   );
