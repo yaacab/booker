@@ -60,7 +60,8 @@ test("заказчик и артист: поиск → заявка → пред
   const customerPage=await customerContext.newPage(),artistPage=await artistContext.newPage();
   const base=process.env.BOOKER_WEB_URL||"http://127.0.0.1:4316";
   let favoriteReads=0;
-  customerPage.on("request",r=>{if(new URL(r.url()).pathname.endsWith("/favorites")&&r.method()==="GET")favoriteReads++});
+  // Count the API read, not Next.js prefetch of /cabinet/customer/favorites.
+  customerPage.on("request",r=>{if(r.url()===`${api}/favorites`&&r.method()==="GET")favoriteReads++});
   await customerPage.goto(base+"/search?kind=artist&category=dj");
   await expect(customerPage.locator(".catalog-card-favorite button").first()).toBeEnabled();
   expect(favoriteReads).toBe(1);

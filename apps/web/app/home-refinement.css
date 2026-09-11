@@ -1,6 +1,6 @@
 /* Homepage composition. Scoped to avoid changing forms and cabinet layouts. */
 .home-refined{--home-panel:#e4ecdd;--home-ink:#223126;--home-muted:#586653;--home-border:#c5d1bd;--home-soft:#f4f7ef;--home-accent:#d6f58c;color:var(--home-ink)}
-html[data-edition=black] .home-refined{--home-panel:#1d2923;--home-ink:#edf3e8;--home-muted:#b3c0b5;--home-border:#3c4c40;--home-soft:#141e18;--home-accent:#d6f58c}
+html[data-edition=black] .home-refined{--home-panel:#1b201e;--home-ink:#f1f3f0;--home-muted:#b3bdb5;--home-border:#3c4640;--home-soft:#141917;--home-accent:#d6f58c}
 .home-refined .artist-first-hero{padding:48px 0 24px;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:24px 56px;align-items:center}
 .home-refined .eyebrow{color:var(--home-muted);font-size:11px;font-weight:600;letter-spacing:.13em;line-height:1.6;margin:0 0 20px}
 .home-refined .artist-first-copy h1{font-size:clamp(46px,5vw,70px);letter-spacing:-.055em;line-height:1.09;margin:0 0 24px;color:var(--home-ink)}

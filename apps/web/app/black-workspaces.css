@@ -1,11 +1,11 @@
 /* Explicit workspace tokens override the older light-only reference sheets. */
 html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) {
   color: var(--edition-text);
-  --catalog-ink: #edf3e8;
-  --catalog-muted: #b1c1b2;
+  --catalog-ink: #f1f3f0;
+  --catalog-muted: #b0b7b3;
 }
 html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) :is(p,small,summary,figcaption,.timeline,.kicker,.profile-small-note,.profile-back,.profile-location,.profile-location-detail,.deal-head-meta,.event-section-title>span,.profile-section-heading>span,.profile-facts-strip dt) {
-  color: #bdcdbb !important;
+  color: #b7c0b9 !important;
 }
 html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) :is(button,.btn) {
   background: #d9fa79 !important;
@@ -15,26 +15,32 @@ html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-
   backdrop-filter: none;
 }
 html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) :is(button.secondary,.btn.secondary,.tabs button,.text-button,.deal-text-link) {
-  background: #28392b !important;
-  color: #e0efd2 !important;
-  border-color: #52684d !important;
+  background: #242a27 !important;
+  color: #e1e7df !important;
+  border-color: #444e46 !important;
 }
 html[data-edition="black"] .site-content :is(.public-profile-reference,.catalog-reference,.cabinet-reference,.event-reference-page,.deal-reference-page,.briefs-reference) :is(button,.btn) :is(strong,small,span) { color: inherit !important; }
 html[data-edition="black"] .site-content :is(.tabs button[aria-selected="true"],.request-filters button[aria-pressed="true"]) { border-bottom-color:#d9fa79 !important; color:#d9fa79 !important; }
 html[data-edition="black"] .site-content :is(.deal-progress,.deal-head-meta>a,.deal-actions-menu>summary,.event-readiness,.profile-facts-strip,.profile-fact-chips>span,.profile-tariff-list>li,.profile-rider-card,.profile-calendar-panel,.sticky-cta,.sheet,.msg,.chat-compose input) {
-  background: #202e23 !important;
-  color: #edf3e8 !important;
-  border-color: #465b40 !important;
+  background: #1d2421 !important;
+  color: #f1f3f0 !important;
+  border-color: #3b463e !important;
   box-shadow: none !important;
 }
-html[data-edition="black"] .site-content .msg.chat { background:#2d422b !important; }
-html[data-edition="black"] .site-content .tabs { background:#18231a !important; border-color:#465b40 !important; }
-html[data-edition="black"] .site-content :is(input,textarea,select) { background:#152018 !important; color:#eef6e9 !important; border-color:#56694f !important; }
-html[data-edition="black"] .site-content ::placeholder { color:#a8bba2 !important; opacity:1; }
-html[data-edition="black"] .site-content .profile-calendar-panel .slot-groups>section { background:#253629 !important; border-color:#465b40 !important; }
-html[data-edition="black"] .site-content .profile-calendar-panel .slot-btn { background:#2d422b !important; color:#e0efd2 !important; }
+html[data-edition="black"] .site-content .msg.chat { background:#2b372d !important; }
+html[data-edition="black"] .site-content .tabs { background:#171c19 !important; border-color:#3b463e !important; }
+html[data-edition="black"] .site-content :is(input,textarea,select) { background:#111415 !important; color:#f0f3ef !important; border-color:#46504b !important; }
+html[data-edition="black"] .site-content ::placeholder { color:#a5b0a6 !important; opacity:1; }
+html[data-edition="black"] .site-content .profile-calendar-panel .slot-groups>section { background:#202625 !important; border-color:#3b463e !important; }
+html[data-edition="black"] .site-content .profile-calendar-panel .slot-btn { background:#2b372d !important; color:#e1e7df !important; }
 html[data-edition="black"] .site-content .profile-calendar-panel .slot-btn.on { background:#d9fa79 !important; color:#203010 !important; }
 html[data-edition="black"] .site-content .profile-calendar-panel .slot-btn .chip { background:transparent !important; color:inherit !important; }
 html[data-edition="black"] .site-content .deal-reference-page .sticky-cta .kicker { color:#d9fa79 !important; }
 .site-content .public-profile-reference :is(.profile-small-note,.profile-calendar-panel .slot-day,.profile-facts-strip dt) { font-size:12px; }
 @media(max-width:760px){.deal-progress{grid-template-columns:repeat(5,minmax(110px,1fr));overflow-x:auto;scrollbar-width:thin}.deal-progress strong{overflow-wrap:normal;word-break:normal}}
+/* Legacy dashboard surfaces have fixed white backgrounds; theme them explicitly. */
+html[data-edition="black"] .site-content :is(.cabinet-metric,.workspace-disclosure){background:var(--edition-panel)!important;border-color:var(--edition-line)!important;box-shadow:none!important}
+html[data-edition="black"] .site-content .cabinet-metric :is(.cabinet-metric-label,.cabinet-metric-hint){color:var(--edition-muted)!important;opacity:1}
+html[data-edition="black"] .site-content .cabinet-metric .cabinet-metric-value{color:var(--edition-text)!important}
+html[data-edition="black"] .site-content .cabinet-metric-icon{background:#2b332b;color:#d9fa79}
+html[data-edition="black"] .site-content .workspace-disclosure>summary{color:var(--edition-text)!important}

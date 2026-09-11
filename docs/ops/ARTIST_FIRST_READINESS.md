@@ -69,3 +69,9 @@ Removed the remaining “Найти работу” labels from the artist works
 The two locally skipped backup/restore checks were executed with the real sqlite3 CLI on the deployment host, alongside the URL conversion check: **3 passed**. Before execution, SHA-256 hashes proved the server test file and both shell scripts identical to this checkout. Tests created only temporary fixtures; the process used an in-memory database setting, disabled pytest cache/bytecode, and did not read or restore the production database. This supplements the 212 passing local API tests; it does not imply all API tests were rerun on the server.
 
 Read-only verification still reports published baseline `5590ed7d890fd401e14678fc8ff7692783b8d5e6`. Local preview listens on 127.0.0.1:4316; port 4318 is unused. Publishing approval remains pending after the automatic rejection; neither Git push nor a workaround deployment was performed.
+
+## Graphite Black Edition follow-up
+
+Black Edition now uses graphite canvas and neutral layered surfaces across the public pages and workspaces. Lime remains on primary actions and selected controls. The login page has two aligned, padded panels; its form, secondary links and test-cabinet link share one frame. Login copy addresses both parties. Light theme color tokens are unchanged.
+
+The local production build passed. Five browser scenarios passed together (homepage, role registration, login/register contrast at four widths in both themes, cabinet hints/artist guide, venue discovery); the full two-party deal scenario then passed separately. The favorite-read assertion now counts the exact API URL, excluding Next.js prefetch of the favorites page. The initial separate preview used an incorrect API base and was replaced by the correctly configured build at http://127.0.0.1:4316. No public deployment occurred.

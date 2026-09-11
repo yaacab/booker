@@ -25,7 +25,7 @@ html .site-content .login-fields { background:transparent !important; width:100%
 .site-content .login-fields form .unknown { font-size:13px; line-height:1.6; color:var(--edition-text); }
 .site-content .login-fields .unknown input { flex:0 0 20px; width:20px; height:20px; margin:1px 0 0; }
 .site-content .login-fields form button[type="submit"] { width:100%; border-radius:14px; }
-html[data-edition="black"] .site-content .login-fields .role-option { --login-role-ink:#eef6e7; --login-role-muted:#c1d1b9; background:#293b2e !important; border-color:#586f4e !important; }
+html[data-edition="black"] .site-content .login-fields .role-option { --login-role-ink:#f1f4ef; --login-role-muted:#c0c8c0; background:#252c27 !important; border-color:#4b574d !important; }
 html[data-edition="black"] .site-content .login-fields .role-option.on { --login-role-ink:#1b2c12; --login-role-muted:#344c24; background:#d9fa79 !important; border-color:#d9fa79 !important; box-shadow:none; }
 @media(max-width:900px) {
   .site-content .login-layout { grid-template-columns:minmax(0,1fr); max-width:560px; margin-inline:auto; }
@@ -37,3 +37,20 @@ html[data-edition="black"] .site-content .login-fields .role-option.on { --login
   .site-content .login-fields .role-option > span:first-child { padding-left:18px; }
 }
 .demo-cabinets-page{padding:36px 0}.demo-cabinets-page>.entry-paths{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:start}.demo-cabinets-page .assembly-editor{grid-column:auto;grid-row:auto;margin:0;min-width:0;animation:none;padding:28px}.demo-cabinets-page .assembly-editor h2{font-size:26px;margin:0 0 14px}.demo-cabinets-page .assembly-editor>.btn{display:flex;justify-content:center;margin-top:20px}.demo-cabinets-page .demo-credentials{margin-top:22px;border-top:1px solid var(--edition-line);padding-top:18px}.demo-cabinets-page .demo-credentials summary{cursor:pointer;line-height:1.6;font-size:14px;font-weight:600}.demo-cabinets-page .demo-credential-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0;padding:12px;border:1px solid var(--edition-line);border-radius:12px}.demo-credential-row>span{display:grid;gap:5px;min-width:0;font-size:11px}.demo-credential-row code{font-size:14px;color:var(--edition-text);overflow-wrap:anywhere}.demo-credential-row button{font-size:11px;min-height:40px;padding:8px 10px}.demo-copy-status{min-height:24px;font-size:13px}.demo-cabinets-page .demo-credentials form{display:grid;gap:14px;margin-top:20px}@media(max-width:760px){.demo-cabinets-page>.entry-paths{grid-template-columns:1fr}.demo-cabinets-page .assembly-editor{padding:22px}}
+/* Black Edition is one framed login surface, with lime reserved for the action. */
+html[data-edition="black"] .site-content .login-layout{gap:24px;align-items:stretch}
+html[data-edition="black"] .site-content .login-story{background:#141819;border-color:#303738;min-height:600px;padding:40px}
+html[data-edition="black"] .site-content .login-fields{background:#1c2121!important;border:1px solid #394240;border-radius:30px;padding:40px;display:flex;flex-direction:column;justify-content:center;min-height:600px}
+html[data-edition="black"] .site-content .login-fields>.kicker{font-size:10px;letter-spacing:.12em;margin-top:0;margin-bottom:14px}
+html[data-edition="black"] .site-content .login-fields h1{font-weight:650;font-size:36px;letter-spacing:-.045em;margin-bottom:28px}
+html[data-edition="black"] .site-content[data-section="login"] .login-fields form.card{background:transparent!important;border:0!important;padding:0;border-radius:0;backdrop-filter:none;box-shadow:none}
+html[data-edition="black"] .site-content .login-fields form>label{font-size:13px;gap:10px}
+html[data-edition="black"] .site-content .login-fields input:not([type="checkbox"]){background:#111616!important;border:1px solid #4c5851!important;border-radius:12px;min-height:50px}
+html[data-edition="black"] .site-content .login-fields input:focus-visible{outline:2px solid #b9d981;outline-offset:2px}
+html[data-edition="black"] .site-content .login-fields form button[type="submit"]{background:#d9fa79!important;color:#203010!important;min-height:50px;margin-top:8px;border:1px solid #d9fa79;border-radius:12px;box-shadow:none;font-weight:650}
+html[data-edition="black"] .site-content .login-secondary-actions{display:flex;justify-content:center;gap:18px!important;margin:20px 0 0}
+html[data-edition="black"] .site-content .login-secondary-actions button{background:transparent!important;border:0;color:#d8e2d9!important;box-shadow:none;padding:8px 0;min-height:40px;border-radius:0;font-size:12px;text-decoration:underline;text-underline-offset:4px}
+.site-content .login-demo-note{font-size:11px;line-height:1.7;margin-top:24px!important}.site-content .login-demo-note a{color:var(--edition-muted);text-decoration:none}
+html[data-edition="black"] .site-content .login-demo-note{margin-bottom:0}
+@media(max-width:900px){html[data-edition="black"] .site-content .login-fields{min-height:0;padding:32px;border-radius:24px}html[data-edition="black"] .site-content .login-fields h1{font-size:32px}}
+@media(max-width:480px){html[data-edition="black"] .site-content .login-fields{padding:24px 20px}html[data-edition="black"] .site-content .login-story{display:none}}

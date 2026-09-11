@@ -127,14 +127,13 @@ export default function LoginPage() {
 
   return (
     <main className="login-layout">
-      <aside className="login-story" aria-label="О Букере"><p className="kicker">Артисты. Работа. События.</p><h2>Ваше следующее<br />выступление — здесь.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Находите артистов и заказы, обсуждайте детали и сохраняйте договорённости в одном месте.</p></aside>
+      <aside className="login-story" aria-label="О Букере"><p className="kicker">Артисты. События. Букер.</p><h2>Хорошие события<br />начинаются с людей.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Находите артистов и заказы, обсуждайте детали и сохраняйте договорённости в одном месте.</p></aside>
       <section className="login-fields">
       <p className="brand-lockup-wrap">
         <BrandLockup />
       </p>
       <p className="kicker">{kicker}</p>
       <h1>{heading}</h1>
-      <p><a className="btn secondary" href="/dev/cabinets">Демонстрационные кабинеты →</a></p>
       {mode === "register" ? (
         <p className="timeline">Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи.</p>
       ) : mode === "reset" ? (
@@ -142,7 +141,7 @@ export default function LoginPage() {
       ) : mode === "recover" ? (
         <p className="timeline">Укажите email — отправим инструкцию, если аккаунт существует.</p>
       ) : null}
-      <form className="card surface-glass" style={{ display: "grid", gap: 12, maxWidth: 420 }} onSubmit={onSubmit}>
+      <form className="card surface-glass" style={{ display: "grid", gap: 16 }} onSubmit={onSubmit}>
         {mode === "register" ? (
           <>
             <label>
@@ -230,7 +229,7 @@ export default function LoginPage() {
                   : "Создать аккаунт"}
         </button>
       </form>
-      <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <p className="login-secondary-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {mode === "reset" ? (
           <button type="button" className="secondary" onClick={() => setMode("login")}>
             Вернуться ко входу
@@ -248,6 +247,7 @@ export default function LoginPage() {
           </>
         )}
       </p>
+      <p className="login-demo-note"><a href="/dev/cabinets">Тестовые кабинеты и данные для проверки ↗</a></p>
       </section>
     </main>
   );
