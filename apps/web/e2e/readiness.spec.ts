@@ -233,3 +233,49 @@ test("подсказки тестовых кабинетов и первый ш�
     await page.screenshot({path:info.outputPath(`artist-guide-${width}.png`),fullPage:true,animations:"disabled"});
   }
 });
+
+test("подборка площадок: фотографии, районы, фильтры и отдельный статус доступности",async({page},info)=>{
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));page.on("console",e=>{if(e.type()==="error"&&/hydrated|hydration/i.test(e.text()))errors.push(e.text())});
+ await page.goto("/search?kind=venue",{waitUntil:"domcontentloaded"});
+ await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content",/noindex/);
+ await expect(page.getByRole("heading",{level:1})).toContainText("Найди место");
+ await expect(page.locator(".research-result-heading")).toContainText("300");
+ await expect(page.locator(".research-venue-card")).toHaveCount(24);
+ await expect(page.locator(".leaflet-container")).toHaveCount(0);
+ await expect(page.locator(".district-map-layout path")).toHaveCount(132);
+ await page.locator(".research-venue-card").first().scrollIntoViewIfNeeded();
+ await expect.poll(()=>page.locator(".research-photo>img").first().evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0),{timeout:30000}).toBeTruthy();
+ await expect(page.locator(".research-venue-card").first()).toContainText("Доступность уточняется");
+ await page.locator(".research-venue-card").first().locator("summary").click();
+ await expect(page.locator(".research-venue-card").first().locator(".research-thumbnails button")).toHaveCount(5);
+ await page.locator(".research-venue-card").first().locator(".research-thumbnails button").nth(1).click();
+ await expect(page.locator(".research-venue-card").first().locator(".research-thumbnails button").nth(1)).toHaveAttribute("aria-pressed","true");
+ await page.locator(".district-map-panel").scrollIntoViewIfNeeded();
+ const populated=await page.locator(".district-map-layout path.has-venues").evaluateAll(paths=>paths.map(p=>({id:p.getAttribute("data-district")!,name:p.querySelector("title")!.textContent!.split(":")[0]})));
+ const chosen=populated.find(p=>p.name==="Басманный")!;expect(chosen).toBeTruthy();
+ await page.getByLabel("Район Москвы",{exact:true}).selectOption(chosen.id);
+ await expect(page.locator(".research-result-heading h2")).toHaveText("Басманный");
+ await expect(page.locator(".research-location").first()).toContainText("Басманный");
+ await page.getByRole("button",{name:"Все районы",exact:true}).click();
+ await expect(page.locator(".research-result-heading")).toContainText("300");
+ const district=page.locator(`path[data-district="${chosen.id}"]`);
+ // Click a point inside the actual polygon rather than its possibly concave bounding-box centre.
+ const point=await district.evaluate((element:SVGGeometryElement)=>{const b=element.getBBox(),m=element.getScreenCTM()!;for(let x=b.x+b.width*.1;x<b.x+b.width;x+=b.width/15)for(let y=b.y+b.height*.1;y<b.y+b.height;y+=b.height/15){const p=new DOMPoint(x,y);if(element.isPointInFill(p)){const s=p.matrixTransform(m);return {x:s.x,y:s.y}}}throw new Error("No point inside boundary")});
+ await page.mouse.move(point.x,point.y);
+ await expect(page.locator(".district-map-info h3")).toHaveText("Басманный");
+ await page.mouse.click(point.x,point.y);
+ await expect(page.getByLabel("Район Москвы",{exact:true})).toHaveValue(chosen.id);
+ expect(errors).toEqual([]);
+ await page.getByRole("button",{name:"Сбросить фильтры",exact:true}).click();
+ await page.getByLabel("Аренда до, ₽/час",{exact:true}).fill("1");
+ await expect(page.getByRole("heading",{name:"По этим условиям площадок пока нет"})).toBeVisible();
+ await page.getByRole("button",{name:"Сбросить фильтры",exact:true}).click();
+ for(const width of [1440,768,390]){
+  await page.setViewportSize({width,height:1000});
+  for(const edition of ["light","black"]){
+   if(await page.locator("html").getAttribute("data-edition")!==edition)await page.getByRole("button",{name:"Black Edition",exact:true}).click();
+   await noOverflow(page);
+   await page.screenshot({path:info.outputPath(`venues-${width}-${edition}.png`),fullPage:false,animations:"disabled"});
+  }
+ }
+});

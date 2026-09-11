@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import VenueDiscovery from "@/components/VenueDiscovery";
+import {loadDiscoveryVenues} from "@/lib/venueDiscovery";
 import Link from "next/link";
 import { MoscowMap } from "@/components/MoscowMap";
 import { CatalogFilters, type CategoryChip } from "@/components/CatalogFilters";
@@ -9,13 +11,14 @@ import { formatDay, pluralRu } from "@/lib/format";
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ city?: string }>;
+  searchParams: Promise<{ city?: string;kind?:string }>;
 }): Promise<Metadata> {
   const q = await searchParams;
   const city = q.city || "Москва";
   return {
     title: `Каталог — ${city}`,
-    alternates: { canonical: "/search" },
+    alternates: { canonical: q.kind==="venue"?"/search?kind=venue":"/search" },
+    ...(q.kind==="venue"?{robots:{index:false,follow:false}}:{}),
   };
 }
 
@@ -93,7 +96,11 @@ export default async function SearchPage({
   searchParams: Promise<SearchQuery>;
 }) {
   const raw = await searchParams;
-  const q = { ...raw, category: raw.kind === "venue" || (raw.kind === "artist" && raw.category === "venue") ? undefined : raw.category };
+  if(raw.kind==="venue"){
+    try{return <VenueDiscovery items={await loadDiscoveryVenues()} initialDistrict={raw.district}/>}
+    catch{return <main className="venue-discovery"><h1>Подборка площадок временно недоступна</h1><p>Не удалось загрузить данные. Попробуйте обновить страницу чуть позже.</p><Link href="/search?kind=artist">Найти артиста →</Link></main>}
+  }
+  const q = { ...raw, kind:raw.kind||"artist", category: raw.kind === "venue" || (raw.kind === "artist" && raw.category === "venue") ? undefined : raw.category };
   const city = q.city || "Москва";
   const extra = new URLSearchParams();
   extra.set("city", city);
@@ -151,7 +158,7 @@ export default async function SearchPage({
       <form key={JSON.stringify(q)} className="catalog-searchbar" action="/search" method="get" aria-label="Быстрый поиск">
         <fieldset className="catalog-kind-switch">
           <legend className="catalog-sr-only">Кого ищем</legend>
-          {[{ value: "", label: "Все" }, { value: "artist", label: "Артисты" }, { value: "venue", label: "Площадки" }].map((choice) => (
+          {[{ value: "artist", label: "Артисты" }, { value: "venue", label: "Площадки" }].map((choice) => (
             <label key={choice.value}><input type="radio" name="kind" value={choice.value} defaultChecked={(q.kind || "") === choice.value} /><span>{choice.label}</span></label>
           ))}
         </fieldset>
