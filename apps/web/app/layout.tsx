@@ -18,6 +18,7 @@ import "./black-workspaces.css";
 import "./login-layout.css";
 import "./home-refinement.css";
 import "./venue-discovery.css";
+import "./artist-welcome.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
 

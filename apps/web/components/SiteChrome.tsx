@@ -192,7 +192,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             ) : (
               <>
                 <Link href="/search?kind=artist">Найти артиста</Link>
-                <Link href="/briefs">Артистам</Link>
+                <Link href="/for-artists">Артистам</Link>
                 <Link href="/#process-title">Как это работает</Link>
               </>
             )}
@@ -314,7 +314,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <nav aria-label="Информация о сервисе"><Link href="/dev/cabinets">Демо-кабинеты</Link><Link href="/legal/privacy">Конфиденциальность</Link><Link href="/legal">Документы</Link><Link href="/faq">Вопросы и ответы</Link><Link href="/support">Поддержка</Link></nav>
         </footer>
       </div>
-      <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">
+      {path !== "/for-artists" && <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">
         <Link href="/" aria-label="Главная" className={path === "/" ? "on" : ""}>
           Главная
         </Link>
@@ -349,7 +349,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         <Link href={authed ? "/profile" : loginHref("/profile")} className={path.startsWith("/profile") ? "on" : ""}>
           Профиль
         </Link>
-      </nav>
+      </nav>}
     </>
   );
 }
