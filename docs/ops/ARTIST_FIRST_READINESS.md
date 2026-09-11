@@ -61,3 +61,11 @@ The research selection is now connected to `/search?kind=venue`: 300 records, 24
 The six browser scenarios passed, with a separate regression check confirming no hydration warning after rounding projected SVG attributes consistently across Node and Chromium. TypeScript passed. The isolated real HTTP load check completed 240/240 requests at concurrency 80 without errors (local machine, empty test database; this is not a production capacity claim). A production candidate and public acceptance still require release authorization.
 
 Deployment must install **both** `data/moscow_performance_venues_research.json` and `data/moscow_venue_districts.json` beside the application root; the server-rendered discovery loader requires both. Map geometry ships in the web bundle. Keep the private demo gateway private and preserve external-payment configuration. Git push was rejected by automatic approval review even after the origin URL matched the user's GitHub reference; explicit publishing approval has been requested. No workaround publication was attempted.
+
+## Final local audit, 11 September
+
+Removed the remaining “Найти работу” labels from the artist workspace navigation, primary dashboard action and empty-request guidance; they now consistently say “Подобрать выступления”. No route or authorization behavior changed.
+
+The two locally skipped backup/restore checks were executed with the real sqlite3 CLI on the deployment host, alongside the URL conversion check: **3 passed**. Before execution, SHA-256 hashes proved the server test file and both shell scripts identical to this checkout. Tests created only temporary fixtures; the process used an in-memory database setting, disabled pytest cache/bytecode, and did not read or restore the production database. This supplements the 212 passing local API tests; it does not imply all API tests were rerun on the server.
+
+Read-only verification still reports published baseline `5590ed7d890fd401e14678fc8ff7692783b8d5e6`. Local preview listens on 127.0.0.1:4316; port 4318 is unused. Publishing approval remains pending after the automatic rejection; neither Git push nor a workaround deployment was performed.

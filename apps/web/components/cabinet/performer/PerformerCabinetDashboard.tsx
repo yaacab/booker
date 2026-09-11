@@ -44,7 +44,7 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
       ? [{ href: "/cabinet/performer/calendar", label: "Открыть календарь" }]
       : section === "services"
         ? isWriteRole(role) ? [{ href: "#performer-service-form", label: "Добавить услугу", primary: true }] : []
-        : [{ href: "/briefs", label: "Найти работу", primary: true }, { href: artistId ? `/artists/${artistId}` : "/cabinet/performer/services", label: "Смотреть профиль" }];
+        : [{ href: "/briefs", label: "Подобрать выступления", primary: true }, { href: artistId ? `/artists/${artistId}` : "/cabinet/performer/services", label: "Смотреть профиль" }];
 
   return <CabinetPageShell
     mode="performer" kindKey="artist" section={section} title={title} subtitle={subtitle}
