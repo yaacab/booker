@@ -214,3 +214,35 @@ EPK и разделы Decision Engine/Business/общей приёмки ост�
 Полный API после проверки вместимости Opportunities:
 `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` —
 **252 passed, 2 skipped** (44.97s).
+
+## Защита booking payment
+
+Фактически обнаружены старые пробелы: provider=stub по умолчанию, отсутствие
+object auth перед checkout/replay, повторные платежи одной брони, late failed
+после captured и неподтверждённое владение резервом при capture. Исправлены:
+fail-closed default и тройной stub gate; customer writer authorization; сериализация
+и повтор одного Payment на booking; scope ключа; монотонные подтверждения;
+consumed hold; поздняя оплата не подтверждает истёкший резерв. Условия оффера
+фиксируются уже при удержании даты, до подписания договора.
+
+Deal Room получает server capabilities и явные русские состояния оплаты;
+неподключённый provider не создаёт фиктивного успеха. Stub отмечен как тест без
+списания денег. Управление оплатой доступно во вкладке «Платежи» на mobile/desktop.
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **262 passed, 2 skipped** (55.69s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — **passed**.
+- Новый `test_payment_guards.py`: production/opt-in, fresh/replayed IDOR,
+  read-only role, один checkout, out-of-order webhook, consumed hold,
+  поздняя оплата и неизменность цены после hold.
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — **passed**.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/booking-payment.spec.ts e2e/deal-path.spec.ts --workers=1 --reporter=line`
+  — **6 passed** (9.1s). Реальные локальные ack → hold → in-app OTP → подписи →
+  Payment → тестовый capture на 1440/390; недоступный UI проверен отдельной fixture,
+  production API gate — настоящими API-тестами. Screenshot 390 просмотрен.
+  Обнаруженная скрытая на mobile кнопка перенесена во вкладку платежей.
+- При повторном прогоне стенд вернул 429 после предыдущих регистраций. Чистый
+  перезапуск изолированного API дал указанный результат без изменения prod limits.
+  CI/Playwright могут задать `BOOKER_TEST_AUTH_RATE_LIMIT=1000`; действует только
+  при environment=test. Production всегда сохраняет 20 auth-запросов за 5 минут.

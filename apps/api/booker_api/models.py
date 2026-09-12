@@ -417,7 +417,7 @@ class Payment(Base):
     booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
     amount_rub: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(32), default="pending")
-    provider: Mapped[str] = mapped_column(String(32), default="stub")
+    provider: Mapped[str] = mapped_column(String(32), default="disabled")
     idempotency_key: Mapped[str] = mapped_column(String(64), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

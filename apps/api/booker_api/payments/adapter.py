@@ -104,26 +104,40 @@ class PaymentAdapter(ABC):
     ) -> RefundOutcome: ...
 
 
+def payment_stub_enabled() -> bool:
+    return (
+        settings.environment.strip().lower() in {"dev", "development", "test"}
+        and settings.payment_allow_stub
+        and settings.payment_provider.strip().lower() == "stub"
+    )
+
+
 def payment_live_enabled() -> bool:
-    provider = settings.payment_provider.strip().lower()
-    merchant = (settings.payment_merchant_id or "").strip()
-    return provider not in {"", "stub", "external", "disabled"} and bool(merchant)
+    # No live implementation is registered yet. Credentials alone cannot enable it.
+    return False
+
+
+def payment_capabilities() -> dict:
+    stub = payment_stub_enabled()
+    external = settings.payment_provider.strip().lower() == "external"
+    return {
+        "available": stub or external or payment_live_enabled(),
+        "test_mode": stub,
+        "message": (
+            "Тестовая оплата: деньги не списываются" if stub else
+            "Перевод вне платформы подтверждает оператор" if external else
+            "Оплата пока недоступна: платёжный партнёр не подключён"
+        ),
+    }
 
 
 def get_payment_adapter() -> PaymentAdapter:
     from booker_api.payments.external import ExternalPaymentAdapter
-    from booker_api.payments.live import LivePaymentAdapter
     from booker_api.payments.stub import StubPaymentAdapter
 
     provider = settings.payment_provider.strip().lower()
-    if provider in {"", "stub"}:
+    if payment_stub_enabled():
         return StubPaymentAdapter()
     if provider == "external":
         return ExternalPaymentAdapter()
-    if not payment_live_enabled():
-        raise HTTPException(
-            501,
-            "Боевой платёжный партнёр за фичефлагом: нужны BOOKER_PAYMENT_PROVIDER и "
-            "BOOKER_PAYMENT_MERCHANT_ID",
-        )
-    return LivePaymentAdapter()
+    raise HTTPException(503, "Оплата пока недоступна: платёжный партнёр не подключён")

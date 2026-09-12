@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     # Dev/test only: allow the well-known default webhook secret.
     # Prod must set BOOKER_ALLOW_DEFAULT_WEBHOOK_SECRET=false + BOOKER_WEBHOOK_SECRET.
     allow_default_webhook_secret: bool = True
-    payment_provider: str = "stub"
+    payment_provider: str = "disabled"
+    payment_allow_stub: bool = False
     payment_merchant_id: str = ""
     payment_public_key: str = ""
     payment_secret_key: str = ""
@@ -39,6 +40,7 @@ class Settings(BaseSettings):
     require_admin_2fa_enforced: bool = False
     admin_2fa_step_up_minutes: int = 15
     rate_limit_max_keys: int = 10_000
+    test_auth_rate_limit: int = 20
     upload_dir: str = "./data/uploads"
     max_upload_bytes: int = 5_242_880  # 5 MiB
     email_provider: str = "disabled"

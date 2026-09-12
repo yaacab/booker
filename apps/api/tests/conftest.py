@@ -18,6 +18,15 @@ from booker_api.rate_limit import (
 )
 
 
+@pytest.fixture(autouse=True)
+def explicit_test_payment_provider(monkeypatch):
+    from booker_api.config import settings
+
+    monkeypatch.setattr(settings, "environment", "test")
+    monkeypatch.setattr(settings, "payment_provider", "stub")
+    monkeypatch.setattr(settings, "payment_allow_stub", True)
+
+
 @pytest.fixture()
 def engine():
     eng = create_engine(

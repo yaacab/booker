@@ -10,7 +10,7 @@ export default defineConfig({
   globalSetup: "./e2e/global-setup.ts",
   webServer: [
     {
-      command: `cd ../api && ../../.venv/bin/python -m uvicorn booker_api.main:app --host 127.0.0.1 --port ${API_PORT}`,
+      command: `cd ../api && BOOKER_ENVIRONMENT=test BOOKER_PAYMENT_PROVIDER=stub BOOKER_PAYMENT_ALLOW_STUB=true BOOKER_TEST_AUTH_RATE_LIMIT=1000 ../../.venv/bin/python -m uvicorn booker_api.main:app --host 127.0.0.1 --port ${API_PORT}`,
       url: `${API_URL}/health`,
       reuseExistingServer: true,
       timeout: 120_000,

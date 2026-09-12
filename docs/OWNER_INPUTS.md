@@ -63,3 +63,8 @@
 Точки подключения и acceptance:
 [PAYMENT_PROVIDER_HANDOFF.md](integrations/PAYMENT_PROVIDER_HANDOFF.md).
 Статус реализации и доказательства: [PRELAUNCH_V1.md](product/PRELAUNCH_V1.md).
+
+Booking checkout также выключен по умолчанию:
+`BOOKER_PAYMENT_PROVIDER=disabled`, `BOOKER_PAYMENT_ALLOW_STUB=false`.
+Тестовый booking provider требует одновременно dev/test environment, provider=stub
+и allow_stub=true; production запрещает stub независимо от opt-in.

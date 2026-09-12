@@ -49,6 +49,7 @@ from booker_api.models import (
     VenueTariff,
 )
 from booker_api.notifications import on_offer_created, on_request_created
+from booker_api.payments.adapter import payment_capabilities
 from booker_api.rate_limit import client_key, messaging_limiter, upload_limiter
 from booker_api.replacement import build_replacement_plan
 from booker_api.schemas import DISPUTE_CATEGORIES
@@ -922,10 +923,10 @@ def new_version(
     if honorarium <= 0:
         raise HTTPException(400, "honorarium_rub должен быть больше нуля")
     booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none()
-    if booking and booking.status in {"AwaitingPayment", "Confirmed", "InProgress", "Completed"}:
+    if booking and booking.status != "Negotiation":
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "Менять цену после перехода к оплате нельзя",
+            "Условия зафиксированы удержанием даты или закрытием сделки",
         )
     breakdown = offer_fees(db, honorarium, req.supplier_org_id, event.organization_id)
     version = OfferVersion(
@@ -1321,6 +1322,21 @@ def deal_room(
     sup_org = db.get(Organization, req.supplier_org_id)
     role = "customer" if membership_ok(db, user, event.organization_id) else "supplier"
     workspace_kind = "customer" if role == "customer" else (sup_org.kind if sup_org else "artist")
+    from booker_api.security import membership
+
+    customer_member = membership(db, user.id, event.organization_id)
+    payment_writer = user.is_platform_admin or bool(
+        customer_member and customer_member.role in {"owner", "admin", "manager"}
+    )
+    capabilities = payment_capabilities()
+    capabilities["can_create"] = bool(
+        payment_writer and capabilities["available"] and booking.status == "AwaitingPayment"
+        and (not payment or payment.status in {"pending", "failed"})
+    )
+    capabilities["can_test_complete"] = bool(
+        payment_writer and capabilities["test_mode"] and payment and payment.provider == "stub"
+        and payment.status in {"pending", "failed"}
+    )
     loss = db.query(AuditLog).filter_by(action="request.loss_reason", entity_id=req.id).order_by(AuditLog.created_at.desc()).first()
     return {
         "booking_id": booking.id,
@@ -1360,6 +1376,7 @@ def deal_room(
             "otp_pending": not (contract.customer_signed and contract.supplier_signed),
         },
         "documents": _deal_documents(version, contract, attachments),
+        "payment_capabilities": capabilities,
         "payment": None
         if not payment
         else {
@@ -1367,6 +1384,7 @@ def deal_room(
             "status": payment.status,
             "amount_rub": payment.amount_rub,
             "provider": payment.provider,
+            "requires_operator": payment.status == "succeeded" and booking.status in {"AwaitingPayment", "Cancelled"},
         },
         "quote": {
             **snapshot_payload(version),

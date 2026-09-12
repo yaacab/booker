@@ -111,14 +111,14 @@ class SignIn(BaseModel):
 
 
 class PaymentIn(BaseModel):
-    idempotency_key: str
+    idempotency_key: str = Field(min_length=1, max_length=64)
 
 
 class WebhookIn(BaseModel):
-    event_id: str
-    payment_id: str
-    status: str
-    signature: str
+    event_id: str = Field(min_length=1, max_length=64)
+    payment_id: str = Field(min_length=1, max_length=36)
+    status: str = Field(min_length=1, max_length=32)
+    signature: str = Field(min_length=1, max_length=256)
 
 
 DISPUTE_CATEGORIES = (

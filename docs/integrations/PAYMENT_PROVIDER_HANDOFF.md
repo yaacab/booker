@@ -100,3 +100,24 @@ merchant mismatch, неверную сумму/валюту, capture failure, ti
 adapter именем провайдера и явным live gate, отключить все test paths и default
 webhook secret. Выполнить release/сверку по отдельному разрешению владельца.
 В текущей задаче live switch, production deploy, DNS и merge запрещены.
+
+## Защита старого booking checkout (prelaunch)
+
+`BOOKER_PAYMENT_PROVIDER=disabled` и `BOOKER_PAYMENT_ALLOW_STUB=false` — defaults.
+Stub требует одновременно `BOOKER_ENVIRONMENT=dev|development|test`, явного
+`BOOKER_PAYMENT_PROVIDER=stub` и opt-in. Даже подписанный stub webhook в production
+отклоняется. `payment_live_enabled()` остаётся false до регистрации реального
+adapter; наличие merchant ID само по себе не означает работоспособность платежей.
+External режим сохранён: перевод подтверждает platform admin с 2FA и audit.
+
+Checkout проверяет customer organization/writer до обработки повторов. Ключ
+идемпотентности хешируется со scope booking; повторный checkout другой кнопкой
+возвращает существующий платёж этой брони. Payment и booking блокируются перед
+соответствующими переходами. После удержания даты условия оффера заморожены.
+Подтверждённая оплата потребляет hold; поздний failed не отменяет succeeded.
+
+Capture после истечения резерва учитывается как платёжный факт, но не подтверждает
+дату. Создаётся `payment.reservation_conflict`; Deal Room сообщает необходимость
+оператора/согласования/возврата. Интеграция обязана доставлять этот случай в сверку.
+Оператор не должен повторно подтверждать уже занятый слот. Нельзя интерпретировать
+HTTP 200 webhook как обещание Confirmed: проверяется возвращённый booking_status.

@@ -8,7 +8,6 @@ from fastapi import HTTPException
 from booker_api.config import settings
 from booker_api.payments.adapter import (
     PaymentAdapterError,
-    PaymentAdapterUnavailable,
     get_payment_adapter,
     payment_live_enabled,
 )
@@ -20,7 +19,7 @@ def _sign(event_id: str, payment_id: str, status: str) -> str:
     return hmac.new(settings.webhook_secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
 
 
-def test_stub_is_default_adapter():
+def test_explicit_test_stub_adapter():
     adapter = get_payment_adapter()
     assert isinstance(adapter, StubPaymentAdapter)
     assert adapter.name == "stub"
@@ -42,10 +41,10 @@ def test_payment_live_disabled_without_merchant(monkeypatch):
     assert payment_live_enabled() is False
 
 
-def test_payment_live_enabled_with_partner_and_merchant(monkeypatch):
+def test_credentials_alone_never_enable_unimplemented_live_provider(monkeypatch):
     monkeypatch.setattr(settings, "payment_provider", "yookassa")
     monkeypatch.setattr(settings, "payment_merchant_id", "merchant-123")
-    assert payment_live_enabled() is True
+    assert payment_live_enabled() is False
 
 
 def test_get_payment_adapter_fail_closed_without_merchant(monkeypatch):
@@ -53,7 +52,7 @@ def test_get_payment_adapter_fail_closed_without_merchant(monkeypatch):
     monkeypatch.setattr(settings, "payment_merchant_id", "")
     with pytest.raises(HTTPException) as exc:
         get_payment_adapter()
-    assert exc.value.status_code == 501
+    assert exc.value.status_code == 503
 
 
 def test_create_session_and_ledger_hook():
@@ -133,14 +132,9 @@ def test_refund_rejects_invalid_amount():
 def test_live_adapter_is_fail_closed(monkeypatch):
     monkeypatch.setattr(settings, "payment_provider", "yookassa")
     monkeypatch.setattr(settings, "payment_merchant_id", "merchant-123")
-    adapter = get_payment_adapter()
-    with pytest.raises(PaymentAdapterUnavailable):
-        adapter.create_session(
-            payment_id="pay-1",
-            amount_rub=1_000,
-            idempotency_key="idem-1",
-            booking_id="book-1",
-        )
+    with pytest.raises(HTTPException) as exc:
+        get_payment_adapter()
+    assert exc.value.status_code == 503
 
 
 def test_health_payment_flags(client):

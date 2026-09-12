@@ -54,8 +54,8 @@ jobs:
       - name: Start API
         working-directory: apps/api
         run: |
-          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PAYMENT_PROVIDER=stub \
-            BOOKER_ENVIRONMENT=test BOOKER_COMMERCE_PROVIDER=stub BOOKER_COMMERCE_ALLOW_STUB=true \
+          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PAYMENT_PROVIDER=stub BOOKER_PAYMENT_ALLOW_STUB=true BOOKER_TEST_AUTH_RATE_LIMIT=1000 BOOKER_ENVIRONMENT=test \
+            BOOKER_COMMERCE_PROVIDER=stub BOOKER_COMMERCE_ALLOW_STUB=true \
             BOOKER_COMMERCE_WEBHOOK_SECRET=ci-test-only-commerce-webhook-secret \
             uvicorn booker_api.main:app --host 127.0.0.1 --port 8000 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
@@ -93,5 +93,5 @@ jobs:
             e2e/commercial.spec.ts \
             e2e/promotions.spec.ts \
             e2e/growth.spec.ts \
-            e2e/opportunities.spec.ts \
+            e2e/opportunities.spec.ts e2e/booking-payment.spec.ts \
             --reporter=line
