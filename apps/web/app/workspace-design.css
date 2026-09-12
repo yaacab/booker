@@ -154,3 +154,17 @@
 .technical-facts dd { margin: 2px 0 0; overflow-wrap: anywhere; }
 .artist-review { border-top: 1px solid var(--line, #ccd8c8); padding: 12px 0; }
 @media (max-width: 700px) { .artist-showcase { grid-template-columns: minmax(0, 1fr); } .artist-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.compatibility-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin: 24px 0; }
+.compatibility-form :is(.grid, label, input, select), .presentation-editor :is(label, input, select) { min-width: 0; max-width: 100%; }
+.compatibility-result { display: grid; gap: 20px; margin-top: 24px; }
+.compatibility-score { font-size: 2rem; font-weight: 700; }
+.compatibility-score span { font-size: .95rem; font-weight: 400; }
+.compatibility-checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.compatibility-check { overflow-wrap: anywhere; }
+.compatibility-compatible { border-top: 4px solid #5a7a32 !important; }
+.compatibility-incompatible { border-top: 4px solid #a24031 !important; }
+.compatibility-attention { border-top: 4px solid #a97925 !important; }
+.compatibility-unknown { border-top: 4px solid #9baba1 !important; }
+@media (max-width: 900px) { .compatibility-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .compatibility-checks { grid-template-columns: minmax(0, 1fr); } }

@@ -24,3 +24,8 @@
 - [ ] Оферта проверена юристом (гейт **U5** в прод). Пакет черновиков: `docs/legal/README.md`, сайт `/legal`. Реквизиты оператора — чеклист в `OPERATOR.md`.
 - [ ] Платёжный партнёр выбран и договорён (stub в коде; `PAYMENTS_SHORTLIST.md`).
 - [ ] 10 заявок пилота и ≥1 оплата до фазы Market fit.
+
+
+Коммерческий этап, совместимость: API/RBAC/versioning, full-window calendar +
+buffers, явный unknown, owner hall editor и E-CUST-04 desktop/390 проверены локально.
+Точное доказательство — `PRELAUNCH_V1.md`; оно не закрывает общий launch gate.

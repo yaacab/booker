@@ -250,6 +250,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
           )}
         </span>
         <FavoriteToggle targetType="venue" targetId={data.id} />
+        <Link className="btn secondary" href={`/compatibility?venue=${data.id}`}>Проверить совместимость</Link>
         <Link className="btn secondary" href={`/venues/${data.id}/share`}>
           Поделиться
         </Link>

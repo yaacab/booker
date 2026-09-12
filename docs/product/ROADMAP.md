@@ -33,3 +33,13 @@
 Деплой P1 supply console: **сделано** (af2bf06 — C1–C5; d1bdbe3 — C6).
 
 Отложено: 3D, Turbo, AI в спорах, Protect, эквайринг до юриста, смена SQLite→Postgres в этом спринте.
+
+## Коммерческий этап — уточнение по текущей ветке
+
+OWNER DIRECTIVE 2026-09-12 заменяет прежнюю отсрочку коммерческих инструментов.
+В `feat/prelaunch-commercial-v1` реализованы versioned commerce/fees, продвижение,
+Growth, Opportunities, EPK и серверная совместимость с редактором техники залов.
+Проверки и ограничения каждого инкремента: `PRELAUNCH_V1.md`.
+Decision Engine/Compare V2/readiness/budget, collaboration/repeat/Business,
+полный commercial admin и общая приёмка остаются в работе. Эта ветка не merged
+и не выпущена в production; прежние отметки пилота не доказывают новый launch gate.

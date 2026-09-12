@@ -883,3 +883,12 @@ class ArtistPresentation(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     data_json: Mapped[str] = mapped_column(Text, default="{}")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class HallTechnicalProfile(Base):
+    __tablename__ = "hall_technical_profiles"
+
+    hall_id: Mapped[str] = mapped_column(ForeignKey("venue_halls.id"), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    data_json: Mapped[str] = mapped_column(Text, default="{}")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -53,3 +53,14 @@ SHA аудита: `c90d091` · ветка `feat/master-plan-execution` · PR #14
 - Query `?event_studio_map_v1=0` = только URL, не глобальный откат.
 - Stub-тесты ≠ работоспособность провайдера; external — отдельная приёмка; provider webhook/refund — ждут live+sandbox.
 - CI доказательство только для checks на SHA кандидата / PR.
+
+
+### Уточнение текущей ветки: совместимость
+
+В `feat/prelaunch-commercial-v1` появился server Compatibility Engine, versioned
+HallTechnicalProfile, owner/editor RBAC и UI `/compatibility` + техника залов.
+Проверены unknown, оснащение, буферы, фактическая доступность, свои живые holds и
+чужой event access. Полный API: 283 passed/2 skipped; E-CUST-04 входит в 8 passed
+Playwright с EPK/payment регрессией. Детали в `product/PRELAUNCH_V1.md`.
+Историческая матрица выше не заменяет проверку текущей ветки. Decision Engine и
+остальные разделы master task остаются незавершёнными.

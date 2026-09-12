@@ -208,6 +208,7 @@ export function ArtistProfileClient() {
         </span>
         <FavoriteToggle targetType="artist" targetId={data.id} />
         <ArtistCompareButton artistId={data.id} />
+        <Link className="btn secondary" href={`/compatibility?artist=${data.id}${wantedDay ? `&date=${wantedDay}` : ""}`}>Проверить совместимость</Link>
         <Link className="btn secondary" href={`/artists/${data.id}/share`}>
           Поделиться
         </Link>

@@ -285,3 +285,43 @@ HTTPS validation не допускает javascript/local/private-IP/password UR
   — **8 passed** (18.9s): сохранение/повторная загрузка/публичная витрина на
   desktop/390, восстановление после ошибки профиля, Growth и supply navigation.
   Screenshot 390 визуально проверен, горизонтального переполнения нет.
+
+## Совместимость артиста, события и зала
+
+Миграция `c4d5e6f7a8b9_hall_technical`, модель HallTechnicalProfile.
+API: `POST /compatibility`, `GET /organizations/{id}/technical-halls`,
+`GET/PUT /halls/{id}/technical`. UI: `/compatibility`,
+`/cabinet/venue/technical`, ссылки из публичных профилей.
+
+Сервер проверяет десять параметров: географию, вместимость выбранного зала,
+полное временное окно, монтаж/демонтаж с busy overlays, сцену, мощность, звук,
+микрофоны, обязательное оборудование за вычетом привозимого артистом и ограничения.
+Unknown виден отдельно и не даёт положительных баллов. Процент — доля совпавших
+проверок по данным участников, не вероятность и не гарантия. Synthetic calendar
+и незаявленные технические факты не подтверждают совместимость. При нескольких
+залах нужен явный выбор. Названия оборудования сравниваются точно без регистра.
+
+Контекст события требует membership, берёт фактические город/гостей/начало из DB
+и разрешает собственные подтверждённые слоты либо живые holds. Публичный запрос
+такого исключения не получает; просроченный hold его теряет. Нельзя подставить
+список собственных слотов с клиента. Writer редактирует свои залы, viewer читает;
+версия/идемпотентный повтор защищают правки. Вместимость площадки обновляется
+по максимуму залов. Изменение техники не меняет verified, тариф или quote.
+
+Проверки:
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **283 passed, 2 skipped** (59.30s).
+- `test_compatibility.py` — **10 passed**, включая IDOR/viewer, unknown,
+  отсутствие DJ-пульта, busy только во время монтажа, живой/истёкший собственный
+  hold, unpublished/synthetic venue, несколько залов и неизменность score от Premium.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — **passed**.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/compatibility.spec.ts e2e/artist-presentation.spec.ts e2e/booking-payment.spec.ts --workers=1 --reporter=line`
+  — **8 passed** (19.4s). E-CUST-04 проходит unknown → заполнение владельцем →
+  совместимо → удаление обязательного пульта → несовместимо на 1440/390.
+  Исправлено обнаруженное переполнение формы из-за длинных option; mobile screenshot
+  просмотрен. Сценарий включён в PR CI.
+
+Decision Engine, Compare V2, readiness/budget и оставшиеся разделы master task
+ещё не приняты. Этот инкремент не является общей готовностью к запуску.
