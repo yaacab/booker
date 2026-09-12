@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
@@ -12,8 +12,9 @@ from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.event_budget import event_budget
 from booker_api.event_planning import selection_orientation
+from booker_api.event_readiness import event_readiness
 from booker_api.matching import MatchingContext, clean_selection
-from booker_api.models import Booking, Event, EventPlan, User
+from booker_api.models import AvailabilitySlot, Booking, Event, EventPlan, User
 from booker_api.rate_limit import analytics_limiter, client_key, upload_limiter
 from booker_api.security import (
     audit,
@@ -83,7 +84,7 @@ def planning_event(db, user, event_id, writer=False):
 def matching_payload(ctx, member):
     result = ctx.payload()
     result["can_manage"] = member.role in {"owner", "admin", "manager"}
-    result["can_adjust_end"] = not ctx.db.query(Booking).filter(Booking.event_id == ctx.event.id, Booking.status != "Cancelled").first()
+    result["can_adjust_end"] = ctx.event.ends_at is None or not ctx.db.query(Booking).filter(Booking.event_id == ctx.event.id, Booking.status != "Cancelled").first()
     return result
 
 
@@ -141,8 +142,16 @@ def update_planning_context(event_id: str, body: PlanningContextIn, user: User =
         raise HTTPException(409, "Параметры события изменились. Обновите страницу")
     changed = []
     if "ends_at" in body.model_fields_set and (aware(body.ends_at) if body.ends_at else None) != (aware(event.ends_at) if event.ends_at else None):
-        if db.query(Booking).filter(Booking.event_id == event.id, Booking.status != "Cancelled").first():
-            raise HTTPException(409, "Окно уже используется в сделке. Согласуйте его изменение с участниками сделки")
+        active = db.query(Booking).filter(Booking.event_id == event.id, Booking.status != "Cancelled").all()
+        if active:
+            if event.ends_at is not None or body.ends_at is None:
+                raise HTTPException(409, "Окно уже используется в сделке. Согласуйте его изменение с участниками сделки")
+            # Historic events may lack an end. Fill only within every existing deal's slot,
+            # keeping all booked windows and price snapshots unchanged.
+            for booking in active:
+                slot = db.get(AvailabilitySlot, booking.slot_id)
+                if not slot or aware(slot.starts_at) > aware(event.event_date) or aware(slot.ends_at) < aware(body.ends_at):
+                    raise HTTPException(409, "Окончание не укладывается в слот существующей сделки. Согласуйте окно с участниками")
         if body.ends_at and aware(body.ends_at) <= aware(event.event_date):
             raise HTTPException(422, "Окончание должно быть позже начала события")
         event.ends_at = aware(body.ends_at) if body.ends_at else None
@@ -168,3 +177,34 @@ def budget_summary(event_id: str, user: User = Depends(current_user), db: Sessio
           payload={"state": result["state"]})
     db.commit()
     return result
+
+
+@router.get("/events/{event_id}/readiness")
+def readiness_summary(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
+    analytics_limiter.check(f"event-readiness:{user.id}")
+    result = event_readiness(db, event)
+    audit(db, actor_user_id=user.id, action="event.readiness_viewed", entity_type="event", entity_id=event.id,
+          payload={"state": result["state"]})
+    db.commit()
+    return result
+
+
+@router.get("/orgs/{organization_id}/event-readiness")
+def readiness_overview(organization_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    require_org_member(db, user, organization_id)
+    analytics_limiter.check(f"readiness-overview:{user.id}")
+    rows = db.query(Event).filter(Event.organization_id == organization_id, Event.status.notin_(["Completed", "Cancelled"]),
+        Event.event_date >= now() - timedelta(days=1)).order_by(Event.event_date, Event.id).limit(12).all()
+    items = []
+    for event in rows:
+        result = event_readiness(db, event)
+        items.append({"event_id": event.id, "title": event.title, "event_date": event.event_date, "city": event.city,
+            **{k: result[k] for k in ("state", "score", "required_total", "required_confirmed", "next_best_action", "test_payments")}})
+    audit(db, actor_user_id=user.id, action="event.readiness_list_viewed", entity_type="organization", entity_id=organization_id,
+          payload={"count": len(items)})
+    db.commit()
+    return {"items": items, "note": "Ближайшие 12 незавершённых событий, включая черновики и события последних суток."}

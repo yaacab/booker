@@ -86,3 +86,14 @@ Budget Control реализован как server summary и UI события. 
 API lifecycle через тестовый provider; подробности в `product/PRELAUNCH_V1.md`.
 Readiness/next_best_action остаётся открытым, включая ошибку старого клиентского
 счётчика закрытых ролей. Общий launch gate не закрыт.
+
+
+### Уточнение текущей ветки: EventReadiness
+
+Серверный checklist/score/blockers/next_best_action реализован в API события и
+сводке организации, подключён к странице события и customer cabinet. Negotiation
+больше не закрывает роль; проверяются настоящие slot/hold/ack/contract/payment и
+техника. Unknown/expired/dispute/late capture и противоречивые статусы не дают
+ложной готовности. Историческое отсутствие окончания можно дополнить внутри
+существующих слотов, сохранив quote и hold. Точные команды и ограничения — в
+`product/PRELAUNCH_V1.md`. Общий launch gate остаётся открытым.

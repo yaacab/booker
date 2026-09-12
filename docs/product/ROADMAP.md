@@ -42,6 +42,7 @@ Growth, Opportunities, EPK и серверная совместимость с �
 Проверки и ограничения каждого инкремента: `PRELAUNCH_V1.md`.
 Smart Matching с тремя вариантами и сохраняемым предварительным составом также
 реализован и проверен на desktop/390. Добавлен серверный budget-summary с
-раздельными quote-суммами и ориентирами. Compare V2/readiness, collaboration/repeat/Business,
+раздельными quote-суммами и ориентирами, EventReadiness/checklist/next action на
+странице события и в кабинете заказчика. Compare V2, collaboration/repeat/Business,
 полный commercial admin и общая приёмка остаются в работе. Эта ветка не merged
 и не выпущена в production; прежние отметки пилота не доказывают новый launch gate.

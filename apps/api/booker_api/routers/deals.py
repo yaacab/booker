@@ -293,6 +293,7 @@ def get_event(event_id: str, user: User = Depends(current_user), db: Session = D
             "resource_id": req.resource_id,
             "requirement_id": getattr(req, "requirement_id", None),
             "booking_id": booking.id if booking else None,
+            "booking_status": booking.status if booking else None,
         }
         if quote_id:
             item["quote_id"] = quote_id

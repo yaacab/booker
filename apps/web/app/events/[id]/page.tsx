@@ -10,7 +10,6 @@ import { loginHref } from "@/lib/next";
 import {
   BLOCKER_LABEL,
   buildNextSteps,
-  isClosedRequest,
   openLooseRequests,
   needsReplacement,
   qtyOf,
@@ -21,6 +20,7 @@ import {
   type EventRequestLite,
   type RequirementLite,
 } from "@/lib/eventDayOps";
+import { EventReadiness } from "@/components/event-planning/EventReadiness";
 import { EventBudget } from "@/components/event-planning/EventBudget";
 import { EventMatching } from "@/components/event-planning/EventMatching";
 import { STATUS_LABEL } from "@/lib/status";
@@ -311,18 +311,6 @@ function ReplacementPanel({
   );
 }
 
-function fillRate(requirements: Requirement[], requests: EventRequest[]): { closed: number; total: number } {
-  let total = 0;
-  let closed = 0;
-  for (const req of requirements) {
-    const need = qtyOf(req.qty);
-    total += need;
-    const filled = requestsForRole(requests, req.id).filter(isClosedRequest).length;
-    closed += Math.min(need, filled);
-  }
-  return { closed, total };
-}
-
 function roleLabel(req: Requirement): string {
   return categoryLabel(req.category_code) || req.role_label || req.category_code;
 }
@@ -472,7 +460,6 @@ export default function EventPage() {
   const looseRequests = unmatchedRequests(requests, requirements);
   const looseOpen = openLooseRequests(requests, requirements);
   const nextSteps = buildNextSteps(requirements, requests, roleLabel);
-  const { closed: filledPositions, total: totalPositions } = fillRate(requirements, requests);
   const date = moscowDate(event.event_date);
 
   return (
@@ -517,26 +504,16 @@ export default function EventPage() {
           {packError}
         </p>
       ) : null}
+      <EventReadiness eventId={event.id} refreshKey={event} />
       <EventBudget eventId={event.id} refreshKey={event} />
       <EventMatching eventId={event.id} contextKey={JSON.stringify(event.requirements)} onRequestsUpdated={() => void loadEvent(event.id)} />
-      {totalPositions > 0 ? (
-        <article className="card tint reveal">
-          <strong>Закрытие состава</strong>
-          <p className="timeline">
-            {filledPositions} из {totalPositions} позиций закрыто
-            {filledPositions < totalPositions
-              ? " — остальные ждут подтверждённую сделку или Deal Room"
-              : " — все роли в составе закрыты"}
-          </p>
-        </article>
-      ) : null}
-      <DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} />
+      <div id="event-day"><DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} /></div>
       {requirements.length > 0 || looseOpen.length > 0 ? (
         <section className="reveal">
-          <h2>Следующие шаги</h2>
+          <h2>Заявки по ролям</h2>
           <article className="card tint">
             {nextSteps.length === 0 && looseOpen.length === 0 ? (
-              <p className="timeline">Все роли в составе закрыты — можно сосредоточиться на дне события.</p>
+              <p className="timeline">По ролям есть подтверждённые сделки. Готовность документов и техники показана в проверках выше.</p>
             ) : (
               <>
                 {nextSteps.length > 0 ? (
@@ -598,7 +575,7 @@ export default function EventPage() {
         </section>
       ) : null}
       <p className="timeline">Каждая позиция — своя сделка.</p>
-      <h2>Роли</h2>
+      <h2 id="event-roles">Роли</h2>
       {canWrite ? (
         <article className="card">
           <p className="timeline">Редактирование состава. Цена на этом экране не считается.</p>

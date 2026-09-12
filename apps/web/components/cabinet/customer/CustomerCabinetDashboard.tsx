@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { EventReadinessOverview } from "@/components/event-planning/EventReadiness";
 import { CabinetPageShell } from "../CabinetPageShell";
 import { useCustomerCabinetData } from "./useCustomerCabinetData";
 import { DraftsWidget } from "./widgets/DraftsWidget";
@@ -16,6 +17,7 @@ export function CustomerCabinetDashboard() {
     email,
     fullName,
     orgName,
+    organizationId,
     upcomingEvents,
     drafts,
     newOffers,
@@ -45,29 +47,7 @@ export function CustomerCabinetDashboard() {
         { href: "/search", label: "Каталог" },
         { href: "/cabinet/customer/favorites", label: "Избранное" },
       ]}
-      lead={
-        <nav className="chrome-puzzle-progress" aria-label="Прогресс по сделке">
-          <ol className="chrome-puzzle-track">
-            {(
-              [
-                { key: "draft", label: "Черновик", filled: drafts.length > 0 },
-                { key: "lineup", label: "Состав", filled: upcomingEvents.length > 0 },
-                { key: "offer", label: "Предложение", filled: newOffers.length > 0 },
-                { key: "hold", label: "Удержание", filled: expiringHolds.length > 0 },
-              ] as const
-            ).map((piece) => (
-              <li
-                key={piece.key}
-                className={`chrome-puzzle-piece${piece.filled ? " is-filled" : ""}`}
-                data-piece={piece.key}
-              >
-                <span className="chrome-puzzle-tile" aria-hidden="true" />
-                <span className="chrome-puzzle-label">{piece.label}</span>
-              </li>
-            ))}
-          </ol>
-        </nav>
-      }
+      lead={<EventReadinessOverview organizationId={organizationId} />}
       emptyState={
         <article className="cabinet-empty-card">
           <p className="cabinet-eyebrow">Старт</p>

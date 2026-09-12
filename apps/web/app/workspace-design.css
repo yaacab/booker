@@ -198,3 +198,14 @@
 .budget-lines li, .budget-hints { border-top: 1px solid var(--workspace-line); padding-block: 16px; }
 @media (max-width: 1000px) { .budget-amounts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .budget-amounts { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+
+.event-readiness { margin-block: 28px; min-width: 0; overflow-wrap: anywhere; }
+.event-readiness progress, .readiness-overview progress { width: 100%; accent-color: #355424; }
+.event-readiness summary { cursor: pointer; min-height: 44px; padding-block: 12px; }
+.readiness-next { padding-block: 16px; }
+.readiness-checklist { list-style: none; padding: 0; }
+.readiness-checklist li { padding-block: 12px; border-top: 1px solid var(--workspace-line); }
+.readiness-event-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.readiness-overview { margin-block: 24px; min-width: 0; overflow-wrap: anywhere; }
+.readiness-event-grid .card { min-width: 0; }
+@media (max-width: 700px) { .readiness-event-grid { grid-template-columns: minmax(0, 1fr); } }

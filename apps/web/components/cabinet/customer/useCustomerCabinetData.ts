@@ -15,6 +15,7 @@ export function useCustomerCabinetData() {
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [organizationId, setOrganizationId] = useState("");
   const [orgName, setOrgName] = useState("");
   const [events, setEvents] = useState<CustomerEvent[]>([]);
   const [dealRooms, setDealRooms] = useState<CustomerDealRoom[]>([]);
@@ -47,6 +48,7 @@ export function useCustomerCabinetData() {
       }
       setActiveOrg(org.id);
       setOrgName(org.name);
+      setOrganizationId(org.id);
       const q = `?organization_id=${encodeURIComponent(org.id)}`;
       const [ev, bk] = await Promise.all([
         api<{ items: CustomerEvent[] }>(`/events${q}`),
@@ -158,6 +160,7 @@ export function useCustomerCabinetData() {
     email,
     fullName,
     orgName,
+    organizationId,
     upcomingEvents,
     drafts,
     newOffers,

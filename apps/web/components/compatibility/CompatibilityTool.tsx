@@ -33,7 +33,7 @@ export function CompatibilityTool() {
   useEffect(() => {
     setHalls([]); setHall(""); if (!venue) return;
     const controller = new AbortController();
-    void Promise.all([api<Candidate>(`/venues/${venue}`, { signal: controller.signal }), api<{ items: Candidate[] }>(`/venues/${venue}/halls`, { signal: controller.signal })]).then(([profile, rooms]) => { setVenues((items) => items.some((p) => p.id === profile.id) ? items : [profile, ...items]); setHalls(rooms.items); if (rooms.items.length === 1) setHall(rooms.items[0].id); })
+    void Promise.all([api<Candidate>(`/venues/${venue}`, { signal: controller.signal }), api<{ items: Candidate[] }>(`/venues/${venue}/halls`, { signal: controller.signal })]).then(([profile, rooms]) => { setVenues((items) => items.some((p) => p.id === profile.id) ? items : [profile, ...items]); setHalls(rooms.items); const query = new URLSearchParams(window.location.search); const requestedHall = query.get("venue") === venue ? query.get("hall") : null; if (requestedHall && rooms.items.some((room) => room.id === requestedHall)) setHall(requestedHall); else if (rooms.items.length === 1) setHall(rooms.items[0].id); })
       .catch((e) => { if (!controller.signal.aborted) setError(commerceError(e)); });
     return () => controller.abort();
   }, [venue, loading]);

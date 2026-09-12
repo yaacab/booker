@@ -93,5 +93,5 @@ jobs:
             e2e/commercial.spec.ts \
             e2e/promotions.spec.ts \
             e2e/growth.spec.ts \
-            e2e/opportunities.spec.ts e2e/booking-payment.spec.ts e2e/artist-presentation.spec.ts e2e/compatibility.spec.ts e2e/studio-estimate.spec.ts e2e/event-command-retry.spec.ts e2e/smart-matching.spec.ts e2e/event-budget.spec.ts \
+            e2e/opportunities.spec.ts e2e/booking-payment.spec.ts e2e/artist-presentation.spec.ts e2e/compatibility.spec.ts e2e/studio-estimate.spec.ts e2e/event-command-retry.spec.ts e2e/smart-matching.spec.ts e2e/event-budget.spec.ts e2e/event-readiness.spec.ts e2e/event-day-ops.spec.ts \
             --reporter=line
