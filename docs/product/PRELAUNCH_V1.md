@@ -325,3 +325,35 @@ Unknown виден отдельно и не даёт положительных 
 
 Decision Engine, Compare V2, readiness/budget и оставшиеся разделы master task
 ещё не приняты. Этот инкремент не является общей готовностью к запуску.
+
+## Ориентир стоимости Event Studio
+
+Обнаружена и удалена клиентская формула `сумма × 1.28`. Новый
+`POST /event-studio/estimate` считает диапазон только по опубликованным пакетам,
+показывает источники/длительность, полный/частичный/неизвестный/пустой результат.
+Скрытые площадки не раскрывают цены или названия; повтор ID не удваивает сумму.
+Неизвестное не становится нулём. Результат — диапазон гонораров до сервисного
+сбора, не OfferVersion, не гарантия цены/доступности; никаких длительностных
+множителей. Для карточек catalog возвращает `honorarium_from_rub` с сервера.
+
+В карте события — отмена устаревших запросов, загрузка, ошибка/повтор, явная
+известная часть и объяснение метода. Удалено неподкреплённое сообщение, будто
+карта уже проверяет совместимость всего состава.
+
+- `test_event_planning.py` — 4 passed: точные диапазоны/источники, partial/unknown/0,
+  hidden venue, входные лимиты и подмена цены, feature gate.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH npx tsx --test components/event-studio/adapter.test.ts` — 6 passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/studio-estimate.spec.ts --workers=1 --reporter=line` — 2 passed (8.1s),
+  API tariffs → UI partial → публикация недостающего тарифа → full, плюс ошибка/повтор
+  на 1440/390 без переполнения. PR CI включает сценарий.
+
+Это основа серверных ориентиров. Три варианта smart matching и сохранение/бюджет
+самого события принимаются отдельно и пока остаются открытыми.
+
+Полный API после изменения ориентира: `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **287 passed, 2 skipped** (54.93s).
+
+После визуальной проверки сводка на 390 px перестроена в одну колонку.
+Повтор build — passed; тот же Playwright прогон — **2 passed** (7.3s).

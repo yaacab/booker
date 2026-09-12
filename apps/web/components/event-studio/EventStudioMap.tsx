@@ -5,7 +5,6 @@ import { CityField } from "@/components/CityField";
 import { categoryLabel } from "@/lib/copy";
 import { formatDay, guestsLabel, money } from "@/lib/format";
 import type {
-  BudgetHint,
   EventStudioDraft,
   SaveStatus,
   StudioStage,
@@ -15,6 +14,7 @@ import type {
 import { STUDIO_STAGES } from "./types";
 import PuzzleBoard, { slotsFromDraft } from "./PuzzleBoard";
 import "./event-studio-map.css";
+import StudioEstimate from "./StudioEstimate";
 
 type IconName = "home" | "calendar" | "users" | "place" | "check" | "search" | "plus" | "arrow";
 
@@ -23,7 +23,6 @@ export type EventStudioMapProps = {
   onDraftChange: (draft: EventStudioDraft) => void;
   talents: TalentItem[];
   venues: VenueItem[];
-  budgetHint: BudgetHint | null;
   loadingTalents: boolean;
   talentsError: string | null;
   saveStatus: SaveStatus;
@@ -99,7 +98,6 @@ export default function EventStudioMap({
   onDraftChange,
   talents,
   venues,
-  budgetHint,
   loadingTalents,
   talentsError,
   saveStatus,
@@ -149,11 +147,6 @@ export default function EventStudioMap({
   function setVenue(id: string) {
     update({ ...draft, venueId: id });
   }
-
-  const budgetText = useMemo(() => {
-    if (!budgetHint) return "уточним после предложений";
-    return `${money(budgetHint.minRub).replace(" ₽", "")}–${money(budgetHint.maxRub)}`;
-  }, [budgetHint]);
 
   const puzzleSlots = useMemo(() => {
     const selectedTalents = talents.filter((item) => draft.talentIds.includes(item.id));
@@ -379,8 +372,8 @@ export default function EventStudioMap({
           </article>
 
           <div className="compatibility-note" role="note">
-            <strong>✣ Мы анализируем совместимость</strong>
-            <span>команды и площадки · данные из каталога</span>
+            <strong>Совместимость требует проверки</strong>
+            <span>После выбора команды сопоставьте райдер и оснащение зала.</span>
           </div>
 
           <div className={`event-summary${stage === "Проверка" ? " map-card-focus" : ""}`}>
@@ -393,15 +386,7 @@ export default function EventStudioMap({
                 {selected.length ? "Можно добавить ещё роли" : "Добавьте исполнителей"}
               </span>
             </div>
-            <div>
-              <small>Ориентир бюджета</small>
-              <strong>{budgetText}</strong>
-              <span>
-                Итог — только после
-                <br />
-                серверных предложений
-              </span>
-            </div>
+            <StudioEstimate artistIds={draft.talentIds} venueId={draft.venueId} />
             {submitError ? (
               <p className="submit-error" role="alert">
                 {submitError}

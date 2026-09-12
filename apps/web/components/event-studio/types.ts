@@ -36,12 +36,6 @@ export type VenueItem = {
   availabilityLabel?: string;
 };
 
-export type BudgetHint = {
-  minRub: number;
-  maxRub: number;
-  isEstimate: true;
-};
-
 export type SaveStatus = "saving" | "saved" | "error" | "offline" | "conflict";
 
 export const STUDIO_STAGES = ["Основа", "Место", "Команда", "Детали", "Проверка"] as const;

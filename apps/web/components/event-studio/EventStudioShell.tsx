@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken, trackClientEvent } from "@/lib/api";
 import { moscowToday } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import {
-  budgetHintFromSelection,
   bumpDraftVersion,
   clearSubmitIdempotency,
   EVENT_STUDIO_DRAFT_STORAGE_KEY,
@@ -130,7 +129,6 @@ export default function EventStudioShell() {
     return () => window.clearTimeout(timer);
   }, [hydrated, reloadCatalog]);
 
-  const budgetHint = useMemo(() => budgetHintFromSelection(talents, venues, draft), [talents, venues, draft]);
 
   async function handleContinue() {
     if (submitLockRef.current) return;
@@ -184,7 +182,6 @@ export default function EventStudioShell() {
       }
       talents={talents}
       venues={venues}
-      budgetHint={budgetHint}
       loadingTalents={loadingTalents}
       talentsError={talentsError}
       saveStatus={saveStatus}

@@ -469,3 +469,13 @@
   .event-studio-shell .puzzle-piece { animation: none !important; transition: none !important; }
 }
 .puzzle-board--reduced .puzzle-piece--releasing { animation: none !important; }
+
+.event-studio-shell .studio-estimate { min-width: 0; overflow-wrap: anywhere; }
+.event-studio-shell .studio-estimate details { margin-top: 10px; }
+.event-studio-shell .studio-estimate summary { min-height: 44px; cursor: pointer; display: list-item; }
+.event-studio-shell .studio-estimate details p { font-size: 14px; line-height: 1.5; margin: 8px 0 0; }
+.event-studio-shell .studio-estimate button { min-height: 44px; margin-top: 8px; }
+@media (max-width: 600px) {
+  .event-studio-shell .event-summary { grid-template-columns: minmax(0, 1fr); }
+  .event-studio-shell .event-summary > .studio-estimate { border-left: 0; padding-left: 0; border-top: 1px solid var(--es-border); padding-top: 12px; }
+}

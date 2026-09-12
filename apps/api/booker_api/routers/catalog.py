@@ -490,7 +490,7 @@ def _format_matches(rider: dict, needle: str) -> bool:
 
 
 def _min_tariff(tariffs: list) -> int | None:
-    amounts = [int(t.honorarium_rub) for t in tariffs if getattr(t, "honorarium_rub", None) is not None]
+    amounts = [t.honorarium_rub for t in tariffs if type(t.honorarium_rub) is int and 0 <= t.honorarium_rub <= 1_000_000_000]
     return min(amounts) if amounts else None
 
 
@@ -578,6 +578,7 @@ def search_catalog(
                     "search_date": aware(date).date().isoformat() if date else None,
                     "travel_ok": _rider_travel_ok(rider),
                     "formats": _rider_formats(rider),
+                    "honorarium_from_rub": _min_tariff(tariffs),
                     "tariffs": [
                         {"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs
                     ],
@@ -660,6 +661,7 @@ def search_catalog(
                     "matching_halls": [_hall_item(h) for h in matching],
                     "open_slots": len(pool),
                     "next_open_at": _catalog_iso(nxt.starts_at),
+                    "honorarium_from_rub": _min_tariff(tariffs),
                     "tariffs": [{"honorarium_rub": t.honorarium_rub} for t in tariffs],
                 }
             )
@@ -715,6 +717,7 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
                 else "Звёзды повесим после десяти закрытых вечеров. Пока — факты, не магия."
             )
         },
+        "honorarium_from_rub": _min_tariff(tariffs),
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
         "halls": [_hall_item(h) for h in halls],
         "slots": slots,
@@ -767,6 +770,7 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
         "media_url": artist.media_url,
         "rider": rider,
         "facts": profile_facts(db, "artist", artist.id),
+        "honorarium_from_rub": _min_tariff(tariffs),
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub, "hours": t.hours} for t in tariffs],
         "slots": visible_slots,
     }

@@ -3,7 +3,6 @@ import { categoryLabel } from "@/lib/copy";
 import { formatDay, initials, moscowToday } from "@/lib/format";
 import type {
   AvailabilityState,
-  BudgetHint,
   EventStudioDraft,
   TalentItem,
   VenueItem,
@@ -24,6 +23,7 @@ type CatalogItem = {
   open_slots?: number;
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
+  honorarium_from_rub?: number | null;
   availability_mode?: string;
 };
 
@@ -40,11 +40,6 @@ const TONE_BY_CATEGORY: Record<string, string> = {
   cover: "emerald",
   makeup: "rose",
 };
-
-function minHonorarium(tariffs?: { honorarium_rub: number }[]): number | null {
-  if (!tariffs?.length) return null;
-  return Math.min(...tariffs.map((t) => t.honorarium_rub));
-}
 
 function availabilityOf(item: CatalogItem, date?: string): { state: AvailabilityState; label: string } {
   const slots = item.open_slots ?? 0;
@@ -73,7 +68,7 @@ export function mapCatalogTalent(item: CatalogItem, date?: string): TalentItem {
     name: item.name,
     categoryCode: item.category,
     roleLabel: categoryLabel(item.category) || item.category,
-    honorariumFrom: minHonorarium(item.tariffs),
+    honorariumFrom: item.honorarium_from_rub ?? null,
     verified: Boolean(item.verified),
     availability: avail.state,
     availabilityLabel: avail.label,
@@ -89,7 +84,7 @@ export function mapCatalogVenue(item: CatalogItem): VenueItem {
     id: item.id,
     name: item.name,
     city: item.city,
-    honorariumFrom: minHonorarium(item.tariffs),
+    honorariumFrom: item.honorarium_from_rub ?? null,
     availabilityLabel: synthetic ? "Календарь ориентировочный" : undefined,
   };
 }
@@ -105,22 +100,6 @@ export async function loadCatalog(
   if (iso) params.set("date", iso);
   if (category) params.set("category", category);
   return api<CatalogResponse>(`/catalog/search?${params.toString()}`, { signal });
-}
-
-export function budgetHintFromSelection(
-  talents: TalentItem[],
-  venues: VenueItem[],
-  draft: EventStudioDraft,
-): BudgetHint | null {
-  const selectedTalents = talents.filter((t) => draft.talentIds.includes(t.id));
-  const venue = venues.find((v) => v.id === draft.venueId);
-  const amounts = [
-    ...selectedTalents.map((t) => t.honorariumFrom).filter((n): n is number => n != null),
-    ...(venue?.honorariumFrom != null ? [venue.honorariumFrom] : []),
-  ];
-  if (!amounts.length) return null;
-  const minRub = amounts.reduce((sum, n) => sum + n, 0);
-  return { minRub, maxRub: Math.round(minRub * 1.28), isEstimate: true };
 }
 
 export type StoredDraft = {
