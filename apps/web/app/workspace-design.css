@@ -95,3 +95,28 @@
 .site-content[data-section="login"] .unknown { align-items: flex-start; }
 .site-content[data-section="login"] .unknown input { flex: 0 0 20px; }
 @media (max-width:480px) { .site-content .catalog-result .card-head { gap: 8px; } .site-content .catalog-result .avatar { width: 48px; height: 48px; flex-basis: 48px; border-radius: 16px; } .site-content .catalog-result .card-head strong { font-size: 18px; } }
+
+/* Коммерческие страницы используют общие поверхности, цвета и элементы кабинета. */
+.commerce-page { max-width: 1160px; margin-inline: auto; }
+.commerce-intro { max-width: 780px; margin-bottom: 32px; }
+.commerce-intro .timeline { max-width: 660px; }
+.commerce-controls { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-block: 24px; }
+.commerce-controls .tabs { display: flex; flex-wrap: wrap; max-width: 100%; }
+.commerce-org { display: grid; gap: 8px; max-width: 440px; margin-block: 24px; }
+.commerce-plans { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,290px),1fr)); gap: 20px; align-items: stretch; }
+.commerce-plan { display: flex; flex-direction: column; min-width: 0; }
+.commerce-plan-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.commerce-plan-top h2 { margin-block: 0 12px; }
+.commerce-page .commerce-price { font-size: clamp(28px,3vw,42px); line-height: 1.25; letter-spacing: -.04em; font-weight: 700; margin-block: 18px 8px; }
+.commerce-price span { display: block; font-size: 14px; letter-spacing: normal; font-weight: 400; margin-top: 8px; }
+.commerce-saving { color: var(--workspace-ink); }
+.commerce-feature-list { padding-left: 20px; margin-block: 18px 24px; }
+.commerce-feature-list li { margin-block: 10px; overflow-wrap: anywhere; }
+.commerce-plan-action { margin-top: auto; padding-top: 20px; }
+.commerce-plan-action .btn { width: 100%; text-align: center; }
+.commerce-checkout,.commerce-faq { margin-top: 36px; }
+.commerce-orders { display: grid; gap: 16px; padding: 0; list-style: none; }
+.commerce-order { border-bottom: 1px solid var(--workspace-line); padding-block: 16px; }
+.commerce-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+@media (max-width:600px) { .commerce-controls { display: grid; } .commerce-controls .tab { flex: 1 1 auto; } }
+.commerce-controls .tab[aria-pressed="true"] { background: var(--workspace-lime); color: var(--workspace-ink); border-color: var(--workspace-line); }

@@ -15,6 +15,7 @@ const DEFAULT_TITLE = "Букер — сделки с артистами и пл
 
 function tabTitle(path: string): string {
   if (path === "/") return DEFAULT_TITLE;
+  if (path.startsWith("/pricing")) return "Тарифы · Букер";
   if (path.startsWith("/search")) return "Каталог · Букер";
   if (path.startsWith("/events/new")) return "Новая заявка · Букер";
   if (path.startsWith("/events/")) return "Событие · Букер";
@@ -291,6 +292,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             {" · "}
             <Link href="/legal/cookies">Cookie-файлы</Link>
             {" · "}
+            <Link href="/pricing">Тарифы</Link>
+            <span>·</span>
             <Link href="/faq">Помощь</Link>
             {" · "}
             <a href="mailto:hello@bukergo.ru">hello@bukergo.ru</a>

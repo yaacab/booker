@@ -50,10 +50,10 @@ def order_payload(order: BillingOrder) -> dict:
         "checkout_available": order.provider != "disabled",
         "billing_period": meta.get("billing_period"),
         "commercial_policy_version": meta.get("commercial_policy_version"),
-        "created_at": order.created_at,
-        "paid_at": order.paid_at,
-        "cancelled_at": order.cancelled_at,
-        "refunded_at": order.refunded_at,
+        "created_at": aware(order.created_at),
+        "paid_at": aware(order.paid_at) if order.paid_at else None,
+        "cancelled_at": aware(order.cancelled_at) if order.cancelled_at else None,
+        "refunded_at": aware(order.refunded_at) if order.refunded_at else None,
         "message": "Онлайн-оплата пока недоступна"
         if order.provider == "disabled"
         else (

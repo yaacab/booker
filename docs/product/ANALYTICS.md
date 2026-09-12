@@ -61,3 +61,19 @@
 Клиент: `POST /analytics/events` (auth). Web: `trackClientEvent()` в `apps/web/lib/api.ts`.
 
 Просмотр: `GET /admin/audit` (platform admin). Агрегаты воронки: `GET /admin/metrics` — counts и unique_entities по action за 7/30 дней; блок `dashboards` — воронка (конверсия по шагам), ликвидность (поиск→сделка, заявка→оффер), утечки (брошенный Studio, заявки без оффера, истёкшие hold).
+
+## Commercial v3, первый инкремент (2026-09-12)
+
+- `pricing.viewed` — client.event allowlist; просмотр страницы тарифов.
+- `subscription.checkout_started` — сервер создал BillingOrder, включая disabled
+  checkout. Не означает оплату или активацию.
+- `subscription.activated` — только после проверенного paid notification.
+- `subscription.cancelled` — отмена автопродления/изменение на конец периода;
+  effective_at в payload, текущий доступ сохраняется до этой даты.
+- `subscription.expired` — срок истёк; идемпотентный переход.
+- `subscription.admin_grant` — ручной support grant/revoke с причиной, не revenue.
+- `commercial.plan_changed` — старая и новая ревизии catalog с причиной.
+- `billing.paid`, `billing.failed`, `billing.refunded`, `billing.cancelled` —
+  подтверждённые переходы заказа. Provider=stub исключается из денежных поступлений.
+
+Оставшаяся taxonomy/атрибуция и dashboards принимаются в prelaunch отдельно.

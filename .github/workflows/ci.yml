@@ -55,6 +55,8 @@ jobs:
         working-directory: apps/api
         run: |
           BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PAYMENT_PROVIDER=stub \
+            BOOKER_ENVIRONMENT=test BOOKER_COMMERCE_PROVIDER=stub BOOKER_COMMERCE_ALLOW_STUB=true \
+            BOOKER_COMMERCE_WEBHOOK_SECRET=ci-test-only-commerce-webhook-secret \
             uvicorn booker_api.main:app --host 127.0.0.1 --port 8000 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
       - name: Web install + Playwright
@@ -88,4 +90,5 @@ jobs:
             e2e/cabinet-a11y.spec.ts \
             e2e/studio-autosave.spec.ts \
             e2e/onboarding.spec.ts \
+            e2e/commercial.spec.ts \
             --reporter=line

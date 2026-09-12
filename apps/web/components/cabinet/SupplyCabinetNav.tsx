@@ -42,6 +42,9 @@ export function SupplyCabinetNav({ mode }: Props) {
       >
         Заявки
       </Link>
+      <Link href={`${home}/growth`} aria-current={path.endsWith("/growth") ? "page" : undefined}>
+        Рост и продвижение
+      </Link>
     </nav>
   );
 }

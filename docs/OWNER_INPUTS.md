@@ -47,3 +47,19 @@
 4. `OWNER_BLOCKED` в `DELIVERY_BACKLOG.md` ссылается на ID отсюда; независимые задачи продолжаются.
 
 При отсутствии значения приложение **запускается**, зависимая функция **выключена**, UI сообщает о недоступности — не маскировать заглушкой «успех».
+
+## Commercial v3 — дополнительные переменные (2026-09-12)
+
+По директиве владельца коммерческий код готовится заранее; действующие U5 и
+инфраструктурные gates сохраняются. Секреты по-прежнему не коммитятся.
+
+- `BOOKER_ENVIRONMENT=production` — безопасный default.
+- `BOOKER_COMMERCE_PROVIDER=disabled` — online billing недоступен до adapter.
+- `BOOKER_COMMERCE_WEBHOOK_SECRET` — отдельный секрет webhook выбранного партнёра.
+- `BOOKER_COMMERCE_ALLOW_STUB=false` — тестовая оплата в production недоступна
+  даже при ошибочном включении. Для стенда нужны одновременно dev/test,
+  provider=stub, явный opt-in и отдельный ключ длиной от 32 символов.
+
+Точки подключения и acceptance:
+[PAYMENT_PROVIDER_HANDOFF.md](integrations/PAYMENT_PROVIDER_HANDOFF.md).
+Статус реализации и доказательства: [PRELAUNCH_V1.md](product/PRELAUNCH_V1.md).

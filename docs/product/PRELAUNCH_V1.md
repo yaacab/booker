@@ -74,3 +74,32 @@ integration acceptance и общая приёмка ещё впереди.
 - Node 24.19.0 / npm 10.9.3 и GNU make подготовлены локально; системная среда
   не изменялась. Старый venv не используется из-за отсутствующего libssl 1.1.
 - PostgreSQL runtime и браузерная приёмка этого инкремента пока не проверены.
+
+## Pricing и управление тарифом
+
+Первый core commit: `50a66cd`.
+
+Добавлены `/pricing`, `/cabinet/performer/growth`, `/cabinet/venue/growth`,
+`/cabinet/customer/business`: текущий тариф, будущая отмена/изменение, история
+заказов, тестовая оплата и недоступная оплата. Growth и Business здесь пока
+содержат коммерческую секцию; аналитика и профессиональные инструменты ещё
+не приняты. Все цены, проценты и годовая экономия получены из API.
+
+Проверки:
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` —
+  **228 passed, 2 skipped** (35.20s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 make web-build` — **passed**.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH npm run test:unit` — **42 passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 BOOKER_DATABASE_URL=sqlite:////tmp/booker-prelaunch-e2e.db BOOKER_ENVIRONMENT=test BOOKER_COMMERCE_PROVIDER=stub BOOKER_COMMERCE_ALLOW_STUB=true BOOKER_COMMERCE_WEBHOOK_SECRET=local-test-only-commerce-webhook-secret npx --prefix apps/web playwright test --config apps/web/playwright.config.ts apps/web/e2e/commercial.spec.ts --workers=1 --reporter=line`
+  — **7 passed** (7.2s), E-COM-01–04 на 1440 и 390, error recovery.
+- Скриншоты pricing из Playwright визуально просмотрены (1440 и 390):
+  нет горизонтального переполнения, карточки и FAQ читаются. Выделение выбранного
+  audience/периода усилено цветом lime общей дизайн-системы.
+- In-app Browser дважды вернул ERR_SOCKS_CONNECTION_FAILED для локального сервера;
+  это ограничение среды. HTTP 200 и browser E2E подтверждены через Playwright.
+
+CI расширен коммерческим suite с явно test-only provider настройками.
+Production/merge/live payments не выполнялись. Цель остаётся в работе.

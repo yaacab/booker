@@ -7,6 +7,7 @@ ALLOWED_CLIENT_EVENTS: frozenset[str] = frozenset(
     {
         # Discovery & navigation
         "page.view",
+        "pricing.viewed",
         "search.performed",
         "deal.room.opened",
         # Event Studio (demand)
