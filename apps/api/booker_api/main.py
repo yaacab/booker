@@ -18,6 +18,7 @@ from booker_api.routers import (
     growth,
     health,
     identity,
+    opportunities,
     payments,
     promo,
     reviews,
@@ -54,6 +55,7 @@ app.include_router(health.router)
 app.include_router(identity.router)
 app.include_router(analytics.router)
 app.include_router(growth.router)
+app.include_router(opportunities.router)
 app.include_router(catalog.router)
 app.include_router(favorites.router)
 app.include_router(services.router)

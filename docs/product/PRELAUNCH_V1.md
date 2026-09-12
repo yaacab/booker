@@ -174,3 +174,43 @@ payment → check-in → check-out. Крупный остаток master task с
 из изолированного `apps/api` — **6 passed** (1.02s). Проверены roundtrip +03:00,
 409 для второго слота в тот же момент в UTC, busy overlay с другим offset и миграции.
 Полный текущий API-набор вместе с Opportunities — **251 passed, 2 skipped** (45.98s).
+
+## Opportunities
+
+Добавлены supply-ленты `/cabinet/performer/opportunities` и
+`/cabinet/venue/opportunities`, публикация дат/публичного бюджета/требований на
+`/briefs`, ручной отклик с выбранным собственным профилем и чтение откликов
+заказчиком с переходом к профилю. Отклик не создаёт OfferVersion или бронь.
+Миграция `a2b3c4d5e6f7_opportunities` хранит явный публичный снимок брифа,
+выбранный профиль отклика, личные сохранённые фильтры и дедупликацию уведомлений.
+
+API: `GET /organizations/{id}/opportunities`,
+`GET/POST /organizations/{id}/opportunity-filters`,
+`DELETE /opportunity-filters/{id}`; расширены существующие `/briefs` и responses.
+Free получает тот же подбор, что Pro/Premium; платные функции — расширенные
+фильтры и сохранённый поиск. Уведомления только in-app, после отдельного согласия;
+при истечении подписки не отправляются, отзыв согласия остаётся доступен.
+Бюджет частного Event никогда автоматически не публикуется.
+
+Скоринг детерминирован: категория 25, дата 30, география 20, известный бюджет 15,
+известные технические требования 10. Unknown не даёт баллы. Несовпадение категории,
+города без разрешённого выезда, занятая дата, известный недостаточный бюджет или
+оборудование исключают профиль. Площадка требует опубликованного claimed-профиля,
+календаря владельца и достаточной вместимости. Для «200+» точное число гостей
+неизвестно и требует согласования. Процент не является вероятностью сделки.
+
+Проверки:
+
+- `.venv/bin/python -m pytest -q apps/api/tests/test_opportunities.py` — **6 passed** (1.74s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — **passed**.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/opportunities.spec.ts e2e/supply-nav.spec.ts e2e/growth.spec.ts --workers=1 --reporter=line`
+  — **7 passed** (20.3s), включая E-OPP-01/02 desktop/390 и чтение отклика.
+  Мобильный screenshot просмотрен; горизонтального переполнения нет.
+
+EPK и разделы Decision Engine/Business/общей приёмки остаются в работе.
+
+Полный API после проверки вместимости Opportunities:
+`PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` —
+**252 passed, 2 skipped** (44.97s).

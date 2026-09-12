@@ -127,3 +127,13 @@
 .growth-metrics dd { margin: 10px 0 0; font-size: 32px; font-weight: 700; }
 .commerce-actions button[aria-pressed="true"] { background: #dcfa91; color: #233a20; }
 @media (max-width: 640px) { .growth-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .growth-metrics > div { padding: 14px; } }
+
+.opportunity-list { display: grid; gap: 24px; margin-top: 24px; }
+.opportunity-card h2 { margin-top: 6px; }
+.opportunity-card label, .opportunity-filters label { display: grid; gap: 8px; margin: 14px 0; }
+.opportunity-filters fieldset { border: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; }
+.opportunity-filters fieldset:disabled { opacity: .55; }
+.opportunity-score { font-size: 20px; }
+.opportunity-reasons { padding-left: 0; list-style: none; }
+.opportunity-reasons li { margin: 8px 0; }
+@media (max-width: 640px) { .opportunity-filters fieldset { grid-template-columns: 1fr; } }

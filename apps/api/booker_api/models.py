@@ -549,6 +549,11 @@ class PublicBrief(Base):
     role_needed: Mapped[str] = mapped_column(String(64), index=True)
     guest_count_band: Mapped[str] = mapped_column(String(32), default="1-50")
     public_notes: Mapped[str] = mapped_column(Text, default="")
+    event_type: Mapped[str] = mapped_column(String(64), default="")
+    share_budget: Mapped[bool] = mapped_column(Boolean, default=False)
+    budget_min_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    budget_max_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    public_requirements_json: Mapped[str] = mapped_column(Text, default="{}")
     status: Mapped[str] = mapped_column(String(16), default="open", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -565,6 +570,8 @@ class BriefResponse(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     brief_id: Mapped[str] = mapped_column(ForeignKey("public_briefs.id"), index=True)
     supplier_org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    target_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     message: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(16), default="interested")
@@ -842,3 +849,28 @@ class DiscoverySignal(Base):
     visitor_key: Mapped[str] = mapped_column(String(64))
     day_key: Mapped[str] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class OpportunityFilter(Base):
+    __tablename__ = "opportunity_filters"
+    __table_args__ = (UniqueConstraint("organization_id", "idempotency_key", name="uq_opportunity_filter_key"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    query_json: Mapped[str] = mapped_column(Text, default="{}")
+    idempotency_key: Mapped[str] = mapped_column(String(64))
+    instant_alerts: Mapped[bool] = mapped_column(Boolean, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class OpportunityDelivery(Base):
+    __tablename__ = "opportunity_deliveries"
+    __table_args__ = (UniqueConstraint("brief_id", "user_id", name="uq_opportunity_delivery"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    brief_id: Mapped[str] = mapped_column(ForeignKey("public_briefs.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    filter_id: Mapped[str] = mapped_column(ForeignKey("opportunity_filters.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

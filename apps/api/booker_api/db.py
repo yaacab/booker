@@ -47,6 +47,16 @@ def ensure_missing_columns(bind) -> None:
         _add_column_if_missing(bind, "offer_versions", column, f"{column} FLOAT")
     _add_column_if_missing(bind, "offer_versions", "commercial_policy_version",
                            "commercial_policy_version VARCHAR(128)")
+    for column, ddl in (
+        ("event_type", "event_type VARCHAR(64) NOT NULL DEFAULT ''"),
+        ("share_budget", "share_budget BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("budget_min_rub", "budget_min_rub INTEGER"),
+        ("budget_max_rub", "budget_max_rub INTEGER"),
+        ("public_requirements_json", "public_requirements_json TEXT NOT NULL DEFAULT '{}'"),
+    ):
+        _add_column_if_missing(bind, "public_briefs", column, ddl)
+    _add_column_if_missing(bind, "brief_responses", "target_type", "target_type VARCHAR(16)")
+    _add_column_if_missing(bind, "brief_responses", "target_id", "target_id VARCHAR(36)")
     ts_type = "TIMESTAMPTZ" if dialect == "postgresql" else "DATETIME"
     _add_column_if_missing(
         bind,
