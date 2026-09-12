@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { LossReason } from "@/components/deal-room/LossReason";
 import { DealRoomSummary } from "@/components/deal-room/DealRoomSummary";
 import { HoldCountdown } from "@/components/HoldCountdown";
 import { api, trackClientEvent } from "@/lib/api";
@@ -21,6 +22,8 @@ const TABS = [
 ] as const;
 
 type Room = {
+  request_id?: string;
+  loss_reason?: string | null;
   booking_id: string;
   offer_id: string;
   event_id?: string;
@@ -275,6 +278,7 @@ export default function DealPage() {
           {notice}
         </p>
       ) : null}
+      {room.status === "Cancelled" && room.request_id && <LossReason requestId={room.request_id} side={room.role} savedReason={room.loss_reason || null} onSaved={load} />}
       <div className="deal-shell">
         <aside className="deal-rail surface-glass">
           <h2>Журнал</h2>

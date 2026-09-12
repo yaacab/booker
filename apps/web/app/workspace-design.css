@@ -120,3 +120,10 @@
 .commerce-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 @media (max-width:600px) { .commerce-controls { display: grid; } .commerce-controls .tab { flex: 1 1 auto; } }
 .commerce-controls .tab[aria-pressed="true"] { background: var(--workspace-lime); color: var(--workspace-ink); border-color: var(--workspace-line); }
+
+.growth-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
+.growth-metrics > div { border: 1px solid var(--line, #d8dfd4); border-radius: 18px; padding: 18px; background: var(--surface, #f7faf4); }
+.growth-metrics dt { font-size: 14px; }
+.growth-metrics dd { margin: 10px 0 0; font-size: 32px; font-weight: 700; }
+.commerce-actions button[aria-pressed="true"] { background: #dcfa91; color: #233a20; }
+@media (max-width: 640px) { .growth-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .growth-metrics > div { padding: 14px; } }

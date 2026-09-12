@@ -128,3 +128,34 @@ Production/merge/live payments не выполнялись. Цель остаё�
 
 Growth Center, Opportunities, EPK, Decision Engine и остальные пункты полного
 задания остаются в работе. Это промежуточная приёмка, не готовность запуска.
+
+## Growth Center — четвёртый инкремент
+
+Добавлены `growth/service.py`, `/organizations/{org_id}/growth`, Premium CSV export,
+`/discovery/signals`, `/requests/{id}/loss-reason`, миграция `f1a2b3c4d5e6`.
+Интерфейс работает в обоих supply-кабинетах: воронка, периоды, профиль, гонорары,
+время первого предложения, свободные даты, подсказки, причины потерь и benchmark.
+В закрытом Deal Room участник может явно отметить причину; у customer есть price.
+Старый примерный ответ «в пилоте обычно за пару часов» удалён. Публичный счётчик
+«завершённых сделок» теперь учитывает только Completed, что проверено полным
+payment → check-in → check-out. Крупный остаток master task сохраняется.
+
+Проверки:
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **244 passed, 2 skipped** (56.94s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — **passed**.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/growth.spec.ts e2e/commercial.spec.ts e2e/promotions.spec.ts --workers=1 --reporter=line`
+  — **11 passed** (28.1s). E-GROWTH-01 на 1440/390 с реальным гостевым браузером,
+  server favorite/request и проверкой 90d после Pro. Мобильный screenshot просмотрен.
+- Последующая точечная проверка московской границы суток и счётчика Completed:
+  `.venv/bin/python -m pytest -q apps/api/tests/test_growth.py apps/api/tests/test_pilot_closure.py`.
+
+Правила расчёта и ограничения наблюдений раскрыты в UI и `ANALYTICS.md`.
+Метрики не подменяют подтверждения оплаты или выплаты. Production не затрагивался.
+
+Точечная проверка границы суток и Completed — **8 passed**. Дополнительный
+`npx --prefix apps/web playwright test --config apps/web/playwright.config.ts apps/web/e2e/growth.spec.ts --workers=1 --reporter=line`
+с теми же BOOKER_API_URL/BOOKER_WEB_URL — **3 passed** (8.5s), включая восстановление
+после ошибки API. Финальные lint и web-lint — passed.

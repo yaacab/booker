@@ -92,4 +92,5 @@ jobs:
             e2e/onboarding.spec.ts \
             e2e/commercial.spec.ts \
             e2e/promotions.spec.ts \
+            e2e/growth.spec.ts \
             --reporter=line

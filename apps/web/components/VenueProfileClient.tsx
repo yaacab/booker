@@ -9,6 +9,7 @@ import { formatWhen, guestsLabel, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
+import { observeDiscovery } from "@/lib/discovery";
 import { SlotList } from "@/components/SlotList";
 
 type Venue = {
@@ -72,6 +73,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найдена"))))
         .then((venue: Venue) => {
           setData(venue);
+        observeDiscovery("venue", venue.id, "profile_view");
           setHalls((venue.halls || []) as HallItem[]);
         })
         .catch((e: Error) => setError(e.message));

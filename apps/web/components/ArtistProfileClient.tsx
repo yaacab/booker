@@ -9,6 +9,7 @@ import { formatWhen, money, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
+import { observeDiscovery } from "@/lib/discovery";
 import { SlotList } from "@/components/SlotList";
 
 type Slot = { id: string; starts_at: string; ends_at: string; status: string };
@@ -68,6 +69,7 @@ export function ArtistProfileClient() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найден"))))
       .then((json: Artist) => {
         setData(json);
+        observeDiscovery("artist", json.id, "profile_view");
         const day = q.get("date");
         const live = json.slots.filter(
           (s) => !s.ends_at || new Date(s.ends_at).getTime() >= Date.now()
@@ -204,7 +206,7 @@ export function ArtistProfileClient() {
       </header>
       <p>{data.facts.note}</p>
       <p className="timeline">
-        Ответ обычно: {data.facts.response || "данных пока мало"}. Завершённых сделок: {data.facts.deals ?? 0}.
+        {data.facts.response || "Данных о времени ответа пока мало"}. Завершённых сделок: {data.facts.deals ?? 0}.
       </p>
       <div className="grid" style={{ marginTop: 20 }}>
         <article className="card">

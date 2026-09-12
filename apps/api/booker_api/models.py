@@ -825,3 +825,20 @@ class PromotionTouch(Base):
     customer_org_id: Mapped[str | None] = mapped_column(ForeignKey("organizations.id"), nullable=True)
     request_id: Mapped[str | None] = mapped_column(ForeignKey("requests.id"), nullable=True, unique=True)
     booking_id: Mapped[str | None] = mapped_column(ForeignKey("bookings.id"), nullable=True, unique=True)
+
+
+class DiscoverySignal(Base):
+    """Deduplicated browser observations; no money or trust is derived from these."""
+    __tablename__ = "discovery_signals"
+    __table_args__ = (
+        UniqueConstraint("target_type", "target_id", "kind", "visitor_key", "day_key", name="uq_discovery_daily"),
+        CheckConstraint("kind IN ('impression', 'profile_view', 'favorite')", name="ck_discovery_kind"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    target_type: Mapped[str] = mapped_column(String(16))
+    target_id: Mapped[str] = mapped_column(String(36), index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    visitor_key: Mapped[str] = mapped_column(String(64))
+    day_key: Mapped[str] = mapped_column(String(10))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)

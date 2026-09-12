@@ -26,6 +26,7 @@ from booker_api.file_scan import scan_upload
 from booker_api.models import (
     Artist,
     ArtistTariff,
+    AuditLog,
     AvailabilitySlot,
     Booking,
     BookingHold,
@@ -1320,9 +1321,12 @@ def deal_room(
     sup_org = db.get(Organization, req.supplier_org_id)
     role = "customer" if membership_ok(db, user, event.organization_id) else "supplier"
     workspace_kind = "customer" if role == "customer" else (sup_org.kind if sup_org else "artist")
+    loss = db.query(AuditLog).filter_by(action="request.loss_reason", entity_id=req.id).order_by(AuditLog.created_at.desc()).first()
     return {
         "booking_id": booking.id,
         "offer_id": offer.id,
+        "request_id": req.id,
+        "loss_reason": json.loads(loss.payload).get("reason") if loss else None,
         "event_id": event.id,
         "requirement_id": getattr(req, "requirement_id", None),
         "status": booking.status,

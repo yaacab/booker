@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { observeDiscovery } from "@/lib/discovery";
 import { api } from "@/lib/api";
 import { FavoriteToggle, type FavoriteTargetType } from "@/components/FavoriteToggle";
 import { CHIP, categoryLabel } from "@/lib/copy";
@@ -48,16 +49,17 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
   const touch = item.sponsored ? item.promotion_touch_id : undefined;
   const targetHref = touch ? `${href}${href.includes("?") ? "&" : "?"}promotion_touch_id=${encodeURIComponent(touch)}` : href;
   useEffect(() => {
-    if (!touch || !cardRef.current) return;
+    if (!cardRef.current) return;
     const observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
-        void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "impression" }), keepalive: true }).catch(() => {});
+        observeDiscovery(kind, item.id, "impression");
+        if (touch) void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "impression" }), keepalive: true }).catch(() => {});
         observer.disconnect();
       }
     }, { threshold: 0.5 });
     observer.observe(cardRef.current);
     return () => observer.disconnect();
-  }, [touch]);
+  }, [touch, kind, item.id]);
   function onProfileClick() {
     if (touch) void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "click" }), keepalive: true }).catch(() => {});
   }

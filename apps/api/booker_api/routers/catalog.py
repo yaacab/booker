@@ -11,6 +11,7 @@ from booker_api.calendar import MSK, calendar_day_bounds, open_slots_unmasked, o
 from booker_api.commerce.promotions import insert_sponsored
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
+from booker_api.growth.service import profile_facts
 from booker_api.ical_import import calendar_targets, import_ical_source
 from booker_api.models import (
     Artist,
@@ -749,11 +750,7 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
         "verified_status": artist.verified_status,
         "media_url": artist.media_url,
         "rider": rider,
-        "facts": {
-            "deals": _supplier_deals_count(db, artist.organization_id),
-            "response": "в пилоте обычно за пару часов",
-            "note": "Рейтинг из восьми факторов подождёт. Сначала десять живых отзывов, потом цирк.",
-        },
+        "facts": profile_facts(db, "artist", artist.id),
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
         "slots": [_slot_item(s) for s in slots],
     }
