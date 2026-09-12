@@ -246,3 +246,42 @@ Deal Room получает server capabilities и явные русские со
   перезапуск изолированного API дал указанный результат без изменения prod limits.
   CI/Playwright могут задать `BOOKER_TEST_AUTH_RATE_LIMIT=1000`; действует только
   при environment=test. Production всегда сохраняет 20 auth-запросов за 5 минут.
+
+## EPK / публичная витрина артиста
+
+Миграция `b3c4d5e6f7a8_artist_presentation`, модель ArtistPresentation,
+`GET/PUT /artists/{id}/presentation` и `/cabinet/performer/presentation`.
+Редактор сохраняет обложку, видео, галерею, аудио/видеоссылки, программу, жанры,
+формат/состав, длительность, географию и технические факты с явным unknown.
+Owner/admin/manager пишут, viewer читает; чужая организация не получает доступ.
+Версии защищают от потери конкурентной правки; одинаковый PUT идемпотентен.
+
+Публичный `/artists/{id}` показывает эти данные, пакеты с длительностью и
+ориентиром цены, реальные completed/response/reviews, избранное, выбор сравнения,
+share и заявку. OG/description учитывают фактическую обложку/формат. Free остаётся
+полноценным; расширенные лимиты возвращает API, данные не удаляются при expiry.
+HTTPS validation не допускает javascript/local/private-IP/password URL, сервер
+не загружает произвольные внешние материалы. Тестовые изображения E2E явно
+помечены и существуют только в browser fixture.
+
+Отзывы исправлены с org-wide на конкретный профиль/Completed. В публичном
+календаре busy/held/confirmed overlays учитываются вместе с буферами. В базе
+исходные open slots сохраняются; тесты iCal/vacation проверяют DB сохранность и
+отдельно публичную недоступность. Очистка отпуска восстанавливает открытый слот.
+Тарифы валидируют целые неотрицательные RUB/длительность, не меняют старые quotes.
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **273 passed, 2 skipped** (56.56s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — **passed**.
+- `test_presentation.py`: Free completeness, repeat/conflict, IDOR/viewer,
+  media rights + unsafe URLs, Pro→expired retention/caps, immutable quote/trust,
+  календарь/невалидные тарифы и отсутствие чужой репутации.
+
+Пункт сравнения здесь даёт выбор профилей и переход в существующий `/compare`;
+полное Compare V2 принимается следующим инкрементом. Остальной master task открыт.
+
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/artist-presentation.spec.ts e2e/growth.spec.ts e2e/supply-nav.spec.ts --workers=1 --reporter=line`
+  — **8 passed** (18.9s): сохранение/повторная загрузка/публичная витрина на
+  desktop/390, восстановление после ошибки профиля, Growth и supply navigation.
+  Screenshot 390 визуально проверен, горизонтального переполнения нет.

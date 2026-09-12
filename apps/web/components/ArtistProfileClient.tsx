@@ -10,10 +10,13 @@ import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
 import { observeDiscovery } from "@/lib/discovery";
+import type { ArtistPresentation } from "@/lib/presentation";
+import { ArtistCover, ArtistShowcase, ArtistTechnicalFacts, ArtistReviews, ArtistCompareButton } from "@/components/presentation/ArtistShowcase";
 import { SlotList } from "@/components/SlotList";
 
 type Slot = { id: string; starts_at: string; ends_at: string; status: string };
 type Artist = {
+  presentation?: ArtistPresentation;
   id: string;
   name: string;
   city: string;
@@ -22,7 +25,7 @@ type Artist = {
   media_url?: string | null;
   rider?: Record<string, string>;
   facts: { note: string; deals?: number; response?: string };
-  tariffs: { id: string; title: string; honorarium_rub: number }[];
+  tariffs: { id: string; title: string; honorarium_rub: number; hours?: number }[];
   slots: Slot[];
 };
 type EventItem = { id: string; title: string; status: string; event_date: string; city?: string };
@@ -47,6 +50,7 @@ export function ArtistProfileClient() {
   const router = useRouter();
   const [data, setData] = useState<Artist | null>(null);
   const [error, setError] = useState("");
+  const [profileRevision, setProfileRevision] = useState(0);
   const [slotId, setSlotId] = useState("");
   const [busy, setBusy] = useState(false);
   const [wantedDay, setWantedDay] = useState<string | null>(null);
@@ -57,6 +61,8 @@ export function ArtistProfileClient() {
   const [requirementId, setRequirementId] = useState("");
 
   useEffect(() => {
+    const controller = new AbortController();
+    setData(null); setError(""); setSlotId("");
     const q = new URLSearchParams(window.location.search);
     const wanted = q.get("slot");
     const day = q.get("date");
@@ -65,7 +71,7 @@ export function ArtistProfileClient() {
     setWantedDay(day);
     if (fromEvent) setEventId(fromEvent);
     if (fromReq) setRequirementId(fromReq);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/artists/${params.id}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/artists/${params.id}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найден"))))
       .then((json: Artist) => {
         setData(json);
@@ -81,8 +87,9 @@ export function ArtistProfileClient() {
         const open = fromUrl || fromDay || live.find((s) => s.status === "open");
         if (open) setSlotId(open.id);
       })
-      .catch((err: Error) => setError(err.message));
-  }, [params.id]);
+      .catch((err: Error) => { if (!controller.signal.aborted) setError(err.message); });
+    return () => controller.abort();
+  }, [params.id, profileRevision]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -169,7 +176,7 @@ export function ArtistProfileClient() {
     return (
       <main>
         <h1>Профиль</h1>
-        <p>{error || ""}</p>
+        {error ? <div role="alert"><p>Не удалось загрузить профиль.</p><button onClick={() => setProfileRevision((r) => r + 1)}>Повторить загрузку</button></div> : <p role="status">Загружаем профиль…</p>}
         {!error ? (
           <div className="grid">
             <div className="skeleton" />
@@ -189,16 +196,18 @@ export function ArtistProfileClient() {
       <Suspense fallback={null}>
         <PromoAttributionBeacon kind="artist" profileId={data.id} />
       </Suspense>
+      <ArtistCover data={data.presentation} />
       <header className="profile-overview">
       <Link className="profile-back" href="/search">← Вернуться в каталог</Link>
       <p className="kicker">Профиль артиста</p>
       <h1>{data.name}</h1>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <span>
-          {data.city} · {CAT[data.category] || data.category}{" "}
-          {data.verified ? <span className="chip ok">{CHIP.verified}</span> : <span className="chip wait">{CHIP.pending}</span>}
+          {data.city} · {categoryLabel(data.category) || "Исполнитель"}{" "}
+          {data.verified ? <span className="chip ok">{CHIP.verified}</span> : <span className="chip wait">Верификация не подтверждена</span>}
         </span>
         <FavoriteToggle targetType="artist" targetId={data.id} />
+        <ArtistCompareButton artistId={data.id} />
         <Link className="btn secondary" href={`/artists/${data.id}/share`}>
           Поделиться
         </Link>
@@ -208,29 +217,33 @@ export function ArtistProfileClient() {
       <p className="timeline">
         {data.facts.response || "Данных о времени ответа пока мало"}. Завершённых сделок: {data.facts.deals ?? 0}.
       </p>
+      <ArtistShowcase data={data.presentation} />
       <div className="grid" style={{ marginTop: 20 }}>
         <article className="card">
           <h2>Формат и состав</h2>
           <p>{rider.format || CAT[data.category] || "формат уточняется в Deal Room"}</p>
           <p>{rider.lineup || "состав: уточняется"}</p>
         </article>
-        <article className="card tint">
+        <article className="card tint" id="rider">
           <h2>Райдер</h2>
           <p>{rider.tech || "Технический райдер согласуется после заявки. Это не цена."}</p>
+          <ArtistTechnicalFacts data={data.presentation} />
         </article>
         <article className="card">
-          <h2>Тарифы</h2>
+          <h2>Пакеты и тарифы</h2>
+          {!data.tariffs.length && <p className="timeline">Пакеты пока не опубликованы. Запросите условия у артиста.</p>}
           <ul>
             {data.tariffs.map((t) => (
               <li key={t.id}>
-                {t.title}: {money(t.honorarium_rub)}
+                {t.title}{t.hours ? ` · ${t.hours} ч.` : ""}: {money(t.honorarium_rub)}
               </li>
             ))}
           </ul>
-          <p className="timeline">Это ориентир. Итоговые условия поступят с сервера и будут связаны с quote_id.</p>
+          <p className="timeline">Ориентировочная стоимость. Окончательная цена и условия появятся в предложении артиста.</p>
         </article>
       </div>
-      <h2>Календарь</h2>
+      <ArtistReviews artistId={data.id} />
+      <h2>Ближайшие даты и календарь</h2>
       <SlotList slots={data.slots} value={slotId} onChange={setSlotId} selectable highlightDay={wantedDay} />
       {!data.slots.some(
         (s) => s.status === "open" && (!s.ends_at || new Date(s.ends_at).getTime() >= Date.now())

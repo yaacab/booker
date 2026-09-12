@@ -1,3 +1,4 @@
+from booker_api.models import AvailabilitySlot
 from tests.conftest import auth_header, register
 
 
@@ -29,7 +30,7 @@ def test_vacation_status_empty(client):
     assert items[0]["active"] is False
 
 
-def test_vacation_creates_busy_and_hides_from_search(client):
+def test_vacation_creates_busy_and_hides_from_search(client, SessionLocal):
     owner, org, artist = _artist_ctx(client)
     headers = auth_header(owner["token"])
     open_slot = client.post(
@@ -64,7 +65,9 @@ def test_vacation_creates_busy_and_hides_from_search(client):
     vacation_slots = [s for s in page["slots"] if s.get("busy_source") == "vacation"]
     assert len(vacation_slots) == 1
     assert vacation_slots[0]["status"] == "busy"
-    assert any(s["status"] == "open" for s in page["slots"])
+    assert not any(s["status"] == "open" for s in page["slots"])
+    with SessionLocal() as db:
+        assert db.get(AvailabilitySlot, open_slot.json()["id"]).status == "open"
 
     missing = client.get(
         "/catalog/search",

@@ -37,7 +37,7 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
             <li>
               <strong>{profile.name}</strong> · {categoryLabel(profile.category)} · {profile.city}
             </li>
-            {profile.verified ? <li>● Верификация пройдена</li> : <li>○ Верификация в процессе</li>}
+            {profile.verified ? <li>● Верификация пройдена</li> : <li>○ Верификация не подтверждена</li>}
             {profile.media_url ? (
               <li>
                 ●{" "}
@@ -46,7 +46,7 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
                 </a>
               </li>
             ) : (
-              <li>○ Портфолио — добавьте ссылку через менеджера</li>
+              <li>○ Портфолио можно добавить в редакторе витрины</li>
             )}
           </ul>
 
@@ -77,6 +77,7 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
 
           {publicHref ? (
             <div className="cabinet-hero-actions" style={{ marginTop: 12 }}>
+              {canManage && <Link className="btn" href="/cabinet/performer/presentation">Редактировать витрину</Link>}
               <Link className="btn secondary" href={publicHref} data-testid="performer-public-link">
                 Открыть публичную витрину
               </Link>

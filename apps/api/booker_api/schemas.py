@@ -60,9 +60,9 @@ class VenueIn(BaseModel):
 
 
 class TariffIn(BaseModel):
-    title: str
-    honorarium_rub: int
-    hours: int = 2
+    title: str = Field(min_length=1, max_length=255)
+    honorarium_rub: int = Field(strict=True, ge=0, le=1_000_000_000)
+    hours: int = Field(default=2, strict=True, ge=1, le=24)
 
 
 class SlotIn(BaseModel):

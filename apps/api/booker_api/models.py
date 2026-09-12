@@ -874,3 +874,12 @@ class OpportunityDelivery(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     filter_id: Mapped[str] = mapped_column(ForeignKey("opportunity_filters.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ArtistPresentation(Base):
+    __tablename__ = "artist_presentations"
+
+    artist_id: Mapped[str] = mapped_column(ForeignKey("artists.id"), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    data_json: Mapped[str] = mapped_column(Text, default="{}")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -27,6 +27,7 @@ from booker_api.models import (
     VenueHall,
     VenueTariff,
 )
+from booker_api.presentation import presentation_data, presentation_limits
 from booker_api.rate_limit import analytics_limiter, client_key
 from booker_api.schemas import (
     ArtistIn,
@@ -741,7 +742,22 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
             rider = {}
     except (json.JSONDecodeError, TypeError):
         rider = {}
+    _, presentation = presentation_data(db, artist)
+    if not presentation_limits(db, artist)["advanced_layout"]:
+        presentation["layout"] = "standard"
+    visible_slots = []
+    for slot in slots:
+        item = _slot_item(slot)
+        if slot.status == "open" and overlapping_slots(
+            db, "artist", artist.id, slot.starts_at, slot.ends_at,
+            statuses=("busy", "held", "confirmed"), exclude_id=slot.id,
+            buffer_before_min=slot.buffer_before_min or 0,
+            buffer_after_min=slot.buffer_after_min or 0,
+        ):
+            item["status"] = "busy"
+        visible_slots.append(item)
     return {
+        "presentation": presentation,
         "id": artist.id,
         "name": artist.name,
         "city": artist.city,
@@ -751,6 +767,6 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
         "media_url": artist.media_url,
         "rider": rider,
         "facts": profile_facts(db, "artist", artist.id),
-        "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
-        "slots": [_slot_item(s) for s in slots],
+        "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub, "hours": t.hours} for t in tariffs],
+        "slots": visible_slots,
     }

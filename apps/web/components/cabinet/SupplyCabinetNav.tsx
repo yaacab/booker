@@ -42,6 +42,7 @@ export function SupplyCabinetNav({ mode }: Props) {
       >
         Заявки
       </Link>
+      {mode === "performer" && <Link href={`${home}/presentation`} aria-current={path.endsWith("/presentation") ? "page" : undefined}>Витрина</Link>}
       <Link href={`${home}/opportunities`} aria-current={path.endsWith("/opportunities") ? "page" : undefined}>Подходящие заказы</Link>
       <Link href={`${home}/growth`} aria-current={path.endsWith("/growth") ? "page" : undefined}>
         Рост и продвижение

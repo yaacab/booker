@@ -2,11 +2,12 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
-from booker_api.models import Artist, Booking, Event, Offer, Request, Review, User, Venue
+from booker_api.models import Artist, Booking, Event, Offer, Request, Review, User, Venue, VenueHall
 from booker_api.security import audit, current_user, membership
 
 router = APIRouter(tags=["reviews"])
@@ -128,12 +129,30 @@ def list_org_reviews(org_id: str, db: Session = Depends(get_db)):
     return _list_for_org(db, org_id)
 
 
+def profile_reviews(db: Session, target_type: str, target_id: str, org_id: str) -> dict:
+    profile_filter = and_(Request.resource_type == target_type, Request.resource_id == target_id)
+    if target_type == "venue":
+        halls = db.query(VenueHall.id).filter_by(venue_id=target_id)
+        profile_filter = or_(profile_filter, and_(Request.resource_type == "hall", Request.resource_id.in_(halls)))
+    query = db.query(Review).join(Booking, Booking.id == Review.booking_id).join(
+        Offer, Offer.id == Booking.offer_id
+    ).join(Request, Request.id == Offer.request_id).filter(
+        Review.org_id == org_id, Booking.status == "Completed", profile_filter
+    )
+    count, average = query.with_entities(func.count(Review.id), func.avg(Review.rating)).one()
+    rows = query.order_by(Review.created_at.desc()).limit(100).all()
+    return {"items": [{"id": r.id, "rating": r.rating, "text": r.text,
+                       "created_at": r.created_at.isoformat()} for r in rows],
+            "count": count, "average_rating": round(float(average), 1) if count >= 5 else None,
+            "note": "Отзывы о конкретном профиле после завершённых сделок"}
+
+
 @router.get("/artists/{artist_id}/reviews")
 def list_artist_reviews(artist_id: str, db: Session = Depends(get_db)):
     artist = db.get(Artist, artist_id)
     if not artist:
         raise HTTPException(404, "Артист не найден")
-    return _list_for_org(db, artist.organization_id)
+    return profile_reviews(db, "artist", artist.id, artist.organization_id)
 
 
 @router.get("/venues/{venue_id}/reviews")
@@ -141,4 +160,4 @@ def list_venue_reviews(venue_id: str, db: Session = Depends(get_db)):
     venue = db.get(Venue, venue_id)
     if not venue:
         raise HTTPException(404, "Площадка не найдена")
-    return _list_for_org(db, venue.organization_id)
+    return profile_reviews(db, "venue", venue.id, venue.organization_id)

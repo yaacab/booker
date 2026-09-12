@@ -1,3 +1,4 @@
+from booker_api.models import AvailabilitySlot
 from tests.conftest import auth_header, register
 
 SAMPLE_ICAL = """BEGIN:VCALENDAR
@@ -54,7 +55,7 @@ def test_calendar_targets_for_artist(client):
     assert items[0]["resource_type"] == "artist"
 
 
-def test_ical_import_creates_busy_slots(client):
+def test_ical_import_creates_busy_slots(client, SessionLocal):
     owner, org, artist = _artist_ctx(client)
     open_slot = client.post(
         "/slots",
@@ -88,7 +89,9 @@ def test_ical_import_creates_busy_slots(client):
     page = client.get(f"/artists/{artist['id']}").json()
     statuses = {s["status"] for s in page["slots"]}
     assert "busy" in statuses
-    assert "open" in statuses  # overlay keeps local open slots
+    assert "open" not in statuses  # public availability applies the overlay
+    with SessionLocal() as db:
+        assert db.get(AvailabilitySlot, open_slot.json()["id"]).status == "open"
 
     missing = client.get(
         "/catalog/search",
@@ -97,7 +100,7 @@ def test_ical_import_creates_busy_slots(client):
     assert missing.json()["items"] == []
 
 
-def test_ical_reimport_preserves_open_under_overlay(client):
+def test_ical_reimport_preserves_open_under_overlay(client, SessionLocal):
     owner, org, artist = _artist_ctx(client)
     headers = auth_header(owner["token"])
     open_slot = client.post(
@@ -120,12 +123,16 @@ def test_ical_reimport_preserves_open_under_overlay(client):
     }
     assert client.post("/calendar/ical/import", json=payload, headers=headers).status_code == 200
     page = client.get(f"/artists/{artist['id']}").json()
-    assert any(s["id"] == open_id and s["status"] == "open" for s in page["slots"])
+    assert any(s["id"] == open_id and s["status"] == "busy" for s in page["slots"])
+    with SessionLocal() as db:
+        assert db.get(AvailabilitySlot, open_id).status == "open"
     # Reimport replaces only ical:* busy rows
     assert client.post("/calendar/ical/import", json=payload, headers=headers).status_code == 200
+    with SessionLocal() as db:
+        assert db.get(AvailabilitySlot, open_id).status == "open"
     page2 = client.get(f"/artists/{artist['id']}").json()
-    assert any(s["id"] == open_id and s["status"] == "open" for s in page2["slots"])
-    busy = [s for s in page2["slots"] if s["status"] == "busy"]
+    assert any(s["id"] == open_id and s["status"] == "busy" for s in page2["slots"])
+    busy = [s for s in page2["slots"] if s["status"] == "busy" and s.get("busy_source") == "ical"]
     assert len(busy) == 2
 
 
