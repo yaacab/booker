@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import { CATEGORY, KIND_LABEL, categoryLabel } from "@/lib/copy";
-import { formatWhen, guestsLabel, moscowDate } from "@/lib/format";
+import { formatWhen, guestsLabel, moscowDate, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import {
   BLOCKER_LABEL,
@@ -43,6 +43,9 @@ type EventDetail = {
   status: string;
   city?: string;
   event_date: string;
+  ends_at?: string | null;
+  event_type?: string;
+  budget_rub?: number | null;
   guest_count?: number;
   organization_id?: string;
   requirements?: Requirement[];
@@ -475,10 +478,11 @@ export default function EventPage() {
         <span className={`chip ${chipCls(event.status)}`}>{STATUS_LABEL[event.status] || event.status}</span>
       </div>
       <p className="mono">
-        {formatWhen(event.event_date)}
+        {formatWhen(event.event_date)}{event.ends_at ? ` — ${formatWhen(event.ends_at)}` : " · окончание пока не указано"}
         {event.city ? ` · ${event.city}` : ""}
         {event.guest_count ? ` · ${guestsLabel(event.guest_count)}` : ""}
       </p>
+      <p>{event.event_type ? `${event.event_type} · ` : ""}{event.budget_rub != null ? `Ваш бюджет: ${money(event.budget_rub)}` : "Бюджет пока не указан"}</p>
       <p>
         <button
           type="button"

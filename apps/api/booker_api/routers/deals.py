@@ -15,6 +15,7 @@ from booker_api.commerce.promotions import attribute_request
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
 from booker_api.config import settings
 from booker_api.db import get_db
+from booker_api.event_commands import remember_command, replay_command
 from booker_api.event_day import (
     build_day_status,
     check_in_booking,
@@ -52,7 +53,7 @@ from booker_api.notifications import on_offer_created, on_request_created
 from booker_api.payments.adapter import payment_capabilities
 from booker_api.rate_limit import client_key, messaging_limiter, upload_limiter
 from booker_api.replacement import build_replacement_plan
-from booker_api.schemas import DISPUTE_CATEGORIES
+from booker_api.schemas import DISPUTE_CATEGORIES, EventIn, RequestCreateIn
 from booker_api.security import (
     audit,
     authenticate_token,
@@ -187,13 +188,19 @@ def expire_holds(db: Session) -> int:
 
 
 @router.post("/events")
-def create_event(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def create_event(body: EventIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    key = body.idempotency_key
+    body = body.model_dump(mode="json", exclude={"idempotency_key"})
     organization_id = body.get("organization_id")
     title = body.get("title")
     event_date = body.get("event_date")
-    if not organization_id or not title or not event_date:
-        raise HTTPException(400, "organization_id, title и event_date обязательны")
     require_org_writer(db, user, organization_id)
+    upload_limiter.check(f"event-create:{user.id}")
+    db.execute(update(Organization).where(Organization.id == organization_id).values(name=Organization.name))
+    scope = f"event.create:{organization_id}"
+    cached = replay_command(db, scope, key, body)
+    if cached:
+        return cached
     event = Event(
         organization_id=organization_id,
         title=title,
@@ -201,6 +208,8 @@ def create_event(body: dict, user: User = Depends(current_user), db: Session = D
         event_date=datetime.fromisoformat(event_date)
         if isinstance(event_date, str)
         else event_date,
+        ends_at=datetime.fromisoformat(body["ends_at"]) if body.get("ends_at") else None,
+        event_type=body.get("event_type", ""),
         guest_count=body.get("guest_count", 50),
         budget_rub=body.get("budget_rub"),
         notes=body.get("notes", ""),
@@ -214,9 +223,12 @@ def create_event(body: dict, user: User = Depends(current_user), db: Session = D
         requirements = ensure_requirements(
             db, event, explicit if isinstance(explicit, list) else None, actor_user_id=user.id
         )
+    result = {"id": event.id, "status": event.status, "requirements": requirements}
+    remember_command(db, scope, key, body, result)
+    audit(db, actor_user_id=user.id, action="event.created", entity_type="event", entity_id=event.id,
+          payload={"organization_id": event.organization_id, "requirements_count": len(requirements), "has_end": event.ends_at is not None})
     db.commit()
-    db.refresh(event)
-    return {"id": event.id, "status": event.status, "requirements": requirements}
+    return result
 
 
 def _org_ids(db: Session, user: User) -> list[str]:
@@ -244,6 +256,8 @@ def list_events(
                 "title": e.title,
                 "status": e.status,
                 "event_date": e.event_date.isoformat(),
+                "ends_at": e.ends_at.isoformat() if e.ends_at else None,
+                "event_type": e.event_type,
                 "city": e.city,
                 "organization_id": e.organization_id,
             }
@@ -290,6 +304,9 @@ def get_event(event_id: str, user: User = Depends(current_user), db: Session = D
         "status": event.status,
         "city": event.city,
         "event_date": event.event_date.isoformat(),
+        "ends_at": event.ends_at.isoformat() if event.ends_at else None,
+        "event_type": event.event_type,
+        "budget_rub": event.budget_rub,
         "guest_count": event.guest_count,
         "notes": event.notes,
         "organization_id": event.organization_id,
@@ -724,7 +741,7 @@ def quick_request(body: dict, user: User = Depends(current_user), db: Session = 
 @router.post("/events/{event_id}/requests")
 def create_request(
     event_id: str,
-    body: dict,
+    body: RequestCreateIn,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
@@ -732,6 +749,14 @@ def create_request(
     if not event:
         raise HTTPException(404, "Событие не найдено")
     require_org_writer(db, user, event.organization_id)
+    key = body.idempotency_key
+    body = body.model_dump(mode="json", exclude={"idempotency_key"})
+    messaging_limiter.check(f"request-create:{user.id}")
+    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
+    scope = f"request.create:{event.id}"
+    cached = replay_command(db, scope, key, body)
+    if cached:
+        return cached
     resource_type = body["resource_type"]
     resource_id = body["resource_id"]
     if resource_type == "artist":
@@ -784,9 +809,10 @@ def create_request(
         supplier_org_id=supplier_org_id,
         event_title=event.title,
     )
+    result = {"id": req.id, "status": req.status}
+    remember_command(db, scope, key, body, result)
     db.commit()
-    db.refresh(req)
-    return {"id": req.id, "status": req.status}
+    return result
 
 
 @router.post("/requests/{request_id}/offers")

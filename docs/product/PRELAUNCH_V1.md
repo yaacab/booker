@@ -357,3 +357,59 @@ Decision Engine, Compare V2, readiness/budget и оставшиеся разде
 
 После визуальной проверки сводка на 390 px перестроена в одну колонку.
 Повтор build — passed; тот же Playwright прогон — **2 passed** (7.3s).
+
+## Сохранение события и повтор отправки
+
+Миграция `d5e6f7a8b9c0_event_commands`: nullable Event.ends_at, Event.event_type
+(историческое значение пустое), EventCommandReceipt. Existing budgets сохраняются.
+`POST /events` теперь typed: валидирует окно, целые гости/бюджет, длины и размеры
+состава. Пустое/некорректное тело возвращает стандартный validation 422 вместо
+прежнего ручного 400. `GET /events` и `/events/{id}` возвращают новые поля;
+подробный ответ включает объявленный budget_rub.
+
+Опциональный `idempotency_key` у POST events/requests проверяется после writer
+и object authorization. Строка организации/события сериализует команды; receipt
+и доменные записи фиксируются одной DB-транзакцией. Одинаковый повтор возвращает
+тот же ID; тот же ключ с другим телом — 409. Ключ в DB хешируется, scope включает
+организацию или событие. Повтор не создаёт второй request.created/event.created.
+
+Оба мастера отправляют ключи с учётом данных. Карта включает выбранные профили
+в идентичность отправки и проверяет их актуальные категории. После частичной
+ошибки повторяет создание и каждую выбранную заявку через server receipts;
+старый browser result больше не считается доказательством полной отправки.
+Черновик удаляется только после всех заявок. Офферы/брони автоматически не
+создаются. Сетевой сбой не превращается в ложное сообщение о полной отправке.
+
+Карта сохраняет budget и окончание, включая явный переход на следующий день.
+Классический мастер даёт optional окончание и после отправки открывает событие.
+Отсутствующая дата не подменяется сегодняшней. Страница события показывает
+заданное окно/бюджет; неизвестное окончание остаётся неизвестным. Проверка
+совместимости использует сохранённое окончание и не позволяет UI подменять его.
+
+- `test_event_commands.py`, `test_alembic.py`, `test_event_requirements.py`,
+  `test_workspace.py` — **19 passed** (2.57s). В том числе два параллельных
+  HTTP create против файловой SQLite, replay/mismatch, IDOR/viewer, validation,
+  восстановление после ошибки второго target и миграционный smoke.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **297 passed, 2 skipped** (62.44s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — passed.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH npx tsx --test components/event-studio/adapter.test.ts` — **6 passed**.
+
+Запросы без ключа сохраняют прежнюю семантику. Общая атомарная отправка всего
+состава, три варианта matching/readiness/budget-summary и остальные разделы
+master task не объявлены завершёнными этим исправлением. PostgreSQL concurrency
+ещё требует отдельной фактической приёмки.
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/event-command-retry.spec.ts e2e/studio-autosave.spec.ts e2e/studio-estimate.spec.ts e2e/compatibility.spec.ts --workers=1 --reporter=line`
+  — **11 passed** (29.2s). Реальный API сохраняет вторую заявку, браузер получает
+  503 вместо ответа, повтор оставляет один Event/два Request на desktop/390.
+  Классический мастер сохраняет окончание и budget; проверены autosave/оффлайн,
+  server estimate и совместимость. Прежний тест «browser cache предотвращает POST»
+  заменён более сильной проверкой серверных записей после потерянного ответа.
+- Ошибки validation в мастерах не печатают backend input/JSON; русское сообщение
+  предлагает проверить поля. `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH npx tsx --test components/event-studio/adapter.test.ts lib/eventCommands.test.ts`
+  — **8 passed**; после этой правки web-lint/build также passed.
+
+Финальная регрессия после обработки validation: тот же Playwright с
+`e2e/event-command-retry.spec.ts e2e/studio-autosave.spec.ts` — **7 passed** (11.9s).

@@ -479,3 +479,4 @@
   .event-studio-shell .event-summary { grid-template-columns: minmax(0, 1fr); }
   .event-studio-shell .event-summary > .studio-estimate { border-left: 0; padding-left: 0; border-top: 1px solid var(--es-border); padding-top: 12px; }
 }
+.event-studio-shell .studio-declared-budget { grid-column: 1 / -1; display: grid; gap: 8px; }

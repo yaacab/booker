@@ -7,6 +7,8 @@ export type EventStudioDraft = {
   date: string;
   startsAt: string;
   endsAt: string;
+  endsNextDay?: boolean;
+  budgetRub?: number | null;
   guests: number;
   venueId?: string;
   talentIds: string[];
@@ -48,6 +50,8 @@ export const EMPTY_DRAFT: EventStudioDraft = {
   date: "",
   startsAt: "17:00",
   endsAt: "23:30",
+  endsNextDay: false,
+  budgetRub: null,
   guests: 80,
   talentIds: [],
   requirements: ["Звук и свет", "Кейтеринг"],

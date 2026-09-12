@@ -319,6 +319,7 @@ export default function EventStudioMap({
                   Конец
                   <input type="time" value={draft.endsAt} onChange={(e) => update({ ...draft, endsAt: e.target.value })} />
                 </label>
+                <label className="row"><input type="checkbox" checked={Boolean(draft.endsNextDay)} onChange={(e) => update({ ...draft, endsNextDay: e.target.checked })} />Окончание на следующий день</label>
                 <CityField value={draft.city} onChange={(city) => update({ ...draft, city })} />
                 <button type="button" className="card-button" onClick={() => setEditingTime(false)}>Готово</button>
               </div>
@@ -387,6 +388,7 @@ export default function EventStudioMap({
               </span>
             </div>
             <StudioEstimate artistIds={draft.talentIds} venueId={draft.venueId} />
+            <label className="studio-declared-budget">Ваш бюджет, ₽<input type="number" min={0} max={1000000000} step={1} value={draft.budgetRub ?? ""} onChange={(e) => update({ ...draft, budgetRub: e.target.value === "" ? null : Number(e.target.value) })} placeholder="Можно указать позже" /></label>
             {submitError ? (
               <p className="submit-error" role="alert">
                 {submitError}

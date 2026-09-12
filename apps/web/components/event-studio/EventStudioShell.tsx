@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken, trackClientEvent } from "@/lib/api";
 import { moscowToday } from "@/lib/format";
+import { eventCommandError } from "@/lib/eventCommands";
 import { loginHref } from "@/lib/next";
 import {
   bumpDraftVersion,
@@ -140,7 +141,8 @@ export default function EventStudioShell() {
       setSubmitError("Укажите название события.");
       return;
     }
-    if (draft.date && draft.date.slice(0, 10) < moscowToday()) {
+    if (!draft.date) { setSubmitError("Укажите дату события."); return; }
+    if (draft.date.slice(0, 10) < moscowToday()) {
       setSubmitError("Выберите текущую или будущую дату.");
       return;
     }
@@ -151,13 +153,13 @@ export default function EventStudioShell() {
       if (!idempotencyRef.current) {
         idempotencyRef.current = getOrCreateSubmitIdempotencyKey();
       }
-      const { eventId, reused } = await submitEventStudioDraft(draft, talents, idempotencyRef.current);
+      const { eventId, reused } = await submitEventStudioDraft(draft, idempotencyRef.current);
       if (reused) {
         setSubmitError("Заявка уже отправлена — открываем событие.");
       }
       router.push(`/events/${eventId}`);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Не удалось отправить");
+      setSubmitError(eventCommandError(err));
     } finally {
       submitLockRef.current = false;
       setSubmitting(false);

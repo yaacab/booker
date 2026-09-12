@@ -274,12 +274,24 @@ class Event(Base):
     title: Mapped[str] = mapped_column(String(255))
     city: Mapped[str] = mapped_column(String(128), default="Москва")
     event_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(128), default="")
     guest_count: Mapped[int] = mapped_column(Integer, default=50)
     budget_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="Draft")
 
     requirements: Mapped[list["EventTeamRequirement"]] = relationship(back_populates="event")
+
+
+class EventCommandReceipt(Base):
+    __tablename__ = "event_command_receipts"
+
+    scope: Mapped[str] = mapped_column(String(128), primary_key=True)
+    key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    body_hash: Mapped[str] = mapped_column(String(64))
+    result_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class CatalogCategory(Base):

@@ -10,6 +10,7 @@ function localInput(value: string) { return new Date(new Date(value).getTime() +
 export function CompatibilityTool() {
   const [city, setCity] = useState("Москва"); const [artists, setArtists] = useState<Candidate[]>([]); const [venues, setVenues] = useState<Candidate[]>([]);
   const [artist, setArtist] = useState(""); const [venue, setVenue] = useState(""); const [hall, setHall] = useState(""); const [halls, setHalls] = useState<Candidate[]>([]);
+  const [fixedEnd, setFixedEnd] = useState(false);
   const [eventId, setEventId] = useState(""); const [start, setStart] = useState(""); const [end, setEnd] = useState(""); const [guests, setGuests] = useState("");
   const [data, setData] = useState<CompatibilityData | null>(null); const [error, setError] = useState(""); const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [revision, setRevision] = useState(0);
   useEffect(() => {
@@ -39,7 +40,7 @@ export function CompatibilityTool() {
   useEffect(() => {
     if (!eventId) return;
     const controller = new AbortController();
-    void api<{ event_date: string; guest_count: number; city: string; ends_at?: string }>(`/events/${eventId}`, { signal: controller.signal }).then((ev) => { setStart(localInput(ev.event_date)); setGuests(String(ev.guest_count)); setCity(ev.city); if (ev.ends_at) setEnd(localInput(ev.ends_at)); })
+    void api<{ event_date: string; guest_count: number; city: string; ends_at?: string }>(`/events/${eventId}`, { signal: controller.signal }).then((ev) => { setStart(localInput(ev.event_date)); setGuests(String(ev.guest_count)); setCity(ev.city); setFixedEnd(Boolean(ev.ends_at)); if (ev.ends_at) setEnd(localInput(ev.ends_at)); })
       .catch((e) => { if (!controller.signal.aborted) setError(commerceError(e)); });
     return () => controller.abort();
   }, [eventId]);
@@ -57,7 +58,7 @@ export function CompatibilityTool() {
       <label>Площадка<select required value={venue} onChange={(e) => { setVenue(e.target.value); setData(null); }}><option value="">Выберите площадку</option>{venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
       <label>Зал<select value={hall} onChange={(e) => { setHall(e.target.value); setData(null); }}><option value="">Зал пока не выбран</option>{halls.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
       <label>Начало, по Москве<input type="datetime-local" value={start} disabled={Boolean(eventId)} required={Boolean(end)} onChange={(e) => { setStart(e.target.value); setData(null); }} /></label>
-      <label>Окончание, по Москве<input type="datetime-local" value={end} required={Boolean(start)} min={start || undefined} onChange={(e) => { setEnd(e.target.value); setData(null); }} /></label>
+      <label>Окончание, по Москве<input type="datetime-local" value={end} disabled={fixedEnd} required={Boolean(start)} min={start || undefined} onChange={(e) => { setEnd(e.target.value); setData(null); }} /></label>
       <label>Гостей<input type="number" min={1} max={100000} value={guests} disabled={Boolean(eventId)} onChange={(e) => { setGuests(e.target.value); setData(null); }} /></label>
     </div><p className="timeline">Время здесь используется для проверки и не меняет дату или бронирование. Без времени доступность останется неизвестной.</p>
     {!loading && (!artists.length || !venues.length) && <p className="empty">В этом городе пока недостаточно опубликованных профилей для проверки пары.</p>}

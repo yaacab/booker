@@ -346,7 +346,7 @@ def test_new_version_rejected_after_payment_and_bad_honorarium(client):
     assert late.status_code == 409
 
 
-def test_create_event_missing_fields_400(client):
+def test_create_event_missing_fields_422(client):
     user = register(client, "ev-400@booker.test", "Клиент")
     res = client.post("/events", json={}, headers=auth_header(user["token"]))
-    assert res.status_code == 400
+    assert res.status_code == 422
