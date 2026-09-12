@@ -139,7 +139,8 @@ export function ArtistProfileClient() {
       setError("Нет свободного слота");
       return;
     }
-    const body: { artist_id: string; slot_id: string; event_id?: string; requirement_id?: string } = {
+    const body: { artist_id: string; slot_id: string; event_id?: string; requirement_id?: string; promotion_touch_id?: string } = {
+      promotion_touch_id: new URLSearchParams(window.location.search).get("promotion_touch_id") || undefined,
       artist_id: params.id,
       slot_id: slotId,
     };

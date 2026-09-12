@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api, getActiveOrg, getToken } from "@/lib/api";
 import { money, formatWhen } from "@/lib/format";
 import { loginHref } from "@/lib/next";
+import { PromotionPanel } from "./PromotionPanel";
 import { SupplyCabinetNav } from "@/components/cabinet/SupplyCabinetNav";
 import { commerceError, commerceHref, feePercent, ORDER_STATUS, type Audience,
   type CommerceCatalog, type CommerceMe, type CommerceOrg, type CommerceState } from "@/lib/commerce";
@@ -85,6 +86,7 @@ export function CommerceCabinet({ audience }: { audience: Audience }) {
           <button type="button" className="btn secondary" disabled={!nextPlan || busy} onClick={() => void mutate(`/commerce/organizations/${org!.id}/subscription/change`, { plan_code: nextPlan })}>Запланировать изменение</button>
         </div>}
       </section>
+      {audience !== "customer" && org && catalog?.flags.PAID_PROMOTION && <PromotionPanel key={org.id} orgId={org.id} canManage={data.can_manage} catalog={catalog} onChanged={async () => { const next = await api<CommerceState>(`/commerce/organizations/${org.id}`); setData(next); }} />}
       <section className="commerce-checkout" aria-label="Возможности тарифа"><h2>Включено в ваш тариф</h2><ul className="commerce-feature-list">{Object.entries(data.features).filter(([, v]) => v !== false && v !== 0).map(([code, value]) => <li key={code}>{data.plan.feature_labels[code]}{typeof value === "number" ? `: ${value}` : ""}</li>)}</ul></section>
       <section className="commerce-checkout" aria-label="Заказы и оплата"><h2>Заказы и оплата</h2>
         {data.orders.length === 0 ? <p className="empty">Платных заказов пока нет. Бесплатный тариф уже доступен.</p> : <ul className="commerce-orders">{data.orders.map((order) => <li key={order.id} className="commerce-order">

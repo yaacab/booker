@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
+import { api } from "@/lib/api";
 import { FavoriteToggle, type FavoriteTargetType } from "@/components/FavoriteToggle";
 import { CHIP, categoryLabel } from "@/lib/copy";
 import { formatDay, formatWhen, initials, money } from "@/lib/format";
 
 type CatalogItem = {
+  sponsored?: boolean; sponsored_label?: string; promotion_touch_id?: string;
   id: string;
   name: string;
   city: string;
@@ -41,14 +44,32 @@ function slotState(item: CatalogItem): { label: string; cls: string } {
 }
 
 export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardProps) {
+  const cardRef = useRef<HTMLElement>(null);
+  const touch = item.sponsored ? item.promotion_touch_id : undefined;
+  const targetHref = touch ? `${href}${href.includes("?") ? "&" : "?"}promotion_touch_id=${encodeURIComponent(touch)}` : href;
+  useEffect(() => {
+    if (!touch || !cardRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "impression" }), keepalive: true }).catch(() => {});
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [touch]);
+  function onProfileClick() {
+    if (touch) void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "click" }), keepalive: true }).catch(() => {});
+  }
   const st = slotState(item);
   const synthetic = item.availability_mode === "synthetic";
   const hallHint = item.matching_halls?.[0];
 
   return (
-    <article className={`card catalog-result catalog-result--${kind}`}>
+    <article ref={cardRef} className={`card catalog-result catalog-result--${kind}`}>
+      {item.sponsored && <span className="chip">{item.sponsored_label || "Продвижение"}</span>}
       <div className="card-head">
-        <Link href={href} style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
+        <Link href={targetHref} onClick={onProfileClick} style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
           <span className="avatar" aria-hidden>
             {initials(item.name)}
           </span>
@@ -56,7 +77,7 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
         </Link>
         <FavoriteToggle compact targetType={kind} targetId={item.id} />
       </div>
-      <Link href={href} style={{ color: "inherit", textDecoration: "none" }}>
+      <Link href={targetHref} onClick={onProfileClick} style={{ color: "inherit", textDecoration: "none" }}>
         {kind === "artist" ? (
           <div>
             {item.city} · {categoryLabel(item.category || "")}

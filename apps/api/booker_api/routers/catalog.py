@@ -5,8 +5,10 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from starlette.requests import Request as HttpRequest
 
 from booker_api.calendar import MSK, calendar_day_bounds, open_slots_unmasked, overlapping_slots
+from booker_api.commerce.promotions import insert_sponsored
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
 from booker_api.ical_import import calendar_targets, import_ical_source
@@ -24,6 +26,7 @@ from booker_api.models import (
     VenueHall,
     VenueTariff,
 )
+from booker_api.rate_limit import analytics_limiter, client_key
 from booker_api.schemas import (
     ArtistIn,
     IcalImportIn,
@@ -491,6 +494,7 @@ def _min_tariff(tariffs: list) -> int | None:
 
 @router.get("/catalog/search")
 def search_catalog(
+    request: HttpRequest,
     city: str = Query("Москва"),
     category: str | None = None,
     date: datetime | None = None,
@@ -504,6 +508,7 @@ def search_catalog(
     db: Session = Depends(get_db),
 ):
     """В выдаче только профили с календарём. Занятые слоты не считаются свободными."""
+    analytics_limiter.check(client_key(request, "catalog-search"))
     excluded = {item.strip() for item in (exclude or "").split(",") if item.strip()}
     kind_l = (kind or "").strip().lower() or None
     include_artists = kind_l != "venue" and (not category or category != "venue")
@@ -631,9 +636,9 @@ def search_catalog(
                 continue
             nxt = min(pool, key=lambda s: aware(s.starts_at))
             tariffs = db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).all()
-            if budget_max is not None and kind_l == "venue":
+            if budget_max is not None:
                 floor = _min_tariff(tariffs)
-                if floor is not None and floor > budget_max:
+                if floor is None or floor > budget_max:
                     continue
             venue_results.append(
                 {
@@ -656,6 +661,9 @@ def search_catalog(
                     "tariffs": [{"honorarium_rub": t.honorarium_rub} for t in tariffs],
                 }
             )
+    results = insert_sponsored(db, results, "artist")
+    venue_results = insert_sponsored(db, venue_results, "venue")
+    db.commit()
     return {"items": results, "venues": venue_results}
 
 

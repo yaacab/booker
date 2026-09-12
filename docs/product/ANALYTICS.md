@@ -77,3 +77,13 @@
   подтверждённые переходы заказа. Provider=stub исключается из денежных поступлений.
 
 Оставшаяся taxonomy/атрибуция и dashboards принимаются в prelaunch отдельно.
+
+### Paid promotion (commercial v3)
+
+Серверные события: `promotion.created`, `promotion.started`, `promotion.expired`,
+`promotion.impression`, `promotion.click`, `promotion.request`, `promotion.booking`.
+Дополнительно: `promotion.cancelled`, `promotion.rejected`,
+`commercial.promotion_price_changed`. Token выдачи связан с кампанией, затем с
+реальной заявкой и Confirmed booking. CTR = clicks/impressions, null при отсутствии
+показов; повторные сигналы одного token дедуплицируются. Это атрибуция по переходу
+в пределах 7 дней, не доказательство причинного эффекта рекламы.

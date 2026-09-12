@@ -11,6 +11,7 @@ from starlette.requests import Request as HttpRequest
 
 from booker_api.calendar import overlapping_slots
 from booker_api.commerce.fees import SNAPSHOT_FIELDS, offer_fees, snapshot_payload
+from booker_api.commerce.promotions import attribute_request
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
 from booker_api.config import settings
 from booker_api.db import get_db
@@ -706,6 +707,7 @@ def quick_request(body: dict, user: User = Depends(current_user), db: Session = 
         entity_type="request",
         entity_id=req.id,
     )
+    attribute_request(db, req, body.get("promotion_touch_id"), user.id)
     on_request_created(
         db,
         actor_user_id=user.id,
@@ -772,6 +774,7 @@ def create_request(
         entity_type="request",
         entity_id=req.id,
     )
+    attribute_request(db, req, body.get("promotion_touch_id"), user.id)
     on_request_created(
         db,
         actor_user_id=user.id,

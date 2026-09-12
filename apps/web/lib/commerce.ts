@@ -15,6 +15,7 @@ export type BillingOrder = {
   billing_period: string; created_at: string; paid_at: string | null; message: string | null;
 };
 export type CommerceCatalog = {
+  promotions: { code: string; audience: "artist" | "venue"; title: string; price_rub: number; duration_hours: number; version: number }[];
   plans: CommercialPlan[]; checkout_available: boolean; test_mode: boolean;
   flags: Record<string, boolean>;
 };

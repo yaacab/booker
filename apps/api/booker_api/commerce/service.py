@@ -46,7 +46,8 @@ def expire_subscriptions(db: Session, organization_id: str | None = None) -> int
                 Subscription.status == sub.status,
                 Subscription.current_period_end <= now(),
             )
-            .values(status=status).execution_options(synchronize_session="fetch")
+            .values(status=status)
+            .execution_options(synchronize_session="fetch")
         )
         if not changed.rowcount:
             continue
@@ -106,6 +107,10 @@ def cancel_order(db: Session, order: BillingOrder, actor_id: str) -> None:
         raise HTTPException(409, "Оплаченный заказ отменяется через возврат и поддержку")
     order.status = "cancelled"
     order.cancelled_at = now()
+    if order.product_kind == "promotion":
+        from booker_api.commerce.promotions import settle_campaign
+
+        settle_campaign(db, order)
     audit(
         db,
         actor_user_id=actor_id,

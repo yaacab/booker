@@ -91,4 +91,5 @@ jobs:
             e2e/studio-autosave.spec.ts \
             e2e/onboarding.spec.ts \
             e2e/commercial.spec.ts \
+            e2e/promotions.spec.ts \
             --reporter=line

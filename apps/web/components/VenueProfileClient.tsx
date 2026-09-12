@@ -187,7 +187,8 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
     try {
       setBusy(true);
       setFormError("");
-      const body: { resource_type: string; resource_id: string; requirement_id?: string } = {
+      const body: { resource_type: string; resource_id: string; requirement_id?: string; promotion_touch_id?: string } = {
+        promotion_touch_id: new URLSearchParams(window.location.search).get("promotion_touch_id") || undefined,
         resource_type: "venue",
         resource_id: id,
       };

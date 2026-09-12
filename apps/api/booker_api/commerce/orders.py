@@ -12,7 +12,13 @@ from sqlalchemy.orm import Session
 from booker_api.commerce.catalog import get_plan, plan_payload
 from booker_api.commerce.entitlements import get_subscription
 from booker_api.commerce.provider import ProviderUnavailable, get_provider
-from booker_api.models import BillingOrder, CommerceWebhookEvent, Organization, Subscription
+from booker_api.models import (
+    BillingOrder,
+    CommerceWebhookEvent,
+    Organization,
+    PromotionCreditUse,
+    Subscription,
+)
 from booker_api.security import audit, aware, now
 
 
@@ -85,6 +91,12 @@ def create_subscription_order(
         ):
             raise HTTPException(409, "Этот ключ уже использован для другого заказа")
         return existing
+    if (
+        db.query(PromotionCreditUse)
+        .filter_by(organization_id=org_id, idempotency_key=idempotency_key)
+        .first()
+    ):
+        raise HTTPException(409, "Этот ключ уже использован для другого заказа")
     org = db.get(Organization, org_id)
     plan = get_plan(db, plan_code)
     if plan.audience != org.kind:
@@ -216,6 +228,10 @@ def settle_event(db: Session, payload: bytes, signature: str) -> dict:
                 sub.status = "cancelled"
                 sub.cancel_at_period_end = False
                 sub.next_plan_code = None
+        if order.product_kind == "promotion":
+            from booker_api.commerce.promotions import settle_campaign
+
+            settle_campaign(db, order)
         audit(
             db,
             actor_user_id=None,

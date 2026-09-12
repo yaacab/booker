@@ -799,3 +799,29 @@ class CommerceWebhookEvent(Base):
     payload_hash: Mapped[str] = mapped_column(String(64))
     response_json: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PromotionCreditUse(Base):
+    __tablename__ = "promotion_credit_uses"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("promotion_campaigns.id"), unique=True)
+    period_key: Mapped[str] = mapped_column(String(7), index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    __table_args__ = (UniqueConstraint("organization_id", "idempotency_key", name="uq_promo_credit_key"),)
+
+
+class PromotionTouch(Base):
+    __tablename__ = "promotion_touches"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("promotion_campaigns.id"), index=True)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    impressed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    clicked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    customer_org_id: Mapped[str | None] = mapped_column(ForeignKey("organizations.id"), nullable=True)
+    request_id: Mapped[str | None] = mapped_column(ForeignKey("requests.id"), nullable=True, unique=True)
+    booking_id: Mapped[str | None] = mapped_column(ForeignKey("bookings.id"), nullable=True, unique=True)

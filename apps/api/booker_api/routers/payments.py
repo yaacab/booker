@@ -4,6 +4,7 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from booker_api.commerce.promotions import attribute_booking
 from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import (
@@ -262,6 +263,7 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         adapter.ledger.on_capture(payment.id, payment.amount_rub)
         if booking.status == "AwaitingPayment":
             _transition(booking, "Confirmed")
+            attribute_booking(db, booking)
             slot = db.get(AvailabilitySlot, booking.slot_id)
             slot.status = "confirmed"
             conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one()
@@ -363,6 +365,7 @@ def capture_payment_as_succeeded(
     payment.status = "succeeded"
     if booking.status == "AwaitingPayment":
         _transition(booking, "Confirmed")
+        attribute_booking(db, booking)
         slot = db.get(AvailabilitySlot, booking.slot_id)
         if slot:
             slot.status = "confirmed"

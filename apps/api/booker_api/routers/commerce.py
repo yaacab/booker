@@ -366,3 +366,181 @@ def grant_plan(
     )
     db.commit()
     return subscription_payload(sub)
+
+
+class CampaignInput(StrictInput):
+    target_type: Literal["artist", "venue"]
+    target_id: str = Field(min_length=1, max_length=36)
+    product_code: Literal["BOOST_24H", "BOOST_72H", "BOOST_7D", "FEATURED_7D"]
+    use_credit: bool = False
+    idempotency_key: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
+
+
+class TouchInput(StrictInput):
+    action: Literal["impression", "click"]
+
+
+@router.post("/organizations/{org_id}/promotions")
+def post_promotion(
+    org_id: str,
+    body: CampaignInput,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    from booker_api.commerce.promotions import campaign_payload, create_campaign
+
+    billing_writer(db, user, org_id)
+    if not settings.paid_promotion:
+        raise HTTPException(404, "Продвижение пока недоступно")
+    campaign = create_campaign(db, org_id, body.model_dump(), user.id)
+    db.commit()
+    return campaign_payload(db, campaign)
+
+
+@router.get("/organizations/{org_id}/promotions")
+def get_promotions(org_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    from booker_api.commerce.promotions import campaign_payload, credits_summary, expire_campaigns
+    from booker_api.models import Artist, PromotionCampaign, Venue
+
+    require_org_member(db, user, org_id)
+    if not settings.paid_promotion:
+        raise HTTPException(404, "Продвижение пока недоступно")
+    expire_campaigns(db, org_id)
+    campaigns = (
+        db.query(PromotionCampaign)
+        .filter_by(organization_id=org_id)
+        .order_by(PromotionCampaign.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    targets = [
+        {"id": a.id, "name": a.name, "type": "artist"}
+        for a in db.query(Artist).filter_by(organization_id=org_id)
+    ]
+    targets += [
+        {"id": v.id, "name": v.name, "type": "venue"}
+        for v in db.query(Venue).filter_by(organization_id=org_id)
+    ]
+    result = {
+        "items": [campaign_payload(db, c) for c in campaigns],
+        "credits": credits_summary(db, org_id),
+        "targets": targets,
+    }
+    db.commit()
+    return result
+
+
+@router.post("/promotions/{campaign_id}/cancel")
+def post_cancel_campaign(
+    campaign_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
+    from booker_api.commerce.promotions import campaign_payload
+    from booker_api.models import PromotionCampaign
+
+    campaign = db.get(PromotionCampaign, campaign_id)
+    if not campaign:
+        raise HTTPException(404, "Кампания не найдена")
+    billing_writer(db, user, campaign.organization_id)
+    lock_organization(db, campaign.organization_id)
+    if campaign.status not in {"cancelled", "expired", "rejected"}:
+        order = (
+            db.get(BillingOrder, campaign.billing_order_id) if campaign.billing_order_id else None
+        )
+        if order and order.status in {"created", "pending_payment", "failed"}:
+            cancel_order(db, order, user.id)
+        else:
+            campaign.status = "cancelled"
+            audit(
+                db,
+                actor_user_id=user.id,
+                action="promotion.cancelled",
+                entity_type="promotion",
+                entity_id=campaign.id,
+                payload={"organization_id": campaign.organization_id},
+            )
+    db.commit()
+    return campaign_payload(db, campaign)
+
+
+@router.post("/promotion-touches/{touch_id}")
+def post_promotion_touch(
+    touch_id: str, body: TouchInput, request: Request, db: Session = Depends(get_db)
+):
+    from booker_api.commerce.promotions import record_touch
+
+    if not settings.paid_promotion:
+        raise HTTPException(404, "Продвижение пока недоступно")
+    messaging_limiter.check(client_key(request, "promotion-touch"))
+    record_touch(db, touch_id, body.action)
+    db.commit()
+    return {"ok": True}
+
+
+class PromotionPriceUpdate(StrictInput):
+    expected_version: int = Field(strict=True, ge=1)
+    price_rub: int = Field(strict=True, ge=1, le=1_000_000)
+    reason: str = Field(min_length=5, max_length=500)
+
+
+@admin_router.put("/promotions/{audience}/{code}")
+def update_promotion_price(
+    audience: Literal["artist", "venue"],
+    code: str,
+    body: PromotionPriceUpdate,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    messaging_limiter.check(f"admin-commerce:{user.id}")
+    seed_catalog(db)
+    product = (
+        db.query(PromotionProduct)
+        .filter_by(audience=audience, code=code, active=True)
+        .order_by(PromotionProduct.version.desc())
+        .first()
+    )
+    if not product:
+        raise HTTPException(404, "Продукт продвижения не найден")
+    changed = db.execute(
+        update(PromotionProduct)
+        .where(
+            PromotionProduct.id == product.id,
+            PromotionProduct.version == body.expected_version,
+            PromotionProduct.active.is_(True),
+        )
+        .values(active=False)
+    )
+    if changed.rowcount != 1:
+        raise HTTPException(409, "Цена уже изменилась. Обновите страницу")
+    newer = PromotionProduct(
+        audience=audience,
+        code=code,
+        title=product.title,
+        duration_hours=product.duration_hours,
+        price_rub=body.price_rub,
+        version=product.version + 1,
+        active=True,
+    )
+    db.add(newer)
+    db.flush()
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="commercial.promotion_price_changed",
+        entity_type="promotion_product",
+        entity_id=newer.id,
+        payload={
+            "audience": audience,
+            "code": code,
+            "before_price_rub": product.price_rub,
+            "after_price_rub": newer.price_rub,
+            "version": newer.version,
+            "reason": body.reason,
+        },
+    )
+    db.commit()
+    return {
+        "code": code,
+        "audience": audience,
+        "price_rub": newer.price_rub,
+        "version": newer.version,
+    }

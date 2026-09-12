@@ -103,3 +103,28 @@ integration acceptance и общая приёмка ещё впереди.
 
 CI расширен коммерческим suite с явно test-only provider настройками.
 Production/merge/live payments не выполнялись. Цель остаётся в работе.
+
+## Продвижение — третий инкремент
+
+Реализованы оплаченные и включённые кампании, квоты, завершение/остановка,
+фильтрация перед платной вставкой, ограничение доли и маркировка. Кабинет показывает
+показы, переходы, CTR, заявки и Confirmed бронирования. История заказов обновляется
+после изменения кампании. Admin API версионирует цены продвижения; существующие
+заказы сохраняют snapshot. Миграция `e0f1a2b3c4d5` добавляет credit ledger и attribution.
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **238 passed, 2 skipped** (47.75s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — **passed**.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — **passed**.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/commercial.spec.ts e2e/promotions.spec.ts e2e/search-filters.spec.ts e2e/supply-nav.spec.ts --workers=1 --reporter=line`
+  — **14 passed** (20.7s). E-COM-01–07 на desktop/390. Изолированный API настроен
+  на test/stub, как в предыдущем инкременте. Production не используется.
+- API отдельно проверяет 20% cap, отсутствие соседних вставок, сохранение organic_rank,
+  busy/city/category/budget exclusion, idempotency, чужую организацию/профиль,
+  credit limits, Featured entitlement, synthetic/unclaimed/unpublished venues,
+  expiry и полный attributed request → offer → ack → hold → contract → payment → Confirmed.
+- Скриншоты каталога и кабинета из Playwright визуально просмотрены. Поправлены
+  устаревшие селекторы главной в существующем E2E; продуктовые условия не ослаблены.
+
+Growth Center, Opportunities, EPK, Decision Engine и остальные пункты полного
+задания остаются в работе. Это промежуточная приёмка, не готовность запуска.
