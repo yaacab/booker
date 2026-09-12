@@ -64,3 +64,14 @@ HallTechnicalProfile, owner/editor RBAC и UI `/compatibility` + техника 
 Playwright с EPK/payment регрессией. Детали в `product/PRELAUNCH_V1.md`.
 Историческая матрица выше не заменяет проверку текущей ветки. Decision Engine и
 остальные разделы master task остаются незавершёнными.
+
+
+### Уточнение текущей ветки: Smart Matching
+
+Серверный подбор трёх составов, EventPlan с защитой revision/context, ручные замены,
+ориентиры из опубликованных тарифов и отдельная идемпотентная отправка заявок
+реализованы. Проверены фактические окна/буферы/совместимость, свои holds, RBAC и
+сохранение старых quote. API 306 passed/2 skipped; E-CUST-01 desktop/390 вместе
+с Event command retry/compatibility — 7 passed. Подробная приёмка — в
+`product/PRELAUNCH_V1.md`. Compare V2, EventReadiness, budget-summary и остальные
+открытые разделы master task не закрываются этой отметкой.

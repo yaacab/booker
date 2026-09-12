@@ -5,8 +5,16 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from booker_api.calendar import overlapping_slots
-from booker_api.models import Artist, AvailabilitySlot, HallTechnicalProfile, Venue, VenueHall
+from booker_api.calendar import ranges_overlap
+from booker_api.models import (
+    Artist,
+    AvailabilitySlot,
+    Booking,
+    BookingHold,
+    HallTechnicalProfile,
+    Venue,
+    VenueHall,
+)
 from booker_api.presentation import ShortText, presentation_data
 from booker_api.security import aware, now
 
@@ -32,10 +40,12 @@ def hall_facts(db: Session, hall: VenueHall) -> tuple[int, dict]:
 
 
 def resource_available(db: Session, kind: str, target_id: str, start: datetime, end: datetime,
-                       *, before=0, after=0, own_slot_ids: set[str] | None = None) -> bool:
+                       *, before=0, after=0, own_slot_ids: set[str] | None = None,
+                       slots: list[AvailabilitySlot] | None = None) -> bool:
     """Cover the complete interval and account for both declared and calendar buffers."""
     own = own_slot_ids or set()
-    slots = db.query(AvailabilitySlot).filter_by(resource_type=kind, resource_id=target_id).all()
+    if slots is None:
+        slots = db.query(AvailabilitySlot).filter_by(resource_type=kind, resource_id=target_id).all()
     for slot in slots:
         if slot.status != "open" and not (slot.id in own and slot.status in {"held", "confirmed"}):
             continue
@@ -44,10 +54,12 @@ def resource_available(db: Session, kind: str, target_id: str, start: datetime, 
         if (aware(slot.starts_at) - timedelta(minutes=slot.buffer_before_min or 0) > start - timedelta(minutes=before)
                 or aware(slot.ends_at) + timedelta(minutes=slot.buffer_after_min or 0) < end + timedelta(minutes=after)):
             continue
-        blocked = overlapping_slots(db, kind, target_id, start, end,
-            statuses=("busy", "held", "confirmed"), exclude_id=slot.id,
-            buffer_before_min=max(before, slot.buffer_before_min or 0),
-            buffer_after_min=max(after, slot.buffer_after_min or 0))
+        incoming_start = start - timedelta(minutes=max(before, slot.buffer_before_min or 0))
+        incoming_end = end + timedelta(minutes=max(after, slot.buffer_after_min or 0))
+        blocked = [s for s in slots if s.id != slot.id and s.status in {"busy", "held", "confirmed"}
+                   and ranges_overlap(incoming_start, incoming_end,
+                       aware(s.starts_at) - timedelta(minutes=max(0, s.buffer_before_min or 0)),
+                       aware(s.ends_at) + timedelta(minutes=max(0, s.buffer_after_min or 0)))]
         if not any(s.status == "busy" or s.id not in own for s in blocked):
             return True
     return False
@@ -55,14 +67,20 @@ def resource_available(db: Session, kind: str, target_id: str, start: datetime, 
 
 def assess_compatibility(db: Session, *, artist: Artist, venue: Venue, hall: VenueHall | None,
                          starts_at: datetime | None, ends_at: datetime | None, guest_count: int | None,
-                         own_slot_ids: set[str] | None = None, event_city: str | None = None) -> dict:
-    _, presentation = presentation_data(db, artist)
+                         own_slot_ids: set[str] | None = None, event_city: str | None = None,
+                         artist_data: dict | None = None, hall_data: tuple | None = None,
+                         slot_cache: dict | None = None) -> dict:
+    presentation = artist_data if artist_data is not None else presentation_data(db, artist)[1]
     artist_facts = presentation.get("technical") or {}
-    hall_version, facts = hall_facts(db, hall) if hall else (None, {})
+    hall_version, facts = hall_data if hall_data is not None else hall_facts(db, hall) if hall else (None, {})
     owner_facts = venue.is_claimed and venue.availability_mode == "owner"
     if not owner_facts:
         facts = {}
     checks = []
+
+    def available(kind, target_id, start, end, **kwargs):
+        return resource_available(db, kind, target_id, start, end, own_slot_ids=own_slot_ids,
+                                  slots=slot_cache.get((kind, target_id), []) if slot_cache is not None else None, **kwargs)
 
     def check(code, label, state, explanation):
         checks.append({"code": code, "label": label, "status": state, "status_label": LABELS[state], "explanation": explanation})
@@ -99,15 +117,15 @@ def assess_compatibility(db: Session, *, artist: Artist, venue: Venue, hall: Ven
     elif not hall or not owner_facts:
         check("date", "Дата и время", "unknown", "Нужен выбранный зал с календарём владельца")
     else:
-        artist_open = resource_available(db, "artist", artist.id, start, end, own_slot_ids=own_slot_ids)
-        hall_open = resource_available(db, "hall", hall.id, start, end, own_slot_ids=own_slot_ids)
+        artist_open = available("artist", artist.id, start, end)
+        hall_open = available("hall", hall.id, start, end)
         check("date", "Дата и время", "compatible" if artist_open and hall_open else "incompatible",
               "Оба календаря покрывают всё время события" if artist_open and hall_open else "Нет доступного окна на всё время события у артиста или зала")
     setup, teardown = artist_facts.get("setup_minutes"), artist_facts.get("teardown_minutes")
     if setup is None or teardown is None or not interval_known or not hall or not owner_facts:
         check("buffers", "Монтаж и демонтаж", "unknown", "Уточните время монтажа, демонтажа и окна в календарях")
     else:
-        fits = resource_available(db, "artist", artist.id, start, end, before=setup, after=teardown, own_slot_ids=own_slot_ids) and resource_available(db, "hall", hall.id, start, end, before=setup, after=teardown, own_slot_ids=own_slot_ids)
+        fits = available("artist", artist.id, start, end, before=setup, after=teardown) and available("hall", hall.id, start, end, before=setup, after=teardown)
         check("buffers", "Монтаж и демонтаж", "compatible" if fits else "incompatible", f"До события нужно {setup} мин.; после — {teardown} мин. " + ("Времени достаточно." if fits else "Свободного окна недостаточно."))
     minimum("stage", "Сцена", artist_facts.get("stage_area_m2"), facts.get("stage_area_m2"), " м²")
     minimum("power", "Электропитание", artist_facts.get("power_kw"), facts.get("power_kw"), " кВт")
@@ -150,3 +168,16 @@ def assess_compatibility(db: Session, *, artist: Artist, venue: Venue, hall: Ven
             "starts_at": start, "ends_at": end, "guest_count": guest_count,
             "methodology": "Доля проверок с подтверждённым совпадением по введённым данным. Не вероятность успеха и не гарантия. Неизвестное не даёт баллов; названия оборудования сравниваются точно без учёта регистра.",
             "note": "Параметры указаны участниками. Согласуйте оставшиеся вопросы до подтверждения условий."}
+
+
+def event_slot_ids(db: Session, event_id: str) -> set[str]:
+    """Only authorized event services may use these slots as owned reservations."""
+    result = set()
+    for booking in db.query(Booking).filter_by(event_id=event_id).all():
+        if booking.status in {"Confirmed", "InProgress"}:
+            result.add(booking.slot_id)
+        elif booking.status in {"DateHeld", "AwaitingContract", "AwaitingPayment"}:
+            hold = db.query(BookingHold).filter_by(booking_id=booking.id, status="active").first()
+            if hold and aware(hold.expires_at) > now():
+                result.add(booking.slot_id)
+    return result

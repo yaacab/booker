@@ -284,6 +284,15 @@ class Event(Base):
     requirements: Mapped[list["EventTeamRequirement"]] = relationship(back_populates="event")
 
 
+class EventPlan(Base):
+    __tablename__ = "event_plans"
+
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    selections_json: Mapped[str] = mapped_column(Text, default="[]")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class EventCommandReceipt(Base):
     __tablename__ = "event_command_receipts"
 

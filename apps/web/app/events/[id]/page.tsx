@@ -21,15 +21,17 @@ import {
   type EventRequestLite,
   type RequirementLite,
 } from "@/lib/eventDayOps";
+import { EventMatching } from "@/components/event-planning/EventMatching";
 import { STATUS_LABEL } from "@/lib/status";
 
-type Requirement = RequirementLite & { notes?: string };
+type Requirement = RequirementLite & { notes?: string; required?: boolean };
 
 type DraftItem = {
   id?: string;
   category_code: string;
   qty: number;
   role_label: string;
+  required: boolean;
 };
 
 type EventRequest = EventRequestLite & {
@@ -330,6 +332,7 @@ function toDraft(items: Requirement[]): DraftItem[] {
     category_code: item.category_code,
     qty: qtyOf(item.qty),
     role_label: item.role_label || "",
+    required: item.required !== false,
   }));
 }
 
@@ -404,6 +407,7 @@ export default function EventPage() {
           ...(item.id ? { id: item.id } : {}),
           category_code: item.category_code,
           qty: qtyOf(item.qty),
+          required: item.required,
           ...(item.role_label.trim() ? { role_label: item.role_label.trim() } : {}),
         }));
       const res = await api<{ requirements: Requirement[] }>(`/events/${event.id}/requirements`, {
@@ -421,7 +425,7 @@ export default function EventPage() {
 
   function addRow() {
     const code = CATEGORY_CODES.find((c) => !draft.some((d) => d.category_code === c)) || CATEGORY_CODES[0];
-    setDraft((rows) => [...rows, { category_code: code, qty: 1, role_label: "" }]);
+    setDraft((rows) => [...rows, { category_code: code, qty: 1, role_label: "", required: true }]);
   }
 
   function updateRow(index: number, patch: Partial<DraftItem>) {
@@ -512,6 +516,7 @@ export default function EventPage() {
           {packError}
         </p>
       ) : null}
+      <EventMatching eventId={event.id} contextKey={JSON.stringify(event.requirements)} onRequestsUpdated={() => void loadEvent(event.id)} />
       {totalPositions > 0 ? (
         <article className="card tint reveal">
           <strong>Закрытие состава</strong>
@@ -621,6 +626,7 @@ export default function EventPage() {
                   onChange={(e) => updateRow(index, { qty: qtyOf(Number(e.target.value)) })}
                 />
               </label>{" "}
+              <label className="row"><input type="checkbox" checked={row.required} onChange={(e) => updateRow(index, { required: e.target.checked })} />Обязательная позиция</label>
               <label>
                 Подпись{" "}
                 <input

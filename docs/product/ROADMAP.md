@@ -40,6 +40,7 @@ OWNER DIRECTIVE 2026-09-12 заменяет прежнюю отсрочку ко
 В `feat/prelaunch-commercial-v1` реализованы versioned commerce/fees, продвижение,
 Growth, Opportunities, EPK и серверная совместимость с редактором техники залов.
 Проверки и ограничения каждого инкремента: `PRELAUNCH_V1.md`.
-Decision Engine/Compare V2/readiness/budget, collaboration/repeat/Business,
+Smart Matching с тремя вариантами и сохраняемым предварительным составом также
+реализован и проверен на desktop/390. Compare V2/readiness/budget, collaboration/repeat/Business,
 полный commercial admin и общая приёмка остаются в работе. Эта ветка не merged
 и не выпущена в production; прежние отметки пилота не доказывают новый launch gate.

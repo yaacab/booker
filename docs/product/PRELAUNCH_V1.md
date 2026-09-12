@@ -413,3 +413,69 @@ master task не объявлены завершёнными этим испра
 
 Финальная регрессия после обработки validation: тот же Playwright с
 `e2e/event-command-retry.spec.ts e2e/studio-autosave.spec.ts` — **7 passed** (11.9s).
+
+
+## Smart Event Matching и предварительный состав
+
+После обоих мастеров на `/events/{id}` доступны «Экономный», «Оптимальный»,
+«Расширенный». Первый предпочитает меньший опубликованный тариф среди обязательных
+ролей, второй — меньше неуточнённых технических условий, третий включает также
+необязательные роли и предпочитает подробнее заполненные программу/портфолио.
+Причины раскрыты в каждом варианте; это не рейтинг качества, оплаченный приоритет
+или гарантия оптимума. Если предложение каталога ограничено, варианты могут совпасть.
+
+Сервер учитывает роли/количество, город или явно заявленный выезд, вместимость,
+полное окно календаря с известными буферами и совместимость с выбранными залами.
+Известная несовместимость исключает пару; unknown остаётся явно указанным.
+Для площадок нужен опубликованный, claimed профиль с календарём владельца.
+Свои активные резервы учитываются только в авторизованном контексте этого события.
+Отсутствующее окончание не заменяется выдуманным окном. Ориентиры берутся только
+из опубликованных пакетов, не включают сервисный сбор и не становятся quote.
+Стоимость нескольких залов одной площадки требует отдельного предложения:
+сервер не умножает общий тариф и не считает его ценой всего набора.
+
+Миграция `e6f7a8b9c0d1_event_plans` добавляет EventPlan с revision и JSON выбора
+по requirement/position/artist или venue+hall. API:
+
+- `GET /events/{id}/matching` — варианты, проверенный текущий выбор, кандидаты,
+  неизвестные условия, незакрытые роли, серверные ориентиры и права пользователя.
+- `PUT /events/{id}/plan` — writer-only сохранение с revision/context, проверкой
+  актуальных ролей/календарей/совместимости и идемпотентным одинаковым повтором.
+- `PATCH /events/{id}/planning-context` — writer-only окончание и объявленный
+  бюджет; изменение окна запрещено после появления неотменённой сделки.
+
+План не создаёт Request/Offer/Booking и не удерживает даты. Пользователь может
+заменить каждую позицию, сохранить её и отдельно отправить заявки. Перед отправкой
+UI перечитывает план/календари; несохранённый выбор блокирует кнопку. Повтор
+использует EventCommandReceipt и существующие активные заявки, сохраняя отсутствие
+дублей. Изменения плана не отменяют ранее отправленные заявки или сделки.
+Viewer видит результат, но не может изменять. API защищены membership, writer RBAC,
+rate limits, SMART_MATCHING; audit не копирует заметки/контакты/ключи.
+
+Проверки:
+
+- `cd apps/api && ../../.venv/bin/python -m pytest -q tests/test_matching.py`
+  — **9 passed** (3.21s): три разных состава, отсутствие автоматических сделок,
+  инвариант Premium, full-window/busy/buffer, технические несовпадения, IDOR/viewer,
+  concurrent revision/context, stale calendar, client price injection, свои holds,
+  неизменность существующего quote после изменения бюджета, multi-hall и synthetic.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api`
+  — **306 passed, 2 skipped** (69.91s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/smart-matching.spec.ts e2e/event-command-retry.spec.ts e2e/compatibility.spec.ts --workers=1 --reporter=line`
+  — **7 passed** (17.4s). E-CUST-01: Studio → API error/retry → три варианта →
+  сохранение без запросов → ручная замена → серверный ориентир → ручная отправка
+  и повтор без дублей. Desktop/390 без горизонтального переполнения; PR CI включает
+  сценарий. Дополнительно сохраняются снимки вариантов и текущего выбора.
+
+Это закрывает отдельный инкремент подбора. Compare V2, серверные EventReadiness/
+next_best_action и budget-summary, collaboration/repeat/Business и прочие открытые
+разделы master task продолжают работу. Поле matching.state=ready обозначает только
+наличие окна/ролей для подбора, не готовность события к проведению.
+
+Финальный повтор E-CUST-01 после настройки снимков обычного viewport:
+`cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/smart-matching.spec.ts --workers=1 --reporter=line`
+— **2 passed** (6.1s). Просмотрены три карточки на desktop и текущий выбор/вариант
+на 390 px; закреплённая навигация остаётся в реальном интерфейсе.

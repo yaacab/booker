@@ -8,13 +8,11 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from booker_api.compatibility import HallFacts, assess_compatibility, hall_facts
+from booker_api.compatibility import HallFacts, assess_compatibility, event_slot_ids, hall_facts
 from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import (
     Artist,
-    Booking,
-    BookingHold,
     Event,
     HallTechnicalProfile,
     User,
@@ -136,13 +134,7 @@ def compatibility(body: CompatibilityIn, request: Request, user: User | None = D
         end = getattr(event, "ends_at", None) or end
         if end and aware(end) <= aware(start):
             raise HTTPException(422, "Окончание должно быть позже начала события")
-        for booking in db.query(Booking).filter_by(event_id=event.id).all():
-            if booking.status in {"Confirmed", "InProgress"}:
-                own_slots.add(booking.slot_id)
-            elif booking.status in {"DateHeld", "AwaitingContract", "AwaitingPayment"}:
-                hold = db.query(BookingHold).filter_by(booking_id=booking.id, status="active").first()
-                if hold and aware(hold.expires_at) > now():
-                    own_slots.add(booking.slot_id)
+        own_slots = event_slot_ids(db, event.id)
     artist = db.get(Artist, str(body.artist_id))
     venue = db.get(Venue, str(body.venue_id))
     if not artist or not venue:
