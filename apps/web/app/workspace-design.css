@@ -187,3 +187,14 @@
 .event-matching label { display: grid; gap: 8px; }
 @media (max-width: 1000px) { .matching-variants { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) { .matching-context fieldset, .matching-choices { grid-template-columns: minmax(0, 1fr); } }
+
+.event-budget { margin-block: 28px; min-width: 0; overflow-wrap: anywhere; }
+.budget-state { font-weight: 600; }
+.budget-amounts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.budget-amounts dt { font-size: 14px; }
+.budget-amounts dd { margin: 12px 0; font-size: 24px; font-weight: 700; }
+.event-budget summary { cursor: pointer; min-height: 44px; padding-block: 12px; }
+.budget-lines { list-style: none; padding: 0; }
+.budget-lines li, .budget-hints { border-top: 1px solid var(--workspace-line); padding-block: 16px; }
+@media (max-width: 1000px) { .budget-amounts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .budget-amounts { grid-template-columns: minmax(0, 1fr); gap: 6px; } }

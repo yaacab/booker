@@ -65,7 +65,10 @@ def test_hidden_venue_prices_are_not_exposed_even_to_its_owner(client, SessionLo
     hidden = result["items"][1]
     assert hidden["state"] == "unavailable" and hidden["name"] is None
     assert hidden["min_rub"] is None and hidden["sources"] == []
-    assert "777" not in str(result) and "Private package" not in str(result)
+    # Numeric substrings may legitimately occur in opaque UUIDs. Check price fields.
+    assert result["min_rub"] is None and result["max_rub"] is None
+    assert all(item["sources"] == [] for item in result["items"])
+    assert "Private package" not in str(result)
 
 
 def test_no_price_injection_bounded_input_and_feature_gate(client, monkeypatch):

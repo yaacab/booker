@@ -41,6 +41,7 @@ OWNER DIRECTIVE 2026-09-12 заменяет прежнюю отсрочку ко
 Growth, Opportunities, EPK и серверная совместимость с редактором техники залов.
 Проверки и ограничения каждого инкремента: `PRELAUNCH_V1.md`.
 Smart Matching с тремя вариантами и сохраняемым предварительным составом также
-реализован и проверен на desktop/390. Compare V2/readiness/budget, collaboration/repeat/Business,
+реализован и проверен на desktop/390. Добавлен серверный budget-summary с
+раздельными quote-суммами и ориентирами. Compare V2/readiness, collaboration/repeat/Business,
 полный commercial admin и общая приёмка остаются в работе. Эта ветка не merged
 и не выпущена в production; прежние отметки пилота не доказывают новый launch gate.

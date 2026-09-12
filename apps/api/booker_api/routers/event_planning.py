@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from booker_api.config import settings
 from booker_api.db import get_db
+from booker_api.event_budget import event_budget
 from booker_api.event_planning import selection_orientation
 from booker_api.matching import MatchingContext, clean_selection
 from booker_api.models import Booking, Event, EventPlan, User
@@ -153,3 +154,17 @@ def update_planning_context(event_id: str, body: PlanningContextIn, user: User =
         audit(db, actor_user_id=user.id, action="event.planning_updated", entity_type="event", entity_id=event.id, payload={"fields": changed})
         db.commit()
     return matching_payload(MatchingContext(db, event), member)
+
+
+@router.get("/events/{event_id}/budget-summary")
+def budget_summary(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_member(db, user, event.organization_id)
+    analytics_limiter.check(f"event-budget:{user.id}")
+    result = event_budget(db, event)
+    audit(db, actor_user_id=user.id, action="event.budget_viewed", entity_type="event", entity_id=event.id,
+          payload={"state": result["state"]})
+    db.commit()
+    return result

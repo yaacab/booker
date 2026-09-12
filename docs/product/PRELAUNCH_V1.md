@@ -479,3 +479,76 @@ next_best_action и budget-summary, collaboration/repeat/Business и прочи�
 `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/smart-matching.spec.ts --workers=1 --reporter=line`
 — **2 passed** (6.1s). Просмотрены три карточки на desktop и текущий выбор/вариант
 на 390 px; закреплённая навигация остаётся в реальном интерфейсе.
+
+
+## Budget Control
+
+`GET /events/{id}/budget-summary` — новый read-only endpoint с membership,
+per-user rate limit и приватным audit `event.budget_viewed`. Доступен также viewer;
+не зависит от выключения рекламных/платёжных функций. Новая миграция не нужна:
+используются Event.budget_rub, EventPlan, Request/OfferVersion/Booking/BookingHold.
+
+Сервер возвращает declared_budget, confirmed_total, active_offers_total,
+estimated_remaining, uncovered_requirements и state. Все суммы предложений —
+сбор заказчика плюс гонорар из активного сохранённого quote; старые версии с
+историческим total не пересчитываются сегодняшней fee policy. Отсутствующий или
+нерублёвый снимок даёт неизвестный итог соответствующей группы и остаток, не ноль.
+
+- Confirmed/InProgress/Completed и Dispute входят в confirmed_total; спор явно
+  требует проверки взаиморасчёта. Это не утверждение об оплате или выплате.
+- Живые DateHeld/AwaitingContract/AwaitingPayment входят в предложения.
+  Подтверждённые сделки и удержания учитываются полностью, даже сверх количества
+  ролей или без роли; UI показывает предупреждение, а не скрывает обязательства.
+- Negotiation учитывается, когда выбран соответствующий участник EventPlan либо
+  оставшиеся предложения однозначно помещаются в количество свободных позиций.
+  Конкурирующие альтернативы без выбора показаны отдельно, не складываются.
+- Отменённые/закрытые и просроченные удержания исключены. Read endpoint не запускает
+  expiry worker и не притворяется, что статус уже изменён. Отмены/споры отдельно
+  предупреждают: это не расчёт удержаний, возвратов или баланса платежей.
+- Остаток равен бюджету минус подтверждённые и включённые предложения. Нулевой
+  бюджет — реальный ноль; отсутствующий — unknown; отрицательный остаток — перерасход.
+- Ориентиры оставшегося предварительного выбора показаны отдельно, без fee и без
+  вычитания из остатка. Та же позиция не считается по тарифу и quote одновременно.
+  Общий тариф площадки не умножается на несколько залов и не прибавляется к уже
+  включённому офферу другого зала этой площадки.
+
+На `/events/{id}` добавлена сводка с четырьмя суммами, состоянием расчёта,
+незаполненными позициями, расшифровкой сделок/альтернатив и объяснением метода.
+Есть loading/error/retry, read-only просмотр, ручное обновление. Сохранение состава,
+окончания или бюджета обновляет сводку. Числа на клиенте только форматируются.
+Мобильная версия использует одну колонку, desktop — четыре; реальные снимки 390
+и 1440 px просмотрены. API определяет цену, UI не создаёт формул.
+
+Проверки:
+
+- `cd apps/api && ../../.venv/bin/python -m pytest -q tests/test_event_budget.py`
+  — **9 passed** (3.37s) до последнего уточнения unknown; затем файл повторно
+  включён в полный API-прогон. Сценарии: альтернативы/явный выбор, новая версия,
+  историческая цена/нет quote, несколько позиций, избыточные подтверждённые сделки,
+  live/expired hold, cancellation/dispute, нулевой/отсутствующий бюджет, multi-hall,
+  membership/viewer/audit, реальный stub lifecycle с переходом суммы без удвоения.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/event-budget.spec.ts e2e/smart-matching.spec.ts e2e/booking-payment.spec.ts --workers=1 --reporter=line`
+  — **7 passed** (17.0s). E-CUST-03 проходит API error/retry → два конкурирующих
+  предложения → сохранённый выбор → budget deficit → контракт/stub capture →
+  перенос суммы в confirmed без удвоения на 1440/390. Сценарий добавлен в PR CI.
+
+Server EventReadiness/next_best_action ещё не реализован: прежний eventDayOps
+ошибочно считает любой booking_id закрытием роли, включая Negotiation. Его нужно
+заменить проверкой фактических сделок/ack/hold/совместимости/договора/оплаты.
+Budget Control не является готовностью события или общей готовностью запуска.
+
+Финальный повтор E-CUST-03 после обработки отсутствующего снимка цены и уточнения
+текста метода: та же команда только с `e2e/event-budget.spec.ts` — **2 passed**
+(9.6s). В полном API-прогоне также найден и устранён flaky assert старого
+`test_hidden_venue_prices_are_not_exposed_even_to_its_owner`: строка `777` могла
+случайно оказаться в UUID. Проверка теперь прямо проверяет отсутствие сумм и
+источников тарифов, сохраняя проверку скрытого названия пакета.
+
+Финальная приёмка текущего кода:
+`PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **315 passed, 2 skipped**
+(73.07s); повтор `make lint`, `make web-lint` и `make web-build` с указанными выше
+локальными API URL — passed. Сводка бюджета принята отдельным инкрементом;
+полный master task остаётся в работе.

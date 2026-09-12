@@ -43,7 +43,7 @@ export function EventMatching({ eventId, onRequestsUpdated, contextKey }: { even
   const dirty = Boolean(data && fingerprint(draft) !== fingerprint(data.saved_selections));
   async function save(selections: Selection[]) {
     if (!data || busy) return; setBusy(true); setError(""); setNotice("");
-    try { accept(await api<Result>(`/events/${eventId}/plan`, { method: "PUT", body: JSON.stringify({ expected_revision: data.revision, expected_context: data.context_token, selections: selections.map(clean) }) })); setNotice("Предварительный состав сохранён. Даты пока не удерживаются."); }
+    try { accept(await api<Result>(`/events/${eventId}/plan`, { method: "PUT", body: JSON.stringify({ expected_revision: data.revision, expected_context: data.context_token, selections: selections.map(clean) }) })); setNotice("Предварительный состав сохранён. Даты пока не удерживаются."); onRequestsUpdated?.(); }
     catch(e) { setError(commerceError(e)); } finally { setBusy(false); }
   }
   async function saveContext(e: React.FormEvent) {

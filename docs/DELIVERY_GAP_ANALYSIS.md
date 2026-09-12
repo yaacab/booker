@@ -75,3 +75,14 @@ Playwright с EPK/payment регрессией. Детали в `product/PRELAUN
 с Event command retry/compatibility — 7 passed. Подробная приёмка — в
 `product/PRELAUNCH_V1.md`. Compare V2, EventReadiness, budget-summary и остальные
 открытые разделы master task не закрываются этой отметкой.
+
+
+### Уточнение текущей ветки: бюджет
+
+Budget Control реализован как server summary и UI события. Он использует
+неизменяемые quote-суммы, не складывает конкурентов на роль, учитывает все
+подтверждённые обязательства/живые удержания, показывает unknown/partial/перерасход
+и отдельные тарифные ориентиры. E-CUST-03 проверен на desktop/390 с настоящим
+API lifecycle через тестовый provider; подробности в `product/PRELAUNCH_V1.md`.
+Readiness/next_best_action остаётся открытым, включая ошибку старого клиентского
+счётчика закрытых ролей. Общий launch gate не закрыт.

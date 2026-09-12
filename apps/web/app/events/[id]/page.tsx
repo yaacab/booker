@@ -21,6 +21,7 @@ import {
   type EventRequestLite,
   type RequirementLite,
 } from "@/lib/eventDayOps";
+import { EventBudget } from "@/components/event-planning/EventBudget";
 import { EventMatching } from "@/components/event-planning/EventMatching";
 import { STATUS_LABEL } from "@/lib/status";
 
@@ -516,6 +517,7 @@ export default function EventPage() {
           {packError}
         </p>
       ) : null}
+      <EventBudget eventId={event.id} refreshKey={event} />
       <EventMatching eventId={event.id} contextKey={JSON.stringify(event.requirements)} onRequestsUpdated={() => void loadEvent(event.id)} />
       {totalPositions > 0 ? (
         <article className="card tint reveal">
