@@ -159,3 +159,18 @@ payment → check-in → check-out. Крупный остаток master task с
 `npx --prefix apps/web playwright test --config apps/web/playwright.config.ts apps/web/e2e/growth.spec.ts --workers=1 --reporter=line`
 с теми же BOOKER_API_URL/BOOKER_WEB_URL — **3 passed** (8.5s), включая восстановление
 после ошибки API. Финальные lint и web-lint — passed.
+
+## UTC и защита календаря
+
+При реализации Opportunities обнаружено: SQLite `DateTime(timezone=True)` теряет
+смещение входного времени. Это могло превратить `18:00+03:00` и `15:00Z` в разные
+моменты при проверке пересечений. `UTCDateTime` нормализует все новые значения
+перед записью и возвращает aware UTC при чтении. Физическая схема не меняется.
+Исторические naive значения сохраняют прежнее толкование UTC; история не переписана.
+
+Исправление проверено отдельно от незакоммиченного Opportunities: архив `c131c2d`
+в `/tmp/booker-timezone-isolation` плюс только UTC type/model import и тесты.
+`/home/art67/booker/outputs/prelaunch-commercial-worktree/.venv/bin/python -m pytest -q tests/test_datetime_type.py tests/test_alembic.py`
+из изолированного `apps/api` — **6 passed** (1.02s). Проверены roundtrip +03:00,
+409 для второго слота в тот же момент в UTC, busy overlay с другим offset и миграции.
+Полный текущий API-набор вместе с Opportunities — **251 passed, 2 skipped** (45.98s).

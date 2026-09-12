@@ -4,7 +4,6 @@ from uuid import uuid4
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
-    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -14,6 +13,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from booker_api.datetime_type import UTCDateTime as DateTime
 from booker_api.db import Base
 
 
