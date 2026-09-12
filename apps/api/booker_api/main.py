@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from booker_api.commerce.catalog import seed_catalog
 from booker_api.composition import seed_categories
 from booker_api.config import settings
 from booker_api.db import SessionLocal, engine, init_schema
@@ -11,6 +12,7 @@ from booker_api.routers import (
     analytics,
     briefs,
     catalog,
+    commerce,
     deals,
     favorites,
     health,
@@ -32,6 +34,7 @@ async def lifespan(_app: FastAPI):
     db = SessionLocal()
     try:
         seed_categories(db)
+        seed_catalog(db)
         db.commit()
     finally:
         db.close()
@@ -62,3 +65,6 @@ app.include_router(saved_searches.router)
 app.include_router(promo.router)
 app.include_router(admin.router)
 app.include_router(venue_admin.router)
+
+app.include_router(commerce.router)
+app.include_router(commerce.admin_router)

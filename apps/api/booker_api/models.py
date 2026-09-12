@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -341,6 +342,15 @@ class OfferVersion(Base):
     commission_rub: Mapped[int] = mapped_column(Integer)
     total_rub: Mapped[int] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(String(8), default="RUB")
+    # Null for historic offers: never infer or rewrite their monetary terms.
+    customer_service_fee_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    customer_service_fee_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    supplier_service_fee_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    supplier_service_fee_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    customer_total_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    supplier_payout_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    platform_revenue_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    commercial_policy_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
     terms: Mapped[str] = mapped_column(Text, default="")
     customer_ack: Mapped[bool] = mapped_column(Boolean, default=False)
     supplier_ack: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -662,4 +672,130 @@ class SavedSearch(Base):
     name: Mapped[str] = mapped_column(String(255))
     query_params_json: Mapped[str] = mapped_column(Text, default="{}")
     notify_consent: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CommercialPlan(Base):
+    __tablename__ = "commercial_plans"
+    __table_args__ = (
+        UniqueConstraint("code", "version", name="uq_commercial_plan_version"),
+        CheckConstraint("monthly_price_rub >= 0 AND annual_price_rub >= 0"),
+        CheckConstraint("supplier_fee_bps >= 0 AND supplier_fee_bps <= 10000"),
+        CheckConstraint("customer_fee_bps >= 0 AND customer_fee_bps <= 10000"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String(64), index=True)
+    audience: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(64))
+    monthly_price_rub: Mapped[int] = mapped_column(Integer)
+    annual_price_rub: Mapped[int] = mapped_column(Integer)
+    supplier_fee_bps: Mapped[int] = mapped_column(Integer)
+    customer_fee_bps: Mapped[int] = mapped_column(Integer, default=600)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    features_json: Mapped[str] = mapped_column(Text, default="{}")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','trial','active','past_due','cancelled','expired')"),
+        CheckConstraint("billing_period IN ('monthly','annual','manual')"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), unique=True)
+    plan_code: Mapped[str] = mapped_column(String(64))
+    billing_period: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    current_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False)
+    next_plan_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    provider: Mapped[str] = mapped_column(String(32), default="disabled")
+    provider_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    last_billing_order_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class BillingOrder(Base):
+    __tablename__ = "billing_orders"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "idempotency_key", name="uq_billing_order_idempotency"),
+        CheckConstraint("amount_rub >= 0"),
+        CheckConstraint("status IN ('created','pending_payment','paid','failed','cancelled','refunded')"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    product_kind: Mapped[str] = mapped_column(String(32))
+    product_code: Mapped[str] = mapped_column(String(64))
+    amount_rub: Mapped[int] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(8), default="RUB")
+    status: Mapped[str] = mapped_column(String(32), default="created")
+    provider: Mapped[str] = mapped_column(String(32), default="disabled")
+    provider_reference: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(64))
+    metadata_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    refunded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PromotionProduct(Base):
+    __tablename__ = "promotion_products"
+    __table_args__ = (
+        UniqueConstraint("audience", "code", "version", name="uq_promotion_product_version"),
+        CheckConstraint("price_rub >= 0 AND duration_hours > 0"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    audience: Mapped[str] = mapped_column(String(16))
+    code: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(128))
+    price_rub: Mapped[int] = mapped_column(Integer)
+    duration_hours: Mapped[int] = mapped_column(Integer)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class PromotionCampaign(Base):
+    __tablename__ = "promotion_campaigns"
+    __table_args__ = (
+        CheckConstraint("target_type IN ('artist','venue')"),
+        CheckConstraint("status IN ('draft','pending_payment','scheduled','active','expired','cancelled','rejected')"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    target_type: Mapped[str] = mapped_column(String(16))
+    target_id: Mapped[str] = mapped_column(String(36), index=True)
+    product_code: Mapped[str] = mapped_column(String(64))
+    city: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(32), default="draft", index=True)
+    billing_order_id: Mapped[str | None] = mapped_column(
+        ForeignKey("billing_orders.id"), nullable=True, unique=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CommerceWebhookEvent(Base):
+    __tablename__ = "commerce_webhook_events"
+    __table_args__ = (UniqueConstraint("provider", "event_id", name="uq_commerce_webhook_event"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    provider: Mapped[str] = mapped_column(String(32))
+    event_id: Mapped[str] = mapped_column(String(128))
+    order_id: Mapped[str] = mapped_column(ForeignKey("billing_orders.id"))
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    response_json: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

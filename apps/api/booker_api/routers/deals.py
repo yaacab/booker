@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from starlette.requests import Request as HttpRequest
 
 from booker_api.calendar import overlapping_slots
+from booker_api.commerce.fees import SNAPSHOT_FIELDS, offer_fees, snapshot_payload
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
 from booker_api.config import settings
 from booker_api.db import get_db
@@ -46,7 +47,6 @@ from booker_api.models import (
     VenueTariff,
 )
 from booker_api.notifications import on_offer_created, on_request_created
-from booker_api.pricing import first_deal_waive, price_breakdown
 from booker_api.rate_limit import client_key, messaging_limiter, upload_limiter
 from booker_api.replacement import build_replacement_plan
 from booker_api.schemas import DISPUTE_CATEGORIES
@@ -801,6 +801,8 @@ def create_offer(
     raw_honorarium = body.get("honorarium_rub")
     if raw_honorarium is None:
         raise HTTPException(400, "honorarium_rub обязателен")
+    if type(raw_honorarium) is not int or raw_honorarium > 1_000_000_000:
+        raise HTTPException(400, "Гонорар должен быть целым числом рублей до 1 млрд")
     try:
         honorarium = int(raw_honorarium)
     except (TypeError, ValueError):
@@ -808,8 +810,7 @@ def create_offer(
     if honorarium <= 0:
         raise HTTPException(400, "honorarium_rub должен быть больше нуля")
     event = db.get(Event, req.event_id)
-    waive = bool(event and first_deal_waive(db, event.organization_id))
-    breakdown = price_breakdown(honorarium, waive_commission=waive)
+    breakdown = offer_fees(db, honorarium, req.supplier_org_id, event.organization_id)
     slot_id = body.get("slot_id")
     if not slot_id:
         raise HTTPException(400, "slot_id обязателен")
@@ -827,6 +828,7 @@ def create_offer(
         commission_rate=breakdown["commission_rate"],
         commission_rub=breakdown["commission_rub"],
         total_rub=breakdown["total_rub"],
+        **{field: breakdown[field] for field in SNAPSHOT_FIELDS},
         terms=body.get("terms", ""),
     )
     db.add(version)
@@ -907,6 +909,8 @@ def new_version(
     raw_honorarium = body.get("honorarium_rub")
     if raw_honorarium is None:
         raise HTTPException(400, "honorarium_rub обязателен")
+    if type(raw_honorarium) is not int or raw_honorarium > 1_000_000_000:
+        raise HTTPException(400, "Гонорар должен быть целым числом рублей до 1 млрд")
     try:
         honorarium = int(raw_honorarium)
     except (TypeError, ValueError):
@@ -919,17 +923,14 @@ def new_version(
             status.HTTP_409_CONFLICT,
             "Менять цену после перехода к оплате нельзя",
         )
-    waive = bool(
-        event
-        and first_deal_waive(db, event.organization_id, exclude_booking_id=booking.id if booking else None)
-    )
-    breakdown = price_breakdown(honorarium, waive_commission=waive)
+    breakdown = offer_fees(db, honorarium, req.supplier_org_id, event.organization_id)
     version = OfferVersion(
         offer_id=offer.id,
         honorarium_rub=breakdown["honorarium_rub"],
         commission_rate=breakdown["commission_rate"],
         commission_rub=breakdown["commission_rub"],
         total_rub=breakdown["total_rub"],
+        **{field: breakdown[field] for field in SNAPSHOT_FIELDS},
         terms=body.get("terms", ""),
         customer_ack=False,
         supplier_ack=False,
@@ -1361,6 +1362,7 @@ def deal_room(
             "provider": payment.provider,
         },
         "quote": {
+            **snapshot_payload(version),
             "quote_id": version.id,
             "honorarium_rub": version.honorarium_rub,
             "commission_rate": version.commission_rate,
@@ -1371,7 +1373,7 @@ def deal_room(
             "supplier_ack": version.supplier_ack,
             "source": (
                 "Первая сделка: комиссия платформы 0. Гонорар как есть."
-                if version.commission_rub == 0
+                if version.commercial_policy_version is None and version.commission_rub == 0
                 else "Предложение сформировано сервером"
             ),
         },

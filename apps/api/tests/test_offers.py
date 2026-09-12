@@ -84,9 +84,9 @@ def test_price_only_from_server(client):
     ctx = setup_negotiation(client)
     version = ctx["offer"]["version"]
     assert version["honorarium_rub"] == 100000
-    assert version["commission_rate"] == 0.0
-    assert version["commission_rub"] == 0
-    assert version["total_rub"] == 100000
+    assert version["commission_rate"] == 0.06
+    assert version["commission_rub"] == 6000
+    assert version["total_rub"] == 106000
     assert version["quote_id"] == version["id"]
 
 
@@ -110,7 +110,7 @@ def test_new_version_not_active_until_ack(client):
     assert room["quote"]["honorarium_rub"] == 120000
     assert room["quote"]["customer_ack"] is False
     assert room["quote"]["supplier_ack"] is False
-    assert room["quote"]["commission_rub"] == 0
+    assert room["quote"]["commission_rub"] == 7200
 
 
 def test_second_booking_gets_commission(client):
@@ -147,9 +147,9 @@ def test_second_booking_gets_commission(client):
     )
     assert offer2.status_code == 200, offer2.text
     version = offer2.json()["version"]
-    assert version["commission_rate"] == 0.10
-    assert version["commission_rub"] == 10000
-    assert version["total_rub"] == 110000
+    assert version["commission_rate"] == 0.06
+    assert version["commission_rub"] == 6000
+    assert version["total_rub"] == 106000
 
 
 def test_viewer_cannot_post_offer_or_ack(client):

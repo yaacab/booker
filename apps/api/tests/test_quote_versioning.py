@@ -109,7 +109,7 @@ def test_material_change_creates_new_version(client):
     assert up["id"] != first_id
     assert up["id"] != body["id"]
     assert up["honorarium_rub"] == 150000
-    assert up["total_rub"] == 150000
+    assert up["total_rub"] == 159000
 
     db = client.app.state.SessionLocal()
     try:

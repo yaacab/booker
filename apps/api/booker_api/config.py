@@ -46,6 +46,18 @@ class Settings(BaseSettings):
     push_provider: str = "disabled"
     in_app_provider: str = "dev"
     password_reset_ttl_hours: int = 2
+    # Commerce is fail-closed; test checkout needs both environment and opt-in.
+    environment: str = "production"
+    commerce_provider: str = "disabled"
+    commerce_allow_stub: bool = False
+    commerce_webhook_secret: str = ""
+    commercial_plans: bool = True
+    paid_promotion: bool = True
+    artist_growth: bool = True
+    opportunities: bool = True
+    smart_matching: bool = True
+    compatibility: bool = True
+    customer_business: bool = True
 
 
 settings = Settings()

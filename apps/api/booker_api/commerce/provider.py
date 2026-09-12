@@ -1,0 +1,169 @@
+"""Provider boundary: authenticated events, exact RUB amounts, no implicit success."""
+
+import hashlib
+import hmac
+import json
+from dataclasses import dataclass
+from typing import Literal, Protocol
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+from booker_api.config import settings
+
+
+class ProviderUnavailable(Exception):
+    pass
+
+
+class InvalidWebhook(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class Checkout:
+    reference: str
+    status: str = "pending_payment"
+    url: str | None = None
+    subscription_reference: str | None = None
+
+
+class ProviderEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    event_id: str = Field(min_length=1, max_length=128)
+    order_id: str = Field(min_length=1, max_length=36)
+    reference: str = Field(min_length=1, max_length=128)
+    status: Literal["paid", "failed", "refunded"]
+    amount_rub: int = Field(gt=0)
+    currency: Literal["RUB"]
+
+
+class CommerceProvider(Protocol):
+    name: str
+    test_mode: bool
+
+    def create_checkout(
+        self, *, order_id: str, amount_rub: int, currency: str, idempotency_key: str
+    ) -> Checkout: ...
+    def get_payment_status(self, reference: str) -> str: ...
+    def verify_webhook(self, payload: bytes, signature: str) -> ProviderEvent: ...
+    def refund(self, *, reference: str, amount_rub: int, idempotency_key: str) -> str: ...
+    def create_subscription(
+        self,
+        *,
+        order_id: str,
+        amount_rub: int,
+        currency: str,
+        billing_period: str,
+        idempotency_key: str,
+    ) -> Checkout: ...
+    def cancel_subscription(self, reference: str) -> None: ...
+
+
+class DisabledProvider:
+    name = "disabled"
+    test_mode = False
+
+    def _unavailable(self):
+        raise ProviderUnavailable("Онлайн-оплата пока недоступна")
+
+    def create_checkout(self, **kwargs) -> Checkout:
+        return self._unavailable()
+
+    def get_payment_status(self, reference: str) -> str:
+        return self._unavailable()
+
+    def verify_webhook(self, payload: bytes, signature: str) -> ProviderEvent:
+        return self._unavailable()
+
+    def refund(self, **kwargs) -> str:
+        return self._unavailable()
+
+    def create_subscription(self, **kwargs) -> Checkout:
+        return self._unavailable()
+
+    def cancel_subscription(self, reference: str) -> None:
+        self._unavailable()
+
+
+def stub_enabled() -> bool:
+    return (
+        settings.environment in {"dev", "test"}
+        and settings.commerce_allow_stub
+        and settings.commerce_provider == "stub"
+        and len(settings.commerce_webhook_secret) >= 32
+    )
+
+
+class StubProvider:
+    name = "stub"
+    test_mode = True
+
+    def __init__(self):
+        if not stub_enabled():
+            raise ProviderUnavailable("Тестовая оплата выключена")
+
+    def create_checkout(
+        self, *, order_id: str, amount_rub: int, currency: str, idempotency_key: str
+    ) -> Checkout:
+        return Checkout(reference=f"stub:{order_id}")
+
+    def get_payment_status(self, reference: str) -> str:
+        # No external money exists. Only an explicit signed test event can settle an order.
+        return "pending_payment"
+
+    def verify_webhook(self, payload: bytes, signature: str) -> ProviderEvent:
+        expected = hmac.new(
+            settings.commerce_webhook_secret.encode(), payload, hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(expected, signature):
+            raise InvalidWebhook("Неверная подпись уведомления")
+        try:
+            return ProviderEvent.model_validate_json(payload)
+        except ValidationError as exc:
+            raise InvalidWebhook("Некорректное уведомление провайдера") from exc
+
+    def refund(self, *, reference: str, amount_rub: int, idempotency_key: str) -> str:
+        return "pending"  # Settlement still requires an authenticated refunded event.
+
+    def create_subscription(
+        self,
+        *,
+        order_id: str,
+        amount_rub: int,
+        currency: str,
+        billing_period: str,
+        idempotency_key: str,
+    ) -> Checkout:
+        return Checkout(reference=f"stub:{order_id}", subscription_reference=f"sub:{order_id}")
+
+    def cancel_subscription(self, reference: str) -> None:
+        return None
+
+
+def get_provider() -> CommerceProvider:
+    if stub_enabled():
+        return StubProvider()
+    # Register the chosen live adapter here only after its external acceptance gates.
+    return DisabledProvider()
+
+
+def signed_test_event(
+    order_id: str, reference: str, amount_rub: int, status: str, event_id: str
+) -> tuple[bytes, str]:
+    if not stub_enabled():
+        raise ProviderUnavailable("Тестовая оплата выключена")
+    payload = json.dumps(
+        {
+            "event_id": event_id,
+            "order_id": order_id,
+            "reference": reference,
+            "status": status,
+            "amount_rub": amount_rub,
+            "currency": "RUB",
+        },
+        sort_keys=True,
+    ).encode()
+    signature = hmac.new(
+        settings.commerce_webhook_secret.encode(), payload, hashlib.sha256
+    ).hexdigest()
+    return payload, signature
