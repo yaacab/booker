@@ -7,6 +7,7 @@ import { api, getActiveOrg, getToken, isWriteRole } from "@/lib/api";
 import { CHIP } from "@/lib/copy";
 import { formatWhen, guestsLabel, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
+import { ProfileCompareButton } from "@/components/ProfileCompareButton";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
 import { observeDiscovery } from "@/lib/discovery";
@@ -250,6 +251,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
           )}
         </span>
         <FavoriteToggle targetType="venue" targetId={data.id} />
+        <ProfileCompareButton targetType="venue" targetId={data.id} />
         <Link className="btn secondary" href={`/compatibility?venue=${data.id}`}>Проверить совместимость</Link>
         <Link className="btn secondary" href={`/venues/${data.id}/share`}>
           Поделиться

@@ -13,6 +13,7 @@ from booker_api.routers import (
     briefs,
     catalog,
     commerce,
+    comparison,
     compatibility,
     deals,
     event_planning,
@@ -63,6 +64,7 @@ app.include_router(catalog.router)
 app.include_router(presentation.router)
 app.include_router(compatibility.router)
 app.include_router(event_planning.router)
+app.include_router(comparison.router)
 app.include_router(favorites.router)
 app.include_router(services.router)
 app.include_router(deals.router)

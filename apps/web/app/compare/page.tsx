@@ -1,116 +1,77 @@
 "use client";
-
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { api, ApiError } from "@/lib/api";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { api, getToken } from "@/lib/api";
+import { commerceError } from "@/lib/commerce";
+import { money } from "@/lib/format";
+import { loginHref } from "@/lib/next";
 
-type CompareColumn = {
-  id: string;
-  name: string;
-  city: string;
-  category: string;
-  verified: boolean;
-  capacity: number | string | null;
-  honorarium_hint: string;
-};
-
+type Technical = { stage_area_m2?: number | null; power_kw?: number | null; basic_sound?: boolean | null; microphones?: number | null; setup_minutes?: number | null; teardown_minutes?: number | null; required_equipment?: string[] | null; supplied_equipment?: string[] | null; equipment?: string[] | null; restrictions?: string | null };
+type Fit = { status: string; status_label: string; to_resolve: { code: string; label: string; explanation: string }[] };
+type Availability = { status: string; label: string; explanation: string };
+type Hall = { id: string; name: string; capacity: number; capacity_status: string; technical: Technical | null; availability: Availability; compatibility: Fit | null };
+type Column = { id: string; name: string; city: string | null; category: string; category_label: string; verified: boolean; profile_href: string; district?: string | null; metro?: string | null; capacity: number | null; format?: string | null; lineup?: string | null; program?: string | null; duration_minutes?: number | null; genres?: string[]; travel_cities?: string[]; technical?: Technical; rider_text?: string | null; portfolio?: { primary_video: boolean; gallery_count: number; links_count: number }; availability: Availability; buffers_known?: boolean; compatibility: Fit | null; halls: Hall[]; prices: { min_rub: number | null; max_rub: number | null; sources: { tariff_id: string; title: string; honorarium_rub: number; hours?: number | null }[] }; facts: { deals: number; response: string; response_metrics: { sample_size: number; days: number } }; reviews: { count: number; average_rating: number | null; note: string } };
+type Result = { columns: Column[]; note: string; methodology: string };
+type Selection = { requirement_id: string; position: number; resource_type: string; resource_id: string; hall_id: string | null };
+type Plan = { revision: number; context_token: string; state: string; can_manage: boolean; saved_selections: Selection[]; requirements: { id: string; category_code: string; role_label: string; qty: number }[] };
+type Option = { id: string; name: string };
+type EventOption = { id: string; title: string; city: string; status: string };
+const shown = (value: unknown): string => value === null || value === undefined || value === "" ? "Не указано" : typeof value === "boolean" ? value ? "Да" : "Нет" : Array.isArray(value) ? value.length ? value.join(", ") : "Нет" : String(value);
+function Fact({ label, value }: { label: string; value: unknown }) { return <div><dt>{label}</dt><dd>{shown(value)}</dd></div>; }
+function Technique({ data }: { data: Technical | null | undefined }) { return !data ? <p>Технические данные владельцем не подтверждены.</p> : <dl className="compare-facts"><Fact label="Сцена, м²" value={data.stage_area_m2} /><Fact label="Электропитание, кВт" value={data.power_kw} /><Fact label="Базовый звук" value={data.basic_sound} /><Fact label="Микрофоны" value={data.microphones} />{"setup_minutes" in data && <><Fact label="Монтаж, мин" value={data.setup_minutes} /><Fact label="Демонтаж, мин" value={data.teardown_minutes} /><Fact label="Требуется оборудование" value={data.required_equipment} /><Fact label="Привозит исполнитель" value={data.supplied_equipment} /></>}{"equipment" in data && <><Fact label="Оборудование зала" value={data.equipment} /><Fact label="Ограничения" value={data.restrictions === "" ? "Владелец отметил отсутствие дополнительных ограничений" : data.restrictions} /></>}</dl>; }
+function Compatibility({ data }: { data: Fit | null }) { return <div className="compare-fit"><strong>{data?.status_label || "Совместимость пока не проверена"}</strong>{data ? <ul>{data.to_resolve.map((item) => <li key={item.code}>{item.label}: {item.explanation}</li>)}</ul> : <p>Выберите противоположную сторону, зал и временное окно в параметрах сравнения.</p>}</div>; }
 function CompareInner() {
-  const params = useSearchParams();
-  const targetType = (params.get("type") || "artist").toLowerCase();
-  const idsParam = params.get("ids") || "";
-  const ids = idsParam.split(",").map((s) => s.trim()).filter(Boolean);
-  const [error, setError] = useState("");
-  const [fields, setFields] = useState<string[]>([]);
-  const [columns, setColumns] = useState<CompareColumn[]>([]);
-  const [note, setNote] = useState("");
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (ids.length < 2) {
-      setReady(true);
-      setError("Добавьте 2–4 id через ?type=artist|venue&ids=a,b");
-      return;
-    }
-    let cancelled = false;
-    setReady(false);
-    api<{ fields: string[]; columns: CompareColumn[]; note?: string }>(
-      `/compare?target_type=${encodeURIComponent(targetType)}&ids=${encodeURIComponent(ids.join(","))}`,
-    )
-      .then((data) => {
-        if (cancelled) return;
-        setFields(data.fields || []);
-        setColumns(data.columns || []);
-        setNote(data.note || "");
-        setError("");
-      })
-      .catch((e: Error) => {
-        if (!cancelled) setError(e instanceof ApiError ? e.message : "Не удалось сравнить");
-      })
-      .finally(() => {
-        if (!cancelled) setReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [targetType, idsParam]);
-
-  return (
-    <main>
-      <p className="kicker">Букер</p>
-      <h1>Сравнение</h1>
-      <p className="timeline">2–4 кандидата одного типа. Неизвестные поля показаны явно.</p>
-      <p>
-        <Link className="btn secondary" href="/cabinet/customer/favorites">
-          К избранному
-        </Link>
-      </p>
-      {!ready ? <p>Загрузка…</p> : null}
-      {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
-      {columns.length > 0 ? (
-        <div style={{ overflowX: "auto", marginTop: 16 }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Поле</th>
-                {columns.map((c) => (
-                  <th key={c.id}>{c.name}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {fields
-                .filter((f) => f !== "name")
-                .map((field) => (
-                  <tr key={field}>
-                    <td>{field}</td>
-                    {columns.map((c) => {
-                      const raw = (c as Record<string, unknown>)[field];
-                      const value =
-                        raw === null || raw === undefined || raw === ""
-                          ? "неизвестно"
-                          : typeof raw === "boolean"
-                            ? raw
-                              ? "да"
-                              : "нет"
-                            : String(raw);
-                      return <td key={`${c.id}-${field}`}>{value}</td>;
-                    })}
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-          {note ? <p className="timeline">{note}</p> : null}
-        </div>
-      ) : null}
-    </main>
-  );
+  const router = useRouter(); const params = useSearchParams(); const kind = params.get("type") === "venue" ? "venue" : "artist"; const ids = params.get("ids") || "";
+  const [eventId, setEventId] = useState(params.get("event") || ""); const [events, setEvents] = useState<EventOption[]>([]); const [signedIn, setSignedIn] = useState(false);
+  const [start, setStart] = useState(""); const [end, setEnd] = useState(""); const [guests, setGuests] = useState(""); const [city, setCity] = useState("Москва");
+  const [reference, setReference] = useState(params.get(kind === "artist" ? "venue" : "artist") || ""); const [referenceHall, setReferenceHall] = useState("");
+  const [references, setReferences] = useState<Option[]>([]); const [referenceHalls, setReferenceHalls] = useState<Option[]>([]); const [halls, setHalls] = useState<Record<string, string>>({});
+  const [data, setData] = useState<Result | null>(null); const [plan, setPlan] = useState<Plan | null>(null); const [position, setPosition] = useState("");
+  const [retry, setRetry] = useState(0);
+  const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [contextError, setContextError] = useState(""); const [notice, setNotice] = useState("");
+  const load = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true); setError("");
+    if (ids.split(",").filter(Boolean).length < 2) { setData(null); setLoading(false); return; }
+    const query = new URLSearchParams({ target_type: kind, ids });
+    if (eventId) query.set("event_id", eventId);
+    else { if (start && end) { query.set("starts_at", `${start}:00+03:00`); query.set("ends_at", `${end}:00+03:00`); } if (guests) query.set("guest_count", guests); }
+    if (reference) query.set(kind === "artist" ? "venue_id" : "artist_id", reference);
+    if (kind === "artist" && reference && referenceHall) query.set("hall_id", referenceHall);
+    try { const result = await api<Result>(`/compare?${query}`, { signal }); if (!signal?.aborted) setData(result); }
+    catch(e) { if (!signal?.aborted) { setData(null); setError(commerceError(e)); } }
+    finally { if (!signal?.aborted) setLoading(false); }
+  }, [kind, ids, eventId, start, end, guests, reference, referenceHall]);
+  useEffect(() => { const c = new AbortController(); void load(c.signal); return () => c.abort(); }, [load, retry]);
+  useEffect(() => { setSignedIn(Boolean(getToken())); if (!getToken()) return; const c = new AbortController(); void api<{ items: EventOption[] }>("/events", { signal: c.signal }).then((result) => { if (!c.signal.aborted) setEvents(result.items.filter((e) => !["Cancelled", "Completed"].includes(e.status))); }).catch((e) => { if (!c.signal.aborted) setContextError(commerceError(e)); }); return () => c.abort(); }, [retry]);
+  useEffect(() => { setPlan(null); setPosition(""); if (!eventId) return; const c = new AbortController(); void api<Plan>(`/events/${eventId}/matching`, { signal: c.signal }).then((result) => { if (!c.signal.aborted) setPlan(result); }).catch((e) => { if (!c.signal.aborted) setContextError(commerceError(e)); }); const selected = events.find((e) => e.id === eventId); if (selected?.city) setCity(selected.city); return () => c.abort(); }, [eventId, events, retry]);
+  useEffect(() => { const c = new AbortController(); const timer = setTimeout(() => { void api<{ items: Option[]; venues: Option[] }>(`/catalog/search?city=${encodeURIComponent(city)}`, { signal: c.signal }).then((result) => { if (!c.signal.aborted) setReferences((previous) => { const found = kind === "artist" ? result.venues : result.items; return [...found, ...previous.filter((r) => r.id === reference && !found.some((item) => item.id === r.id))]; }); }).catch((e) => { if (!c.signal.aborted) setContextError(commerceError(e)); }); }, 250); return () => { clearTimeout(timer); c.abort(); }; }, [city, kind, retry, reference]);
+  useEffect(() => { setReferenceHalls([]); setReferenceHall(""); if (kind !== "artist" || !reference) return; const c = new AbortController(); void api<{ items: Option[] }>(`/venues/${reference}/halls`, { signal: c.signal }).then((result) => { if (c.signal.aborted) return; setReferenceHalls(result.items); if (result.items.length === 1) setReferenceHall(result.items[0].id); }).catch((e) => { if (!c.signal.aborted) setContextError(commerceError(e)); }); return () => c.abort(); }, [kind, reference, retry]);
+  useEffect(() => { if (!reference) return; const c = new AbortController(); void api<Option>(`/${kind === "artist" ? "venues" : "artists"}/${reference}`, { signal: c.signal }).then((profile) => { if (!c.signal.aborted) setReferences((items) => items.some((i) => i.id === profile.id) ? items : [profile, ...items]); }).catch((e) => { if (!c.signal.aborted) setContextError(commerceError(e)); }); return () => c.abort(); }, [kind, reference, retry]);
+  function removeCandidate(id?: string) { const next = id ? ids.split(",").map((s) => s.trim()).filter((s) => s !== id) : []; try { localStorage.setItem(`booker.${kind}-compare`, JSON.stringify(next)); } catch { /* URL selection stays usable */ } const query = new URLSearchParams(params.toString()); query.set("ids", next.join(",")); router.replace(`/compare?${query}`); }
+  async function add(column: Column) {
+    if (!plan || !eventId || !position || busy) return; setBusy(true); setError(""); setNotice("");
+    const [requirement_id, index] = position.split(":"); const hall_id = kind === "venue" ? halls[column.id] || (column.halls.length === 1 ? column.halls[0].id : null) : null;
+    if (kind === "venue" && !hall_id) { setError("Выберите конкретный зал перед добавлением."); setBusy(false); return; }
+    const selection = { requirement_id, position: Number(index), resource_type: kind, resource_id: column.id, hall_id };
+    try { const result = await api<Plan>(`/events/${eventId}/plan`, { method: "PUT", body: JSON.stringify({ expected_revision: plan.revision, expected_context: plan.context_token, selections: [...plan.saved_selections.filter((s) => s.requirement_id !== requirement_id || s.position !== selection.position), selection] }) }); setPlan(result); setNotice(`${column.name}: добавлено в предварительный состав. Дата не удерживается, заявки ещё не отправлены.`); }
+    catch(e) { setError(commerceError(e)); } finally { setBusy(false); }
+  }
+  return <main className="comparison-page"><p className="kicker">Выбор участников</p><h1>Сравнение {kind === "artist" ? "исполнителей" : "площадок"}</h1><p>Факты и условия выбранных профилей. Порядок карточек соответствует вашему выбору.</p><p><Link href="/search">Открыть каталог</Link> · <Link href="/cabinet/customer/favorites">К избранному</Link></p><button className="secondary" onClick={() => removeCandidate()}>Сбросить подборку</button>
+    <section className="card compare-context" aria-label="Параметры сравнения"><h2>Для какого события</h2>{contextError && <p role="alert">{contextError}</p>}<div className="compare-inputs"><label>Событие<select value={eventId} onChange={(e) => { setContextError(""); setEventId(e.target.value); }} disabled={!signedIn || busy}><option value="">Без события</option>{events.map((e) => <option key={e.id} value={e.id}>{e.title} · {e.city}</option>)}</select></label>{!eventId && <><label>Начало, по Москве<input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>Окончание, по Москве<input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} /></label><label>Гостей<input type="number" min={1} max={100000} value={guests} onChange={(e) => setGuests(e.target.value)} /></label></>}<label>Город для поиска пары<input value={city} onChange={(e) => setCity(e.target.value)} /></label><label>{kind === "artist" ? "Площадка для проверки райдера" : "Артист для проверки залов"}<select value={reference} onChange={(e) => setReference(e.target.value)}><option value="">Пока не выбрано</option>{references.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>{kind === "artist" && reference && <label>Зал для проверки<select value={referenceHall} onChange={(e) => setReferenceHall(e.target.value)}><option value="">Выберите зал</option>{referenceHalls.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label>}</div>
+      {!eventId && Boolean(start) !== Boolean(end) && <p>Укажите начало и окончание, чтобы проверить весь интервал.</p>}{eventId && <p>Время и гости берутся из сохранённого события. <Link href={`/events/${eventId}#matching`}>Уточнить параметры события</Link></p>}
+      {plan && <><label>Позиция для добавления<select value={position} onChange={(e) => setPosition(e.target.value)} disabled={!plan.can_manage || busy}><option value="">Выберите роль и позицию</option>{plan.requirements.filter((r) => kind === "venue" ? r.category_code === "venue" : r.category_code !== "venue").flatMap((r) => Array.from({ length: r.qty }, (_, i) => <option key={`${r.id}:${i}`} value={`${r.id}:${i}`}>{r.role_label}{r.qty > 1 ? ` · ${i + 1}` : ""}{plan.saved_selections.some((s) => s.requirement_id === r.id && s.position === i) ? " · заменить выбранного" : ""}</option>))}</select></label>{!plan.can_manage && <p>У вас доступ к просмотру события.</p>}{plan.state !== "ready" && <p>Для добавления нужны окно и роли события. Уточните их на странице события.</p>}</>}
+      {!eventId && <p>{signedIn ? <Link href="/events/new">Создать событие для сохранения состава</Link> : <Link href={loginHref(`/compare?type=${kind}&ids=${encodeURIComponent(ids)}`)}>Войти, чтобы добавить участника в событие</Link>}</p>}
+    </section>
+    {loading && <p role="status">Сопоставляем публичные данные и календари…</p>}{error && <p role="alert">{error}</p>}{notice && <p role="status">{notice} <Link href={`/events/${eventId}#matching`}>Открыть состав</Link></p>}
+    {!loading && !data && !error && <p className="empty">Выберите от двух до четырёх профилей: нажмите «Сравнить» на страницах исполнителей или площадок.</p>}
+    {data && <><p>{data.methodology}</p><div className="comparison-grid">{data.columns.map((column) => <article className="card comparison-column" key={column.id} aria-label={`Сравнение: ${column.name}`}><h2><Link href={column.profile_href}>{column.name}</Link></h2><button className="secondary" onClick={() => removeCandidate(column.id)}>Убрать из сравнения</button><p>{column.city} · {column.category_label}</p><strong>{column.availability.label}</strong><p>{column.availability.explanation}</p>{column.buffers_known === false && <p className="matching-warning">Время монтажа или демонтажа не указано — его нужно согласовать.</p>}
+      <p className="matching-amount">{column.prices.min_rub === null || column.prices.max_rub === null ? "Стоимость не указана" : column.prices.min_rub === column.prices.max_rub ? money(column.prices.min_rub) : `${money(column.prices.min_rub)} — ${money(column.prices.max_rub)}`}</p><p>{data.note}</p><details><summary>Опубликованные пакеты</summary><ul>{column.prices.sources.map((p) => <li key={p.tariff_id}>{p.title} · {money(p.honorarium_rub)}{p.hours ? ` · ${p.hours} ч` : ""}</li>)}</ul>{column.prices.sources.length === 0 && <p>Пакеты пока не опубликованы.</p>}</details>
+      <dl className="compare-facts"><Fact label="Верификация профиля" value={column.verified ? "Подтверждена" : "Не подтверждена"} /><Fact label="Завершённые сделки" value={column.facts.deals} /><Fact label="Первое предложение" value={column.facts.response} /><Fact label="Наблюдения для времени ответа" value={`${column.facts.response_metrics.sample_size} за ${column.facts.response_metrics.days} дней`} /><Fact label="Отзывы по завершённым сделкам" value={column.reviews.count} /><Fact label="Средняя оценка" value={column.reviews.average_rating === null ? "Пока недостаточно отзывов" : `${column.reviews.average_rating} из 5`} />{kind === "artist" ? <><Fact label="Формат" value={column.format} /><Fact label="Состав" value={column.lineup} /><Fact label="Длительность, мин" value={column.duration_minutes} /><Fact label="Жанры" value={column.genres?.length ? column.genres : null} /><Fact label="Заявленные города выезда" value={column.travel_cities?.length ? column.travel_cities : null} /><Fact label="Основное видео" value={column.portfolio?.primary_video} /><Fact label="Фотографии в галерее" value={column.portfolio?.gallery_count} /><Fact label="Аудио и видео по ссылкам" value={column.portfolio?.links_count} /></> : <><Fact label="Район" value={column.district} /><Fact label="Метро" value={column.metro} /><Fact label="Максимальная вместимость одного зала" value={column.capacity} /></>}</dl>
+      {kind === "artist" ? <><details><summary>Программа и райдер</summary><p>{shown(column.program)}</p><p>{shown(column.rider_text)}</p><Technique data={column.technical} /></details><Compatibility data={column.compatibility} /></> : <><label>Зал для добавления<select value={halls[column.id] || (column.halls.length === 1 ? column.halls[0].id : "")} onChange={(e) => setHalls({ ...halls, [column.id]: e.target.value })}><option value="">Выберите зал</option>{column.halls.map((h) => <option key={h.id} value={h.id}>{h.name} · {h.capacity} гостей</option>)}</select></label>{column.halls.map((h) => <details key={h.id}><summary>{h.name} · {h.capacity} гостей</summary><p>{h.availability.label}</p>{h.capacity_status === "too_small" && <p>Вместимости недостаточно для указанного числа гостей.</p>}<Technique data={h.technical} /><Compatibility data={h.compatibility} /></details>)}</>}
+      <button className="btn" disabled={busy || loading || !eventId || !plan?.can_manage || plan.state !== "ready" || !position || plan.requirements.find((r) => r.id === position.split(":")[0])?.category_code !== column.category} onClick={() => void add(column)}>Добавить в событие</button>
+    </article>)}</div></>}
+    <p><button className="secondary" disabled={loading} onClick={() => { setContextError(""); setRetry((value) => value + 1); }}>Обновить сравнение</button></p>
+  </main>;
 }
-
-export default function ComparePage() {
-  return (
-    <Suspense fallback={<main><p>Загрузка…</p></main>}>
-      <CompareInner />
-    </Suspense>
-  );
-}
+export default function ComparePage() { return <Suspense fallback={<main><p role="status">Загружаем сравнение…</p></main>}><CompareInner /></Suspense>; }

@@ -209,3 +209,19 @@
 .readiness-overview { margin-block: 24px; min-width: 0; overflow-wrap: anywhere; }
 .readiness-event-grid .card { min-width: 0; }
 @media (max-width: 700px) { .readiness-event-grid { grid-template-columns: minmax(0, 1fr); } }
+.comparison-page { min-width: 0; }
+.compare-context { margin-block: 24px; }
+.compare-inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.comparison-page label { display: grid; gap: 8px; margin-block: 8px; }
+.comparison-page :is(label, select, input) { min-width: 0; max-width: 100%; }
+.comparison-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 18px; margin-block: 24px; }
+.comparison-column { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 10px; }
+.comparison-column > :is(p, h2) { margin-block: 6px; }
+.comparison-column > .btn { margin-top: auto; }
+.compare-facts { margin: 0; }
+.compare-facts > div { border-top: 1px solid var(--workspace-line); padding-block: 12px; }
+.compare-facts dt { font-size: 13px; color: #51604b; }
+.compare-facts dd { margin: 6px 0 0; }
+.comparison-page summary { padding-block: 10px; min-height: 44px; cursor: pointer; }
+.compare-fit { border-top: 1px solid var(--workspace-line); padding-block: 16px; }
+@media (max-width: 700px) { .compare-inputs { grid-template-columns: minmax(0, 1fr); } }

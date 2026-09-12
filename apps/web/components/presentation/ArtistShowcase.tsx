@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ProfileCompareButton } from "@/components/ProfileCompareButton";
 import { api } from "@/lib/api";
 import type { ArtistPresentation } from "@/lib/presentation";
 
@@ -55,8 +56,5 @@ export function ArtistReviews({ artistId }: { artistId: string }) {
 }
 
 export function ArtistCompareButton({ artistId }: { artistId: string }) {
-  const [ids, setIds] = useState<string[]>([]); const [message, setMessage] = useState("");
-  useEffect(() => { try { const stored: unknown = JSON.parse(localStorage.getItem("booker.artist-compare") || "[]"); if (Array.isArray(stored)) setIds(stored.filter((s): s is string => typeof s === "string").slice(0, 4)); } catch { /* optional local selection */ } }, []);
-  function toggle() { const next = ids.includes(artistId) ? ids.filter((id) => id !== artistId) : [...ids, artistId].slice(-4); setIds(next); try { localStorage.setItem("booker.artist-compare", JSON.stringify(next)); } catch { /* in-memory selection remains usable */ } setMessage(next.length < 2 ? "Выберите ещё один профиль для сравнения." : "Можно открыть сравнение выбранных профилей."); }
-  return <><button className="secondary" type="button" aria-pressed={ids.includes(artistId)} onClick={toggle}>{ids.includes(artistId) ? "Убрать из сравнения" : "Сравнить"}</button>{ids.length >= 2 && <Link className="btn secondary" href={`/compare?type=artist&ids=${encodeURIComponent(ids.join(","))}`}>Сравнение ({ids.length})</Link>}{message && <span role="status" className="timeline">{message}</span>}</>;
+  return <ProfileCompareButton targetType="artist" targetId={artistId} />;
 }

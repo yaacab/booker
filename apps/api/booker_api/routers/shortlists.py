@@ -5,7 +5,7 @@ from __future__ import annotations
 import secrets
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -198,64 +198,4 @@ def public_shared_shortlist(token: str, db: Session = Depends(get_db)):
             for it in sorted(row.items, key=lambda i: i.sort_order)
         ],
         "robots": "noindex",
-    }
-
-
-@router.get("/compare")
-def compare_candidates(
-    target_type: str = Query(...),
-    ids: str = Query(..., description="Comma-separated 2–4 ids"),
-    db: Session = Depends(get_db),
-):
-    normalized = target_type.strip().lower()
-    if normalized not in ALLOWED_TYPES:
-        raise HTTPException(400, "target_type: artist|venue")
-    id_list = [x.strip() for x in ids.split(",") if x.strip()]
-    if not (2 <= len(id_list) <= 4):
-        raise HTTPException(400, "Нужно 2–4 id")
-    if len(set(id_list)) != len(id_list):
-        raise HTTPException(400, "Дубликаты id")
-
-    columns: list[dict] = []
-    if normalized == "artist":
-        for aid in id_list:
-            artist = db.get(Artist, aid)
-            if not artist:
-                raise HTTPException(404, f"Артист {aid} не найден")
-            columns.append(
-                {
-                    "id": artist.id,
-                    "name": artist.name,
-                    "city": artist.city or "неизвестно",
-                    "category": getattr(artist, "category", None) or "неизвестно",
-                    "verified": bool(artist.verified),
-                    "capacity": None,
-                    "honorarium_hint": "по запросу",
-                }
-            )
-    else:
-        for vid in id_list:
-            venue = db.get(Venue, vid)
-            if not venue:
-                raise HTTPException(404, f"Площадка {vid} не найдена")
-            halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
-            max_cap = max([h.capacity for h in halls], default=venue.capacity)
-            columns.append(
-                {
-                    "id": venue.id,
-                    "name": venue.name,
-                    "city": venue.city or "неизвестно",
-                    "category": "venue",
-                    "verified": bool(venue.verified),
-                    "capacity": max_cap if max_cap else "неизвестно",
-                    "honorarium_hint": "по запросу",
-                }
-            )
-
-    fields = ["name", "city", "category", "verified", "capacity", "honorarium_hint"]
-    return {
-        "target_type": normalized,
-        "fields": fields,
-        "columns": columns,
-        "note": "Поля без данных помечены как «неизвестно»; цены — только серверный ориентир.",
     }

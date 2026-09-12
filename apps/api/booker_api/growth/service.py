@@ -5,7 +5,7 @@ from datetime import timedelta
 from statistics import median
 
 from fastapi import HTTPException
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -78,13 +78,20 @@ def record_signal(db: Session, kind: str, target_id: str, signal: str, visitor: 
         pass
 
 
+def profile_request_filter(db, kind, target_id):
+    direct = and_(Request.resource_type == kind, Request.resource_id == target_id)
+    if kind == "venue":
+        halls = db.query(VenueHall.id).filter_by(venue_id=target_id)
+        return or_(direct, and_(Request.resource_type == "hall", Request.resource_id.in_(halls)))
+    return direct
+
+
 def response_stats(db: Session, kind: str, target_id: str, days=90):
     observations = (
         db.query(Request.created_at, func.min(Offer.created_at))
         .join(Offer, Offer.request_id == Request.id)
         .filter(
-            Request.resource_type == kind,
-            Request.resource_id == target_id,
+            profile_request_filter(db, kind, target_id),
             Request.created_at >= now() - timedelta(days=days),
         )
         .group_by(Request.id)
@@ -106,18 +113,7 @@ def response_stats(db: Session, kind: str, target_id: str, days=90):
 
 def profile_requests(db, profile):
     kind = "artist" if isinstance(profile, Artist) else "venue"
-    query = db.query(Request).filter_by(resource_type=kind, resource_id=profile.id)
-    if kind == "venue":
-        halls = [h.id for h in db.query(VenueHall).filter_by(venue_id=profile.id)]
-        from sqlalchemy import and_, or_
-
-        query = db.query(Request).filter(
-            or_(
-                and_(Request.resource_type == "venue", Request.resource_id == profile.id),
-                and_(Request.resource_type == "hall", Request.resource_id.in_(halls)),
-            )
-        )
-    return query
+    return db.query(Request).filter(profile_request_filter(db, kind, profile.id))
 
 
 def profile_facts(db: Session, kind: str, target_id: str):
@@ -127,8 +123,7 @@ def profile_facts(db: Session, kind: str, target_id: str):
         .join(Offer, Booking.offer_id == Offer.id)
         .join(Request, Offer.request_id == Request.id)
         .filter(
-            Request.resource_type == kind,
-            Request.resource_id == target_id,
+            profile_request_filter(db, kind, target_id),
             Booking.status == "Completed",
         )
         .count()

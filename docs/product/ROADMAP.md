@@ -43,6 +43,8 @@ Growth, Opportunities, EPK и серверная совместимость с �
 Smart Matching с тремя вариантами и сохраняемым предварительным составом также
 реализован и проверен на desktop/390. Добавлен серверный budget-summary с
 раздельными quote-суммами и ориентирами, EventReadiness/checklist/next action на
-странице события и в кабинете заказчика. Compare V2, collaboration/repeat/Business,
+странице события и в кабинете заказчика. Compare V2 показывает фактические окна,
+пакеты, отзывы и технику выбранных профилей, сохраняет участников в EventPlan.
+Collaboration/repeat/Business,
 полный commercial admin и общая приёмка остаются в работе. Эта ветка не merged
 и не выпущена в production; прежние отметки пилота не доказывают новый launch gate.
