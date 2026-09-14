@@ -52,6 +52,13 @@ for (const width of [1440, 390]) {
       await expect(page.getByRole("heading", { name: "Очередь оператора", exact: true })).toBeVisible();
       const list = page.getByRole("region", { name: "Список обращений", exact: true });
       const row = list.getByRole("article").filter({ hasText: ticket.ticket_number });
+      while (await row.count() === 0 && await list.getByRole("button", { name: "Следующие обращения", exact: true }).count()) {
+        const loaded = page.waitForResponse(response => response.url().includes("/support/tickets?"));
+        await list.getByRole("button", { name: "Следующие обращения", exact: true }).click();
+        await loaded;
+        await expect(list.getByText("Загрузка обращений…", { exact: true })).toHaveCount(0);
+      }
+
       await row.getByRole("button", { name: `Прочитать ${ticket.ticket_number}`, exact: true }).click();
       await expect(row).toContainText("Описание технической проблемы");
       const conversation = row.getByRole("region", { name: "Переписка по обращению", exact: true });
@@ -78,7 +85,18 @@ for (const width of [1440, 390]) {
       await customerConversation.evaluate(el => window.scrollBy({ top: el.getBoundingClientRect().top - (document.querySelector("header.top")?.getBoundingClientRect().height || 0) - 16, behavior: "instant" }));
       await customerPage.screenshot({ path: testInfo.outputPath("support-conversation.png") });
       expect(await customerPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await customerContext.close();
+      await customerPage.goto("/notifications");
+      const inbox = customerPage.getByRole("region", { name: "Входящие уведомления", exact: true });
+      await expect(inbox).toContainText("Непрочитанных: 1.");
+      await expect(inbox).toContainText("Новое сообщение поддержки");
+      await expect(inbox).not.toContainText("Пожалуйста, уточните время");
+      await expect(inbox.getByRole("link", { name: "Открыть", exact: true })).toHaveAttribute("href", "/support");
+      expect(await customerPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await customerPage.screenshot({ path: testInfo.outputPath("notification-inbox.png") });
+      await inbox.getByRole("button", { name: "Отметить прочитанным", exact: true }).click();
+      await expect(inbox).toContainText("Непрочитанных: 0.");
+      await inbox.getByRole("checkbox", { name: "Только непрочитанные", exact: true }).check();
+      await expect(inbox).toContainText("Уведомлений в этой выборке пока нет.");
       await conversation.getByRole("button", { name: "Обновить переписку", exact: true }).click();
       await expect(conversation).toContainText("Ошибка произошла сегодня утром");
       await list.evaluate(el => window.scrollBy({ top: el.getBoundingClientRect().top - (document.querySelector("header.top")?.getBoundingClientRect().height || 0) - 16, behavior: "instant" }));
@@ -88,8 +106,11 @@ for (const width of [1440, 390]) {
       await expect(page.getByRole("status").filter({ hasText: "Обращение закрыто." })).toBeVisible();
       const saved = await getJson<{ status: string }>(request, `/support/tickets/${ticket.id}`, user.token);
       expect(saved.status).toBe("closed");
-      await expect(conversation).toContainText("Переписка сохранена");
-      await expect(conversation.getByRole("textbox")).toHaveCount(0);
+      await customerPage.goto("/support");
+      await customerPage.getByRole("button", { name: `Прочитать ${ticket.ticket_number}`, exact: true }).click();
+      await expect(customerConversation).toContainText("Переписка сохранена");
+      await expect(customerConversation.getByRole("textbox")).toHaveCount(0);
+      await customerContext.close();
     });
   });
 }

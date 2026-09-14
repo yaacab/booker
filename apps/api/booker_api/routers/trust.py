@@ -356,5 +356,12 @@ def send_support_message(ticket_id: str, body: ReplyIn, user: User = Depends(sup
     db.add(row); db.flush()
     audit(db, actor_user_id=user.id, action="support.message.created", entity_type="support_ticket", entity_id=ticket.id,
         payload={"message_id": row.id, "author_role": row.author_role})
+    from booker_api.notifications import Channel, Notification, notify
+
+    recipients = [ticket.author_user_id] if user.is_platform_admin else [u.id for u in db.query(User).filter_by(is_platform_admin=True).all()]
+    notify(db, actor_user_id=user.id, notifications=[Notification(channel=Channel.IN_APP,
+        template="support.reply", recipient_user_id=recipient, subject="Новое сообщение поддержки",
+        body=f"В обращении SUP-{ticket.id[:8].upper()} появилось новое сообщение. Откройте переписку в поддержке.",
+        entity_type="support_reply", entity_id=row.id, metadata={"href": "/support"}) for recipient in recipients if recipient != user.id])
     db.commit(); db.refresh(row)
     return reply_payload(row)

@@ -41,9 +41,13 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [inboxError, setInboxError] = useState(false);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [inboxRefresh, setInboxRefresh] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<
-    { id: string; subject?: string | null; body?: string | null }[]
+    { id: string; subject?: string | null; body?: string | null; href?: string | null }[]
   >([]);
   const path = usePathname();
   // Флаг студии зависит от window.location.search — считаем только после маунта,
@@ -78,10 +82,22 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       setNotificationsOpen(false);
       return;
     }
-    void api<{ items: { id: string; subject?: string | null; body?: string | null }[] }>("/notifications")
-      .then((res) => setNotifications(res.items || []))
-      .catch(() => setNotifications([]));
-  }, [path, authed]);
+    const c = new AbortController(); setInboxLoading(true);
+    void api<{ items: { id: string; subject?: string | null; body?: string | null; href?: string | null }[]; unread_count: number }>("/notifications?limit=5", { signal: c.signal })
+      .then(res => { if (!c.signal.aborted) { setNotifications(res.items || []); setUnreadCount(res.unread_count); setInboxError(false); } })
+      .catch(() => { if (!c.signal.aborted) setInboxError(true); })
+      .finally(() => { if (!c.signal.aborted) setInboxLoading(false); });
+    return () => c.abort();
+  }, [path, authed, inboxRefresh]);
+
+  useEffect(() => {
+    if (!authed) return;
+    const refresh = () => setInboxRefresh(v => v + 1);
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener("booker:inbox-changed", refresh);
+    window.addEventListener("focus", refresh);
+    return () => { clearInterval(timer); window.removeEventListener("booker:inbox-changed", refresh); window.removeEventListener("focus", refresh); };
+  }, [authed]);
 
   useEffect(() => {
     setFullScreenStudio(path === "/events/new" && isEventStudioMapV1());
@@ -207,19 +223,20 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                   type="button"
                   className="linkish"
                   aria-expanded={notificationsOpen}
-                  onClick={() => setNotificationsOpen((open) => !open)}
+                  onClick={() => { setNotificationsOpen(open => !open); setInboxRefresh(v => v + 1); }}
                 >
                   Уведомления
-                  {notifications.length > 0 ? (
+                  {unreadCount > 0 ? (
                     <span className="chip wait" style={{ marginLeft: 6 }}>
-                      {notifications.length}
+                      {unreadCount}
                     </span>
                   ) : null}
                 </button>
                 {notificationsOpen ? (
                   <div
                     className="card surface-glass"
-                    role="menu"
+                    role="region"
+                    aria-label="Последние уведомления"
                     style={{
                       position: "absolute",
                       right: 0,
@@ -233,13 +250,17 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                       padding: 12,
                     }}
                   >
-                    {notifications.length === 0 ? (
+                    <Link href="/notifications" onClick={() => setNotificationsOpen(false)}>Все уведомления</Link>
+                    {inboxLoading && <p role="status">Загрузка…</p>}
+                    {inboxError && <p role="alert">Не удалось обновить уведомления. Откройте список для повтора.</p>}
+                    {!inboxLoading && !inboxError && notifications.length === 0 ? (
                       <p className="timeline">Пока пусто</p>
                     ) : (
                       notifications.map((item) => (
                         <div key={item.id}>
                           <strong>{item.subject || "Уведомление"}</strong>
                           {item.body ? <p className="timeline">{item.body}</p> : null}
+                          {item.href && <Link href={item.href} onClick={() => setNotificationsOpen(false)}>Открыть</Link>}
                         </div>
                       ))
                     )}
@@ -300,7 +321,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </p>
         </footer>
       </div>
-      <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">
+      <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация" style={{ gridTemplateColumns: `repeat(${authed ? 5 : 4}, minmax(0, 1fr))` }}>
         <Link href="/" aria-label="Главная" className={path === "/" ? "on" : ""}>
           Главная
         </Link>
@@ -332,6 +353,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         >
           {isSupply ? "Заявки" : "Сделки"}
         </Link>
+        {authed && <Link href="/notifications" className={path === "/notifications" ? "on" : ""}>Входящие</Link>}
         <Link href={authed ? "/profile" : loginHref("/profile")} className={path.startsWith("/profile") ? "on" : ""}>
           Профиль
         </Link>

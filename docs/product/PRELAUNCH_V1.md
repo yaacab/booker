@@ -1085,3 +1085,52 @@ runtime остаётся в общей приёмке. Уведомления о
   проверены потеря ответа/повтор, обмен сообщениями, закрытие и сохранённая история.
   Desktop/390 снимки переписки просмотрены, горизонтального overflow нет. Сценарий
   уже включён в PR CI. Цель master task ещё не завершена.
+
+### Уведомления: постоянная адресная лента
+
+Добавлена InboxNotification: получатель, dedupe key, шаблон/текст, объект, безопасная
+внутренняя ссылка, created_at/read_at. Существующий `notify` сохраняет in-app запись
+в транзакции исходного действия; внешний provider не требуется. Отключённый
+in_app provider не создаёт новых записей. Старый audit transport сохранён для
+совместимости, но интерфейс больше не использует глобальную выборку журнала.
+
+`GET /notifications` сначала ограничивает данные получателем, затем применяет
+фильтр непрочитанных/offset/limit (до 100), возвращает total и unread_count.
+`POST /notifications/{id}/read` — только получатель, идемпотентно, с audit первого
+изменения. Администратор не получает чужую ленту. URL ограничены внутренними
+путями, переход к самой сделке/событию сохраняет проверки доступа целевого API.
+
+Миграция `a4b5c6d7e8f9_notification_inbox.py` после f3a4b5c6d7e8 переносит валидные
+старые in-app уведомления из audit, удаляет семантические дубли и пропускает
+несуществующих получателей. Старые сообщения password reset переносятся с
+безопасным текстом без токена. Новые запросы восстановления также не кладут
+демо-токен в in-app ленту; ссылка восстановления относится к email transport.
+Старые audit-записи не переписываются.
+
+`/notifications` (noindex) содержит страницы по 25, непрочитанные, отметку прочтения,
+loading/error/retry/empty и переход к объекту. SiteChrome показывает реальное число
+непрочитанных, последние пять и ссылку на весь список; обновляет при навигации,
+возврате фокуса, чтении и раз в минуту. В мобильной навигации есть «Входящие».
+Ответы оператора идут автору обращения, уточнения автора — platform operators;
+уведомление содержит только ссылку/номер, без текста приватного ответа.
+
+Это фундамент раздела 21. Осталось добавить недостающие expiration/payment/blocker/
+replacement notifications, проверить полное покрытие и consent, перевести SMTP
+на доставку из committed outbox и завершить операционную приёмку. Коммерческая
+админка, SEO/security/provider handoff и общая цель также остаются в работе.
+
+API-проверки:
+- `BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/pytest apps/api/tests/test_inbox.py apps/api/tests/test_notifications.py apps/api/tests/test_support_priority.py -q`
+  — **17 passed** (3.46s): 105 чужих уведомлений не вытесняют своё, read IDOR,
+  rollback/dedupe, безопасные ссылки, password-reset privacy, legacy migration.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api`
+  — **380 passed, 2 skipped** (126.74s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint web-lint` — passed.
+- До визуальной правки флажка: `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/support-priority.spec.ts e2e/commercial.spec.ts --workers=1 --reporter=line`
+  — **11 passed** (27.7s). Support E2E расширен входящими: адресность, отсутствие
+  приватного текста, ссылка, чтение, счётчик и пустой unread-фильтр. Уже входит в CI.
+- Финальная сборка после визуальной правки: `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- Повтор `e2e/support-priority.spec.ts` с теми же переменными — **4 passed** (13.0s).
+  Тест учитывает пагинацию накопленной очереди; закрытую историю проверяет автор.
+  Финальные desktop/390 снимки входящих просмотрены, флажок и подпись выровнены,
+  overflow отсутствует. Финальный `make web-lint` — passed.

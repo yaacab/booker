@@ -266,3 +266,10 @@ Payload: `target_type`, `count`, `with_event`; без списка участн�
 
 - `support.message.created`: saved human reply, ticket/message IDs and author role only; no reply text.
 - `support.messages.viewed`: author/operator read a bounded conversation page; ticket ID only.
+
+### Recipient inbox
+
+`notification.read` records the first unread → read transition (notification/user IDs only).
+`notification.in_app` transport audits remain compatible; the UI now reads the indexed
+recipient inbox rather than taking a global slice of the audit log. `support.reply`
+uses a generic message with ticket reference, never the private conversation text.

@@ -23,6 +23,7 @@ from booker_api.routers import (
     growth,
     health,
     identity,
+    inbox,
     opportunities,
     payments,
     presentation,
@@ -59,6 +60,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(health.router)
+
+app.include_router(inbox.router)
 app.include_router(identity.router)
 app.include_router(analytics.router)
 app.include_router(growth.router)

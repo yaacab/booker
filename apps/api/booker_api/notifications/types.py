@@ -20,6 +20,7 @@ class Notification:
     body: str = ""
     entity_type: str = "notification"
     entity_id: str = ""
+    dedupe_key: str | None = None
     metadata: dict = field(default_factory=dict)
 
 

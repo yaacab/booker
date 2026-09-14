@@ -709,6 +709,21 @@ class SupportTicket(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class InboxNotification(Base):
+    __tablename__ = "inbox_notifications"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    recipient_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    dedupe_key: Mapped[str] = mapped_column(String(64), unique=True)
+    template: Mapped[str] = mapped_column(String(64))
+    subject: Mapped[str] = mapped_column(String(255))
+    body: Mapped[str] = mapped_column(Text)
+    entity_type: Mapped[str] = mapped_column(String(32))
+    entity_id: Mapped[str] = mapped_column(String(36))
+    href: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class SupportReply(Base):
     """Private human support conversation, separate from transaction decisions."""
     __tablename__ = "support_replies"

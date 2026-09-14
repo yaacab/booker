@@ -1,5 +1,4 @@
 import hashlib
-import json
 import secrets
 from datetime import timedelta
 
@@ -9,7 +8,7 @@ from sqlalchemy.orm import Session
 from booker_api.composition import ALLOWED_ORG_KINDS, normalize_kind
 from booker_api.config import settings
 from booker_api.db import get_db
-from booker_api.models import AuditLog, Organization, PasswordResetToken, TeamMember, User
+from booker_api.models import Organization, PasswordResetToken, TeamMember, User
 from booker_api.notifications.service import notify
 from booker_api.notifications.types import Channel, Notification
 from booker_api.rate_limit import auth_limiter, client_key, messaging_limiter
@@ -94,7 +93,7 @@ def recover(body: dict, request: Request, db: Session = Depends(get_db)):
     auth_limiter.check(client_key(request, "recover"))
     email = str(body.get("email") or "").strip().lower()
     # Always same response (no account enumeration).
-    ok = {"ok": True, "message": "Если аккаунт существует, инструкция отправлена на почту или во внутренние уведомления."}
+    ok = {"ok": True, "message": "Если аккаунт существует, запрос восстановления доступа принят."}
     if not email:
         return ok
     user = db.query(User).filter(User.email == email).one_or_none()
@@ -130,7 +129,7 @@ def recover(body: dict, request: Request, db: Session = Depends(get_db)):
                 recipient_user_id=user.id,
                 recipient_email=user.email,
                 subject="Сброс пароля",
-                body=f"Токен сброса (для демо без SMTP): {raw}",
+                body="Запрошено восстановление доступа. Используйте ссылку из письма. Если это были не вы, проверьте безопасность аккаунта.",
                 entity_type="user",
                 entity_id=user.id,
             ),
@@ -176,43 +175,6 @@ def recover_confirm(body: dict, request: Request, db: Session = Depends(get_db))
     )
     db.commit()
     return {"ok": True}
-
-
-@router.get("/notifications")
-def list_notifications(
-    user: User = Depends(current_user),
-    db: Session = Depends(get_db),
-    limit: int = 30,
-):
-    """In-app inbox from notification.* audit rows addressed to the current user."""
-    rows = (
-        db.query(AuditLog)
-        .filter(AuditLog.action.in_(("notification.in_app", "notification.email")))
-        .order_by(AuditLog.created_at.desc())
-        .limit(min(max(limit, 1), 100))
-        .all()
-    )
-    items = []
-    for row in rows:
-        try:
-            payload = json.loads(row.payload or "{}")
-        except json.JSONDecodeError:
-            payload = {}
-        if payload.get("recipient_user_id") != user.id:
-            continue
-        items.append(
-            {
-                "id": row.id,
-                "channel": "email" if row.action.endswith("email") else "in_app",
-                "template": payload.get("template"),
-                "subject": payload.get("subject"),
-                "body": payload.get("body"),
-                "entity_type": row.entity_type,
-                "entity_id": row.entity_id,
-                "created_at": row.created_at.isoformat() if row.created_at else None,
-            }
-        )
-    return {"items": items}
 
 
 @router.get("/me")
