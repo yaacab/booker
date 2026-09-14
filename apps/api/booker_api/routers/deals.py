@@ -74,39 +74,29 @@ def _require_open_event(event: Event) -> None:
 
 
 def _open_slot_for_request(db: Session, req: Request) -> AvailabilitySlot | None:
-    if req.resource_type == "artist":
-        return (
-            db.query(AvailabilitySlot)
-            .filter(
-                AvailabilitySlot.resource_type == "artist",
-                AvailabilitySlot.resource_id == req.resource_id,
-                AvailabilitySlot.status == "open",
-            )
-            .first()
-        )
-    if req.resource_type == "hall":
-        return (
-            db.query(AvailabilitySlot)
-            .filter(
-                AvailabilitySlot.resource_type == "hall",
-                AvailabilitySlot.resource_id == req.resource_id,
-                AvailabilitySlot.status == "open",
-            )
-            .first()
-        )
+    from booker_api.compatibility import resource_available
+    from booker_api.presentation import presentation_data
+
+    event = db.get(Event, req.event_id)
+    if not event or not event.ends_at or event.status in {"Completed", "Cancelled"}:
+        return None
+    start, end = aware(event.event_date), aware(event.ends_at)
+    if start <= now() or end <= start:
+        return None
+    resources = [(req.resource_type, req.resource_id)]
+    before = after = 0
     if req.resource_type == "venue":
-        halls = db.query(VenueHall).filter(VenueHall.venue_id == req.resource_id).all()
-        for hall in halls:
-            slot = (
-                db.query(AvailabilitySlot)
-                .filter(
-                    AvailabilitySlot.resource_type == "hall",
-                    AvailabilitySlot.resource_id == hall.id,
-                    AvailabilitySlot.status == "open",
-                )
-                .first()
-            )
-            if slot:
+        resources = [("hall", h.id) for h in db.query(VenueHall).filter_by(venue_id=req.resource_id).order_by(VenueHall.id)]
+    if req.resource_type == "artist":
+        artist = db.get(Artist, req.resource_id)
+        technical = (presentation_data(db, artist)[1].get("technical") or {}) if artist else {}
+        before, after = technical.get("setup_minutes") or 0, technical.get("teardown_minutes") or 0
+    for kind, resource_id in resources:
+        slots = db.query(AvailabilitySlot).filter_by(resource_type=kind, resource_id=resource_id).order_by(AvailabilitySlot.starts_at, AvailabilitySlot.id).all()
+        blocked = [s for s in slots if s.status in {"busy", "held", "confirmed"}]
+        for slot in slots:
+            if slot.status == "open" and resource_available(db, kind, resource_id, start, end,
+                    before=before, after=after, slots=[slot, *blocked]):
                 return slot
     return None
 
@@ -121,18 +111,18 @@ def _slot_matches_request(db: Session, slot: AvailabilitySlot, req: Request) -> 
     return False
 
 
-def _honorarium_for_request(db: Session, req: Request) -> int:
+def _honorarium_for_request(db: Session, req: Request) -> int | None:
     if req.resource_type == "artist":
-        tariff = db.query(ArtistTariff).filter(ArtistTariff.artist_id == req.resource_id).first()
-        return tariff.honorarium_rub if tariff else 100000
+        tariff = db.query(ArtistTariff).filter(ArtistTariff.artist_id == req.resource_id).order_by(ArtistTariff.honorarium_rub, ArtistTariff.id).first()
+        return tariff.honorarium_rub if tariff else None
     if req.resource_type in {"venue", "hall"}:
         venue_id = req.resource_id
         if req.resource_type == "hall":
             hall = db.get(VenueHall, req.resource_id)
             venue_id = hall.venue_id if hall else req.resource_id
-        tariff = db.query(VenueTariff).filter(VenueTariff.venue_id == venue_id).first()
-        return tariff.honorarium_rub if tariff else 220000
-    return 100000
+        tariff = db.query(VenueTariff).filter(VenueTariff.venue_id == venue_id).order_by(VenueTariff.honorarium_rub, VenueTariff.id).first()
+        return tariff.honorarium_rub if tariff else None
+    return None
 
 ALLOWED = {
     "Draft": {"RequestSent"},
@@ -766,6 +756,7 @@ def quick_request(body: dict, user: User = Depends(current_user), db: Session = 
             title=body.get("title") or f"Заявка: {artist.name}",
             city=artist.city,
             event_date=slot.starts_at,
+            ends_at=slot.ends_at,
             guest_count=int(body.get("guest_count") or 50),
             notes=body.get("notes") or "",
             status="Draft",

@@ -6,7 +6,7 @@ export type VenueRequest = {
   offer_id: string | null;
   booking_id: string | null;
   slot_id: string | null;
-  honorarium_rub: number;
+  honorarium_rub: number | null;
 };
 
 export type VenueBooking = {

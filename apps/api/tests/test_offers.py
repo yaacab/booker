@@ -227,6 +227,7 @@ def test_venue_offer_accepts_hall_slot_of_same_venue(client):
             "organization_id": cust_org["id"],
             "title": "Вечер на площадке",
             "event_date": "2026-10-01T18:00:00+00:00",
+            "ends_at": "2026-10-01T23:00:00+00:00",
             "guest_count": 60,
             "budget_rub": 300000,
         },

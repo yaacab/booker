@@ -86,8 +86,10 @@ export type RequestOfferSeed = {
 const EVENT_TITLE = "E2E Корпоратив";
 
 /** Customer org + artist org, event, request — без оффера (для UI path). */
-export async function seedRequestAwaitingOffer(request: APIRequestContext): Promise<RequestOfferSeed> {
+export async function seedRequestAwaitingOffer(request: APIRequestContext, options: { withoutTariff?: boolean } = {}): Promise<RequestOfferSeed> {
   const suffix = Date.now();
+  const start = new Date(Date.now() + 30 * 86400000).toISOString();
+  const end = new Date(Date.now() + 30 * 86400000 + 4 * 3600000).toISOString();
   const customer = await register(request, `e2e-c-${suffix}@booker.test`, "E2E Клиент");
   const owner = await register(request, `e2e-a-${suffix}@booker.test`, "E2E Артист");
 
@@ -104,20 +106,21 @@ export async function seedRequestAwaitingOffer(request: APIRequestContext): Prom
     name: "E2E DJ",
     category: "dj",
   });
-  await postJson(request, `/artists/${artist.id}/tariffs`, owner.token, {
+  if (!options.withoutTariff) await postJson(request, `/artists/${artist.id}/tariffs`, owner.token, {
     title: "Сет",
     honorarium_rub: 80000,
   });
   await postJson(request, "/slots", owner.token, {
     resource_type: "artist",
     resource_id: artist.id,
-    starts_at: "2026-09-15T18:00:00+00:00",
-    ends_at: "2026-09-15T22:00:00+00:00",
+    starts_at: start,
+    ends_at: end,
   });
   const event = await postJson<{ id: string }>(request, "/events", customer.token, {
     organization_id: custOrg.id,
     title: EVENT_TITLE,
-    event_date: "2026-09-15T18:00:00+00:00",
+    event_date: start,
+    ends_at: end,
     guest_count: 50,
     budget_rub: 150000,
   });

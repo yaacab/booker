@@ -1,3 +1,4 @@
+import { RequestOfferForm } from "@/components/cabinet/RequestOfferForm";
 import Link from "next/link";
 import { formatWhen, money } from "@/lib/format";
 import { STATUS_LABEL } from "@/lib/status";
@@ -33,7 +34,7 @@ export function NewRequestsWidget({ requests, role, offerBusy, onSendOffer }: Ne
               <strong>{r.event_title}</strong>
               <span className={`chip ${chipCls(r.status)}`}>{STATUS_LABEL[r.status] || r.status}</span>
               {r.event_date ? <span className="mono">{formatWhen(r.event_date)}</span> : null}
-              <span className="timeline">витрина {money(r.honorarium_rub)} — это ещё не счёт</span>
+              <span className="timeline">витрина {r.honorarium_rub === null ? "тариф не указан" : money(r.honorarium_rub)} — это ещё не счёт</span>
               {r.booking_id ? (
                 <Link className="btn" href={`/deals/${r.booking_id}`}>
                   Открыть Deal Room
@@ -41,9 +42,7 @@ export function NewRequestsWidget({ requests, role, offerBusy, onSendOffer }: Ne
               ) : role === "viewer" ? (
                 <p className="timeline">Только просмотр: оффер отправляет менеджер</p>
               ) : (
-                <button type="button" disabled={offerBusy === r.id} onClick={() => onSendOffer(r)}>
-                  {offerBusy === r.id ? "Отправляем…" : "Отправить предложение"}
-                </button>
+                <RequestOfferForm item={r} busy={offerBusy === r.id} onSend={onSendOffer} />
               )}
             </article>
           </li>

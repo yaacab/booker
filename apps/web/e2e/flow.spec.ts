@@ -38,5 +38,5 @@ test("студия события и каталог доступны", async ({ 
   await page.goto("/events/new");
   await expect(page.getByRole("heading").first()).toBeVisible();
   await page.goto("/search");
-  await expect(page.getByRole("heading", { name: /Свободные артисты/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Найдите свою команду", exact: true })).toBeVisible();
 });
