@@ -347,7 +347,7 @@ export default function AdminPage() {
         </article>
         <article className="card">
           <h2>Поддержка</h2>
-          <p>Пилот: живой оператор, цель ответа в рабочее окно — 30 минут на срыв даты.</p>
+          <p>Открытые обращения, приоритет по тарифу и история закрытия. Решения принимает оператор.</p><p><Link className="btn" href="/support">Открыть очередь поддержки</Link></p>
         </article>
         <article className="card">
           <h2>Воронка пилота</h2>

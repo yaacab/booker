@@ -1,0 +1,66 @@
+import { expect, test } from "@playwright/test";
+import { API_BASE, getJson, injectSession, postJson, register } from "./helpers";
+
+for (const width of [1440, 390]) {
+  test.describe(`Support ${width}px`, () => {
+    test.use({ viewport: { width, height: 900 } });
+    test("free access, priority snapshot, retry and close", async ({ page, request }, testInfo) => {
+      const suffix = `${width}-${Date.now()}`;
+      const user = await register(request, `support-${suffix}@booker.test`, "Анна");
+      const org = await postJson<{ id: string }>(request, "/orgs", user.token, { name: "Агентство", kind: "customer" });
+      await injectSession(page, user.token, org.id);
+      await page.goto("/support");
+      const form = page.getByRole("form", { name: "Новое обращение", exact: true });
+      const list = page.getByRole("region", { name: "Список обращений", exact: true });
+      await expect(list).toContainText("обращений пока нет");
+      await form.getByLabel("Тема", { exact: true }).fill("Вопрос до оформления подписки");
+      await form.getByLabel("Описание", { exact: true }).fill("Хочу уточнить порядок оформления события.");
+      await form.getByRole("button", { name: "Отправить обращение", exact: true }).click();
+      await expect(list).toContainText("Обычная очередь");
+      const order = await postJson<{ id: string }>(request, `/commerce/organizations/${org.id}/orders`, user.token, { plan_code: "customer_business", billing_period: "monthly", idempotency_key: `support-${suffix}` });
+      await postJson(request, `/commerce/orders/${order.id}/test-complete`, user.token, { status: "paid" });
+      let loseResponse = true;
+      await page.route(`${API_BASE}/support/tickets`, async route => { if (route.request().method() === "POST" && loseResponse) { loseResponse = false; expect((await route.fetch()).status()).toBe(201); await route.abort("failed"); } else await route.continue(); });
+      await form.getByRole("combobox", { name: "Категория", exact: true }).selectOption("payment");
+      await form.getByLabel("Тема", { exact: true }).fill("Уточнение по документам");
+      await form.getByLabel("Описание", { exact: true }).fill("Прошу проверить состав документов. Решение остаётся за оператором.");
+      await form.getByRole("button", { name: "Отправить обращение", exact: true }).click();
+      await expect(page.getByRole("alert")).toBeVisible();
+      await form.getByRole("button", { name: "Отправить обращение", exact: true }).click();
+      await expect(list.getByRole("article")).toHaveCount(2);
+      const ticket = list.getByRole("article").filter({ has: page.getByRole("heading", { name: "Уточнение по документам", exact: true }) });
+      await expect(ticket).toContainText("Приоритетная очередь");
+      await ticket.getByRole("button", { name: /^Прочитать/ }).click();
+      await expect(ticket).toContainText("Решение остаётся за оператором.");
+      const data = await getJson<{ total: number; items: { id: string; priority: boolean }[] }>(request, "/support/tickets", user.token);
+      expect(data.total).toBe(2); expect(data.items.filter(t => t.priority)).toHaveLength(1);
+      await list.evaluate(el => window.scrollBy({ top: el.getBoundingClientRect().top - (document.querySelector("header.top")?.getBoundingClientRect().height || 0) - 16, behavior: "instant" }));
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath("support-priority.png") });
+      await ticket.getByRole("button", { name: /^Закрыть/ }).click();
+      await list.getByRole("combobox", { name: "Состояние обращений", exact: true }).selectOption("closed");
+      await expect(list.getByRole("article")).toHaveCount(1);
+      await expect(list).toContainText("Закрыто");
+    });
+    test("operator reads and closes the support queue", async ({ page, request }, testInfo) => {
+      const suffix = `${width}-${Date.now()}`;
+      const user = await register(request, `support-queue-${suffix}@booker.test`, "Заказчик");
+      const ticket = await postJson<{ id: string; ticket_number: string }>(request, "/support/tickets", user.token, { category: "technical", subject: `Проверка оператора ${suffix}`, body: "Описание технической проблемы для живого оператора." });
+      const login = await postJson<{ token: string }>(request, "/auth/login", "", { email: "admin@booker.test", password: "password1" });
+      await injectSession(page, login.token, "");
+      await page.goto("/support");
+      await expect(page.getByRole("heading", { name: "Очередь оператора", exact: true })).toBeVisible();
+      const list = page.getByRole("region", { name: "Список обращений", exact: true });
+      const row = list.getByRole("article").filter({ hasText: ticket.ticket_number });
+      await row.getByRole("button", { name: `Прочитать ${ticket.ticket_number}`, exact: true }).click();
+      await expect(row).toContainText("Описание технической проблемы");
+      await list.evaluate(el => window.scrollBy({ top: el.getBoundingClientRect().top - (document.querySelector("header.top")?.getBoundingClientRect().height || 0) - 16, behavior: "instant" }));
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath("support-operator.png") });
+      await row.getByRole("button", { name: `Закрыть ${ticket.ticket_number}`, exact: true }).click();
+      await expect(page.getByRole("status").filter({ hasText: "Обращение закрыто." })).toBeVisible();
+      const saved = await getJson<{ status: string }>(request, `/support/tickets/${ticket.id}`, user.token);
+      expect(saved.status).toBe("closed");
+    });
+  });
+}

@@ -703,6 +703,9 @@ class SupportTicket(Base):
     related_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     related_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    priority: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

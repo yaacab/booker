@@ -1012,3 +1012,43 @@ ZIP содержит сохранённые тексты договоров со
 SEO/security/operations/provider handoff и итоговая приёмка всей цели остаются в работе.
 Полный `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` после изменений:
 **370 passed, 2 skipped** (87.16s).
+
+### Поддержка: приоритетная очередь и безопасная отправка
+
+Расширены существующие `/support/tickets` POST/GET и `/{id}/close`, добавлен
+`GET /support/tickets/{id}` для защищённого чтения текста. Сервер сохраняет
+`support.priority` при создании; downgrade/expiry не переписывает принятую
+очередь. Обычные пользователи видят только собственные обращения, оператор
+платформы — очередь с фильтром состояния, страницами до 100 и FIFO внутри
+приоритетных/обычных открытых обращений. Административный доступ использует
+существующую проверку TOTP-сессии при включённом enforcement.
+
+`Idempotency-Key` связывается с автором и fingerprint содержимого/организации;
+изменённое содержимое даёт 409. UI сохраняет ключ для повтора после потери ответа.
+Старые клиенты без заголовка совместимы. Закрытие идемпотентно с единственной
+записью аудита перехода. Тексты обращений не попадают в audit payload.
+
+Миграция `e2f3a4b5c6d7_support_priority.py`: priority snapshot и ключ/fingerprint
+отправки; существующие данные сохраняются с обычным приоритетом. SQLite
+upgrade/downgrade/upgrade проверены на сохранённом старом обращении.
+PostgreSQL runtime-проверка остаётся частью общей приёмки.
+
+`/support`: русские категории/статусы, loading/error/empty, чтение текста,
+закрытие, фильтры, страницы и выбор организации через профиль. `/admin`
+содержит переход к очереди. Срок ответа не выдумывается. Следующее улучшение
+для полной операционной готовности — переписка автора с оператором в обращении
+и доставка уведомлений; текущая очередь обеспечивает чтение/закрытие.
+
+Проверки:
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api` — **375 passed, 2 skipped** (147.15s).
+  Первый прогон без изоляции: 374 passed, 2 skipped, 1 setup error (`database is locked`)
+  при одновременной подготовке E2E-базы; повтор изолировал startup-базу в памяти.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/support-priority.spec.ts --workers=1 --reporter=line`
+  — **4 passed** (11.6s): Free/Business, потерянный ответ, чтение/закрытие автора
+  и оператора, desktop/390. Все четыре снимка просмотрены, overflow отсутствует.
+  Новая E2E-база создана полным Alembic upgrade head. Сценарий включён в PR CI.
+
+Общая цель остаётся активной: ответы поддержки/уведомления, коммерческая админка,
+SEO/security/operations/provider handoff и полная приёмка ещё не завершены.

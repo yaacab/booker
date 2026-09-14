@@ -256,3 +256,10 @@ Payload: `target_type`, `count`, `with_event`; без списка участн�
 
 - `business.report_viewed`: organization-scoped event cohort report; no personal supplier ranking.
 - `business.documents_exported`: selected event and contract counts only; no document text, signatures or OTPs in audit payload.
+
+### Support queue
+
+- `support.ticket.created`: category, related type and server-derived priority snapshot; no subject/body.
+- `support.queue.viewed`: platform operator viewed a filtered queue; state only.
+- `support.ticket.viewed`: author/operator read the ticket body; identifiers only.
+- `support.ticket.closed`: actual first transition to closed; retries do not duplicate audit.

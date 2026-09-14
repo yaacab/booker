@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+import hashlib
+import json
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import case, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from booker_api.commerce.entitlements import get_entitlements
 from booker_api.db import get_db
 from booker_api.models import Organization, SupportTicket, User, Venue, VenueOwnershipClaim
-from booker_api.security import audit, current_user, require_org_member
+from booker_api.rate_limit import analytics_limiter, messaging_limiter
+from booker_api.security import (
+    AuthContext,
+    audit,
+    auth_context,
+    current_user,
+    ensure_admin_2fa_session,
+    require_org_member,
+)
 
 router = APIRouter(tags=["trust"])
 
@@ -39,6 +53,13 @@ class SupportIn(BaseModel):
     body: str = Field(min_length=3, max_length=8000)
     related_type: str | None = Field(default=None, max_length=32)
     related_id: str | None = Field(default=None, max_length=36)
+
+    @field_validator("subject", "body")
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        if len(value.strip()) < 3:
+            raise ValueError("Введите не менее трёх символов")
+        return value.strip()
 
     @field_validator("category")
     @classmethod
@@ -163,92 +184,107 @@ def list_venue_claims(
     }
 
 
-@router.post("/support/tickets", status_code=status.HTTP_201_CREATED)
-def create_support_ticket(
-    body: SupportIn,
-    user: User = Depends(current_user),
-    db: Session = Depends(get_db),
-    x_booker_org: str | None = Header(default=None, alias="X-Booker-Org"),
-):
-    org_id = _resolve_org(db, user, body.organization_id, x_booker_org, required=False)
-    row = SupportTicket(
-        author_user_id=user.id,
-        organization_id=org_id,
-        category=body.category,
-        subject=body.subject.strip(),
-        body=body.body.strip(),
-        related_type=(body.related_type or "").strip() or None,
-        related_id=(body.related_id or "").strip() or None,
-        status="open",
-    )
-    db.add(row)
-    db.flush()
-    audit(
-        db,
-        actor_user_id=user.id,
-        action="support.ticket.created",
-        entity_type="support_ticket",
-        entity_id=row.id,
-        payload={"category": body.category, "related_type": row.related_type},
-    )
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "ticket_number": f"SUP-{row.id[:8].upper()}",
-        "category": row.category,
-        "subject": row.subject,
-        "status": row.status,
+def support_user(request: Request, ctx: AuthContext = Depends(auth_context), db: Session = Depends(get_db)):
+    if ctx.user.is_platform_admin:
+        ensure_admin_2fa_session(request, db, ctx.user, ctx.session)
+    return ctx.user
+
+
+def ticket_payload(row, detail=False):
+    result = {"id": row.id, "ticket_number": f"SUP-{row.id[:8].upper()}",
+        "category": row.category, "subject": row.subject, "status": row.status,
+        "priority": row.priority, "related_type": row.related_type, "related_id": row.related_id,
         "created_at": row.created_at.isoformat() if row.created_at else None,
-        "escalation": "human",
-    }
+        "escalation": "human"}
+    if detail:
+        result["body"] = row.body
+    return result
+
+
+@router.post("/support/tickets", status_code=status.HTTP_201_CREATED)
+def create_support_ticket(body: SupportIn, user: User = Depends(support_user), db: Session = Depends(get_db),
+    x_booker_org: str | None = Header(default=None, alias="X-Booker-Org"),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", min_length=8, max_length=128)):
+    org_id = _resolve_org(db, user, body.organization_id, x_booker_org, required=False)
+    messaging_limiter.check(f"support-create:{user.id}")
+    key = hashlib.sha256(f"{user.id}:{idempotency_key}".encode()).hexdigest() if idempotency_key else None
+    fingerprint = hashlib.sha256(json.dumps({**body.model_dump(), "organization_id": org_id}, sort_keys=True).encode()).hexdigest()
+
+    def reuse(row):
+        if row.request_fingerprint != fingerprint:
+            raise HTTPException(409, "Содержимое обращения изменилось. Отправьте его как новое")
+        return ticket_payload(row)
+
+    if key:
+        existing = db.query(SupportTicket).filter_by(idempotency_key=key).one_or_none()
+        if existing:
+            return reuse(existing)
+    priority = bool(org_id and get_entitlements(db, org_id)["features"].get("support.priority"))
+    row = SupportTicket(author_user_id=user.id, organization_id=org_id, category=body.category,
+        subject=body.subject, body=body.body, related_type=(body.related_type or "").strip() or None,
+        related_id=(body.related_id or "").strip() or None, status="open", priority=priority,
+        idempotency_key=key, request_fingerprint=fingerprint)
+    db.add(row)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        existing = db.query(SupportTicket).filter_by(idempotency_key=key).one_or_none() if key else None
+        if existing:
+            return reuse(existing)
+        raise
+    audit(db, actor_user_id=user.id, action="support.ticket.created", entity_type="support_ticket",
+        entity_id=row.id, payload={"category": body.category, "related_type": row.related_type, "priority": priority})
+    db.commit(); db.refresh(row)
+    return ticket_payload(row)
 
 
 @router.get("/support/tickets")
-def list_my_support_tickets(
-    user: User = Depends(current_user),
-    db: Session = Depends(get_db),
-):
+def list_my_support_tickets(user: User = Depends(support_user), db: Session = Depends(get_db),
+    state: str = Query(default="all", pattern="^(all|open|closed)$"), offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=25, ge=1, le=100)):
+    analytics_limiter.check(f"support-list:{user.id}")
     q = db.query(SupportTicket)
     if not user.is_platform_admin:
         q = q.filter(SupportTicket.author_user_id == user.id)
-    rows = q.order_by(SupportTicket.created_at.desc()).limit(100).all()
-    return {
-        "items": [
-            {
-                "id": r.id,
-                "ticket_number": f"SUP-{r.id[:8].upper()}",
-                "category": r.category,
-                "subject": r.subject,
-                "status": r.status,
-                "related_type": r.related_type,
-                "related_id": r.related_id,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
-            for r in rows
-        ]
-    }
+    if state != "all":
+        q = q.filter(SupportTicket.status == state)
+    total = q.count()
+    if user.is_platform_admin:
+        # Open before closed, priority before standard, FIFO within each queue.
+        q = q.order_by(case((SupportTicket.status == "open", 0), else_=1), SupportTicket.priority.desc(), SupportTicket.created_at, SupportTicket.id)
+        audit(db, actor_user_id=user.id, action="support.queue.viewed", entity_type="user", entity_id=user.id, payload={"state": state})
+    else:
+        q = q.order_by(SupportTicket.created_at.desc(), SupportTicket.id)
+    rows = q.offset(offset).limit(limit).all()
+    result = {"items": [ticket_payload(row) for row in rows], "total": total, "offset": offset, "is_operator": user.is_platform_admin}
+    db.commit()
+    return result
 
 
-@router.post("/support/tickets/{ticket_id}/close")
-def close_support_ticket(
-    ticket_id: str,
-    user: User = Depends(current_user),
-    db: Session = Depends(get_db),
-):
+@router.get("/support/tickets/{ticket_id}")
+def support_ticket_detail(ticket_id: str, user: User = Depends(support_user), db: Session = Depends(get_db)):
     row = db.get(SupportTicket, ticket_id)
     if not row:
         raise HTTPException(404, "Обращение не найдено")
     if row.author_user_id != user.id and not user.is_platform_admin:
         raise HTTPException(403, "Нет доступа")
-    row.status = "closed"
-    audit(
-        db,
-        actor_user_id=user.id,
-        action="support.ticket.closed",
-        entity_type="support_ticket",
-        entity_id=row.id,
-        payload={},
-    )
+    analytics_limiter.check(f"support-detail:{user.id}")
+    audit(db, actor_user_id=user.id, action="support.ticket.viewed", entity_type="support_ticket", entity_id=row.id, payload={})
     db.commit()
-    return {"id": row.id, "status": row.status}
+    return ticket_payload(row, detail=True)
+
+
+@router.post("/support/tickets/{ticket_id}/close")
+def close_support_ticket(ticket_id: str, user: User = Depends(support_user), db: Session = Depends(get_db)):
+    row = db.get(SupportTicket, ticket_id)
+    if not row:
+        raise HTTPException(404, "Обращение не найдено")
+    if row.author_user_id != user.id and not user.is_platform_admin:
+        raise HTTPException(403, "Нет доступа")
+    messaging_limiter.check(f"support-close:{user.id}")
+    changed = db.execute(update(SupportTicket).where(SupportTicket.id == row.id, SupportTicket.status != "closed").values(status="closed"))
+    if changed.rowcount:
+        audit(db, actor_user_id=user.id, action="support.ticket.closed", entity_type="support_ticket", entity_id=row.id, payload={})
+    db.commit()
+    return {"id": row.id, "status": "closed"}
