@@ -6,6 +6,7 @@ import {
   injectSession,
   postJson,
   seedNegotiation,
+  register,
   seedRequestAwaitingOffer,
   seedSameSlotHoldRace,
 } from "./helpers";
@@ -192,7 +193,7 @@ test.describe("Deal path E07–E09", () => {
       await page.getByRole("button", { name: "Подтвердить условия" }).click();
       await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
 
-      await page.getByRole("button", { name: "Удержать дату" }).click();
+      await page.locator(".deal-toolbar").getByRole("button", { name: "Удержать дату", exact: true }).click();
       await expect(page.getByText("Дата удерживается").first()).toBeVisible({ timeout: 10_000 });
 
       const room = await getJson<{ hold?: { status: string }; quote: DealRoomQuote }>(
@@ -244,4 +245,40 @@ test.describe("Deal path E07–E09", () => {
 
 function sortedStatuses(codes: number[]): number[] {
   return [...codes].sort((a, b) => a - b);
+}
+
+for (const width of [1440, 390]) {
+  test(`Viewer cannot hold an acknowledged deal at ${width}px`, async ({ page, request }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const ctx = await seedNegotiation(request);
+    await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: 'supplier' });
+    await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.customer.token, { side: 'customer' });
+    const suffix = `${width}-${Date.now()}`;
+    const email = `hold-viewer-${suffix}@booker.test`;
+    const viewer = await register(request, email, 'Наблюдатель');
+    const order = await postJson<{ id: string }>(request, `/commerce/organizations/${ctx.owner.orgId}/orders`, ctx.owner.token, { plan_code: 'artist_pro', billing_period: 'monthly', idempotency_key: suffix });
+    await postJson(request, `/commerce/orders/${order.id}/test-complete`, ctx.owner.token, { status: 'paid' });
+    const secret = (await import('node:crypto')).randomBytes(32).toString('hex');
+    await postJson(request, `/orgs/${ctx.owner.orgId}/team/invitations`, ctx.owner.token, { email, role: 'viewer', secret });
+    const accepted = await request.post(`${API_BASE}/team-invitations/accept`, { headers: { Authorization: `Bearer ${viewer.token}`, 'X-Team-Invitation': secret } });
+    expect(accepted.ok()).toBe(true);
+    await injectSession(page, viewer.token, ctx.owner.orgId);
+    await page.goto(`/deals/${ctx.bookingId}`);
+    await expect(page.getByRole('button', { name: 'Удержать дату', exact: true }).first()).toBeDisabled();
+    const denied = await request.post(`${API_BASE}/bookings/${ctx.bookingId}/hold`, { headers: { Authorization: `Bearer ${viewer.token}` } });
+    expect(denied.status()).toBe(403);
+    const before = await getJson<{ status: string; can_hold: boolean }>(request, `/deal-room/${ctx.bookingId}`, ctx.owner.token);
+    expect(before.status).toBe('Negotiation');
+    expect(before.can_hold).toBe(true);
+    await injectSession(page, ctx.owner.token, ctx.owner.orgId);
+    await page.goto(`/deals/${ctx.bookingId}`);
+    const holdButton = page.getByRole('button', { name: 'Удержать дату', exact: true }).first();
+    await expect(holdButton).toBeEnabled();
+    await page.screenshot({ path: testInfo.outputPath('hold-action.png') });
+    await holdButton.click();
+    await expect.poll(async () => (await getJson<{ status: string }>(request, `/deal-room/${ctx.bookingId}`, ctx.owner.token)).status).toBe('DateHeld');
+    await page.reload();
+    if (width === 390) await expect(page.getByRole('button', { name: 'Удержать дату', exact: true })).toHaveCount(0);
+    else await expect(page.getByRole('button', { name: 'Удержать дату', exact: true }).first()).toBeDisabled();
+  });
 }

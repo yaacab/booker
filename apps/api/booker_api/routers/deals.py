@@ -1108,6 +1108,13 @@ def ack_offer(
 
 
 def _assert_hold_ready(db: Session, booking: Booking) -> OfferVersion:
+    event = db.get(Event, booking.event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
+    db.refresh(event)
+    _require_open_event(event)
+    db.refresh(booking)
     offer = db.get(Offer, booking.offer_id)
     version = db.get(OfferVersion, offer.active_version_id) if offer else None
     if not version or not (version.customer_ack and version.supplier_ack):
@@ -1180,7 +1187,7 @@ def hold_booking(
     elif membership_ok(db, user, cust_org):
         require_org_writer(db, user, cust_org)
     elif membership_ok(db, user, sup_org):
-        require_org_member(db, user, sup_org)
+        require_org_writer(db, user, sup_org)
     else:
         raise HTTPException(403, "Нет доступа")
     _assert_hold_ready(db, booking)
@@ -1420,6 +1427,10 @@ def deal_room(
     payment_writer = user.is_platform_admin or bool(
         customer_member and customer_member.role in {"owner", "admin", "manager"}
     )
+    hold_member = customer_member or membership(db, user.id, req.supplier_org_id)
+    hold_writer = user.is_platform_admin or bool(hold_member and hold_member.role in {"owner", "admin", "manager"})
+    can_hold = bool(hold_writer and event.status not in {"Completed", "Cancelled"}
+        and booking.status == "Negotiation" and version and version.customer_ack and version.supplier_ack)
     capabilities = payment_capabilities()
     capabilities["can_create"] = bool(
         payment_writer and capabilities["available"] and booking.status == "AwaitingPayment"
@@ -1440,6 +1451,7 @@ def deal_room(
         "status": booking.status,
         "role": role,
         "workspace_kind": workspace_kind,
+        "can_hold": can_hold,
         "event_title": event.title,
         "tabs": ["chat", "terms", "documents", "payments", "dispute"],
         "dispute_categories": [
@@ -1449,7 +1461,7 @@ def deal_room(
             {"id": "payment", "label": "Платёж"},
             {"id": "cancel", "label": "Отмена"},
         ],
-        "next_step": _next_step(booking.status),
+        "next_step": ("Проверить доступность и удержать дату" if booking.status == "Negotiation" and version and version.customer_ack and version.supplier_ack else _next_step(booking.status)),
         "participants": [
             {"role": "customer", "name": cust_org.name if cust_org else "Заказчик", "duty": "оплата и условия"},
             {"role": "supplier", "name": sup_org.name if sup_org else "Исполнитель", "duty": "дата и услуга"},

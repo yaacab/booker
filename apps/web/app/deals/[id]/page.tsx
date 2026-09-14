@@ -30,6 +30,7 @@ type Room = {
   requirement_id?: string | null;
   status: string;
   role: "customer" | "supplier";
+  can_hold?: boolean;
   workspace_kind?: string;
   next_step: string;
   event_title?: string;
@@ -128,7 +129,8 @@ export default function DealPage() {
   const side = current.role;
   const accentKind = orgKindToDealRoomAccentKind(current.workspace_kind ?? (side === "customer" ? "customer" : "artist"));
   const people = current.participants ?? [];
-  const action = nextAction(current.status);
+  const action = current.status === "Negotiation" && current.quote.customer_ack && current.quote.supplier_ack
+    ? { kind: "hold", label: "Удержать дату" } : nextAction(current.status);
   const idx = STAGE_ORDER.indexOf(current.status);
   const inPipeline = idx >= 0;
   const journal = STAGE_ORDER.map((s: string, i: number) => {
@@ -144,6 +146,7 @@ export default function DealPage() {
   const paymentProvider = current.payment?.provider;
   const isStubPayment = Boolean(current.payment) && paymentProvider === "stub";
   const paymentCapabilities = current.payment_capabilities;
+  const holdBlocked = action.kind === "hold" && !current.can_hold;
   const paymentBlocked = action.kind === "pay" && !paymentCapabilities?.can_create;
   const paymentStatus = current.payment?.status === "succeeded"
     ? (isStubPayment ? "Тест подтверждён · деньги не списывались" : "Оплата подтверждена")
@@ -169,6 +172,10 @@ export default function DealPage() {
   }
 
   async function runNext() {
+    if (action.kind === "hold") {
+      if (current.can_hold) await act(() => api(`/bookings/${current.booking_id}/hold`, { method: "POST" }));
+      return;
+    }
     if (action.kind === "ack") {
       await act(() => api(`/offers/${current.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) }));
       return;
@@ -313,7 +320,7 @@ export default function DealPage() {
             >
               Подтвердить условия
             </button>
-            <button type="button" className="secondary" onClick={() => void act(() => api(`/bookings/${room.booking_id}/hold`, { method: "POST" }))}>
+            <button type="button" className="secondary" disabled={!room.can_hold} onClick={() => void act(() => api(`/bookings/${room.booking_id}/hold`, { method: "POST" }))}>
               Удержать дату
             </button>
             <button type="button" className="secondary" onClick={() => void act(() => createContract())}>
@@ -551,7 +558,7 @@ export default function DealPage() {
         <aside className="deal-aside surface-glass">
           <p className="kicker">Следующий шаг</p>
           <p>{room.next_step}</p>
-          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked} onClick={() => void runNext()}>
+          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked || holdBlocked} onClick={() => void runNext()}>
             {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : action.label}
           </button>
           {room.contract && action.kind === "contract" ? (
@@ -577,7 +584,7 @@ export default function DealPage() {
           <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
             Предложение
           </button>
-          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked} onClick={() => void runNext()}>
+          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked || holdBlocked} onClick={() => void runNext()}>
             {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : action.label}
           </button>
         </div>

@@ -1231,3 +1231,28 @@ resolution email-очереди, остальные admin/SEO/security/provider 
 quick-request отдельный прогон `pytest tests/test_request_suggestions.py tests/test_offers.py -q`
 — 8 passed (4.34s), включая новый regression этой правки. `make lint`,
 `make web-lint`, `make web-build` прошли. Новых миграций нет.
+
+### Права и состояние события при удержании
+
+Одиночный hold требует пишущей роли как у заказчика, так и у исполнителя.
+Viewer не может зарезервировать дату даже при исторически установленном
+`can_confirm_offer`. Одиночный и atomic hold проверяют, что Event не Completed
+и не Cancelled, перед захватом слотов; Event перечитывается под блокировкой
+записи, а Booking обновляется из БД перед проверкой статуса.
+Отказ не создаёт hold или audit успешного удержания.
+
+Deal Room возвращает `can_hold` с учётом роли, статуса Event/Booking и двух ack.
+Это разрешение на попытку; календарь повторно проверяет сама команда.
+Настольная кнопка учитывает разрешение. На телефоне после двух ack основная
+кнопка переключается на «Удержать дату», а для viewer остаётся неактивной.
+Новой миграции нет. Проверка окна события в прямых командах и сериализация
+остальных мутаций сделки ещё входят в незавершённый security audit.
+
+Проверки hold: `make test-api` — 399 passed, 2 skipped (160.72s);
+после финальной правки текста next_step — 6 focused tests passed (3.38s).
+`make lint`, `make web-lint`, `make web-build` прошли.
+`npx playwright test e2e/deal-path.spec.ts --grep 'Viewer cannot hold|E08:' --workers=1 --reporter=line`
+— 3 passed (12.3s): создание viewer через настоящую тестовую команду,
+отказ API, запрет кнопки, успешное действие владельца desktop/390,
+сброс ack новой версией и повторное согласование. Скриншоты просмотрены;
+сценарии входят в существующий CI-файл deal-path.
