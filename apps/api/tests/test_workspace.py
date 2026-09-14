@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 
 
 def test_active_org_and_performer_alias(client):
@@ -48,6 +48,7 @@ def test_viewer_cannot_create_event(client):
         json={"name": "Клиент", "kind": "customer"},
         headers=auth_header(owner["token"]),
     ).json()
+    grant_team_plan(client, org['id'])
     add = client.post(
         f"/orgs/{org['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer", "can_confirm_offer": True},

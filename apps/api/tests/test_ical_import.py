@@ -1,5 +1,5 @@
 from booker_api.models import AvailabilitySlot
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 
 SAMPLE_ICAL = """BEGIN:VCALENDAR
 VERSION:2.0
@@ -139,6 +139,7 @@ def test_ical_reimport_preserves_open_under_overlay(client, SessionLocal):
 def test_ical_import_requires_writer(client):
     owner, org, artist = _artist_ctx(client)
     viewer = register(client, "ical-viewer@booker.test", "Viewer")
+    grant_team_plan(client, org['id'])
     client.post(
         f"/orgs/{org['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer"},

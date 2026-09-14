@@ -1,5 +1,5 @@
 from booker_api.models import AvailabilitySlot
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 
 
 def _artist_ctx(client):
@@ -178,6 +178,7 @@ def test_vacation_clear(client):
 def test_vacation_requires_writer(client):
     owner, org, artist = _artist_ctx(client)
     viewer = register(client, "vacation-viewer@booker.test", "Viewer")
+    grant_team_plan(client, org['id'])
     client.post(
         f"/orgs/{org['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer"},

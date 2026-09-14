@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 
 
 def setup_negotiation(client):
@@ -155,12 +155,14 @@ def test_second_booking_gets_commission(client):
 def test_viewer_cannot_post_offer_or_ack(client):
     ctx = setup_negotiation(client)
     viewer = register(client, "view-off@booker.test", "View")
+    grant_team_plan(client, ctx['artist_org']['id'])
     client.post(
         f"/orgs/{ctx['artist_org']['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer"},
         headers=auth_header(ctx["owner"]["token"]),
     )
     cust_viewer = register(client, "view-cust@booker.test", "CustView")
+    grant_team_plan(client, ctx['cust_org']['id'])
     client.post(
         f"/orgs/{ctx['cust_org']['id']}/members",
         json={"user_id": cust_viewer["user_id"], "role": "viewer"},

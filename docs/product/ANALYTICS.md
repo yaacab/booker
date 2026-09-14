@@ -244,3 +244,10 @@ Payload: `target_type`, `count`, `with_event`; без списка участн�
 - `business.draft_created`: clean Draft from template or current event brief; source kind only, no old deals.
 - `business.note_created`, `business.note_edited`, `business.note_deleted`: private team note lifecycle. Audit records identifiers only, never note text.
 - Durable command retries do not duplicate these mutations or audit events. Authorization is checked before receipt lookup.
+
+### Organization teams
+
+- `team.invited`, `team.invitation_revoked`, `team.invitation_accepted`: scoped invitation lifecycle.
+- `team.member_added`, `team.member_updated`, `team.member_removed`: direct addition and permission/removal lifecycle.
+- Audit contains entity identifiers only, no invitation secrets or recipient email.
+- Retried invitation creation/acceptance, unchanged permission updates and repeated revocation do not duplicate mutations/audit.

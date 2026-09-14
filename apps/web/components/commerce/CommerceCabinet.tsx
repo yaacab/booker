@@ -66,7 +66,7 @@ export function CommerceCabinet({ audience }: { audience: Audience }) {
   const names = Object.fromEntries(catalog?.plans.map((p) => [p.code, p.title]) || []);
   return <main className="commerce-page">
     <p className="kicker">{org?.name || "Моё рабочее пространство"}</p>
-    <h1>{audience === "customer" ? "Business для организатора" : "Рост и продвижение"}</h1>
+    <h1>{audience === "customer" ? "Business для организатора" : "Рост и продвижение"}</h1><p><Link href={org ? `/team?organization=${org.id}` : "/team"}>Управление командой</Link></p>
     {audience !== "customer" && <SupplyCabinetNav mode={audience === "artist" ? "performer" : "venue"} />}
     {!ready && <p role="status">Загружаем тариф и историю заказов…</p>}
     {error && <div role="alert" className="card"><p>{error}</p><button type="button" className="btn secondary" onClick={() => setRevision((r) => r + 1)}>Повторить</button></div>}

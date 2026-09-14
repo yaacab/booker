@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 
 
 def _venue_owner(client):
@@ -57,6 +57,7 @@ def test_public_halls_require_catalog_or_member(client):
 def test_post_hall_requires_writer_not_viewer(client):
     owner, org, venue = _venue_owner(client)
     viewer = register(client, "halls-viewer@booker.test", "Viewer")
+    grant_team_plan(client, org['id'])
     add = client.post(
         f"/orgs/{org['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer"},

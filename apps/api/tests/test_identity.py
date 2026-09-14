@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 
 
 def test_register_requires_legal_accept(client):
@@ -58,6 +58,7 @@ def test_member_without_confirm_cannot_ack_offer(client):
         json={"name": "Артисты", "kind": "artist"},
         headers=auth_header(owner["token"]),
     ).json()
+    grant_team_plan(client, artist_org['id'])
     add = client.post(
         f"/orgs/{artist_org['id']}/members",
         json={"user_id": manager["user_id"], "role": "manager", "can_confirm_offer": False},

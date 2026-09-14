@@ -31,6 +31,7 @@ from booker_api.routers import (
     saved_searches,
     services,
     shortlists,
+    team,
     trust,
     venue_admin,
 )
@@ -68,6 +69,7 @@ app.include_router(compatibility.router)
 app.include_router(event_planning.router)
 app.include_router(event_repeat.router)
 app.include_router(business.router)
+app.include_router(team.router)
 app.include_router(comparison.router)
 app.include_router(favorites.router)
 app.include_router(services.router)

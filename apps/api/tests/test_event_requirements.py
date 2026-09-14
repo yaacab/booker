@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 
 
 def test_put_requirements_and_viewer_forbidden(client):
@@ -6,6 +6,7 @@ def test_put_requirements_and_viewer_forbidden(client):
     viewer = register(client, "req-view@booker.test", "View")
     h = auth_header(owner["token"])
     org = client.post("/orgs", json={"name": "Клиент", "kind": "customer"}, headers=h).json()
+    grant_team_plan(client, org['id'])
     add = client.post(
         f"/orgs/{org['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer"},

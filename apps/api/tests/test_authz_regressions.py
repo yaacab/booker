@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from booker_api.config import settings
 from booker_api.security import now
-from tests.conftest import auth_header, contract_otps, register
+from tests.conftest import auth_header, contract_otps, grant_team_plan, register
 from tests.test_admin import _promote_admin
 from tests.test_offers import ack_both, setup_negotiation
 from tests.test_payments import _awaiting_payment, _sign
@@ -258,6 +258,7 @@ def test_viewer_cannot_write_catalog(client):
         json={"name": "Шоу", "kind": "artist"},
         headers=auth_header(owner["token"]),
     ).json()
+    grant_team_plan(client, org['id'])
     added = client.post(
         f"/orgs/{org['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer"},
@@ -280,12 +281,14 @@ def test_add_member_duplicate_conflict(client):
         json={"name": "Шоу", "kind": "artist"},
         headers=auth_header(owner["token"]),
     ).json()
+    grant_team_plan(client, org['id'])
     first = client.post(
         f"/orgs/{org['id']}/members",
         json={"user_id": member["user_id"], "role": "manager"},
         headers=auth_header(owner["token"]),
     )
     assert first.status_code == 200
+    grant_team_plan(client, org['id'])
     dup = client.post(
         f"/orgs/{org['id']}/members",
         json={"user_id": member["user_id"], "role": "manager"},

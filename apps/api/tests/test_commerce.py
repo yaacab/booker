@@ -22,7 +22,7 @@ from booker_api.models import (
     User,
 )
 from booker_api.security import now
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 from tests.test_offers import ack_both, setup_negotiation
 
 
@@ -239,6 +239,7 @@ def test_foreign_org_order_subscription_and_viewer_access(client, SessionLocal):
         ).status_code
         == 403
     )
+    grant_team_plan(client, org)
     client.post(
         f"/orgs/{org}/members",
         headers=headers,

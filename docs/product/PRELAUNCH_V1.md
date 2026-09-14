@@ -918,3 +918,66 @@ API:
   чистый Draft с потерей ответа/retry → удаление заметки → прямая копия → архив
   шаблона. Проверены отсутствие дублей и переноса заметок, бюджет/роли, overflow.
   Скриншоты шаблона, заметок и мобильной формы просмотрены. Сценарий добавлен в PR CI.
+
+## Team management and plan seats — 2026-09-14
+
+Добавлены `/team` и `/team/join`, переходы из профиля и коммерческого кабинета.
+Коммерческий кабинет передаёт выбранную организацию явно. В команде видны имена,
+роли, право подтверждения предложений, число участников/приглашений и лимит тарифа.
+Владелец/администратор приглашает, отзывает приглашение, изменяет права и удаляет
+участника. Назначать владельцев/администраторов и управлять ими может только
+владелец (или platform admin). Последнего владельца нельзя удалить/понизить.
+Viewer не получает controls управления или адреса приглашённых.
+
+Места разрешаются серверным entitlement `team.seats`: Standard/Free 1, Pro 2,
+Premium/Business 5 по текущему catalog. Считаются участники и неистёкшие,
+неотозванные, непринятые приглашения. Операции сериализуются блокировкой организации.
+Старый `POST /orgs/{id}/members` использует тот же лимит и audit, обхода через него
+нет. В тестах существующих RBAC-сценариев явно задаётся подходящий платный тариф
+через `grant_team_plan`; отдельные тесты лимитов проверяют настоящие Free/Pro/
+Premium/Business без такого обхода проверки. При downgrade/expiry существующие
+участники не теряют доступ и не удаляются; новые места требуют свободной ёмкости.
+Выключение customer_business блокирует новые Business-места.
+
+Приглашение привязано к организации и email аккаунта, срок 7 дней. 256-битный
+секрет создаётся браузерным crypto; сервер хранит только SHA-256. Ссылка передаётся
+пользователем вручную, транспортных отправок нет. Секрет находится во fragment,
+после открытия переносится в sessionStorage и удаляется из адресной строки;
+preview/accept передают его в заголовке только после входа. Страница join noindex /
+no-referrer. Перед принятием пользователь видит организацию и предоставляемую роль.
+На accept заново проверяются адрес аккаунта, срок/отзыв, действующие полномочия
+пригласившего и текущие места тарифа. Повтор после потери ответа не создаёт второго
+участника. Удалённый участник не возвращается по использованному приглашению.
+Редактирование прав проверяет ожидаемые текущие значения. Серверные rate limits,
+object auth, audit; секрет не возвращается в списке/аудите.
+
+Миграция `d1e2f3a4b5c6_team_invitations.py` после `c0d1e2f3a4b5` создаёт
+`team_invitations`; SQLite upgrade/downgrade/re-upgrade проверены отдельным тестом.
+PostgreSQL runtime остаётся частью общей приёмки.
+
+API:
+- `GET /orgs/{id}/team` — команда, ёмкость, разрешённые действия и активные приглашения для управляющих.
+- `POST /orgs/{id}/team/invitations` — приглашение с безопасным повтором по секрету.
+- `POST /orgs/{id}/team/invitations/{id}/revoke` — отзыв.
+- `POST /team-invitations/preview`, `/team-invitations/accept` — просмотр/принятие адресатом после входа.
+- `PUT/DELETE /orgs/{id}/team/members/{id}` — права/удаление с object auth и last-owner guard.
+
+Остальная часть Business (история поставщиков, аналитика и экспорты, приоритетная
+поддержка), уведомления, admin commercial, SEO/security/operations/provider handoff
+и итоговая приёмка master task продолжаются. Коммерческий запуск ещё не заявлен.
+
+Проверки команды:
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `.venv/bin/python -m pytest apps/api/tests/test_team.py -q` — **7 passed** (1.74s):
+  Free/direct endpoint limits, Pro/Premium seats, pending reservations, downgrade,
+  flag, expiry/revocation, account binding, safe retries, member removal, admin/owner
+  authority, last-owner guard, current inviter permissions, platform support and migration.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/team.spec.ts e2e/business-workflows.spec.ts e2e/commercial.spec.ts --workers=1 --reporter=line`
+  — **11 passed** (22.9s). После добавления отдельного снимка join-экрана тот же
+  `e2e/team.spec.ts` — **2 passed** (4.6s). Team/Join desktop/390 просмотрены,
+  overflow отсутствует; секрет приглашения маскируется на снимке команды.
+  Сценарий входит в PR CI.
+- Финальный `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` —
+  **366 passed, 2 skipped** (71.76s), включая все новые сценарии команды.

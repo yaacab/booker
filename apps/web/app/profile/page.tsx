@@ -96,7 +96,7 @@ export default function ProfilePage() {
   return (
     <main>
       <p className="kicker">Это вы</p>
-      <h1>{me.full_name}</h1>
+      <h1>{me.full_name}</h1><p><Link href="/team">Управление командой</Link></p>
       <p className="timeline">{me.email}</p>
       {orgs.length > 1 ? (
         <label>
