@@ -38,7 +38,7 @@ def engine():
         admin.dispose()
 
 
-def coordinated_race(monkeypatch, module, pause_name, run):
+def coordinated_race(monkeypatch, module, pause_name, run, *, expected_second=409):
     """Pause writer one after validation, prove writer two waits on the parent lock."""
     first_ready, second_at_lock, release = Signal(), Signal(), Signal()
     thread = local()
@@ -74,7 +74,7 @@ def coordinated_race(monkeypatch, module, pause_name, run):
         finally:
             release.set()
         assert first.result(timeout=5) == 200
-        assert second.result(timeout=5) == 409
+        assert second.result(timeout=5) == expected_second
 
 
 def test_postgres_concurrent_slot_creation_serializes_empty_calendar(client, SessionLocal, monkeypatch):
@@ -191,3 +191,36 @@ def test_postgres_quote_change_and_hold_use_same_event_lock(client, SessionLocal
             assert booking.status == 'Negotiation'
             assert active.honorarium_rub == 125000
             assert not active.customer_ack and not active.supplier_ack
+
+
+def test_postgres_cancel_alternative_waits_for_other_hold_and_preserves_it(client, SessionLocal, monkeypatch):
+    ctx = setup_matching(client)
+    first = offer_for(client, SessionLocal, ctx)
+    acknowledged(client, ctx, first)
+    from booker_api.models import Booking
+    with SessionLocal() as db:
+        slot_id = db.get(Booking, first['booking_id']).slot_id
+    event = client.post('/events', headers=ctx['headers'], json={'organization_id': ctx['customer']['id'], 'title': 'Другое событие', 'event_date': ctx['start'].isoformat(), 'ends_at': ctx['end'].isoformat()}).json()
+    req = client.post(f"/events/{event['id']}/requests", headers=ctx['headers'], json={'resource_type': 'artist', 'resource_id': ctx['artists'][0]['id']}).json()
+    response = client.post(f"/requests/{req['id']}/offers", headers=ctx['headers'], json={'slot_id': slot_id, 'honorarium_rub': 70000})
+    assert response.status_code == 200, response.text
+    second = response.json()
+
+    def run(role):
+        with SessionLocal() as db:
+            user = db.get(User, ctx['owner']['user_id'])
+            try:
+                if role == 'first':
+                    deals.hold_booking(first['booking_id'], user=user, db=db)
+                else:
+                    deals.cancel_booking(second['booking_id'], user=user, db=db)
+                return 200
+            except HTTPException as error:
+                db.rollback(); return error.status_code
+
+    coordinated_race(monkeypatch, deals, '_apply_hold', run, expected_second=200)
+    with SessionLocal() as db:
+        assert db.get(Booking, first['booking_id']).status == 'DateHeld'
+        assert db.get(Booking, second['booking_id']).status == 'Cancelled'
+        assert db.get(AvailabilitySlot, slot_id).status == 'held'
+        assert db.query(BookingHold).filter_by(status='active').count() == 1

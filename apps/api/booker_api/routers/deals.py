@@ -608,19 +608,32 @@ def cancel_booking(
         require_org_writer(db, user, sup_org)
     else:
         raise HTTPException(403, "Нет доступа")
+    # Same parent/resource order as hold: do not race a newly acquired reservation.
+    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
+    db.refresh(event)
+    db.refresh(booking)
+    db.refresh(req)
     if booking.status in {"Cancelled", "Completed"}:
         raise HTTPException(409, "Бронь уже закрыта")
+    _lock_booking_resources(db, [booking])
+    slot = db.execute(select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id)
+        .with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
+    db.refresh(booking)
+    if booking.status in {"Cancelled", "Completed"}:
+        raise HTTPException(409, "Бронь уже закрыта")
+    holds = db.query(BookingHold).filter(BookingHold.booking_id == booking.id,
+        BookingHold.status == "active").all()
+    owns_reservation = booking.status == "Confirmed" or any(h.slot_id == booking.slot_id for h in holds)
+    other_hold = db.query(BookingHold).filter(BookingHold.slot_id == booking.slot_id,
+        BookingHold.booking_id != booking.id, BookingHold.status == "active").first()
+    other_reserved_booking = db.query(Booking).filter(Booking.slot_id == booking.slot_id,
+        Booking.id != booking.id, Booking.status.notin_(["Draft", "RequestSent", "Negotiation", "Cancelled"])).first()
     _transition(booking, "Cancelled")
     req.status = "Cancelled"
-    slot = db.get(AvailabilitySlot, booking.slot_id)
-    if slot and slot.status in {"held", "confirmed"}:
-        slot.status = "open"
-    hold = (
-        db.query(BookingHold)
-        .filter(BookingHold.booking_id == booking.id, BookingHold.status == "active")
-        .one_or_none()
-    )
-    if hold:
+    if slot and owns_reservation and not other_hold and not other_reserved_booking:
+        db.execute(update(AvailabilitySlot).where(AvailabilitySlot.id == slot.id,
+            AvailabilitySlot.status.in_(["held", "confirmed"])).values(status="open"))
+    for hold in holds:
         hold.status = "cancelled"
     reason = (body or {}).get("reason") if isinstance(body, dict) else None
     conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one_or_none()
