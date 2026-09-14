@@ -1134,3 +1134,37 @@ API-проверки:
   Тест учитывает пагинацию накопленной очереди; закрытую историю проверяет автор.
   Финальные desktop/390 снимки входящих просмотрены, флажок и подпись выровнены,
   overflow отсутствует. Финальный `make web-lint` — passed.
+
+### Email outbox: отправка после commit
+
+SMTP transport теперь только создаёт запись EmailOutbox в исходной транзакции.
+Worker обрабатывает её в отдельной сессии после commit: атомарный claim, deadline,
+ограниченные повторы/backoff, максимум пять попыток, стабильный Message-ID.
+Неоднозначный исход после начала SMTP-отправки и истёкший claim переводятся в
+`uncertain` без автоматического повторного письма. Выключенный SMTP/отсутствующий
+host не запускает доставку. Дедупликация сохраняет совместимость со старым ключом,
+а новый reset token больше не подавляется ключом предыдущего письма пользователю.
+
+Миграция `b5c6d7e8f9a0_outbox_claims.py` сохраняет существующие строки и добавляет
+claim_token/claim_expires_at/next_attempt_at. Новый модуль
+`python -m booker_api.notifications.worker` по умолчанию показывает только counts;
+`--deliver --limit 1..100` включает ограниченную обработку. Подготовка и семантика
+описаны в `docs/ops/EMAIL_OUTBOX.md`. Production расписание/SMTP не включались.
+
+Проверки выделенного блока:
+`BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/pytest apps/api/tests/test_outbox_delivery.py apps/api/tests/test_trust_outbox.py apps/api/tests/test_notifications.py -q`
+— **17 passed** (2.98s). Файловая SQLite с отдельными соединениями подтверждает
+невидимость незакоммиченного письма и rollback; тест второго worker проверяет
+сохранённый claim; проверены disabled, retry/backoff/max attempts, ambiguous/crash,
+legacy idempotency, новый reset и сохранение данных в migration upgrade/down/up.
+SMTP подменён тестовым транспортом, реальных сетевых отправок нет.
+
+На мигрированной локальной E2E-базе команда просмотра вернула
+`state=inspection, counts={}`; вызов `--deliver --limit 1` с
+`BOOKER_EMAIL_PROVIDER=disabled` вернул `state=disabled`, все счётчики 0.
+Интерфейс здесь не менялся. Ручное разрешение uncertain/exhausted очереди остаётся
+в admin/operations блоке. Полное notification coverage и вся master goal ещё в работе.
+Финальный `PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api`
+— **387 passed, 2 skipped** (132.61s). `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint`
+— passed. Web-код не изменялся; предыдущие web-build/web-lint/E2E результаты
+относятся к той же версии интерфейса, новые браузерные проверки не заявляются.

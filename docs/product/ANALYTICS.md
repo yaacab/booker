@@ -273,3 +273,9 @@ Payload: `target_type`, `count`, `with_event`; без списка участн�
 `notification.in_app` transport audits remain compatible; the UI now reads the indexed
 recipient inbox rather than taking a global slice of the audit log. `support.reply`
 uses a generic message with ticket reference, never the private conversation text.
+
+### Email delivery attempts
+
+- `notification.email` for SMTP records enqueue status/outbox ID, not a send before domain commit.
+- `email.outbox.retry`: claimed delivery result and attempt number only.
+- `email.outbox.uncertain`: expired worker claim; held for human review, never silently resent.
