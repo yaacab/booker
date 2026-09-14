@@ -251,3 +251,8 @@ Payload: `target_type`, `count`, `with_event`; без списка участн�
 - `team.member_added`, `team.member_updated`, `team.member_removed`: direct addition and permission/removal lifecycle.
 - Audit contains entity identifiers only, no invitation secrets or recipient email.
 - Retried invitation creation/acceptance, unchanged permission updates and repeated revocation do not duplicate mutations/audit.
+
+### Business reporting
+
+- `business.report_viewed`: organization-scoped event cohort report; no personal supplier ranking.
+- `business.documents_exported`: selected event and contract counts only; no document text, signatures or OTPs in audit payload.

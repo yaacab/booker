@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api, getActiveOrg, getToken } from "@/lib/api";
 import { money, formatWhen } from "@/lib/format";
 import { loginHref } from "@/lib/next";
+import { BusinessReporting } from "@/components/business/BusinessReporting";
 import { BusinessWorkspace } from "@/components/business/BusinessWorkspace";
 import { GrowthPanel } from "./GrowthPanel";
 import { PromotionPanel } from "./PromotionPanel";
@@ -88,6 +89,7 @@ export function CommerceCabinet({ audience }: { audience: Audience }) {
           <button type="button" className="btn secondary" disabled={!nextPlan || busy} onClick={() => void mutate(`/commerce/organizations/${org!.id}/subscription/change`, { plan_code: nextPlan })}>Запланировать изменение</button>
         </div>}
       </section>
+      {audience === "customer" && org && <BusinessReporting key={`report:${org.id}`} orgId={org.id} />}
       {audience === "customer" && org && <BusinessWorkspace key={org.id} orgId={org.id} />}
       {audience !== "customer" && org && catalog?.flags.ARTIST_GROWTH && <GrowthPanel key={`growth:${org.id}`} orgId={org.id} />}
       {audience !== "customer" && org && catalog?.flags.PAID_PROMOTION && <PromotionPanel key={org.id} orgId={org.id} canManage={data.can_manage} catalog={catalog} onChanged={async () => { const next = await api<CommerceState>(`/commerce/organizations/${org.id}`); setData(next); }} />}

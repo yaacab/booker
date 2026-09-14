@@ -1,6 +1,6 @@
 """Business planning: immutable reusable briefs and organization-private notes."""
 import json
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -267,3 +267,73 @@ def delete_note(note_id: UUID, expected_revision: int = Query(ge=1), user: User 
         record(db, user, 'business.note_deleted', 'business_note', row.id)
         db.commit()
     return {'id': row.id, 'deleted': True}
+
+
+@router.get('/business/organizations/{org_id}/report')
+def business_report(org_id: UUID, date_from: date | None = None, date_to: date | None = None,
+    user: User = Depends(current_user), db: Session = Depends(get_db)):
+    from booker_api.business_reporting import report
+
+    org, _ = organization(db, user, org_id)
+    analytics_limiter.check(f'business-report:{user.id}')
+    features = get_entitlements(db, org.id)['features']
+    enabled = {'analytics': bool(features.get('customer.analytics')), 'history': bool(features.get('customer.supplier_history')), 'exports': bool(features.get('customer.exports'))}
+    if not any(enabled.values()):
+        return {'enabled': enabled}
+    result = report(db, org.id, date_from, date_to)
+    if not enabled['analytics']:
+        result.pop('totals'); result.pop('events')
+    if not enabled['history']:
+        result.pop('suppliers')
+    record(db, user, 'business.report_viewed', 'organization', org.id)
+    db.commit()
+    return {**result, 'enabled': enabled}
+
+
+@router.get('/business/organizations/{org_id}/documents.zip')
+def export_documents(org_id: UUID, date_from: date | None = None, date_to: date | None = None,
+    user: User = Depends(current_user), db: Session = Depends(get_db)):
+    import html
+    import io
+    import zipfile
+
+    from fastapi.responses import Response
+
+    from booker_api.business_reporting import cohort, report
+    from booker_api.models import Contract, OfferVersion
+
+    org, _ = organization(db, user, org_id)
+    require_feature(db, org.id, 'customer.exports')
+    messaging_limiter.check(f'business-export:{user.id}')
+    events, rows, selected_period = cohort(db, org.id, date_from, date_to)
+    if len(events) > 100:
+        raise HTTPException(422, 'Для архива выберите период до 100 событий')
+    booking_ids = {row[2].id for row in rows if row[2] and row[2].event_id == row[0].event_id}
+    offers = {row[1].id for row in rows if row[1]}
+    contracts = db.query(Contract).filter(Contract.booking_id.in_(booking_ids)).order_by(Contract.id).all() if booking_ids else []
+    versions = db.query(OfferVersion).filter(OfferVersion.offer_id.in_(offers)).order_by(OfferVersion.created_at, OfferVersion.id).all() if offers else []
+    files = {}
+    for contract in contracts:
+        flags = f"Заказчик: {'подписано' if contract.customer_signed else 'не подписано'}. Исполнитель: {'подписано' if contract.supplier_signed else 'не подписано'}."
+        content = '<!doctype html><html lang="ru"><meta charset="utf-8"><title>Договор · Букер</title><style>body{max-width:900px;margin:32px auto;font:16px/1.5 sans-serif;padding:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Сохранённый текст договора</h1><p>'+html.escape(flags)+'</p><p>Снимок из Букера на '+html.escape(now().isoformat())+'. Состояние сделки проверяйте в кабинете.</p><pre>'+html.escape(contract.body)+'</pre></html>'
+        files[f'contracts/{contract.booking_id}/{contract.id}.html'] = content
+    # Explicit whitelist: OTPs and other private operational fields cannot enter the archive.
+    files['offer-versions.json'] = json.dumps([{'quote_id': v.id, 'offer_id': v.offer_id, 'created_at': aware(v.created_at).isoformat(),
+        'currency': v.currency, 'honorarium_rub': v.honorarium_rub, 'customer_total_rub': v.customer_total_rub,
+        'legacy_total_rub': v.total_rub, 'customer_service_fee_rub': v.customer_service_fee_rub,
+        'supplier_service_fee_rub': v.supplier_service_fee_rub, 'supplier_payout_rub': v.supplier_payout_rub,
+        'customer_ack': v.customer_ack, 'supplier_ack': v.supplier_ack, 'terms': v.terms} for v in versions], ensure_ascii=False, indent=2)
+    summary = report(db, org.id, date_from, date_to)
+    files['events.json'] = json.dumps(summary['events'], ensure_ascii=False, indent=2)
+    files['manifest.json'] = json.dumps({'organization_id': org.id, 'generated_at': now().isoformat(), 'period': selected_period,
+        'events': len(events), 'contracts': len(contracts), 'offer_versions': len(versions),
+        'note': 'Сохранённые документы и версии условий выбранных событий. Не новый договор, не подтверждение оплаты. Вложения, переписка, внутренние заметки и коды подписания не включены.'}, ensure_ascii=False, indent=2)
+    if sum(len(value.encode('utf-8')) for value in files.values()) > 20_000_000:
+        raise HTTPException(422, 'Документы превышают 20 МБ. Уменьшите период выгрузки')
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+        for path, content in files.items():
+            archive.writestr(path, content)
+    record(db, user, 'business.documents_exported', 'organization', org.id, {'events': len(events), 'contracts': len(contracts)})
+    db.commit()
+    return Response(output.getvalue(), media_type='application/zip', headers={'Content-Disposition': 'attachment; filename="buker-event-documents.zip"', 'Cache-Control': 'no-store'})
