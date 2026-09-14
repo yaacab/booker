@@ -774,3 +774,65 @@ PostgreSQL runtime acceptance остаётся отдельным общим п�
 событий, Business, оставшиеся уведомления/admin/SEO, полная PostgreSQL-проверка и
 provider handoff/master acceptance ещё не завершены. Этот коммит не означает
 общей готовности коммерческого запуска и не меняет внешние production-гейты.
+
+## Повтор завершённого события — инкремент 2026-09-14
+
+`GET /events/{id}/repeat-options` возвращает авторизованный preview Completed:
+формат, город, гостей, роли и участников только фактически Completed bookings.
+`POST /events/{id}/repeat` требует writer RBAC, Completed, явные новые будущие
+начало/окончание, название и Idempotency-Key; выбранные preferred_request_ids
+должны принадлежать Completed-сделкам исходного события. Новое тело со старым
+ключом отклоняется; replay проверяет текущую membership до чтения результата.
+
+Создаётся отдельный Draft в той же организации. Роли получают новые ID, открытые
+статусы и прежние category/qty/required/порядок. Формат, город и число гостей
+сохраняются; бюджет и свободные заметки не переносятся. Нет копирования Request,
+Offer/OfferVersion/quote_id, Booking/Hold, Payment, Contract, подписей, календарных
+слотов и состояния подтверждённой доступности. Исходный Event не изменяется.
+
+Необязательные предпочтения сохраняются в отдельном `EventRepeatPreference`
+(миграция `b9c0d1e2f3a4`, после `f7a8b9c0d1e2`), без создания EventPlan.
+`GET /events/{id}/repeat-preferences` заново сопоставляет их с текущим календарём,
+ролями, городом, вместимостью и выбранными залами через MatchingContext.
+Неизвестные условия по-прежнему требуют согласования; проверка не является
+обещанием доступности. Недоступные профили/неуказанные позиции нельзя автоматически
+включить. После явного «Включить в состав» используется существующий PUT plan с
+повторной проверкой, context/revision и writer RBAC. Заявка при этом не создаётся.
+
+Completed-событие показывает форму повтора; новый Draft — отдельный список
+предпочтений с перепроверкой и явным добавлением. Предварительный состав обновляется
+после добавления. Есть loading/error/retry, readonly и feature-off состояния.
+`BOOKER_REPEAT_EVENTS=false` закрывает создание повторов и добавление предпочтений,
+оставляя чтение авторизованной истории. Новых provider inputs нет.
+
+Связанная защита жизненного цикла: обычная заявка, quick-request в существующее
+событие и новый первичный оффер не могут снова перевести Completed/Cancelled в
+RequestSent/Negotiation. Статус читается после блокировки строки Event. Replay уже
+сохранённой заявки остаётся чтением прежнего результата, без повторной мутации.
+
+Проверки повтора:
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **348 passed,
+  2 skipped** (76.79s). Шесть новых тестов: clean Draft/roles/preference + новая
+  доступность, optional/replay/body conflict, Completed/date/RBAC, Completed-only
+  candidates/flag/current membership, migration upgrade/downgrade/upgrade,
+  запрет reopen через request/quick-request/offer.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/event-repeat.spec.ts e2e/event-command-retry.spec.ts e2e/smart-matching.spec.ts --workers=1 --reporter=line`
+  — **7 passed** (20.0s). E-REPEAT-01 desktop/390 создаёт реальную изолированную
+  тестовую цепочку offer → ack → hold → contract/OTP → stub payment → check-in/out
+  до Completed; затем через UI создаёт повтор с потерей ответа/retry без дубля.
+  Новый Draft без заявок/бюджета, старое событие Completed; участник недоступен до
+  открытия нового окна, после перепроверки явно добавляется в EventPlan, форма
+  состава сразу обновляется. Заявки не создаются. Скриншоты desktop/390 просмотрены,
+  overflow отсутствует. E-REPEAT-01 добавлен в PR CI.
+
+Проверки миграции выполнены на SQLite; PostgreSQL runtime остаётся в общей
+приёмке. Остальные разделы master task, включая Replacement UX/Business и
+оставшиеся security/operations/provider задачи, продолжаются.
+
+После уточнения подписи предпочтений повторены production build и E-REPEAT-01:
+`npx playwright test e2e/event-repeat.spec.ts --workers=1 --reporter=line` с теми же
+API/WEB env — **2 passed** (6.9s); `make web-lint` также passed.

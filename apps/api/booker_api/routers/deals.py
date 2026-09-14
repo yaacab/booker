@@ -68,6 +68,11 @@ from booker_api.security import (
 router = APIRouter(tags=["deals"])
 
 
+def _require_open_event(event: Event) -> None:
+    if event.status in {"Completed", "Cancelled"}:
+        raise HTTPException(409, "Событие закрыто. Для новых заявок создайте новое событие")
+
+
 def _open_slot_for_request(db: Session, req: Request) -> AvailabilitySlot | None:
     if req.resource_type == "artist":
         return (
@@ -671,6 +676,9 @@ def quick_request(body: dict, user: User = Depends(current_user), db: Session = 
         if not event:
             raise HTTPException(404, "Событие не найдено")
         require_org_writer(db, user, event.organization_id)
+        db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
+        db.refresh(event)
+        _require_open_event(event)
         if requirement_id:
             need = db.get(EventTeamRequirement, requirement_id)
             if not need or need.event_id != event.id:
@@ -758,6 +766,8 @@ def create_request(
     cached = replay_command(db, scope, key, body)
     if cached:
         return cached
+    db.refresh(event)
+    _require_open_event(event)
     resource_type = body["resource_type"]
     resource_id = body["resource_id"]
     if resource_type == "artist":
@@ -842,6 +852,11 @@ def create_offer(
     if honorarium <= 0:
         raise HTTPException(400, "honorarium_rub должен быть больше нуля")
     event = db.get(Event, req.event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
+    db.refresh(event)
+    _require_open_event(event)
     breakdown = offer_fees(db, honorarium, req.supplier_org_id, event.organization_id)
     slot_id = body.get("slot_id")
     if not slot_id:

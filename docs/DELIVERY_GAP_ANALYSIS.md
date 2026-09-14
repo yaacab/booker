@@ -116,3 +116,12 @@ Playwright Compare/EPK/Matching/Compatibility: 9 passed. Подробная пр
 режим. Проверены миграция SQLite и browser desktop/390; точные результаты
 команд — `product/PRELAUNCH_V1.md`. Repeat, Business и остальные открытые пункты
 общего master task не закрываются этой отметкой.
+
+### Уточнение текущей ветки: повтор события
+
+Completed → отдельный Draft с новыми ролями и optional preferred participants
+реализован. Предпочтения проверяются на новом окне и включаются в EventPlan только
+явной командой; старые сделки/quotes/оплата/holds не переносятся. Закрытые события
+защищены от повторного открытия через новую заявку/quick-request/первичный оффер.
+Подробности и приёмка — `product/PRELAUNCH_V1.md`. Replacement UX, Business и
+остальные общие launch-гейты остаются в работе.

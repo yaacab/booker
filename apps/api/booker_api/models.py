@@ -293,6 +293,18 @@ class EventPlan(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class EventRepeatPreference(Base):
+    """Preferred participants only; never a request, saved plan, quote or reservation."""
+    __tablename__ = "event_repeat_preferences"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), index=True)
+    requirement_id: Mapped[str | None] = mapped_column(ForeignKey("event_team_requirements.id", ondelete="SET NULL"), nullable=True)
+    position: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    resource_type: Mapped[str] = mapped_column(String(16))
+    resource_id: Mapped[str] = mapped_column(String(36))
+    hall_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+
 class EventCommandReceipt(Base):
     __tablename__ = "event_command_receipts"
 

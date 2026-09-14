@@ -21,6 +21,7 @@ import {
   type RequirementLite,
 } from "@/lib/eventDayOps";
 import { ShortlistManager } from "@/components/ShortlistManager";
+import { EventRepeat, RepeatPreferences } from "@/components/event-planning/EventRepeat";
 import { EventReadiness } from "@/components/event-planning/EventReadiness";
 import { EventBudget } from "@/components/event-planning/EventBudget";
 import { EventMatching } from "@/components/event-planning/EventMatching";
@@ -349,6 +350,7 @@ export default function EventPage() {
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [canWrite, setCanWrite] = useState(false);
+  const [planningRefresh, setPlanningRefresh] = useState(0);
   const [draft, setDraft] = useState<DraftItem[]>([]);
   const [editError, setEditError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -505,10 +507,11 @@ export default function EventPage() {
           {packError}
         </p>
       ) : null}
+      {event.status === "Completed" ? <EventRepeat eventId={event.id} /> : <RepeatPreferences eventId={event.id} onUpdated={() => { setPlanningRefresh((value) => value + 1); void loadEvent(event.id); }} />}
       <EventReadiness eventId={event.id} refreshKey={event} />
       <ShortlistManager eventId={event.id} organizationId={event.organization_id} />
       <EventBudget eventId={event.id} refreshKey={event} />
-      <EventMatching eventId={event.id} contextKey={JSON.stringify(event.requirements)} onRequestsUpdated={() => void loadEvent(event.id)} />
+      <EventMatching eventId={event.id} contextKey={`${JSON.stringify(event.requirements)}:${planningRefresh}`} onRequestsUpdated={() => void loadEvent(event.id)} />
       <div id="event-day"><DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} /></div>
       {requirements.length > 0 || looseOpen.length > 0 ? (
         <section className="reveal">

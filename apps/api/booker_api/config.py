@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     smart_matching: bool = True
     compatibility: bool = True
     collaborative_events: bool = True
+    repeat_events: bool = True
     customer_business: bool = True
 
 
