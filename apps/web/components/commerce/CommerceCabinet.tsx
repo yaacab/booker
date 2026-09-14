@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api, getActiveOrg, getToken } from "@/lib/api";
 import { money, formatWhen } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -14,6 +15,11 @@ import { commerceError, commerceHref, feePercent, ORDER_STATUS, type Audience,
   type CommerceCatalog, type CommerceMe, type CommerceOrg, type CommerceState } from "@/lib/commerce";
 
 export function CommerceCabinet({ audience }: { audience: Audience }) {
+  return <Suspense fallback={<main><p role="status">Загружаем рабочее пространство…</p></main>}><CommerceCabinetContent audience={audience} /></Suspense>;
+}
+
+function CommerceCabinetContent({ audience }: { audience: Audience }) {
+  const requested = useSearchParams().get("organization");
   const [org, setOrg] = useState<CommerceOrg | null>(null);
   const [data, setData] = useState<CommerceState | null>(null);
   const [catalog, setCatalog] = useState<CommerceCatalog | null>(null);
@@ -38,9 +44,10 @@ export function CommerceCabinet({ audience }: { audience: Audience }) {
         ]);
         if (controller.signal.aborted) return;
         setCatalog(plans);
-        const active = getActiveOrg() || me.active_organization_id;
+        const active = requested || getActiveOrg() || me.active_organization_id;
         const workspace = me.organizations.find((o) => o.id === active && o.kind === audience)
-          || me.organizations.find((o) => o.kind === audience);
+          || (!requested ? me.organizations.find((o) => o.kind === audience) : undefined);
+        if (requested && !workspace) { setError("Нет доступа к указанному рабочему пространству для этой роли."); return; }
         if (!workspace) return;
         setOrg(workspace);
         const state = await api<CommerceState>(`/commerce/organizations/${workspace.id}`, { signal: controller.signal });
@@ -50,7 +57,7 @@ export function CommerceCabinet({ audience }: { audience: Audience }) {
     }
     void load();
     return () => controller.abort();
-  }, [audience, revision]);
+  }, [audience, revision, requested]);
 
   async function mutate(path: string, body?: unknown) {
     if (busy) return;

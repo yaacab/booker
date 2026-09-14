@@ -154,20 +154,26 @@ def _transition(booking: Booking, to: str) -> None:
     booking.status = to
 
 
-def expire_holds(db: Session) -> int:
+def expire_holds(db: Session, *, limit: int | None = None) -> int:
     expired = 0
-    holds = db.query(BookingHold).filter(BookingHold.status == "active").all()
     moment = now()
+    query = db.query(BookingHold).filter(BookingHold.status == "active", BookingHold.expires_at <= moment).order_by(BookingHold.expires_at, BookingHold.id)
+    holds = query.limit(limit).all() if limit is not None else query.all()
     for hold in holds:
         if aware(hold.expires_at) > moment:
             continue
-        hold.status = "expired"
+        changed = db.execute(update(BookingHold).where(BookingHold.id == hold.id, BookingHold.status == 'active', BookingHold.expires_at <= moment).values(status='expired'))
+        if not changed.rowcount:
+            continue
         slot = db.get(AvailabilitySlot, hold.slot_id)
         booking = db.get(Booking, hold.booking_id)
         if slot and slot.status == "held":
-            slot.status = "open"
-        if booking and booking.status == "DateHeld":
-            _transition(booking, "Cancelled")
+            other_live = db.query(BookingHold).filter(BookingHold.slot_id == slot.id, BookingHold.id != hold.id, BookingHold.status == 'active', BookingHold.expires_at > moment).first()
+            if not other_live:
+                db.execute(update(AvailabilitySlot).where(AvailabilitySlot.id == slot.id, AvailabilitySlot.status == 'held').values(status='open'))
+        newer_hold = db.query(BookingHold).filter(BookingHold.booking_id == hold.booking_id, BookingHold.status == 'active', BookingHold.expires_at > moment).first()
+        cancelled = db.execute(update(Booking).where(Booking.id == booking.id, Booking.status == 'DateHeld').values(status='Cancelled').execution_options(synchronize_session='fetch')).rowcount if booking and not newer_hold else 0
+        if cancelled:
             offer = db.get(Offer, booking.offer_id)
             req = db.get(Request, offer.request_id) if offer else None
             if req:
@@ -182,6 +188,10 @@ def expire_holds(db: Session) -> int:
                     )
                 )
         expired += 1
+        if booking and not newer_hold and booking.status not in {'Confirmed', 'InProgress', 'Completed'}:
+            from booker_api.notifications.lifecycle import booking_notice
+            booking_notice(db, booking, template='hold.expired', subject='Срок удержания даты истёк',
+                body='Прежний резерв больше не удерживает дату. Перед продолжением проверьте календарь и актуальные условия сделки.', key=hold.id)
         audit(
             db,
             actor_user_id=None,
@@ -606,6 +616,13 @@ def cancel_booking(
         entity_id=booking.id,
         payload={"request_id": req.id, "reason": reason or ""},
     )
+    from booker_api.notifications.lifecycle import booking_notice
+    booking_notice(db, booking, template='booking.cancelled', subject='Участник сделки отменён',
+        body='Сделка отменена. Проверьте состав события и связанные документы в кабинете.', key=booking.id, actor_id=user.id)
+    if req.requirement_id and event.status not in {'Cancelled', 'Completed'}:
+        booking_notice(db, booking, template='replacement.required', subject='Проверьте замену участника',
+            body='После отмены сделки проверьте состав события. В кабинете можно посмотреть доступные варианты замены; наличие подходящей замены не гарантируется.',
+            key=booking.id, customer_only=True, event_link=True, actor_id=user.id)
     db.commit()
     return {"booking_id": booking.id, "status": booking.status, "request_id": req.id, "request_status": req.status}
 

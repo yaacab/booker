@@ -185,6 +185,10 @@ def sign_contract(
         contract.supplier_signed = True
     if contract.customer_signed and contract.supplier_signed and booking.status == "AwaitingContract":
         _transition(booking, "AwaitingPayment")
+        from booker_api.notifications.lifecycle import booking_notice
+        booking_notice(db, booking, template='payment.required', subject='Следующий шаг — оплата сделки',
+            body='Обе стороны подписали договор. Откройте сделку, проверьте срок резерва и условия оплаты. Уведомление не подтверждает списание денег.',
+            key=contract.id, customer_only=True, actor_id=user.id)
         conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one()
         db.add(Message(conversation_id=conv.id, kind="system", body="Договор подписан. Ожидается предоплата."))
     audit(

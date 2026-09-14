@@ -29,7 +29,13 @@ for (const width of [1440, 390]) {
       const offer = await postJson<{ booking_id: string }>(request, `/requests/${req.id}/offers`, supplier.token, { slot_id: artists[0].slot, honorarium_rub: 80000 });
       await postJson(request, `/bookings/${offer.booking_id}/cancel`, supplier.token, {});
       await injectSession(page, customer.token, org.id);
-      await page.goto(`/events/${event.id}`);
+      await page.goto("/notifications");
+      const notification = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Проверьте замену участника", exact: true }) });
+      await expect(notification).toContainText("не гарантируется");
+      await expect(notification.getByRole("link", { name: "Открыть", exact: true })).toHaveAttribute("href", `/events/${event.id}#event-roles`);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath("replacement-notification.png") });
+      await notification.getByRole("link", { name: "Открыть", exact: true }).click();
       const panel = page.getByRole("article", { name: "Замена: DJ", exact: true });
       await panel.getByRole("button", { name: "Подобрать замену", exact: true }).click();
       await expect(panel.getByRole("link", { name: "DJ Свободен", exact: true })).toBeVisible();

@@ -29,7 +29,7 @@ def subscription_payload(sub: Subscription | None) -> dict | None:
     }
 
 
-def expire_subscriptions(db: Session, organization_id: str | None = None) -> int:
+def expire_subscriptions(db: Session, organization_id: str | None = None, *, limit: int | None = None) -> int:
     query = db.query(Subscription).filter(
         Subscription.status.in_(["active", "trial", "past_due"]),
         Subscription.current_period_end <= now(),
@@ -37,6 +37,8 @@ def expire_subscriptions(db: Session, organization_id: str | None = None) -> int
     if organization_id:
         query = query.filter(Subscription.organization_id == organization_id)
     count = 0
+    if limit is not None:
+        query = query.order_by(Subscription.current_period_end, Subscription.id).limit(limit)
     for sub in query.all():
         status = "cancelled" if sub.cancel_at_period_end else "expired"
         changed = db.execute(
@@ -52,6 +54,10 @@ def expire_subscriptions(db: Session, organization_id: str | None = None) -> int
         if not changed.rowcount:
             continue
         count += 1
+        from booker_api.notifications.lifecycle import commerce_href, organization_notice
+        organization_notice(db, sub.organization_id, template='subscription.expired', subject='Период подписки завершён',
+            body='Платный период завершён. Проверьте текущий тариф и доступные функции в кабинете. Условия уже согласованных сделок сохраняются.',
+            entity_type='subscription', entity_id=sub.id, key=aware(sub.current_period_end).isoformat(), href=commerce_href(db, sub.organization_id))
         audit(
             db,
             actor_user_id=None,

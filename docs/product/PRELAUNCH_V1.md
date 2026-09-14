@@ -1168,3 +1168,39 @@ SMTP подменён тестовым транспортом, реальных 
 — **387 passed, 2 skipped** (132.61s). `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint`
 — passed. Web-код не изменялся; предыдущие web-build/web-lint/E2E результаты
 относятся к той же версии интерфейса, новые браузерные проверки не заявляются.
+
+### Уведомления о сроках и следующих действиях
+
+Подключены in-app lifecycle hooks для окончания периода подписки и продвижения,
+истечения hold, отмены сделки, проверки замены и перехода к оплате после двух
+подписей договора. Доставка в той же транзакции, адресная, с semantic dedupe;
+тексты не выдумывают оплату, свободную дату или гарантированную замену.
+Новый действующий hold не освобождается из-за просроченного старого hold;
+отмена DateHeld при expiry использует условный UPDATE и не перезаписывает
+другой уже изменившийся статус сделки.
+
+`python -m booker_api.notifications.maintenance` — просмотр очереди сроков,
+`--run --limit 1..100` — ограниченная транзакционная обработка трёх типов объектов.
+Руководство: `docs/ops/NOTIFICATION_MAINTENANCE.md`. Новых миграций нет.
+Локальная inspection-команда вернула нулевые очереди, без изменения данных.
+Email/SMS/push не вызываются этим обработчиком.
+
+CommerceCabinet принимает `?organization=...`, реагирует на изменение query
+и не выбирает другое пространство при отсутствующем доступе. Ссылки уведомлений
+подписки/продвижения содержат нужную организацию. Уведомление замены ведёт
+к ролям соответствующего события.
+
+Проверки:
+- `BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/pytest apps/api/tests/test_lifecycle_notifications.py apps/api/tests/test_event_readiness.py apps/api/tests/test_paid_promotion.py -q`
+  — **24 passed** (13.02s): bounded expiry, recipient/period dedupe, новый hold,
+  оплата ещё не создана, отмена/замена и существующие readiness/promotion сценарии.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api`
+  — **390 passed, 2 skipped** (117.10s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+
+Остаются event blocker notifications, реальный deadline предложений, operator
+resolution email-очереди, остальные admin/SEO/security/provider handoff задачи
+и полная приёмка master task. Цель не объявлена завершённой.
+
+Браузерная проверка lifecycle: `npx playwright test e2e/commercial.spec.ts e2e/event-replacement.spec.ts --workers=1 --reporter=line` — 10 passed (15.3s), production build, desktop и 390px. Проверены переход из уведомления к замене и выбор организации по ссылке без подмены чужим кабинетом. Скриншоты обеих ширин просмотрены. Повторные `make web-build` и `make web-lint` прошли.

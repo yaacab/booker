@@ -279,3 +279,11 @@ uses a generic message with ticket reference, never the private conversation tex
 - `notification.email` for SMTP records enqueue status/outbox ID, not a send before domain commit.
 - `email.outbox.retry`: claimed delivery result and attempt number only.
 - `email.outbox.uncertain`: expired worker claim; held for human review, never silently resent.
+
+### Operational lifecycle notifications
+
+`subscription.expired`, `promotion.expired`, `hold.expired`, `booking.cancelled`,
+`replacement.required`, `payment.required` are in-app templates tied to actual
+state transitions. Notification delivery and domain events remain distinguishable
+in audit. Subscription dedupe includes the ended period, hold dedupe includes the
+hold ID, and payment-required dedupe includes the signed contract ID.

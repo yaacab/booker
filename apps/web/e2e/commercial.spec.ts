@@ -81,3 +81,19 @@ test("Pricing recovers from an API error", async ({ page }) => {
   await page.getByRole("button", { name: "Повторить загрузку" }).click();
   await expect(page.getByRole("article", { name: "Тариф Pro", exact: true })).toBeVisible();
 });
+
+test("Commerce notification selects the specified organization without a silent fallback", async ({ page, request }) => {
+  const user = await register(request, `commerce-org-link-${Date.now()}@booker.test`, "Организатор");
+  const headers = { Authorization: `Bearer ${user.token}` };
+  const firstResponse = await request.post(`${API_BASE}/orgs`, { headers, data: { name: "Первое агентство", kind: "customer" } });
+  const secondResponse = await request.post(`${API_BASE}/orgs`, { headers, data: { name: "Второе агентство", kind: "customer", confirm_another_workspace: true } });
+  expect(firstResponse.ok() && secondResponse.ok()).toBe(true);
+  const first = await firstResponse.json(); const second = await secondResponse.json();
+  await injectSession(page, user.token, first.id);
+  await page.goto(`/cabinet/customer/business?organization=${second.id}`);
+  await expect(page.getByText("Второе агентство", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Текущий тариф", exact: true })).toBeVisible();
+  await page.goto('/cabinet/customer/business?organization=00000000-0000-0000-0000-000000000000');
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("Нет доступа к указанному рабочему пространству");
+  await expect(page.getByRole("region", { name: "Текущий тариф", exact: true })).toHaveCount(0);
+});

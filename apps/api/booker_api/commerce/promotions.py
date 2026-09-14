@@ -229,12 +229,15 @@ def settle_campaign(db: Session, order: BillingOrder) -> None:
         )
 
 
-def expire_campaigns(db: Session, org_id: str | None = None) -> None:
+def expire_campaigns(db: Session, org_id: str | None = None, *, limit: int | None = None) -> int:
     query = db.query(PromotionCampaign).filter(
         PromotionCampaign.status.in_(["active", "scheduled"]), PromotionCampaign.ends_at <= now()
     )
     if org_id:
         query = query.filter_by(organization_id=org_id)
+    if limit is not None:
+        query = query.order_by(PromotionCampaign.ends_at, PromotionCampaign.id).limit(limit)
+    count = 0
     for campaign in query.all():
         updated = db.execute(
             update(PromotionCampaign)
@@ -242,6 +245,11 @@ def expire_campaigns(db: Session, org_id: str | None = None) -> None:
             .values(status="expired")
         )
         if updated.rowcount:
+            count += 1
+            from booker_api.notifications.lifecycle import commerce_href, organization_notice
+            organization_notice(db, campaign.organization_id, template='promotion.expired', subject='Продвижение завершено',
+                body='Срок оплаченного или включённого продвижения закончился. Результаты доступны в кабинете.',
+                entity_type='promotion', entity_id=campaign.id, key=aware(campaign.ends_at).isoformat(), href=commerce_href(db, campaign.organization_id))
             audit(
                 db,
                 actor_user_id=None,
@@ -249,6 +257,7 @@ def expire_campaigns(db: Session, org_id: str | None = None) -> None:
                 entity_type="promotion",
                 entity_id=campaign.id,
             )
+    return count
 
 
 def insert_sponsored(db: Session, items: list[dict], target_type: str) -> list[dict]:
