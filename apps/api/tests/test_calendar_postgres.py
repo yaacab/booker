@@ -224,3 +224,58 @@ def test_postgres_cancel_alternative_waits_for_other_hold_and_preserves_it(clien
         assert db.get(Booking, second['booking_id']).status == 'Cancelled'
         assert db.get(AvailabilitySlot, slot_id).status == 'held'
         assert db.query(BookingHold).filter_by(status='active').count() == 1
+
+
+def test_postgres_both_contract_signatures_commit_once(client, SessionLocal, monkeypatch):
+    from booker_api.models import AuditLog, Booking, Contract, InboxNotification, Message
+    from booker_api.routers import payments
+    from tests.conftest import contract_otps
+    from tests.test_contract_guards import prepared
+    ctx, offer = prepared(client, SessionLocal)
+    contract = client.post(f"/bookings/{offer['booking_id']}/contract", headers=ctx['headers']).json()
+    codes = contract_otps(SessionLocal, contract['id'])
+    first_ready, second_at_lock, release = Signal(), Signal(), Signal()
+    thread = local()
+    original_lock = payments._lock_contract_event
+    original_validate = payments._require_contract_reservation
+
+    def lock(*args, **kwargs):
+        if thread.side == 'supplier':
+            second_at_lock.set()
+        return original_lock(*args, **kwargs)
+
+    def validate(*args, **kwargs):
+        result = original_validate(*args, **kwargs)
+        if thread.side == 'customer':
+            first_ready.set()
+            assert release.wait(5)
+        return result
+
+    def run(side):
+        thread.side = side
+        with SessionLocal() as db:
+            return payments.sign_contract(contract['id'], payments.SignIn(side=side, otp=codes[f'otp_{side}']), user=db.get(User, ctx['owner']['user_id']), db=db)
+
+    monkeypatch.setattr(payments, '_lock_contract_event', lock)
+    monkeypatch.setattr(payments, '_require_contract_reservation', validate)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(run, 'customer')
+        try:
+            assert first_ready.wait(5)
+            second = pool.submit(run, 'supplier')
+            assert second_at_lock.wait(5)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.2)
+        finally:
+            release.set()
+        assert first.result(timeout=5)['customer_signed']
+        assert second.result(timeout=5)['booking_status'] == 'AwaitingPayment'
+    for side in ['customer', 'supplier']:
+        assert run(side)['booking_status'] == 'AwaitingPayment'
+    with SessionLocal() as db:
+        signed = db.get(Contract, contract['id'])
+        assert signed.customer_signed and signed.supplier_signed
+        assert db.get(Booking, offer['booking_id']).status == 'AwaitingPayment'
+        assert db.query(AuditLog).filter_by(action='contract.signed', entity_id=contract['id']).count() == 2
+        assert db.query(InboxNotification).filter_by(template='payment.required').count() == 1
+        assert db.query(Message).filter_by(body='Договор подписан. Ожидается предоплата.').count() == 1

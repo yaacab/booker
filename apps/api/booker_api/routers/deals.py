@@ -117,7 +117,7 @@ def _slot_matches_request(db: Session, slot: AvailabilitySlot, req: Request) -> 
     return False
 
 
-def _validate_event_slot(db: Session, event: Event, req: Request, slot: AvailabilitySlot) -> None:
+def _validate_event_slot(db: Session, event: Event, req: Request, slot: AvailabilitySlot, *, own_hold: bool = False) -> None:
     from booker_api.compatibility import resource_available
     from booker_api.presentation import presentation_data
 
@@ -137,8 +137,8 @@ def _validate_event_slot(db: Session, event: Event, req: Request, slot: Availabi
     blockers = db.query(AvailabilitySlot).filter(AvailabilitySlot.resource_type == slot.resource_type,
         AvailabilitySlot.resource_id == slot.resource_id, AvailabilitySlot.id != slot.id,
         AvailabilitySlot.status.in_(["busy", "held", "confirmed"])).all()
-    if slot.status != "open" or not resource_available(db, slot.resource_type, slot.resource_id,
-            start, end, before=before, after=after, slots=[slot, *blockers]):
+    if slot.status != ("held" if own_hold else "open") or not resource_available(db, slot.resource_type, slot.resource_id,
+            start, end, before=before, after=after, slots=[slot, *blockers], own_slot_ids={slot.id} if own_hold else None):
         raise HTTPException(409, "Свободный интервал не покрывает время события с подготовкой и завершением")
 
 
@@ -1508,6 +1508,15 @@ def deal_room(
     hold_writer = user.is_platform_admin or bool(hold_member and hold_member.role in {"owner", "admin", "manager"})
     can_hold = bool(hold_writer and event.status not in {"Completed", "Cancelled"}
         and booking.status == "Negotiation" and version and version.customer_ack and version.supplier_ack)
+    contract_slot = db.get(AvailabilitySlot, booking.slot_id)
+    contract_reservation = bool(hold and aware(hold.expires_at) > now() and hold.slot_id == booking.slot_id
+        and contract_slot and contract_slot.status == "held" and event.status not in {"Cancelled", "Completed"}
+        and event.ends_at and aware(event.event_date) > now() and version.customer_ack and version.supplier_ack)
+    signer = customer_member if role == "customer" else membership(db, user.id, req.supplier_org_id)
+    sign_writer = user.is_platform_admin or bool(signer and signer.role in {"owner", "admin", "manager"})
+    can_create_contract = bool(payment_writer and contract_reservation and booking.status in {"DateHeld", "AwaitingContract"})
+    can_sign_contract = bool(sign_writer and contract_reservation and contract and booking.status == "AwaitingContract"
+        and not (contract.customer_signed if role == "customer" else contract.supplier_signed))
     capabilities = payment_capabilities()
     capabilities["can_create"] = bool(
         payment_writer and capabilities["available"] and booking.status == "AwaitingPayment"
@@ -1529,6 +1538,8 @@ def deal_room(
         "role": role,
         "workspace_kind": workspace_kind,
         "can_hold": can_hold,
+        "can_create_contract": can_create_contract,
+        "can_sign_contract": can_sign_contract,
         "event_title": event.title,
         "tabs": ["chat", "terms", "documents", "payments", "dispute"],
         "dispute_categories": [

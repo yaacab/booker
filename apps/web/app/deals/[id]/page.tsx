@@ -31,6 +31,8 @@ type Room = {
   status: string;
   role: "customer" | "supplier";
   can_hold?: boolean;
+  can_create_contract?: boolean;
+  can_sign_contract?: boolean;
   workspace_kind?: string;
   next_step: string;
   event_title?: string;
@@ -147,6 +149,8 @@ export default function DealPage() {
   const isStubPayment = Boolean(current.payment) && paymentProvider === "stub";
   const paymentCapabilities = current.payment_capabilities;
   const holdBlocked = action.kind === "hold" && !current.can_hold;
+  const actionLabel = action.kind === "contract" && current.contract ? "Подписать договор" : action.label;
+  const contractBlocked = action.kind === "contract" && !(current.contract ? current.can_sign_contract : current.can_create_contract);
   const paymentBlocked = action.kind === "pay" && !paymentCapabilities?.can_create;
   const paymentStatus = current.payment?.status === "succeeded"
     ? (isStubPayment ? "Тест подтверждён · деньги не списывались" : "Оплата подтверждена")
@@ -323,13 +327,14 @@ export default function DealPage() {
             <button type="button" className="secondary" disabled={!room.can_hold} onClick={() => void act(() => api(`/bookings/${room.booking_id}/hold`, { method: "POST" }))}>
               Удержать дату
             </button>
-            <button type="button" className="secondary" onClick={() => void act(() => createContract())}>
+            <button type="button" className="secondary" disabled={!room.can_create_contract} onClick={() => void act(() => createContract())}>
               Договор
             </button>
             {room.contract ? (
               <button
                 type="button"
                 className="secondary"
+                disabled={!room.can_sign_contract}
                 onClick={() => void signContract()}
               >
                 Подписать OTP
@@ -558,8 +563,8 @@ export default function DealPage() {
         <aside className="deal-aside surface-glass">
           <p className="kicker">Следующий шаг</p>
           <p>{room.next_step}</p>
-          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked || holdBlocked} onClick={() => void runNext()}>
-            {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : action.label}
+          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked || holdBlocked || contractBlocked} onClick={() => void runNext()}>
+            {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : actionLabel}
           </button>
           {room.contract && action.kind === "contract" ? (
             <label>
@@ -580,12 +585,18 @@ export default function DealPage() {
           <span className="kicker">Следующее действие</span>
           <span className="timeline">{room.next_step}</span>
         </p>
+        {room.contract && action.kind === "contract" && room.can_sign_contract ? (
+          <label>
+            Код подписи договора
+            <input value={otpInput} onChange={(e) => setOtpInput(e.target.value)} inputMode="numeric" autoComplete="one-time-code" />
+          </label>
+        ) : null}
         <div className="sticky-cta-row">
           <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
             Предложение
           </button>
-          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked || holdBlocked} onClick={() => void runNext()}>
-            {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : action.label}
+          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked || holdBlocked || contractBlocked} onClick={() => void runNext()}>
+            {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : actionLabel}
           </button>
         </div>
       </div>

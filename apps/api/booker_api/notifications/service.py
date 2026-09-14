@@ -36,8 +36,12 @@ def org_member_notifications(
     entity_type: str,
     entity_id: str,
     channels: tuple[Channel, ...] = (Channel.IN_APP, Channel.EMAIL),
+    roles: tuple[str, ...] | None = None,
 ) -> list[Notification]:
-    members = db.query(TeamMember).filter(TeamMember.organization_id == organization_id).all()
+    query = db.query(TeamMember).filter(TeamMember.organization_id == organization_id)
+    if roles is not None:
+        query = query.filter(TeamMember.role.in_(roles))
+    members = query.all()
     out: list[Notification] = []
     for member in members:
         user = db.get(User, member.user_id)

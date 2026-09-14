@@ -21,14 +21,14 @@ class DevTransport:
             entity_type=notification.entity_type,
             entity_id=notification.entity_id or notification.template,
             payload={
+                **notification.metadata,
                 "template": notification.template,
                 "recipient_user_id": notification.recipient_user_id,
                 "recipient_email": notification.recipient_email,
                 "recipient_phone": notification.recipient_phone,
                 "subject": notification.subject,
-                "body": notification.body,
+                "body": "[Секрет скрыт]" if notification.template in {"contract.otp", "auth.password_reset"} else notification.body,
                 "provider": self.provider,
-                **notification.metadata,
             },
         )
         return DeliveryResult(

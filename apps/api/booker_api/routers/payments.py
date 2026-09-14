@@ -1,9 +1,10 @@
 import hashlib
+import hmac
 import json
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from booker_api.commerce.promotions import attribute_booking
@@ -33,15 +34,20 @@ from booker_api.payments.adapter import (
     get_payment_adapter,
     payment_stub_enabled,
 )
-from booker_api.rate_limit import client_key, webhook_limiter
-from booker_api.routers.deals import _transition
+from booker_api.rate_limit import auth_limiter, client_key, upload_limiter, webhook_limiter
+from booker_api.routers.deals import (
+    _lock_booking_resources,
+    _lock_open_event,
+    _require_open_event,
+    _transition,
+    _validate_event_slot,
+)
 from booker_api.schemas import PaymentIn, SignIn, WebhookIn
 from booker_api.security import (
     audit,
     aware,
     current_user,
     now,
-    require_org_member,
     require_org_writer,
 )
 
@@ -66,6 +72,29 @@ def _new_otp(exclude: str | None = None) -> str:
     return code
 
 
+def _require_contract_reservation(db, booking, event, offer, req):
+    _require_open_event(event)
+    _lock_booking_resources(db, [booking])
+    slot = db.execute(select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id)
+        .with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
+    db.refresh(booking)
+    hold = db.query(BookingHold).filter(BookingHold.booking_id == booking.id,
+        BookingHold.slot_id == booking.slot_id, BookingHold.status == "active", BookingHold.expires_at > now()).first()
+    other = db.query(BookingHold).filter(BookingHold.slot_id == booking.slot_id,
+        BookingHold.booking_id != booking.id, BookingHold.status == "active").first()
+    if not slot or not hold or other or slot.status != "held":
+        raise HTTPException(409, "Резерв даты недействителен. Проверьте сделку перед подписанием")
+    db.refresh(offer)
+    version = db.get(OfferVersion, offer.active_version_id)
+    if not version:
+        raise HTTPException(409, "Условия предложения не найдены")
+    db.refresh(version)
+    if not (version.customer_ack and version.supplier_ack):
+        raise HTTPException(409, "Условия не подтверждены обеими сторонами")
+    _validate_event_slot(db, event, req, slot, own_hold=True)
+    return version
+
+
 @router.post("/bookings/{booking_id}/contract")
 def create_contract(
     booking_id: str,
@@ -78,11 +107,13 @@ def create_contract(
     event = db.get(Event, booking.event_id)
     if not event:
         raise HTTPException(404, "Событие не найдено")
-    require_org_member(db, user, event.organization_id)
+    require_org_writer(db, user, event.organization_id)
+    upload_limiter.check(f"contract-create:{user.id}")
+    _lock_open_event(db, event)
+    db.refresh(booking)
     if booking.status not in {"DateHeld", "AwaitingContract"}:
         raise HTTPException(409, "Сначала удержите дату")
     offer = db.get(Offer, booking.offer_id)
-    version = db.get(OfferVersion, offer.active_version_id)
     existing = db.query(Contract).filter(Contract.booking_id == booking.id).one_or_none()
     if existing:
         return {
@@ -90,6 +121,8 @@ def create_contract(
             "status": booking.status,
             "otp_delivered": True,
         }
+    req = db.get(DealRequest, offer.request_id)
+    version = _require_contract_reservation(db, booking, event, offer, req)
     otp_customer = _new_otp()
     otp_supplier = _new_otp(exclude=otp_customer)
     body = CONTRACT_TEMPLATE.format(
@@ -125,6 +158,7 @@ def create_contract(
         entity_type="contract",
         entity_id=contract.id,
         channels=(Channel.IN_APP, Channel.EMAIL),
+        roles=("owner", "admin", "manager"),
     )
     supplier_notes: list = []
     if offer_req and offer_req.supplier_org_id:
@@ -137,6 +171,7 @@ def create_contract(
             entity_type="contract",
             entity_id=contract.id,
             channels=(Channel.IN_APP, Channel.EMAIL),
+            roles=("owner", "admin", "manager"),
         )
     notify(db, actor_user_id=user.id, notifications=customer_notes + supplier_notes)
     audit(
@@ -156,6 +191,11 @@ def create_contract(
     }
 
 
+def _lock_contract_event(db, event):
+    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
+    db.refresh(event)
+
+
 @router.post("/contracts/{contract_id}/sign")
 def sign_contract(
     contract_id: str,
@@ -171,14 +211,26 @@ def sign_contract(
     req = db.get(DealRequest, offer.request_id)
     event = db.get(Event, booking.event_id)
     if body.side == "customer":
-        require_org_member(db, user, event.organization_id)
+        require_org_writer(db, user, event.organization_id)
     elif body.side == "supplier":
-        require_org_member(db, user, req.supplier_org_id)
+        require_org_writer(db, user, req.supplier_org_id)
     else:
         raise HTTPException(400, "side: customer|supplier")
+    auth_limiter.check(f"contract-sign:{user.id}:{contract.id}")
+    _lock_contract_event(db, event)
+    db.refresh(booking)
+    db.refresh(contract)
     expected = contract.otp_customer if body.side == "customer" else contract.otp_supplier
-    if body.otp != expected:
+    if not expected or not hmac.compare_digest(body.otp.encode("utf-8"), expected.encode("utf-8")):
         raise HTTPException(403, "Неверный OTP")
+    if (contract.customer_signed if body.side == "customer" else contract.supplier_signed):
+        return {"customer_signed": contract.customer_signed, "supplier_signed": contract.supplier_signed,
+            "booking_status": booking.status}
+    if booking.status != "AwaitingContract":
+        raise HTTPException(409, "Подписание недоступно в текущем состоянии сделки")
+    version = _require_contract_reservation(db, booking, event, offer, req)
+    if f"quote_id={version.id}" not in [line.strip() for line in contract.body.splitlines()]:
+        raise HTTPException(409, "Договор относится к другой версии условий. Обратитесь к оператору")
     if body.side == "customer":
         contract.customer_signed = True
     else:

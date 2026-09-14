@@ -313,3 +313,42 @@ for (const width of [1440, 390]) {
     expect(after.quote.honorarium_rub).toBe(137000);
   });
 }
+
+for (const width of [1440, 390]) {
+  test(`Contract permissions and signing at ${width}px`, async ({ page, request }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const ctx = await seedNegotiation(request);
+    await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: 'supplier', quote_id: ctx.quoteId });
+    await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.customer.token, { side: 'customer', quote_id: ctx.quoteId });
+    await postJson(request, `/bookings/${ctx.bookingId}/hold`, ctx.customer.token, {});
+    const email = `contract-viewer-${width}-${Date.now()}@booker.test`;
+    const viewer = await register(request, email, 'Наблюдатель');
+    const order = await postJson<{ id: string }>(request, `/commerce/organizations/${ctx.owner.orgId}/orders`, ctx.owner.token, { plan_code: 'artist_pro', billing_period: 'monthly', idempotency_key: email.replace("@", ":") });
+    await postJson(request, `/commerce/orders/${order.id}/test-complete`, ctx.owner.token, { status: 'paid' });
+    const secret = (await import('node:crypto')).randomBytes(32).toString('hex');
+    await postJson(request, `/orgs/${ctx.owner.orgId}/team/invitations`, ctx.owner.token, { email, role: 'viewer', secret });
+    const accepted = await request.post(`${API_BASE}/team-invitations/accept`, { headers: { Authorization: `Bearer ${viewer.token}`, 'X-Team-Invitation': secret } });
+    expect(accepted.ok()).toBe(true);
+    const contract = await postJson<{ id: string }>(request, `/bookings/${ctx.bookingId}/contract`, ctx.customer.token, {});
+    type Inbox = { items: { template: string; entity_id: string; body: string }[] };
+    const inbox = await getJson<Inbox>(request, '/notifications', ctx.owner.token);
+    const code = inbox.items.find(n => n.template === 'contract.otp' && n.entity_id === contract.id)?.body.match(/\b\d{6}\b/)?.[0];
+    expect(code).toBeTruthy();
+    const viewerInbox = await getJson<Inbox>(request, '/notifications', viewer.token);
+    expect(viewerInbox.items.some(n => n.template === 'contract.otp')).toBe(false);
+    await injectSession(page, viewer.token, ctx.owner.orgId);
+    await page.goto(`/deals/${ctx.bookingId}`);
+    await expect(page.getByRole('button', { name: 'Подписать договор', exact: true }).first()).toBeDisabled();
+    const denied = await request.post(`${API_BASE}/contracts/${contract.id}/sign`, { headers: { Authorization: `Bearer ${viewer.token}` }, data: { side: 'supplier', otp: code } });
+    expect(denied.status()).toBe(403);
+    await injectSession(page, ctx.owner.token, ctx.owner.orgId);
+    await page.goto(`/deals/${ctx.bookingId}`);
+    const field = page.locator('input[autocomplete="one-time-code"]:visible');
+    await expect(field).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('contract-signing.png') });
+    await field.fill(code!);
+    await page.getByRole('button', { name: 'Подписать договор', exact: true }).first().click();
+    await expect.poll(async () => (await getJson<{ contract: { supplier_signed: boolean } }>(request, `/deal-room/${ctx.bookingId}`, ctx.owner.token)).contract.supplier_signed).toBe(true);
+    await expect(page.getByRole('button', { name: 'Подписать договор', exact: true }).first()).toBeDisabled();
+  });
+}
