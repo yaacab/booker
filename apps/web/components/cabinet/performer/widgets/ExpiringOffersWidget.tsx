@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { HoldCountdown } from "@/components/HoldCountdown";
 import { formatWhen, money } from "@/lib/format";
 import { DashboardWidget } from "../../DashboardWidget";
 import type { PerformerDealRoom } from "../types";
@@ -8,9 +7,9 @@ export function ExpiringOffersWidget({ deals }: { deals: PerformerDealRoom[] }) 
   return (
     <DashboardWidget
       title="Истекающие предложения"
-      hint="Hold скоро снимется — напомните заказчику"
+      hint="Срок для согласования условий и удержания даты скоро закончится"
       isEmpty={deals.length === 0}
-      empty="Нет предложений с истекающим hold."
+      empty="Нет предложений с истекающим сроком."
     >
       <ul className="dashboard-list">
         {deals.map((d) => (
@@ -18,10 +17,9 @@ export function ExpiringOffersWidget({ deals }: { deals: PerformerDealRoom[] }) 
             <Link href={`/deals/${d.booking_id}`}>
               <strong>{d.event_title}</strong>
               <span className="chip bad">Скоро истечёт</span>
-              {d.hold ? (
+              {d.quote.valid_until ? (
                 <>
-                  <HoldCountdown expiresAt={d.hold.expires_at} />
-                  <span className="mono">до {formatWhen(d.hold.expires_at)} · {money(d.quote.total_rub)}</span>
+                  <span className="mono">до {formatWhen(d.quote.valid_until)} · {money(d.quote.total_rub)}</span>
                 </>
               ) : null}
             </Link>

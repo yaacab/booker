@@ -18,6 +18,7 @@ from booker_api.models import (
     Venue,
     VenueHall,
 )
+from booker_api.offer_validity import expired as quote_expired
 from booker_api.presentation import presentation_data
 from booker_api.security import aware, now
 
@@ -103,7 +104,8 @@ def event_readiness(db, event):
         is_test = paid and any(p.provider == "stub" for p in captures)
         test_payments += int(is_test)
         expired = bool(booking and booking.status in RESERVED and not live_hold)
-        flags = {"selected": selected, "offers": version is not None and not expired, "acknowledged": bool(version and version.customer_ack and version.supplier_ack and not expired),
+        offer_expired = bool(booking and booking.status == "Negotiation" and quote_expired(version))
+        flags = {"selected": selected, "offers": version is not None and not expired and not offer_expired, "acknowledged": bool(version and version.customer_ack and version.supplier_ack and not expired and not offer_expired),
                  "reserved": reserved, "contracts": signed and not expired, "payments": paid, "confirmed": confirmed}
         for key, value in flags.items():
             stage_values[key].append(value)
@@ -137,6 +139,8 @@ def event_readiness(db, event):
             action("select", "Выбрать участника", f"{target['label']}: выберите участника или одно из полученных предложений.", f"/events/{event.id}#matching", 30)
         elif not version:
             action("request", "Запросить предложение", f"{name}: нужен ответ с условиями сделки.", f"/events/{event.id}#matching", 40)
+        elif offer_expired:
+            action("offer_expired", "Согласовать новые условия", f"{name}: срок предложения истёк.", href, 20)
         elif not flags["acknowledged"]:
             action("acknowledge", "Проверить условия предложения", f"{name}: " + ("нужно ваше подтверждение условий." if not version.customer_ack else "ждём подтверждения исполнителя."), href, 25 if not version.customer_ack else 55)
         elif not reserved:

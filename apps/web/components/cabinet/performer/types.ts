@@ -22,6 +22,8 @@ export type PerformerDealRoom = {
   status: string;
   quote: {
     quote_id: string;
+    valid_until?: string | null;
+    acceptance_expired?: boolean;
     honorarium_rub: number;
     total_rub: number;
     customer_ack: boolean;

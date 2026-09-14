@@ -32,7 +32,7 @@ def test_bounded_commercial_expiry_recipient_and_period_dedupe(client, SessionLo
         db.add(PromotionCampaign(organization_id=org, target_type='artist', target_id='old-profile', product_code='BOOST_24H', starts_at=now()-timedelta(days=3), ends_at=now()-timedelta(days=2), status='active'))
         db.commit()
         result = run_maintenance(db, limit=1); db.commit()
-        assert result == {'subscriptions_expired': 1, 'promotions_expired': 1, 'holds_expired': 0}
+        assert result == {'offers_expired': 0, 'subscriptions_expired': 1, 'promotions_expired': 1, 'holds_expired': 0}
         rows = notices(db, 'subscription.expired')
         assert len(rows) == 1 and rows[0].recipient_user_id == user['user_id'] and f'organization={org}' in rows[0].href
         assert len(notices(db, 'promotion.expired')) == 1

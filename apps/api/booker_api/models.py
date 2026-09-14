@@ -384,6 +384,8 @@ class OfferVersion(Base):
     supplier_payout_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
     platform_revenue_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
     commercial_policy_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    expiry_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     terms: Mapped[str] = mapped_column(Text, default="")
     customer_ack: Mapped[bool] = mapped_column(Boolean, default=False)
     supplier_ack: Mapped[bool] = mapped_column(Boolean, default=False)

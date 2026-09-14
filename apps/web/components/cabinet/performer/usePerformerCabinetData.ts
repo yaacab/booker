@@ -117,13 +117,13 @@ export function usePerformerCabinetData() {
     () =>
       dealRooms
         .filter((d) => {
-          if (d.hold?.status !== "active" || !d.hold.expires_at) return false;
-          const diff = new Date(d.hold.expires_at).getTime() - now;
+          if (d.status !== "Negotiation" || !d.quote.valid_until) return false;
+          const diff = new Date(d.quote.valid_until).getTime() - now;
           return diff > 0 && diff <= HOLD_SOON_MS;
         })
         .sort(
           (a, b) =>
-            new Date(a.hold!.expires_at).getTime() - new Date(b.hold!.expires_at).getTime(),
+            new Date(a.quote.valid_until!).getTime() - new Date(b.quote.valid_until!).getTime(),
         ),
     [dealRooms, now],
   );

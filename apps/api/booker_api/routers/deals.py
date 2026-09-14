@@ -50,6 +50,7 @@ from booker_api.models import (
     VenueTariff,
 )
 from booker_api.notifications import on_offer_created, on_request_created
+from booker_api.offer_validity import deadline, expired, require_valid
 from booker_api.payments.adapter import payment_capabilities
 from booker_api.rate_limit import analytics_limiter, client_key, messaging_limiter, upload_limiter
 from booker_api.replacement import build_replacement_plan
@@ -972,6 +973,7 @@ def create_offer(
         total_rub=breakdown["total_rub"],
         **{field: breakdown[field] for field in SNAPSHOT_FIELDS},
         terms=body.get("terms", ""),
+        valid_until=deadline(body, event),
     )
     db.add(version)
     db.flush()
@@ -1023,6 +1025,7 @@ def create_offer(
         "version": {
             "id": version.id,
             "quote_id": version.id,
+            "valid_until": aware(version.valid_until).isoformat(),
             **breakdown,
             "customer_ack": version.customer_ack,
             "supplier_ack": version.supplier_ack,
@@ -1078,6 +1081,7 @@ def new_version(
         total_rub=breakdown["total_rub"],
         **{field: breakdown[field] for field in SNAPSHOT_FIELDS},
         terms=body.get("terms", ""),
+        valid_until=deadline(body, event),
         customer_ack=False,
         supplier_ack=False,
     )
@@ -1093,7 +1097,7 @@ def new_version(
         payload=breakdown,
     )
     db.commit()
-    return {"id": version.id, "quote_id": version.id, **breakdown, "active": False}
+    return {"id": version.id, "quote_id": version.id, "valid_until": aware(version.valid_until).isoformat(), **breakdown, "active": False}
 
 
 def membership_ok(db, user, org_id) -> bool:
@@ -1130,6 +1134,10 @@ def ack_offer(
     quote_id = body.get("quote_id")
     if quote_id is not None and quote_id != version.id:
         raise HTTPException(409, "Предложение изменилось. Обновите условия и проверьте их перед подтверждением")
+    booking = db.query(Booking).filter_by(offer_id=offer.id).one_or_none()
+    if not booking or booking.status != "Negotiation":
+        raise HTTPException(409, "Условия уже зафиксированы или сделка закрыта")
+    require_valid(version)
     if side == "supplier":
         version.supplier_ack = True
     else:
@@ -1172,6 +1180,7 @@ def _assert_hold_ready(db: Session, booking: Booking) -> OfferVersion:
         raise HTTPException(409, "Оффер не подтверждён обеими сторонами")
     if booking.status != "Negotiation":
         raise HTTPException(status.HTTP_409_CONFLICT, "Бронь уже удержана или закрыта")
+    require_valid(version)
     return version
 
 
@@ -1217,6 +1226,8 @@ def _lock_and_validate_slot(db: Session, booking: Booking) -> AvailabilitySlot:
 
 
 def _apply_hold(db: Session, *, booking: Booking, slot: AvailabilitySlot, actor_user_id: str) -> BookingHold:
+    offer = db.get(Offer, booking.offer_id)
+    require_valid(db.get(OfferVersion, offer.active_version_id))
     claimed = db.execute(
         update(AvailabilitySlot)
         .where(AvailabilitySlot.id == slot.id, AvailabilitySlot.status == "open")
@@ -1507,7 +1518,11 @@ def deal_room(
     hold_member = customer_member or membership(db, user.id, req.supplier_org_id)
     hold_writer = user.is_platform_admin or bool(hold_member and hold_member.role in {"owner", "admin", "manager"})
     can_hold = bool(hold_writer and event.status not in {"Completed", "Cancelled"}
-        and booking.status == "Negotiation" and version and version.customer_ack and version.supplier_ack)
+        and booking.status == "Negotiation" and version and not expired(version) and version.customer_ack and version.supplier_ack)
+    can_revise_quote = bool(hold_writer and event.status not in {"Completed", "Cancelled"}
+        and aware(event.event_date) > now() and booking.status == "Negotiation")
+    can_ack_quote = bool(can_revise_quote and not expired(version) and
+        (role == "customer" or user.is_platform_admin or (hold_member and hold_member.can_confirm_offer)))
     contract_slot = db.get(AvailabilitySlot, booking.slot_id)
     contract_reservation = bool(hold and aware(hold.expires_at) > now() and hold.slot_id == booking.slot_id
         and contract_slot and contract_slot.status == "held" and event.status not in {"Cancelled", "Completed"}
@@ -1538,6 +1553,8 @@ def deal_room(
         "role": role,
         "workspace_kind": workspace_kind,
         "can_hold": can_hold,
+        "can_ack_quote": can_ack_quote,
+        "can_revise_quote": can_revise_quote,
         "can_create_contract": can_create_contract,
         "can_sign_contract": can_sign_contract,
         "event_title": event.title,
@@ -1549,7 +1566,7 @@ def deal_room(
             {"id": "payment", "label": "Платёж"},
             {"id": "cancel", "label": "Отмена"},
         ],
-        "next_step": ("Проверить доступность и удержать дату" if booking.status == "Negotiation" and version and version.customer_ack and version.supplier_ack else _next_step(booking.status)),
+        "next_step": ("Согласовать новую версию условий" if booking.status == "Negotiation" and expired(version) else "Проверить доступность и удержать дату" if booking.status == "Negotiation" and version and version.customer_ack and version.supplier_ack else _next_step(booking.status)),
         "participants": [
             {"role": "customer", "name": cust_org.name if cust_org else "Заказчик", "duty": "оплата и условия"},
             {"role": "supplier", "name": sup_org.name if sup_org else "Исполнитель", "duty": "дата и услуга"},
@@ -1580,12 +1597,15 @@ def deal_room(
         },
         "quote": {
             **snapshot_payload(version),
+            "valid_until": aware(version.valid_until).isoformat() if version.valid_until else None,
+            "acceptance_expired": booking.status == "Negotiation" and expired(version),
             "quote_id": version.id,
             "honorarium_rub": version.honorarium_rub,
             "commission_rate": version.commission_rate,
             "commission_rub": version.commission_rub,
             "total_rub": version.total_rub,
             "currency": version.currency,
+            "terms": version.terms,
             "customer_ack": version.customer_ack,
             "supplier_ack": version.supplier_ack,
             "source": (

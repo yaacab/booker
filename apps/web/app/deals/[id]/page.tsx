@@ -8,7 +8,7 @@ import { DealRoomSummary } from "@/components/deal-room/DealRoomSummary";
 import { HoldCountdown } from "@/components/HoldCountdown";
 import { api, trackClientEvent } from "@/lib/api";
 import { orgKindToDealRoomAccentKind } from "@/lib/dealRoomAccents";
-import { money } from "@/lib/format";
+import { formatWhen, money } from "@/lib/format";
 import { nextAction, STAGE_ORDER, STATUS_LABEL } from "@/lib/status";
 
 const TABS = [
@@ -31,6 +31,8 @@ type Room = {
   status: string;
   role: "customer" | "supplier";
   can_hold?: boolean;
+  can_ack_quote?: boolean;
+  can_revise_quote?: boolean;
   can_create_contract?: boolean;
   can_sign_contract?: boolean;
   workspace_kind?: string;
@@ -40,6 +42,9 @@ type Room = {
   hold?: { status: string; expires_at: string } | null;
   quote: {
     quote_id: string;
+    valid_until?: string | null;
+    acceptance_expired?: boolean;
+    terms?: string;
     honorarium_rub: number;
     commission_rub: number;
     total_rub: number;
@@ -148,6 +153,7 @@ export default function DealPage() {
   const paymentProvider = current.payment?.provider;
   const isStubPayment = Boolean(current.payment) && paymentProvider === "stub";
   const paymentCapabilities = current.payment_capabilities;
+  const ackBlocked = action.kind === "ack" && !current.can_ack_quote;
   const holdBlocked = action.kind === "hold" && !current.can_hold;
   const actionLabel = action.kind === "contract" && current.contract ? "Подписать договор" : action.label;
   const contractBlocked = action.kind === "contract" && !(current.contract ? current.can_sign_contract : current.can_create_contract);
@@ -235,6 +241,7 @@ export default function DealPage() {
       <p>
         <span className="chip wait">{ackLabel(room.quote)}</span>
       </p>
+      {room.status === "Negotiation" && room.quote.valid_until ? <p className="timeline">Подтвердить условия и удержать дату до {formatWhen(room.quote.valid_until)}.</p> : null}
       {room.hold ? <HoldCountdown expiresAt={room.hold.expires_at} /> : null}
     </div>
   );
@@ -315,7 +322,7 @@ export default function DealPage() {
           <p className="deal-toolbar" aria-busy={busy} style={busy ? { opacity: 0.55, pointerEvents: "none" } : undefined}>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !room.can_ack_quote}
               onClick={() =>
                 void act(() =>
                   api(`/offers/${room.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side, quote_id: current.quote.quote_id }) })
@@ -419,6 +426,7 @@ export default function DealPage() {
               </p>
             </section>
           )}
+          {room.quote.acceptance_expired ? <div role="alert" className="card"><strong>Срок предложения истёк.</strong><p>Для удержания даты согласуйте новую версию условий.</p><button type="button" className="secondary" onClick={() => setTab("terms")}>Перейти к новым условиям</button></div> : null}
           {tab === "terms" && (
             <section className="card" role="tabpanel" id="deal-panel-terms" aria-labelledby="deal-tab-terms">
               <p>
@@ -426,6 +434,18 @@ export default function DealPage() {
                 {room.quote.supplier_ack ? "подтвердил" : "ожидается подтверждение"}.
               </p>
               <p>{ackLabel(room.quote)}. Сообщение в чате не заменяет подтверждение актуальной версии.</p>
+              {room.can_revise_quote ? <form key={room.quote.quote_id} onSubmit={(event) => {
+                event.preventDefault();
+                const data = new FormData(event.currentTarget);
+                void act(() => api(`/offers/${room.offer_id}/versions`, { method: "POST", body: JSON.stringify({ honorarium_rub: Number(data.get("honorarium")), terms: String(data.get("terms") ?? ""), valid_for_hours: Number(data.get("hours")), expected_quote_id: room.quote.quote_id }) }));
+              }}>
+                <h3>Новая версия предложения</h3>
+                <label>Новый гонорар, ₽<input name="honorarium" type="number" min="1" max="1000000000" step="1" required defaultValue={room.quote.honorarium_rub} disabled={busy} /></label>
+                <label>Дополнительные условия<textarea name="terms" defaultValue={room.quote.terms ?? ""} disabled={busy} /></label>
+                <label>Срок новых условий<select name="hours" defaultValue="72" disabled={busy}><option value="24">24 часа</option><option value="72">72 часа</option><option value="168">7 дней</option></select></label>
+                <p className="timeline">Срок ограничен началом события. Новую версию должны подтвердить обе стороны. Комиссию и итог рассчитает сервер.</p>
+                <button type="submit" disabled={busy}>Предложить новые условия</button>
+              </form> : null}
             </section>
           )}
           {tab === "documents" && (
@@ -563,7 +583,7 @@ export default function DealPage() {
         <aside className="deal-aside surface-glass">
           <p className="kicker">Следующий шаг</p>
           <p>{room.next_step}</p>
-          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked || holdBlocked || contractBlocked} onClick={() => void runNext()}>
+          <button type="button" aria-busy={busy} disabled={busy || ackBlocked || paymentBlocked || holdBlocked || contractBlocked} onClick={() => void runNext()}>
             {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : actionLabel}
           </button>
           {room.contract && action.kind === "contract" ? (
@@ -595,7 +615,7 @@ export default function DealPage() {
           <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
             Предложение
           </button>
-          <button type="button" aria-busy={busy} disabled={busy || paymentBlocked || holdBlocked || contractBlocked} onClick={() => void runNext()}>
+          <button type="button" aria-busy={busy} disabled={busy || ackBlocked || paymentBlocked || holdBlocked || contractBlocked} onClick={() => void runNext()}>
             {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : actionLabel}
           </button>
         </div>
