@@ -144,7 +144,7 @@ def test_event_can_use_its_own_hold_but_public_check_cannot(client, SessionLocal
     customer = register(client, "own-hold-customer@booker.test")
     headers = auth_header(customer["token"])
     org = client.post("/orgs", json={"name": "Заказчик", "kind": "customer"}, headers=headers).json()
-    event = client.post("/events", json={"organization_id": org["id"], "title": "Событие", "event_date": ctx["query"]["starts_at"], "guest_count": 100}, headers=headers).json()
+    event = client.post("/events", json={"organization_id": org["id"], "title": "Событие", "event_date": ctx["query"]["starts_at"], "ends_at": ctx["query"]["ends_at"], "guest_count": 100}, headers=headers).json()
     req = client.post(f"/events/{event['id']}/requests", json={"resource_type": "artist", "resource_id": ctx["artist"]["id"]}, headers=headers).json()
     with SessionLocal() as db:
         slot_id = db.query(AvailabilitySlot).filter_by(resource_type="artist", resource_id=ctx["artist"]["id"]).one().id

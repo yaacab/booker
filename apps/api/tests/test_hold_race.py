@@ -22,7 +22,8 @@ def setup_same_slot_negotiations(client, suffix: str):
         json={
             "organization_id": ctx["cust_org"]["id"],
             "title": "Другой корпоратив",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": ctx["starts_at"],
+            "ends_at": ctx["ends_at"],
             "guest_count": 60,
             "budget_rub": 150000,
         },

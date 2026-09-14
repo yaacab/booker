@@ -194,6 +194,7 @@ export async function seedNegotiation(
     organization_id: custOrg.id,
     title: eventTitle,
     event_date: startsAt,
+    ends_at: endsAt,
     guest_count: 80,
     budget_rub: 200_000,
   });
@@ -261,6 +262,7 @@ export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<
     organization_id: ctx.customer.orgId,
     title: `E2E Deal Race B ${suffix}`,
     event_date: startsAt,
+    ends_at: endsAt,
     guest_count: 60,
     budget_rub: 150_000,
   }, ctx.customer.orgId);
@@ -447,6 +449,7 @@ export async function seedCrossRoleEvent(request: APIRequestContext): Promise<Cr
       organization_id: custOrg.id,
       title: eventTitle,
       event_date: startsAt,
+    ends_at: endsAt,
       guest_count: 80,
       budget_rub: 500_000,
       requirements: [
@@ -620,6 +623,7 @@ export async function seedOrgSwitchWorkspace(request: APIRequestContext): Promis
       organization_id: peerOrg.id,
       title: artistEventTitle,
       event_date: "2026-12-21T18:00:00+00:00",
+      ends_at: "2026-12-21T22:00:00+00:00",
       guest_count: 60,
       budget_rub: 150_000,
       city: "Москва",
@@ -642,6 +646,7 @@ export async function seedOrgSwitchWorkspace(request: APIRequestContext): Promis
       organization_id: peerOrg.id,
       title: venueEventTitle,
       event_date: "2026-12-22T18:00:00+00:00",
+      ends_at: "2026-12-22T22:00:00+00:00",
       guest_count: 80,
       budget_rub: 200_000,
       city: "Москва",

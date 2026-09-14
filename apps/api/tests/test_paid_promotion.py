@@ -238,6 +238,7 @@ def test_real_request_attribution_uses_issued_clicked_matching_touch(
             "organization_id": org,
             "title": "Событие",
             "event_date": supply["start"].isoformat(),
+            "ends_at": (supply["start"] + timedelta(hours=4)).isoformat(),
         },
     ).json()
     # Token cannot attribute a request for a different artist.

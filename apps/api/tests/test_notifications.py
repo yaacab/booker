@@ -178,6 +178,12 @@ def test_request_created_hook_logs_in_app_only_by_default(client):
 
 
 def test_offer_created_hook_notifies_customer_org(client):
+    from datetime import timedelta
+
+    from booker_api.security import now
+
+    start = now() + timedelta(days=40)
+    end = start + timedelta(hours=4)
     customer = register(client, "notify-off-c@booker.test", "Клиент")
     owner = register(client, "notify-off-o@booker.test", "Артист")
     cust_org = client.post(
@@ -200,8 +206,8 @@ def test_offer_created_hook_notifies_customer_org(client):
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-09-01T18:00:00+00:00",
-            "ends_at": "2026-09-01T22:00:00+00:00",
+            "starts_at": start.isoformat(),
+            "ends_at": end.isoformat(),
         },
         headers=auth_header(owner["token"]),
     ).json()
@@ -210,7 +216,8 @@ def test_offer_created_hook_notifies_customer_org(client):
         json={
             "organization_id": cust_org["id"],
             "title": "Корпоратив",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": start.isoformat(),
+            "ends_at": end.isoformat(),
             "guest_count": 80,
         },
         headers=auth_header(customer["token"]),

@@ -56,6 +56,12 @@ def test_replace_requirements_reuses_rows_and_nulls_leftover_fks(SessionLocal):
 
 
 def test_request_requirement_id_and_event_requests(client):
+    from datetime import timedelta
+
+    from booker_api.security import now
+
+    start = now() + timedelta(days=40)
+    end = start + timedelta(hours=4)
     customer = register(client, "c-rreq@booker.test", "Клиент")
     owner = register(client, "o-rreq@booker.test", "Артист")
     viewer = register(client, "v-rreq@booker.test", "Зритель")
@@ -82,8 +88,8 @@ def test_request_requirement_id_and_event_requests(client):
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-09-01T18:00:00+00:00",
-            "ends_at": "2026-09-01T22:00:00+00:00",
+            "starts_at": start.isoformat(),
+            "ends_at": end.isoformat(),
         },
         headers=oh,
     ).json()
@@ -93,7 +99,8 @@ def test_request_requirement_id_and_event_requests(client):
         json={
             "organization_id": cust_org["id"],
             "title": "Корпоратив",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": start.isoformat(),
+            "ends_at": end.isoformat(),
         },
         headers=ch,
     ).json()

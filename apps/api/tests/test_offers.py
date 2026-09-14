@@ -1,7 +1,12 @@
+from datetime import timedelta
+
+from booker_api.security import now
 from tests.conftest import auth_header, grant_team_plan, register
 
 
 def setup_negotiation(client):
+    start = now() + timedelta(days=30)
+    end = start + timedelta(hours=4)
     customer = register(client, "c-off@booker.test", "Клиент")
     owner = register(client, "o-off@booker.test", "Артист")
     cust_org = client.post(
@@ -24,8 +29,8 @@ def setup_negotiation(client):
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-09-01T18:00:00+00:00",
-            "ends_at": "2026-09-01T22:00:00+00:00",
+            "starts_at": start.isoformat(),
+            "ends_at": end.isoformat(),
         },
         headers=auth_header(owner["token"]),
     ).json()
@@ -34,7 +39,8 @@ def setup_negotiation(client):
         json={
             "organization_id": cust_org["id"],
             "title": "Корпоратив",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": start.isoformat(),
+            "ends_at": end.isoformat(),
             "guest_count": 80,
             "budget_rub": 200000,
         },
@@ -56,6 +62,8 @@ def setup_negotiation(client):
         "customer": customer,
         "owner": owner,
         "slot": slot,
+        "starts_at": start.isoformat(),
+        "ends_at": end.isoformat(),
         "offer": data,
         "booking_id": data["booking_id"],
         "artist": artist,
@@ -114,14 +122,20 @@ def test_new_version_not_active_until_ack(client):
 
 
 def test_second_booking_gets_commission(client):
+    from datetime import timedelta
+
+    from booker_api.security import now
+
+    start = now() + timedelta(days=40)
+    end = start + timedelta(hours=4)
     ctx = setup_negotiation(client)
     slot2 = client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": ctx["artist"]["id"],
-            "starts_at": "2026-09-08T18:00:00+00:00",
-            "ends_at": "2026-09-08T22:00:00+00:00",
+            "starts_at": start.isoformat(),
+            "ends_at": end.isoformat(),
         },
         headers=auth_header(ctx["owner"]["token"]),
     ).json()
@@ -130,7 +144,8 @@ def test_second_booking_gets_commission(client):
         json={
             "organization_id": ctx["cust_org"]["id"],
             "title": "Ещё вечер",
-            "event_date": "2026-09-08T18:00:00+00:00",
+            "event_date": start.isoformat(),
+            "ends_at": end.isoformat(),
             "guest_count": 40,
         },
         headers=auth_header(ctx["customer"]["token"]),

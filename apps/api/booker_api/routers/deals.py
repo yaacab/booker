@@ -111,6 +111,31 @@ def _slot_matches_request(db: Session, slot: AvailabilitySlot, req: Request) -> 
     return False
 
 
+def _validate_event_slot(db: Session, event: Event, req: Request, slot: AvailabilitySlot) -> None:
+    from booker_api.compatibility import resource_available
+    from booker_api.presentation import presentation_data
+
+    _require_open_event(event)
+    if not event.ends_at:
+        raise HTTPException(409, "Уточните время окончания события перед предложением или резервом")
+    start, end = aware(event.event_date), aware(event.ends_at)
+    if start <= now() or end <= start:
+        raise HTTPException(409, "Для предложения и резерва нужно будущее время события")
+    if not _slot_matches_request(db, slot, req):
+        raise HTTPException(409, "Слот не относится к ресурсу заявки")
+    before = after = 0
+    if req.resource_type == "artist":
+        artist = db.get(Artist, req.resource_id)
+        technical = (presentation_data(db, artist)[1].get("technical") or {}) if artist else {}
+        before, after = technical.get("setup_minutes") or 0, technical.get("teardown_minutes") or 0
+    blockers = db.query(AvailabilitySlot).filter(AvailabilitySlot.resource_type == slot.resource_type,
+        AvailabilitySlot.resource_id == slot.resource_id, AvailabilitySlot.id != slot.id,
+        AvailabilitySlot.status.in_(["busy", "held", "confirmed"])).all()
+    if slot.status != "open" or not resource_available(db, slot.resource_type, slot.resource_id,
+            start, end, before=before, after=after, slots=[slot, *blockers]):
+        raise HTTPException(409, "Свободный интервал не покрывает время события с подготовкой и завершением")
+
+
 def _honorarium_for_request(db: Session, req: Request) -> int | None:
     if req.resource_type == "artist":
         tariff = db.query(ArtistTariff).filter(ArtistTariff.artist_id == req.resource_id).order_by(ArtistTariff.honorarium_rub, ArtistTariff.id).first()
@@ -916,6 +941,7 @@ def create_offer(
         raise HTTPException(404, "Слот не найден")
     if not _slot_matches_request(db, slot, req):
         raise HTTPException(400, "Слот не относится к ресурсу заявки")
+    _validate_event_slot(db, event, req, slot)
     offer = Offer(request_id=req.id)
     db.add(offer)
     db.flush()
@@ -1128,6 +1154,12 @@ def _lock_and_validate_slot(db: Session, booking: Booking) -> AvailabilitySlot:
     slot = db.execute(
         select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).with_for_update()
     ).scalar_one()
+    offer = db.get(Offer, booking.offer_id)
+    req = db.get(Request, offer.request_id) if offer else None
+    event = db.get(Event, booking.event_id)
+    if not event or not req or req.event_id != event.id:
+        raise HTTPException(409, "Данные заявки и события не совпадают")
+    _validate_event_slot(db, event, req, slot)
     busy = overlapping_slots(
         db,
         slot.resource_type,
