@@ -108,3 +108,37 @@ def test_support_admin_session_step_up(client, SessionLocal, monkeypatch):
     assert client.get('/support/tickets', headers=headers).status_code == 403
     assert client.get(f"/support/tickets/{ticket['id']}", headers=headers).status_code == 403
     assert client.post(f"/support/tickets/{ticket['id']}/close", headers=headers).status_code == 403
+
+
+def test_human_replies_scope_retry_closed_and_audit(client, SessionLocal):
+    from booker_api.models import SupportReply
+    _user, headers, org = setup(client, SessionLocal)
+    ticket = create(client, headers, org).json(); path = f"/support/tickets/{ticket['id']}/messages"
+    admin = register(client, 'reply-admin@booker.test', 'Operator')
+    other = register(client, 'reply-other@booker.test', 'Other')
+    with SessionLocal() as db:
+        db.get(User, admin['user_id']).is_platform_admin = True; db.commit()
+    admin_headers = auth_header(admin['token'])
+    def send(h, key='reply-idempotency', body='PRIVATE human response'):
+        return client.post(path, headers={**h, 'Idempotency-Key': key}, json={'body': body})
+    assert send(auth_header(other['token'])).status_code == 403
+    assert client.get(path, headers=auth_header(other['token'])).status_code == 403
+    assert send(headers, body='   ').status_code == 422
+    first = send(admin_headers); assert first.status_code == 201, first.text
+    assert first.json()['author_role'] == 'operator'
+    assert send(admin_headers).json()['id'] == first.json()['id']
+    assert send(admin_headers, body='Different text').status_code == 409
+    assert send(headers).json()['author_role'] == 'author'
+    read = client.get(path+'?limit=1', headers=headers).json()
+    assert read['total'] == 2 and len(read['items']) == 1 and read['can_reply']
+    assert client.get(path+'?offset=1&limit=1', headers=headers).json()['items'][0]['id'] == first.json()['id']
+    assert client.post(f"/support/tickets/{ticket['id']}/close", headers=headers).status_code == 200
+    assert send(admin_headers).json()['id'] == first.json()['id']
+    assert send(admin_headers, key='after-closure').status_code == 409
+    assert not client.get(path, headers=headers).json()['can_reply']
+    with SessionLocal() as db:
+        assert db.query(SupportReply).count() == 2
+        logs = db.query(AuditLog).filter_by(action='support.message.created').all()
+        assert len(logs) == 2 and all('PRIVATE' not in row.payload for row in logs)
+        db.get(User, admin['user_id']).is_platform_admin = False; db.commit()
+    assert send(admin_headers).status_code == 403

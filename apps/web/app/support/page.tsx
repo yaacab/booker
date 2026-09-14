@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { api, ApiError, getActiveOrg, getToken } from "@/lib/api";
 import Link from "next/link";
 import { loginHref } from "@/lib/next";
+import { SupportConversation } from "@/components/support/SupportConversation";
 import { formatWhen } from "@/lib/format";
 
 type Ticket = { id: string; ticket_number: string; category: string; subject: string; status: string; priority: boolean; created_at: string; body?: string };
@@ -66,6 +67,7 @@ export default function SupportPage() {
         {queue.items.map(t => <article key={t.id} style={{ overflowWrap: "anywhere" }}>
           <h3>{t.subject}</h3><p>{t.ticket_number} · {CATEGORIES[t.category] || "Другое"} · {t.status === "closed" ? "Закрыто" : "Открыто"} · {t.priority ? "Приоритетная очередь" : "Обычная очередь"}</p><p className="timeline">{formatWhen(t.created_at)}</p>
           {details[t.id] ? <p style={{ whiteSpace: "pre-wrap" }}>{details[t.id].body}</p> : <button className="btn secondary" disabled={Boolean(detailBusy)} onClick={() => void detail(t.id)}>{detailBusy === t.id ? "Загрузка…" : `Прочитать ${t.ticket_number}`}</button>}
+          {details[t.id] && <SupportConversation ticketId={t.id} closed={t.status === "closed"} />}
           {t.status !== "closed" && <p><button className="btn secondary" disabled={busy} onClick={() => void close(t.id)}>Закрыть {t.ticket_number}</button></p>}
         </article>)}
         <div className="commerce-actions">{offset > 0 && <button className="btn secondary" onClick={() => setOffset(v => Math.max(0, v - 25))}>Предыдущие обращения</button>}{offset + 25 < queue.total && <button className="btn secondary" onClick={() => setOffset(v => v + 25)}>Следующие обращения</button>}</div>

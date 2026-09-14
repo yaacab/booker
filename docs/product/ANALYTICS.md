@@ -263,3 +263,6 @@ Payload: `target_type`, `count`, `with_event`; без списка участн�
 - `support.queue.viewed`: platform operator viewed a filtered queue; state only.
 - `support.ticket.viewed`: author/operator read the ticket body; identifiers only.
 - `support.ticket.closed`: actual first transition to closed; retries do not duplicate audit.
+
+- `support.message.created`: saved human reply, ticket/message IDs and author role only; no reply text.
+- `support.messages.viewed`: author/operator read a bounded conversation page; ticket ID only.

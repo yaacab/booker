@@ -42,7 +42,7 @@ for (const width of [1440, 390]) {
       await expect(list.getByRole("article")).toHaveCount(1);
       await expect(list).toContainText("Закрыто");
     });
-    test("operator reads and closes the support queue", async ({ page, request }, testInfo) => {
+    test("operator reads and closes the support queue", async ({ page, request, browser }, testInfo) => {
       const suffix = `${width}-${Date.now()}`;
       const user = await register(request, `support-queue-${suffix}@booker.test`, "Заказчик");
       const ticket = await postJson<{ id: string; ticket_number: string }>(request, "/support/tickets", user.token, { category: "technical", subject: `Проверка оператора ${suffix}`, body: "Описание технической проблемы для живого оператора." });
@@ -54,6 +54,33 @@ for (const width of [1440, 390]) {
       const row = list.getByRole("article").filter({ hasText: ticket.ticket_number });
       await row.getByRole("button", { name: `Прочитать ${ticket.ticket_number}`, exact: true }).click();
       await expect(row).toContainText("Описание технической проблемы");
+      const conversation = row.getByRole("region", { name: "Переписка по обращению", exact: true });
+      await expect(conversation).toContainText("Ответов пока нет.");
+      await conversation.getByLabel("Ваш ответ", { exact: true }).fill("Проверили вопрос. Пожалуйста, уточните время возникновения ошибки.");
+      let loseReply = true;
+      await page.route(`${API_BASE}/support/tickets/${ticket.id}/messages`, async route => { if (route.request().method() === "POST" && loseReply) { loseReply = false; expect((await route.fetch()).status()).toBe(201); await route.abort("failed"); } else await route.continue(); });
+      await conversation.getByRole("button", { name: "Отправить ответ", exact: true }).click();
+      await expect(conversation.getByRole("alert")).toBeVisible();
+      await conversation.getByRole("button", { name: "Отправить ответ", exact: true }).click();
+      await expect(conversation.getByRole("listitem")).toHaveCount(1);
+      await expect(conversation).toContainText("Оператор поддержки");
+      const customerContext = await browser.newContext({ viewport: { width, height: 900 } });
+      const customerPage = await customerContext.newPage();
+      await injectSession(customerPage, user.token, "");
+      await customerPage.goto("/support");
+      await customerPage.getByRole("button", { name: `Прочитать ${ticket.ticket_number}`, exact: true }).click();
+      const customerConversation = customerPage.getByRole("region", { name: "Переписка по обращению", exact: true });
+      await expect(customerConversation).toContainText("Пожалуйста, уточните время");
+      await customerConversation.getByLabel("Ваш ответ", { exact: true }).fill("Ошибка произошла сегодня утром при открытии кабинета.");
+      await customerConversation.getByRole("button", { name: "Отправить ответ", exact: true }).click();
+      await expect(customerConversation.getByRole("listitem")).toHaveCount(2);
+      await expect(customerConversation).toContainText("Автор обращения");
+      await customerConversation.evaluate(el => window.scrollBy({ top: el.getBoundingClientRect().top - (document.querySelector("header.top")?.getBoundingClientRect().height || 0) - 16, behavior: "instant" }));
+      await customerPage.screenshot({ path: testInfo.outputPath("support-conversation.png") });
+      expect(await customerPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await customerContext.close();
+      await conversation.getByRole("button", { name: "Обновить переписку", exact: true }).click();
+      await expect(conversation).toContainText("Ошибка произошла сегодня утром");
       await list.evaluate(el => window.scrollBy({ top: el.getBoundingClientRect().top - (document.querySelector("header.top")?.getBoundingClientRect().height || 0) - 16, behavior: "instant" }));
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({ path: testInfo.outputPath("support-operator.png") });
@@ -61,6 +88,8 @@ for (const width of [1440, 390]) {
       await expect(page.getByRole("status").filter({ hasText: "Обращение закрыто." })).toBeVisible();
       const saved = await getJson<{ status: string }>(request, `/support/tickets/${ticket.id}`, user.token);
       expect(saved.status).toBe("closed");
+      await expect(conversation).toContainText("Переписка сохранена");
+      await expect(conversation.getByRole("textbox")).toHaveCount(0);
     });
   });
 }

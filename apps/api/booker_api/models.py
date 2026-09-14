@@ -709,6 +709,18 @@ class SupportTicket(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class SupportReply(Base):
+    """Private human support conversation, separate from transaction decisions."""
+    __tablename__ = "support_replies"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    ticket_id: Mapped[str] = mapped_column(ForeignKey("support_tickets.id"), index=True)
+    author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    author_role: Mapped[str] = mapped_column(String(16))
+    body: Mapped[str] = mapped_column(Text)
+    idempotency_key: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class EmailOutbox(Base):
     """Persisted email delivery for retry without duplicate semantic send (E21)."""
 

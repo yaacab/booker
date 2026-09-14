@@ -13,7 +13,14 @@ from sqlalchemy.orm import Session
 
 from booker_api.commerce.entitlements import get_entitlements
 from booker_api.db import get_db
-from booker_api.models import Organization, SupportTicket, User, Venue, VenueOwnershipClaim
+from booker_api.models import (
+    Organization,
+    SupportReply,
+    SupportTicket,
+    User,
+    Venue,
+    VenueOwnershipClaim,
+)
 from booker_api.rate_limit import analytics_limiter, messaging_limiter
 from booker_api.security import (
     AuthContext,
@@ -288,3 +295,66 @@ def close_support_ticket(ticket_id: str, user: User = Depends(support_user), db:
         audit(db, actor_user_id=user.id, action="support.ticket.closed", entity_type="support_ticket", entity_id=row.id, payload={})
     db.commit()
     return {"id": row.id, "status": "closed"}
+
+
+class ReplyIn(BaseModel):
+    body: str = Field(min_length=1, max_length=8000)
+
+    @field_validator("body")
+    @classmethod
+    def meaningful(cls, value):
+        if not value.strip():
+            raise ValueError("Введите текст ответа")
+        return value.strip()
+
+
+def reply_payload(row):
+    return {"id": row.id, "author_role": row.author_role, "body": row.body, "created_at": row.created_at.isoformat()}
+
+
+def reply_ticket(db, user, ticket_id):
+    row = db.get(SupportTicket, ticket_id)
+    if not row:
+        raise HTTPException(404, "Обращение не найдено")
+    if row.author_user_id != user.id and not user.is_platform_admin:
+        raise HTTPException(403, "Нет доступа")
+    return row
+
+
+@router.get("/support/tickets/{ticket_id}/messages")
+def support_messages(ticket_id: str, offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=100),
+    user: User = Depends(support_user), db: Session = Depends(get_db)):
+    ticket = reply_ticket(db, user, ticket_id)
+    analytics_limiter.check(f"support-messages:{user.id}")
+    q = db.query(SupportReply).filter_by(ticket_id=ticket.id)
+    total = q.count()
+    rows = q.order_by(SupportReply.created_at.desc(), SupportReply.id.desc()).offset(offset).limit(limit).all()
+    result = {"items": [reply_payload(row) for row in reversed(rows)], "total": total, "offset": offset, "can_reply": ticket.status == "open"}
+    audit(db, actor_user_id=user.id, action="support.messages.viewed", entity_type="support_ticket", entity_id=ticket.id, payload={})
+    db.commit()
+    return result
+
+
+@router.post("/support/tickets/{ticket_id}/messages", status_code=201)
+def send_support_message(ticket_id: str, body: ReplyIn, user: User = Depends(support_user), db: Session = Depends(get_db),
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=128)):
+    ticket = reply_ticket(db, user, ticket_id)
+    messaging_limiter.check(f"support-reply:{user.id}")
+    # Serialize with concurrent replies and ticket closure, including on SQLite.
+    db.execute(update(SupportTicket).where(SupportTicket.id == ticket.id).values(status=SupportTicket.status))
+    db.refresh(ticket)
+    key = hashlib.sha256(f"{ticket.id}:{user.id}:{idempotency_key}".encode()).hexdigest()
+    existing = db.query(SupportReply).filter_by(idempotency_key=key).one_or_none()
+    if existing:
+        if existing.body != body.body:
+            raise HTTPException(409, "Текст ответа изменился. Отправьте его как новый")
+        return reply_payload(existing)
+    if ticket.status != "open":
+        raise HTTPException(409, "Обращение закрыто. Для нового вопроса создайте обращение")
+    row = SupportReply(ticket_id=ticket.id, author_user_id=user.id,
+        author_role="operator" if user.is_platform_admin else "author", body=body.body, idempotency_key=key)
+    db.add(row); db.flush()
+    audit(db, actor_user_id=user.id, action="support.message.created", entity_type="support_ticket", entity_id=ticket.id,
+        payload={"message_id": row.id, "author_role": row.author_role})
+    db.commit(); db.refresh(row)
+    return reply_payload(row)

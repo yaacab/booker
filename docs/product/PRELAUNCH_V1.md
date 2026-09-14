@@ -1052,3 +1052,36 @@ PostgreSQL runtime-проверка остаётся частью общей п�
 
 Общая цель остаётся активной: ответы поддержки/уведомления, коммерческая админка,
 SEO/security/operations/provider handoff и полная приёмка ещё не завершены.
+
+### Поддержка: ответы автора и оператора
+
+Добавлена приватная переписка внутри существующего обращения:
+`GET/POST /support/tickets/{id}/messages`. Сообщение сохраняет автора и его роль
+в момент отправки; доступ проверяется заново при каждом чтении/повторе. Только
+автор обращения или platform operator с действующей TOTP-сессией (при enforcement).
+Тариф не ограничивает ответы. Текст до 8000 символов; только непустой текст.
+Объекты сделки, решения по спорам и платежи переписка не меняет.
+
+POST требует `Idempotency-Key`, связанный с ticket/author; изменённый текст — 409.
+Блокировка обращения сериализует отправку и закрытие. Закрытое обращение сохраняет
+историю, запрещает новые ответы, но допускает получение результата уже принятого
+повтора. В журнале только ID и роль, без текста сообщений.
+GET возвращает до 100 сообщений, UI показывает страницы по 50 с переходами
+к ранним/новым ответам, обновлением, loading/error/empty и повтором отправки.
+
+Миграция `f3a4b5c6d7e8_support_replies.py` после `e2f3a4b5c6d7` создаёт
+support_replies; применяется штатным Alembic upgrade. Проверен полный SQLite
+цикл миграций в support-тесте и upgrade существующей E2E-базы. PostgreSQL
+runtime остаётся в общей приёмке. Уведомления о новых ответах входят в следующий
+блок общего notification coverage; отправок во внешние transports в этом блоке нет.
+
+Проверки:
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/pytest apps/api/tests/test_support_priority.py -q` — **6 passed** (2.70s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api` — **376 passed, 2 skipped** (153.31s).
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/support-priority.spec.ts --workers=1 --reporter=line`
+  — **4 passed** (20.7s). Оператор и автор работают в отдельных browser contexts;
+  проверены потеря ответа/повтор, обмен сообщениями, закрытие и сохранённая история.
+  Desktop/390 снимки переписки просмотрены, горизонтального overflow нет. Сценарий
+  уже включён в PR CI. Цель master task ещё не завершена.
