@@ -66,6 +66,12 @@ test.describe("eventDayOps", () => {
     expect(needsReplacement(steps[0])).toBe(true);
   });
 
+  test("cancelled booking overrides old request status for replacement", () => {
+    const steps = buildNextSteps([reqDj], [{ id: "old", status: "Confirmed", booking_status: "Cancelled", requirement_id: reqDj.id }], req => req.category_code);
+    expect(needsReplacement(steps[0])).toBe(true);
+    expect(steps[0].blocker).toBe("no_request");
+  });
+
   test("openLooseRequests: unmatched without booking", () => {
     const loose = openLooseRequests(
       [

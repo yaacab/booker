@@ -37,7 +37,7 @@ export function isClosedRequest(item: EventRequestLite): boolean {
 }
 
 export function isCancelledRequest(item: EventRequestLite): boolean {
-  return item.status === "Cancelled" || item.status === "Declined" || item.status === "Expired";
+  return item.booking_status ? item.booking_status === "Cancelled" : ["Cancelled", "Declined", "Expired"].includes(item.status);
 }
 
 export function cancelledRequestsForRole(

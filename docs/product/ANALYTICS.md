@@ -231,3 +231,9 @@ Payload: `target_type`, `count`, `with_event`; без списка участн�
 событии, payload содержит только их число. Участники, даты, тексты, стоимость,
 документы и подписи в audit payload не копируются. Добавление предпочтения в
 предварительный состав использует `event.plan_updated`; это ещё не новая заявка.
+
+### Replacement UX
+
+- `replacement.viewed`: authorized organization member opened replacement for a role; open slot and cancellation counts only.
+- `replacement.requested`: writer explicitly requested a currently eligible replacement; requirement and resource identifiers. In the same transaction as `request.created` and the durable command receipt. Retries do not emit a second event.
+- Candidate ordering is alphabetical, without paid or opaque preference. Availability is a current calendar check, not a reservation or replacement guarantee.

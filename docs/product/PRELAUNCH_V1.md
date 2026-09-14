@@ -836,3 +836,25 @@ RequestSent/Negotiation. Статус читается после блокиро
 После уточнения подписи предпочтений повторены production build и E-REPEAT-01:
 `npx playwright test e2e/event-repeat.spec.ts --workers=1 --reporter=line` с теми же
 API/WEB env — **2 passed** (6.9s); `make web-lint` также passed.
+
+## Replacement UX — 2026-09-14
+
+Расширен существующий `GET /events/{id}/requirements/{requirement_id}/replacement`: полное окно события по Москве, доступные кандидаты, причины/неизвестные условия, право отправки, состояния без окна/без вариантов/закрытого события. Каталог на один день больше не выдаётся за проверенную замену.
+
+Проверяются город/выезд, роль, вместимость, опубликованный заявленный владельцем зал, календарь на всё окно и известные buffers, техническая совместимость с подтверждённым/удержанным и предварительным составом. Известная несовместимость исключает вариант; неизвестные условия показаны отдельно. Предыдущие заявки и уже используемые ресурсы не предлагаются повторно. Несколько залов допускают размещение артиста в подходящем зале.
+
+`POST /events/{id}/requirements/{requirement_id}/replacement-requests` доступен только writer своей организации, повторно проверяет подбор под блокировкой события и создаёт обычную Request с durable idempotency receipt. Не создаёт OfferVersion, hold, оплату или договор. Повтор после потерянного ответа возвращает ту же заявку; изменённое тело/устаревший кандидат дают конфликт. Есть rate limits и audit. Новая миграция не требуется.
+
+Статус Booking имеет приоритет над старым статусом Request при расчёте закрытых позиций. Запросы и новые предложения больше не переводят начавшееся событие обратно из InProgress в RequestSent/Negotiation.
+
+UI в событии: «Подобрать замену», полное окно, свободные варианты, причины и раскрываемые условия, явный запрос нового предложения, loading/error/retry/empty, права viewer. Без гарантии замены. E-REPLACE-01 добавлен в PR CI; desktop/390 проверяют занятое и короткое окно, изменение календаря после открытия, пустое состояние и потерю ответа после отправки без дубликата. Скриншоты просмотрены, горизонтального overflow нет.
+
+Проверено для replacement:
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **353 passed, 2 skipped** (70.72s).
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/event-replacement.spec.ts e2e/event-day-ops.spec.ts e2e/event-repeat.spec.ts e2e/event-command-retry.spec.ts --workers=1 --reporter=line` — **14 passed** (16.9s).
+
+Полный master task остаётся активным: Business, notifications, admin commercial,
+SEO, security/performance/operations, provider handoff и итоговая приёмка продолжаются.

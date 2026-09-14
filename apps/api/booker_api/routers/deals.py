@@ -51,7 +51,7 @@ from booker_api.models import (
 )
 from booker_api.notifications import on_offer_created, on_request_created
 from booker_api.payments.adapter import payment_capabilities
-from booker_api.rate_limit import client_key, messaging_limiter, upload_limiter
+from booker_api.rate_limit import analytics_limiter, client_key, messaging_limiter, upload_limiter
 from booker_api.replacement import build_replacement_plan
 from booker_api.schemas import DISPUTE_CATEGORIES, EventIn, RequestCreateIn
 from booker_api.security import (
@@ -496,11 +496,13 @@ def requirement_replacement_plan(
     event = db.get(Event, event_id)
     if not event:
         raise HTTPException(404, "Событие не найдено")
-    require_org_member(db, user, event.organization_id)
+    member = require_org_member(db, user, event.organization_id)
+    analytics_limiter.check(f"replacement:{user.id}")
     requirement = db.get(EventTeamRequirement, requirement_id)
     if not requirement or requirement.event_id != event.id:
         raise HTTPException(404, "Позиция состава не найдена")
     plan = build_replacement_plan(db, event, requirement)
+    plan["can_manage"] = member.role in {"owner", "admin", "manager"} or user.is_platform_admin
     audit(
         db,
         actor_user_id=user.id,
@@ -511,6 +513,44 @@ def requirement_replacement_plan(
     )
     db.commit()
     return plan
+
+
+@router.post("/events/{event_id}/requirements/{requirement_id}/replacement-requests")
+def create_replacement_request(
+    event_id: str,
+    requirement_id: str,
+    body: RequestCreateIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_writer(db, user, event.organization_id)
+    messaging_limiter.check(f"replacement-create:{user.id}")
+    if not body.idempotency_key or str(body.requirement_id) != requirement_id or body.promotion_touch_id:
+        raise HTTPException(422, "Укажите позицию события и ключ повторной отправки")
+    requirement = db.get(EventTeamRequirement, requirement_id)
+    if not requirement or requirement.event_id != event.id:
+        raise HTTPException(404, "Позиция состава не найдена")
+    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
+    payload = body.model_dump(mode="json", exclude={"idempotency_key"})
+    cached = replay_command(db, f"request.create:{event.id}", body.idempotency_key, payload)
+    if cached:
+        return cached
+    db.refresh(event)
+    _require_open_event(event)
+    plan = build_replacement_plan(db, event, requirement)
+    def matches(item):
+        kind = "hall" if item.get("hall_id") else item["resource_type"]
+        target = item.get("hall_id") or item["resource_id"]
+        return kind == body.resource_type and target == str(body.resource_id)
+    if not any(matches(item) for item in plan["candidates"]):
+        raise HTTPException(409, "Вариант больше не доступен для замены. Обновите подбор")
+    audit(db, actor_user_id=user.id, action="replacement.requested", entity_type="requirement",
+        entity_id=requirement.id, payload={"resource_type": body.resource_type, "resource_id": str(body.resource_id)})
+    # The existing request command commits the request, notification and receipt together.
+    return create_request(event_id, body, user, db)
 
 
 @router.post("/bookings/{booking_id}/cancel")
@@ -725,7 +765,8 @@ def quick_request(body: dict, user: User = Depends(current_user), db: Session = 
     )
     if hasattr(req, "requirement_id"):
         req.requirement_id = requirement_id
-    event.status = "RequestSent"
+    if event.status in {"Draft", "RequestSent"}:
+        event.status = "RequestSent"
     db.add(req)
     db.flush()
     audit(
@@ -804,7 +845,8 @@ def create_request(
         req.requirement_id = requirement_id
     db.add(req)
     db.flush()
-    event.status = "RequestSent"
+    if event.status in {"Draft", "RequestSent"}:
+        event.status = "RequestSent"
     audit(
         db,
         actor_user_id=user.id,
@@ -900,7 +942,7 @@ def create_offer(
             body="Создано предложение. Цена считается только на сервере.",
         )
     )
-    if event:
+    if event and event.status in {"Draft", "RequestSent", "Negotiation"}:
         event.status = "Negotiation"
     audit(
         db,
