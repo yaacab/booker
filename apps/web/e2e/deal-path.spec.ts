@@ -284,3 +284,32 @@ for (const width of [1440, 390]) {
     else await expect(page.getByRole('button', { name: 'Удержать дату', exact: true }).first()).toBeDisabled();
   });
 }
+
+for (const width of [1440, 390]) {
+  test(`Stale displayed quote cannot acknowledge new terms at ${width}px`, async ({ page, request }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const ctx = await seedNegotiation(request);
+    await injectSession(page, ctx.customer.token, ctx.customer.orgId);
+    await page.goto(`/deals/${ctx.bookingId}`);
+    const button = () => width === 390 ? page.getByRole('button', { name: 'Кивнуть условиям', exact: true }) : page.locator('.deal-toolbar').getByRole('button', { name: 'Подтвердить условия', exact: true });
+    await expect(button()).toBeVisible();
+    const updated = await postJson<{ quote_id: string }>(request, `/offers/${ctx.offerId}/versions`, ctx.owner.token, { honorarium_rub: 137000, expected_quote_id: ctx.quoteId });
+    const denied = page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith(`/offers/${ctx.offerId}/ack`));
+    await button().click();
+    expect((await denied).status()).toBe(409);
+    await expect(page.getByRole('alert').filter({ hasText: 'Предложение изменилось' })).toBeVisible();
+    await page.getByRole('alert').filter({ hasText: 'Предложение изменилось' }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('stale-quote.png') });
+    const before = await getJson<{ quote: { customer_ack: boolean } }>(request, `/deal-room/${ctx.bookingId}`, ctx.customer.token);
+    expect(before.quote.customer_ack).toBe(false);
+    await page.getByRole('button', { name: 'Обновить условия', exact: true }).click();
+    await expect(page.getByText(updated.quote_id, { exact: false }).first()).toBeVisible();
+    const accepted = page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith(`/offers/${ctx.offerId}/ack`));
+    await button().click();
+    expect((await accepted).status()).toBe(200);
+    const after = await getJson<{ quote: { quote_id: string; customer_ack: boolean; honorarium_rub: number } }>(request, `/deal-room/${ctx.bookingId}`, ctx.customer.token);
+    expect(after.quote.quote_id).toBe(updated.quote_id);
+    expect(after.quote.customer_ack).toBe(true);
+    expect(after.quote.honorarium_rub).toBe(137000);
+  });
+}

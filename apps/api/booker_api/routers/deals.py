@@ -73,6 +73,12 @@ def _require_open_event(event: Event) -> None:
         raise HTTPException(409, "Событие закрыто. Для новых заявок создайте новое событие")
 
 
+def _lock_open_event(db: Session, event: Event) -> None:
+    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
+    db.refresh(event)
+    _require_open_event(event)
+
+
 def _open_slot_for_request(db: Session, req: Request) -> AvailabilitySlot | None:
     from booker_api.compatibility import resource_available
     from booker_api.presentation import presentation_data
@@ -1029,6 +1035,10 @@ def new_version(
         require_org_writer(db, user, event.organization_id)
     else:
         raise HTTPException(403, "Нет доступа")
+    _lock_open_event(db, event)
+    db.refresh(offer)
+    if body.get("expected_quote_id") is not None and body["expected_quote_id"] != offer.active_version_id:
+        raise HTTPException(409, "Предложение изменилось. Обновите условия перед редактированием")
     raw_honorarium = body.get("honorarium_rub")
     if raw_honorarium is None:
         raise HTTPException(400, "honorarium_rub обязателен")
@@ -1089,28 +1099,28 @@ def ack_offer(
     offer = db.get(Offer, offer_id)
     if not offer or not offer.active_version_id:
         raise HTTPException(404, "Оффер не найден")
-    version = db.get(OfferVersion, offer.active_version_id)
     req = db.get(Request, offer.request_id)
     event = db.get(Event, req.event_id)
-    quote_id = body.get("quote_id")
-    if quote_id is not None and quote_id != version.id:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "quote_id устарел: подтверждается только активная версия предложения",
-        )
     side = body.get("side")
-    if side not in {"supplier", "customer"}:
-        raise HTTPException(400, "side: customer|supplier")
     if side == "supplier":
         member = require_org_writer(db, user, req.supplier_org_id)
         if not member.can_confirm_offer:
             raise HTTPException(403, "Нет права подтверждать оффер")
-        version.supplier_ack = True
     elif side == "customer":
         require_org_writer(db, user, event.organization_id)
-        version.customer_ack = True
     else:
         raise HTTPException(400, "side: customer|supplier")
+    _lock_open_event(db, event)
+    db.refresh(offer)
+    version = db.get(OfferVersion, offer.active_version_id)
+    db.refresh(version)
+    quote_id = body.get("quote_id")
+    if quote_id is not None and quote_id != version.id:
+        raise HTTPException(409, "Предложение изменилось. Обновите условия и проверьте их перед подтверждением")
+    if side == "supplier":
+        version.supplier_ack = True
+    else:
+        version.customer_ack = True
     both = version.customer_ack and version.supplier_ack
     audit(
         db,
@@ -1137,12 +1147,14 @@ def _assert_hold_ready(db: Session, booking: Booking) -> OfferVersion:
     event = db.get(Event, booking.event_id)
     if not event:
         raise HTTPException(404, "Событие не найдено")
-    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
-    db.refresh(event)
-    _require_open_event(event)
+    _lock_open_event(db, event)
     db.refresh(booking)
     offer = db.get(Offer, booking.offer_id)
+    if offer:
+        db.refresh(offer)
     version = db.get(OfferVersion, offer.active_version_id) if offer else None
+    if version:
+        db.refresh(version)
     if not version or not (version.customer_ack and version.supplier_ack):
         raise HTTPException(409, "Оффер не подтверждён обеими сторонами")
     if booking.status != "Negotiation":

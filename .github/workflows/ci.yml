@@ -50,7 +50,7 @@ jobs:
           BOOKER_DATABASE_URL: postgresql+psycopg://booker_test:local-ci-test-only@127.0.0.1:5432/booker_test
           BOOKER_ENVIRONMENT: test
         run: alembic upgrade head
-      - name: Concurrent calendar writers on PostgreSQL
+      - name: Calendar and quote concurrency on PostgreSQL
         env:
           BOOKER_TEST_POSTGRES_URL: postgresql+psycopg://booker_test:local-ci-test-only@127.0.0.1:5432/booker_test
           BOOKER_DATABASE_URL: sqlite://

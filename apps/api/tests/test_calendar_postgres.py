@@ -127,3 +127,67 @@ def test_postgres_holds_on_distinct_overlapping_slots_have_one_winner(client, Se
     with SessionLocal() as db:
         assert db.query(BookingHold).filter_by(status='active').count() == 1
         assert db.get(AvailabilitySlot, slot_id).status == 'open'
+
+
+@pytest.mark.parametrize('first_action,second_action', [('hold', 'version'), ('version', 'hold'), ('version', 'ack')])
+def test_postgres_quote_change_and_hold_use_same_event_lock(client, SessionLocal, monkeypatch, first_action, second_action):
+    ctx = setup_matching(client)
+    offer = offer_for(client, SessionLocal, ctx)
+    acknowledged(client, ctx, offer)
+    first_ready, second_at_lock, release = Signal(), Signal(), Signal()
+    thread = local()
+    original_lock = deals._lock_open_event
+    pause_name = '_apply_hold' if first_action == 'hold' else 'offer_fees'
+    original_pause = getattr(deals, pause_name)
+
+    def pause(*args, **kwargs):
+        if thread.role == 'first':
+            first_ready.set()
+            assert release.wait(5)
+        return original_pause(*args, **kwargs)
+
+    def lock(*args, **kwargs):
+        if thread.role == 'second':
+            second_at_lock.set()
+        return original_lock(*args, **kwargs)
+
+    def run(role, action):
+        thread.role = role
+        with SessionLocal() as db:
+            user = db.get(User, ctx['owner']['user_id'])
+            try:
+                if action == 'hold':
+                    deals.hold_booking(offer['booking_id'], user=user, db=db)
+                elif action == 'version':
+                    deals.new_version(offer['id'], {'honorarium_rub': 125000}, user=user, db=db)
+                else:
+                    deals.ack_offer(offer['id'], {'side': 'customer', 'quote_id': offer['version']['id']}, user=user, db=db)
+                return 200
+            except HTTPException as error:
+                db.rollback(); return error.status_code
+
+    monkeypatch.setattr(deals, '_lock_open_event', lock)
+    monkeypatch.setattr(deals, pause_name, pause)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(run, 'first', first_action)
+        try:
+            assert first_ready.wait(5)
+            second = pool.submit(run, 'second', second_action)
+            assert second_at_lock.wait(5)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.2)
+        finally:
+            release.set()
+        assert first.result(timeout=5) == 200
+        assert second.result(timeout=5) == 409
+    from booker_api.models import Booking, Offer, OfferVersion
+    with SessionLocal() as db:
+        booking = db.get(Booking, offer['booking_id'])
+        active = db.get(OfferVersion, db.get(Offer, offer['id']).active_version_id)
+        if first_action == 'hold':
+            assert booking.status == 'DateHeld'
+            assert active.id == offer['version']['id']
+        else:
+            assert booking.status == 'Negotiation'
+            assert active.honorarium_rub == 125000
+            assert not active.customer_ack and not active.supplier_ack

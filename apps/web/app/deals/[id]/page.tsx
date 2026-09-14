@@ -177,7 +177,7 @@ export default function DealPage() {
       return;
     }
     if (action.kind === "ack") {
-      await act(() => api(`/offers/${current.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) }));
+      await act(() => api(`/offers/${current.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side, quote_id: current.quote.quote_id }) }));
       return;
     }
     if (action.kind === "contract") {
@@ -287,7 +287,7 @@ export default function DealPage() {
           </p>
         ) : null}
       </div>
-      {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
+      {error ? <div role="alert"><p style={{ color: "var(--danger)" }}>{error}</p><button type="button" className="secondary" disabled={busy} onClick={() => void load()}>Обновить условия</button></div> : null}
       {notice ? (
         <p className="timeline" role="status">
           {notice}
@@ -314,7 +314,7 @@ export default function DealPage() {
               disabled={busy}
               onClick={() =>
                 void act(() =>
-                  api(`/offers/${room.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) })
+                  api(`/offers/${room.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side, quote_id: current.quote.quote_id }) })
                 )
               }
             >
