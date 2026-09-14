@@ -237,3 +237,10 @@ Payload: `target_type`, `count`, `with_event`; без списка участн�
 - `replacement.viewed`: authorized organization member opened replacement for a role; open slot and cancellation counts only.
 - `replacement.requested`: writer explicitly requested a currently eligible replacement; requirement and resource identifiers. In the same transaction as `request.created` and the durable command receipt. Retries do not emit a second event.
 - Candidate ordering is alphabetical, without paid or opaque preference. Availability is a current calendar check, not a reservation or replacement guarantee.
+
+### Business planning
+
+- `business.template_created`, `business.template_archived`: immutable organization brief snapshots and archive action.
+- `business.draft_created`: clean Draft from template or current event brief; source kind only, no old deals.
+- `business.note_created`, `business.note_edited`, `business.note_deleted`: private team note lifecycle. Audit records identifiers only, never note text.
+- Durable command retries do not duplicate these mutations or audit events. Authorization is checked before receipt lookup.

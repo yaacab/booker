@@ -858,3 +858,63 @@ UI в событии: «Подобрать замену», полное окно
 
 Полный master task остаётся активным: Business, notifications, admin commercial,
 SEO, security/performance/operations, provider handoff и итоговая приёмка продолжаются.
+
+## Business: templates, clean drafts, private notes — 2026-09-14
+
+Добавлены рабочие шаблоны и копирование событий в `/cabinet/customer/business`,
+внутренние заметки — в карточке события. Это часть раздела 20, а не завершение
+всего Business: управление командой/лимиты мест, история поставщиков,
+аналитика/экспорты и приоритетная поддержка ещё проверяются и дорабатываются.
+
+- Шаблон сохраняет неизменяемый снимок города, формата, числа гостей, планового
+  бюджета и ролей события своей организации. До 100 активных шаблонов, архив
+  без изменения уже созданных событий. Изменения исходного события не меняют шаблон.
+- Создание из шаблона или копии текущего события требует нового названия и будущего
+  окна с часовым поясом; UI использует Москву. Новый Event — Draft с новыми ID ролей.
+  Старые даты, сделки, предложения, quote_id, брони, оплаты, подписи, участники,
+  EventPlan и внутренние заметки не переносятся. Сумма переносится только как
+  объявленный бюджет, не договорная цена. Повтор завершённого состава остаётся
+  отдельной доступной ранее функцией, с новыми проверками дат.
+- `customer.templates` и `customer.notes` проверяются сервером через действующий
+  тариф/feature flag; writer своей customer-организации. Сохранённые шаблоны и
+  заметки читаются участниками после истечения тарифа, новые платные действия
+  заблокированы. Архивирование шаблона и удаление заметки остаются доступны по RBAC.
+- Заметки видны только организации заказчика. Автор может редактировать свои
+  заметки; владелец/администратор может удалить чужую. Viewer только читает.
+  Редактирование/удаление проверяет revision; удаление очищает текст. До 4000
+  символов, пагинация по 50, имя автора и дата в UI. Тексты не попадают в audit.
+- Создание шаблона, черновика и заметки — durable idempotency receipts, блокировки,
+  rate limits, audit. Replay после исключения пользователя из команды запрещён.
+  Изменённое тело с прежним ключом — конфликт. Отдельные состояния загрузки,
+  ошибок/повтора, пустого списка, отсутствия тарифа и прав.
+
+Миграция `c0d1e2f3a4b5_business_workflows.py` после `b9c0d1e2f3a4`:
+`business_event_templates`, `business_event_notes`. Проверен SQLite upgrade на
+новой базе, downgrade к предыдущей версии и повторный upgrade, включая FK.
+Локальная E2E-база исторически создана `init_schema`, без Alembic ledger: попытка
+полного upgrade выявила существующие таблицы; новые таблицы для браузерного
+прогона созданы штатным test `init_schema`. Это не подменяет отдельный пройденный
+миграционный тест. PostgreSQL runtime остаётся в общей приёмке.
+
+API:
+- `GET/POST /business/organizations/{org_id}/templates` — свои шаблоны / снимок своего события.
+- `POST /business/templates/{id}/archive` — архив.
+- `POST /business/templates/{id}/events` — чистый Draft из снимка.
+- `POST /business/events/{id}/clone` — чистый Draft из текущего брифа.
+- `GET/POST /business/events/{id}/notes` — список / внутренняя заметка.
+- `PUT/DELETE /business/notes/{id}` — редактирование автора / удаление по правам с revision.
+
+Проверки этого этапа:
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **359 passed, 2 skipped** (84.57s).
+- После усиления данных исходного события реальным предложением и проверки replay
+  после удаления из команды: `.venv/bin/python -m pytest apps/api/tests/test_business_workflows.py -q`
+  — **6 passed** (3.99s), включая миграцию.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/business-workflows.spec.ts e2e/commercial.spec.ts e2e/event-repeat.spec.ts --workers=1 --reporter=line`
+  — **11 passed** (23.8s). Desktop/390: Standard без платных действий → явная stub
+  активация Business → заметка с потерей ответа/retry → редактирование → шаблон →
+  чистый Draft с потерей ответа/retry → удаление заметки → прямая копия → архив
+  шаблона. Проверены отсутствие дублей и переноса заметок, бюджет/роли, overflow.
+  Скриншоты шаблона, заметок и мобильной формы просмотрены. Сценарий добавлен в PR CI.

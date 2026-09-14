@@ -24,6 +24,7 @@ import { ShortlistManager } from "@/components/ShortlistManager";
 import { EventRepeat, RepeatPreferences } from "@/components/event-planning/EventRepeat";
 import { EventReadiness } from "@/components/event-planning/EventReadiness";
 import { EventBudget } from "@/components/event-planning/EventBudget";
+import { BusinessNotes } from "@/components/business/BusinessNotes";
 import { EventReplacement } from "@/components/event-planning/EventReplacement";
 import { EventMatching } from "@/components/event-planning/EventMatching";
 import { STATUS_LABEL } from "@/lib/status";
@@ -430,6 +431,7 @@ export default function EventPage() {
       <EventReadiness eventId={event.id} refreshKey={event} />
       <ShortlistManager eventId={event.id} organizationId={event.organization_id} />
       <EventBudget eventId={event.id} refreshKey={event} />
+      <BusinessNotes key={event.id} eventId={event.id} />
       <EventMatching eventId={event.id} contextKey={`${JSON.stringify(event.requirements)}:${planningRefresh}`} onRequestsUpdated={() => void loadEvent(event.id)} />
       <div id="event-day"><DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} /></div>
       {requirements.length > 0 || looseOpen.length > 0 ? (
