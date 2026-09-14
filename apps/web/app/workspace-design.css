@@ -225,3 +225,20 @@
 .comparison-page summary { padding-block: 10px; min-height: 44px; cursor: pointer; }
 .compare-fit { border-top: 1px solid var(--workspace-line); padding-block: 16px; }
 @media (max-width: 700px) { .compare-inputs { grid-template-columns: minmax(0, 1fr); } }
+
+.shortlist-page, .shortlist-manager { min-width: 0; overflow-wrap: anywhere; }
+.shortlist-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-block: 24px; }
+.shortlist-candidate, .shortlist-join { min-width: 0; }
+:is(.shortlist-page, .shortlist-manager) label { display: grid; gap: 8px; margin-block: 12px; }
+:is(.shortlist-page, .shortlist-manager) :is(input, select, textarea, fieldset) { min-width: 0; max-width: 100%; }
+.shortlist-manager .shortlist-pick { display: flex; gap: 12px; align-items: center; min-height: 44px; }
+.shortlist-pick input { width: auto; flex: 0 0 auto; }
+.shortlist-reactions { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px; }
+.shortlist-reactions [aria-pressed="true"] { border-color: #355424; background: #deebd3; }
+.shortlist-results li { margin-block: 12px; }
+.shortlist-comment { white-space: pre-wrap; }
+.shortlist-manager { margin-block: 24px; }
+.shortlist-managed { border-top: 1px solid var(--workspace-line); padding-block: 20px; }
+.shortlist-managed > button { margin: 8px 8px 8px 0; }
+.shortlist-managed summary { min-height: 44px; padding-block: 12px; cursor: pointer; }
+@media (max-width: 700px) { .shortlist-grid { grid-template-columns: minmax(0, 1fr); } }

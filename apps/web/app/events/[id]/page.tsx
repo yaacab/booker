@@ -20,6 +20,7 @@ import {
   type EventRequestLite,
   type RequirementLite,
 } from "@/lib/eventDayOps";
+import { ShortlistManager } from "@/components/ShortlistManager";
 import { EventReadiness } from "@/components/event-planning/EventReadiness";
 import { EventBudget } from "@/components/event-planning/EventBudget";
 import { EventMatching } from "@/components/event-planning/EventMatching";
@@ -505,6 +506,7 @@ export default function EventPage() {
         </p>
       ) : null}
       <EventReadiness eventId={event.id} refreshKey={event} />
+      <ShortlistManager eventId={event.id} organizationId={event.organization_id} />
       <EventBudget eventId={event.id} refreshKey={event} />
       <EventMatching eventId={event.id} contextKey={JSON.stringify(event.requirements)} onRequestsUpdated={() => void loadEvent(event.id)} />
       <div id="event-day"><DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} /></div>

@@ -602,7 +602,7 @@ class BriefResponse(Base):
 
 
 class SharedShortlist(Base):
-    """Read-only shared shortlist with token; revoke removes access (E22)."""
+    """Scoped shared shortlist; historical links remain read-only."""
 
     __tablename__ = "shared_shortlists"
 
@@ -615,6 +615,9 @@ class SharedShortlist(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    event_id: Mapped[str | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
+    collaborative: Mapped[bool] = mapped_column(Boolean, default=False)
 
     items: Mapped[list["SharedShortlistItem"]] = relationship(back_populates="shortlist")
 
@@ -633,6 +636,28 @@ class SharedShortlistItem(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
     shortlist: Mapped[SharedShortlist] = relationship(back_populates="items")
+
+
+class ShortlistGuest(Base):
+    __tablename__ = "shortlist_guests"
+    __table_args__ = (UniqueConstraint("shortlist_id", "secret_hash"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    shortlist_id: Mapped[str] = mapped_column(ForeignKey("shared_shortlists.id"), index=True)
+    secret_hash: Mapped[str] = mapped_column(String(64))
+    display_name: Mapped[str] = mapped_column(String(60))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ShortlistFeedback(Base):
+    __tablename__ = "shortlist_feedback"
+    __table_args__ = (UniqueConstraint("guest_id", "item_id"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    guest_id: Mapped[str] = mapped_column(ForeignKey("shortlist_guests.id"), index=True)
+    item_id: Mapped[str] = mapped_column(ForeignKey("shared_shortlist_items.id"), index=True)
+    reaction: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    comment: Mapped[str] = mapped_column(String(1000), default="")
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class VenueOwnershipClaim(Base):

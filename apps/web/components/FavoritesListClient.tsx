@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { loginHref } from "@/lib/next";
+import { ShortlistManager } from "@/components/ShortlistManager";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 
 type FavoriteItem = {
@@ -112,6 +113,7 @@ export function FavoritesListClient() {
           </Link>
         ) : null}
       </p>
+      <ShortlistManager favorites={items} />
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       {!error && items.length === 0 ? (
         <article className="card empty" style={{ marginTop: 20 }}>

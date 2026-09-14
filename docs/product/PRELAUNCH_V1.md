@@ -698,3 +698,79 @@ revision, идемпотентный повтор и повторная пров
 удалён дублирующий старый `/compare` handler из shortlists router. Collaboration,
 repeat/Business, оставшиеся уведомления/admin/SEO, PostgreSQL runtime acceptance,
 provider handoff и полный аудит остальных пунктов master task остаются открытыми.
+
+## Совместные подборки — инкремент 2026-09-14
+
+Создание в избранном: явный выбор 2–4 кандидатов одного типа, название, срок и
+необязательная связь с событием той же организации. От события доступен переход
+к созданию, список связанных подборок и результаты. Writer RBAC нужен для
+создания/отзыва; viewer видит результаты без capability-ссылки. Текущая membership
+проверяется при каждой команде. Повтор создания с тем же Idempotency-Key сохраняет
+одну подборку; изменённое тело с прежним ключом отклоняется.
+
+`SharedShortlist` дополнен event_id/collaborative. Новые `ShortlistGuest` и
+`ShortlistFeedback` хранят хеш гостевого ключа, публичное имя, одну текущую реакцию
+и редактируемый комментарий на кандидата, revision. Гость без аккаунта может
+голосовать, отметить «нравится»/«не подходит», изменить мнение, удалить свой
+комментарий. Повтор не увеличивает счётчики; stale revision отклоняется.
+Сериализация команд на строке подборки защищает join/update/revoke от гонок.
+
+Каждое гостевое чтение/изменение проверяет срок и отзыв share token; запись также
+требует collaborative mode и отдельную capability из X-Shortlist-Guest. Она не
+принимается как сессия аккаунта и не действует на другой shortlist или кандидата.
+Публичный payload не содержит Event ID, орг ID, бюджета, документов, owner ID,
+аккаунтных/гостевых токенов и контактов. Профиль площадки, снятый с публикации,
+больше не раскрывается через сохранённый snapshot. Ввод имён/комментариев ограничен;
+телефоны/email/внешние ссылки не принимаются в обсуждение. HTML отображается текстом.
+Ответы и fetch — no-store, referrer policy no-referrer. Account Authorization и
+активная организация не передаются guestApi.
+
+Rate limits применяются до поиска share, с ключом прямого peer без доверия к
+произвольному X-Real-IP. Лимиты хранения: до 20 активных подборок организации,
+50 гостевых устройств на подборку, 1000 символов комментария. Список показывает
+до 100 подборок с приоритетом неотозванных/позднего срока; активные попадают в лимит.
+Гостевые имена не верифицированы; счётчики не подтверждают уникальных людей и не
+влияют на публичные отзывы/Verified/рейтинг. Никаких автоматических заявок, брони
+или изменения EventPlan. Копирование ссылки — ручное действие, отправок нет.
+
+`BOOKER_COLLABORATIVE_EVENTS=false` выключает создание совместных ссылок, join и
+feedback; сохраняет чтение результатов и отзыв. Старые ссылки имеют
+collaborative=false независимо от глобального флага и остаются read-only.
+
+API:
+
+- `POST /shortlists`: расширен TTL/явным collaborative/event_id/idempotency.
+- `GET /shortlists?organization_id=&event_id=`: авторизованные результаты и права.
+- `POST /shortlists/{id}/revoke`: отзыв по writer RBAC с текущей membership.
+- `GET /shared/{token}`: доступные публичные кандидаты, мнения и собственная revision.
+- `POST /shared/{token}/guests`: идемпотентное вступление с отдельным ключом устройства.
+- `PUT /shared/{token}/items/{target_id}/feedback`: замена/снятие реакции и комментария.
+
+Миграция `f7a8b9c0d1e2_shortlist_collaboration`, после `e6f7a8b9c0d1`. Проверен
+upgrade с legacy-ссылкой и snapshot, downgrade/upgrade: token/данные сохранены,
+новые ссылки не открывают совместный режим старым. Это SQLite migration acceptance;
+PostgreSQL runtime acceptance остаётся отдельным общим пунктом.
+
+Приёмка этого инкремента:
+
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make test-api` — **342 passed,
+  2 skipped** (67.81s). Восемь collaboration tests + отдельный migration roundtrip:
+  реакции/комментарий/удаление/replay, scope/IDOR, приватность/audit/cache,
+  expiry/revoke, create idempotency и viewer, legacy/validation/rate, скрытая
+  площадка, global flag. Старые shortlist/compare tests также проходят.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint` — passed.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make web-lint` — passed после сборки.
+- `PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build` — passed.
+- `cd apps/web && PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test e2e/collaboration.spec.ts e2e/compare-v2.spec.ts e2e/event-readiness.spec.ts --workers=1 --reporter=line`
+  — **6 passed** (29.0s), desktop/390. E-COLLAB-01: переход от события в избранное,
+  потеря ответа после успешного создания и повтор без дубля, отдельный browser
+  context гостя без аккаунта, 503/retry, три реакции, комментарий, сохранение после
+  reload, результаты организатора, отзыв и отклонение изменения в уже открытой
+  гостевой вкладке. Event.requests остаётся пустым. Скриншоты гостя/организатора
+  просмотрены, горизонтального overflow нет. Сценарий включён в PR CI.
+
+Лимитер остаётся существующим in-process механизмом; проверка production proxy и
+масштабирования входит в оставшийся общий security/performance audit. Повтор
+событий, Business, оставшиеся уведомления/admin/SEO, полная PostgreSQL-проверка и
+provider handoff/master acceptance ещё не завершены. Этот коммит не означает
+общей готовности коммерческого запуска и не меняет внешние production-гейты.

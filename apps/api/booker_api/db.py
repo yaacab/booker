@@ -57,6 +57,8 @@ def ensure_missing_columns(bind) -> None:
         _add_column_if_missing(bind, "public_briefs", column, ddl)
     _add_column_if_missing(bind, "brief_responses", "target_type", "target_type VARCHAR(16)")
     _add_column_if_missing(bind, "brief_responses", "target_id", "target_id VARCHAR(36)")
+    _add_column_if_missing(bind, "shared_shortlists", "event_id", "event_id VARCHAR(36)")
+    _add_column_if_missing(bind, "shared_shortlists", "collaborative", "collaborative BOOLEAN NOT NULL DEFAULT FALSE")
     ts_type = "TIMESTAMPTZ" if dialect == "postgresql" else "DATETIME"
     _add_column_if_missing(bind, "events", "ends_at", f"ends_at {ts_type}")
     _add_column_if_missing(bind, "events", "event_type", "event_type VARCHAR(128) NOT NULL DEFAULT ''")

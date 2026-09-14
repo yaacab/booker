@@ -107,3 +107,12 @@ Readiness/next_best_action остаётся открытым, включая о�
 учитываются фактические сделки/ответы по залам. API: 333 passed/2 skipped;
 Playwright Compare/EPK/Matching/Compatibility: 9 passed. Подробная приёмка — `product/PRELAUNCH_V1.md`. Эта отметка не
 закрывает collaboration/repeat/Business или общую готовность коммерческого запуска.
+
+### Уточнение текущей ветки: совместный выбор
+
+Избранное → scoped shortlist → гостевой голос/нравится/отклонение/комментарий →
+результаты в событии → отзыв ссылки реализованы. Гостевая capability отделена от
+аккаунта, не изменяет EventPlan или сделки. Старые ссылки сохраняют read-only
+режим. Проверены миграция SQLite и browser desktop/390; точные результаты
+команд — `product/PRELAUNCH_V1.md`. Repeat, Business и остальные открытые пункты
+общего master task не закрываются этой отметкой.

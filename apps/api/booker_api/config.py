@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     opportunities: bool = True
     smart_matching: bool = True
     compatibility: bool = True
+    collaborative_events: bool = True
     customer_business: bool = True
 
 

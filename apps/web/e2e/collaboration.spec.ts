@@ -1,0 +1,81 @@
+import { expect, test } from "@playwright/test";
+import { API_BASE, getJson, injectSession, postJson, register } from "./helpers";
+
+for (const width of [1440, 390]) {
+  test.describe(`Collaborative shortlist ${width}px`, () => {
+    test.use({ viewport: { width, height: 900 } });
+    test("E-COLLAB-01 create retry, guest vote comment and organizer revocation", async ({ page, browser, request }, testInfo) => {
+      const owner = await register(request, `collab-owner-${width}-${Date.now()}@booker.test`, "Организатор");
+      const org = await postJson<{ id: string }>(request, "/orgs", owner.token, { name: "События команды", kind: "customer" });
+      const supplier = await postJson<{ id: string }>(request, "/orgs", owner.token, { name: "Артисты", kind: "artist" });
+      const artists: string[] = [];
+      for (const name of ["DJ Первый", "DJ Второй"]) {
+        const artist = await postJson<{ id: string }>(request, "/artists", owner.token, { organization_id: supplier.id, name, category: "dj" }); artists.push(artist.id);
+        await postJson(request, "/favorites", owner.token, { organization_id: org.id, target_type: "artist", target_id: artist.id });
+      }
+      const day = new Date(Date.now() + 25 * 86400000).toISOString().slice(0, 10);
+      const event = await postJson<{ id: string }>(request, "/events", owner.token, { organization_id: org.id, title: "Приватный корпоратив", event_date: `${day}T15:00:00Z`, ends_at: `${day}T18:00:00Z`, budget_rub: 987654, requirements: [{ category_code: "dj" }] });
+      await injectSession(page, owner.token, org.id);
+      await page.goto(`/events/${event.id}`);
+      const manager = page.getByRole("region", { name: "Совместный выбор участников", exact: true });
+      await manager.getByRole("link", { name: "Создать подборку из избранного" }).click();
+      const form = page.getByRole("form", { name: "Новая совместная подборка" });
+      await expect(form.getByRole("combobox", { name: "Событие для подборки", exact: true })).toHaveValue(event.id);
+      await form.getByLabel("Название подборки", { exact: true }).fill("Музыка для вечера");
+      await form.getByRole("checkbox", { name: "DJ Первый", exact: true }).check();
+      await form.getByRole("checkbox", { name: "DJ Второй", exact: true }).check();
+      let loseResponse = true;
+      await page.route(`${API_BASE}/shortlists`, async (route) => { if (route.request().method() === "POST" && loseResponse) { loseResponse = false; const result = await route.fetch(); expect(result.status()).toBe(201); await route.abort("failed"); } else await route.continue(); });
+      await form.getByRole("button", { name: "Создать ссылку для обсуждения" }).click();
+      await expect(manager.getByRole("alert")).toBeVisible();
+      await form.getByRole("button", { name: "Создать ссылку для обсуждения" }).click();
+      const share = manager.getByRole("article", { name: "Подборка: Музыка для вечера", exact: true });
+      await expect(share.getByRole("link", { name: "Открыть гостевую подборку" })).toBeVisible();
+      const created = await getJson<{ items: { id: string; share_path: string }[] }>(request, `/shortlists?organization_id=${org.id}&event_id=${event.id}`, owner.token);
+      expect(created.items).toHaveLength(1);
+      const guestContext = await browser.newContext({ viewport: { width, height: 900 } });
+      const guest = await guestContext.newPage();
+      let failRead = true;
+      await guest.route(`${API_BASE}/shared/*`, async (route) => { expect(route.request().headers().authorization).toBeUndefined(); if (route.request().method() === "GET" && failRead) { failRead = false; await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Обсуждение временно недоступно" }) }); } else await route.continue(); });
+      await guest.goto(new URL(created.items[0].share_path, page.url()).toString());
+      await expect(guest.locator("main").getByRole("alert")).toContainText("Обсуждение временно недоступно");
+      await guest.getByRole("button", { name: "Обновить обсуждение" }).click();
+      await expect(guest.getByRole("heading", { name: "Музыка для вечера", exact: true })).toBeVisible();
+      await expect(guest.locator("main")).not.toContainText("Приватный корпоратив");
+      await expect(guest.locator("main")).not.toContainText("987654");
+      await guest.getByRole("textbox", { name: "Имя для обсуждения", exact: true }).fill("Анна");
+      await guest.getByRole("button", { name: "Присоединиться", exact: true }).click();
+      const candidate = guest.getByRole("article", { name: "Кандидат: DJ Первый", exact: true });
+      await candidate.getByRole("button", { name: "❤️ Нравится", exact: true }).click();
+      await expect(candidate.getByRole("button", { name: "❤️ Нравится", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await candidate.getByRole("textbox", { name: "Ваш комментарий", exact: true }).fill("Нужно проверить оборудование зала");
+      await candidate.getByRole("button", { name: "Сохранить комментарий" }).click();
+      await expect(candidate.locator(".shortlist-comment")).toHaveText("Нужно проверить оборудование зала");
+      await guest.reload();
+      await expect(candidate.getByRole("button", { name: "❤️ Нравится", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await candidate.getByRole("button", { name: "Не подходит", exact: true }).click();
+      await expect(candidate.locator(".shortlist-results")).toContainText("Не подходит: 1");
+      await expect(candidate.locator(".shortlist-results")).toContainText("❤️ Нравится: 0");
+      await guest.getByRole("article", { name: "Кандидат: DJ Второй", exact: true }).getByRole("button", { name: "Голосую за", exact: true }).click();
+      expect(await guest.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await candidate.evaluate((el) => window.scrollBy({ top: el.getBoundingClientRect().top - (document.querySelector("header.top")?.getBoundingClientRect().height || 0) - 16, behavior: "instant" }));
+      await guest.screenshot({ path: testInfo.outputPath("guest-viewport.png") });
+      await page.goto(`/events/${event.id}`);
+      await manager.getByText("Мнения участников", { exact: true }).click();
+      await expect(manager).toContainText("Нужно проверить оборудование зала");
+      await expect(manager).toContainText("Анна");
+      expect((await getJson<{ requests: object[] }>(request, `/events/${event.id}`, owner.token)).requests).toHaveLength(0);
+      await manager.evaluate((el) => window.scrollBy({ top: el.getBoundingClientRect().top - (document.querySelector("header.top")?.getBoundingClientRect().height || 0) - 16, behavior: "instant" }));
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath("organizer-viewport.png") });
+      await manager.getByRole("button", { name: "Отозвать ссылку" }).click();
+      await expect(manager.getByRole("status")).toContainText("Ссылка отозвана");
+      await candidate.getByRole("button", { name: "Голосую за", exact: true }).click();
+      await expect(guest.locator("main").getByRole("alert")).toContainText("Ссылка недоступна");
+      await expect(guest.getByRole("button", { name: "Сохранить комментарий" })).toHaveCount(0);
+      await guest.reload();
+      await expect(guest.locator("main").getByRole("alert")).toContainText("Ссылка недоступна");
+      await guestContext.close();
+    });
+  });
+}
