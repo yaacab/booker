@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -9,7 +9,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from starlette.requests import Request as HttpRequest
 
-from booker_api.calendar import overlapping_slots
+from booker_api.calendar import lock_calendar_resources, overlapping_slots, ranges_overlap
 from booker_api.commerce.fees import SNAPSHOT_FIELDS, offer_fees, snapshot_payload
 from booker_api.commerce.promotions import attribute_request
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
@@ -1150,9 +1150,26 @@ def _assert_hold_ready(db: Session, booking: Booking) -> OfferVersion:
     return version
 
 
+def _lock_booking_resources(db: Session, bookings: list[Booking]) -> None:
+    slots = db.query(AvailabilitySlot).filter(AvailabilitySlot.id.in_([b.slot_id for b in bookings])).all()
+    lock_calendar_resources(db, [(s.resource_type, s.resource_id) for s in slots])
+
+
+def _validate_hold_package(slots: list[tuple[Booking, AvailabilitySlot]]) -> None:
+    for index, (_, slot) in enumerate(slots):
+        for _, other in slots[:index]:
+            if (slot.resource_type, slot.resource_id) != (other.resource_type, other.resource_id):
+                continue
+            if ranges_overlap(aware(slot.starts_at)-timedelta(minutes=slot.buffer_before_min or 0),
+                    aware(slot.ends_at)+timedelta(minutes=slot.buffer_after_min or 0),
+                    aware(other.starts_at)-timedelta(minutes=other.buffer_before_min or 0),
+                    aware(other.ends_at)+timedelta(minutes=other.buffer_after_min or 0)):
+                raise HTTPException(409, "В наборе пересекаются интервалы одного исполнителя или зала")
+
+
 def _lock_and_validate_slot(db: Session, booking: Booking) -> AvailabilitySlot:
     slot = db.execute(
-        select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).with_for_update()
+        select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).with_for_update().execution_options(populate_existing=True)
     ).scalar_one()
     offer = db.get(Offer, booking.offer_id)
     req = db.get(Request, offer.request_id) if offer else None
@@ -1223,6 +1240,7 @@ def hold_booking(
     else:
         raise HTTPException(403, "Нет доступа")
     _assert_hold_ready(db, booking)
+    _lock_booking_resources(db, [booking])
     slot = _lock_and_validate_slot(db, booking)
     hold = _apply_hold(db, booking=booking, slot=slot, actor_user_id=user.id)
     db.commit()
@@ -1259,12 +1277,14 @@ def hold_bookings_atomic(
     for booking in bookings:
         _assert_hold_ready(db, booking)
 
+    _lock_booking_resources(db, bookings)
     # Lock slots in deterministic order to avoid deadlocks; validate all before any claim.
     ordered = sorted(bookings, key=lambda b: b.slot_id)
     slots: list[tuple[Booking, AvailabilitySlot]] = []
     for booking in ordered:
         slots.append((booking, _lock_and_validate_slot(db, booking)))
 
+    _validate_hold_package(slots)
     holds_out = []
     for booking, slot in slots:
         hold = _apply_hold(db, booking=booking, slot=slot, actor_user_id=user.id)

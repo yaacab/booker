@@ -193,7 +193,9 @@ test.describe("Deal path E07–E09", () => {
       await page.getByRole("button", { name: "Подтвердить условия" }).click();
       await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
 
+      const held = page.waitForResponse(response => response.request().method() === "POST" && response.url().endsWith(`/bookings/${ctx.bookingId}/hold`));
       await page.locator(".deal-toolbar").getByRole("button", { name: "Удержать дату", exact: true }).click();
+      expect((await held).status()).toBe(200);
       await expect(page.getByText("Дата удерживается").first()).toBeVisible({ timeout: 10_000 });
 
       const room = await getJson<{ hold?: { status: string }; quote: DealRoomQuote }>(

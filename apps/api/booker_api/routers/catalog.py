@@ -7,7 +7,13 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from starlette.requests import Request as HttpRequest
 
-from booker_api.calendar import MSK, calendar_day_bounds, open_slots_unmasked, overlapping_slots
+from booker_api.calendar import (
+    MSK,
+    calendar_day_bounds,
+    lock_calendar_resources,
+    open_slots_unmasked,
+    overlapping_slots,
+)
 from booker_api.commerce.promotions import insert_sponsored
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
@@ -309,6 +315,7 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
         raise HTTPException(400, "resource_type: artist|hall")
     before = max(0, getattr(body, "buffer_before_min", 0) or 0)
     after = max(0, getattr(body, "buffer_after_min", 0) or 0)
+    lock_calendar_resources(db, [(body.resource_type, body.resource_id)])
     # Local open/held/confirmed conflict; busy is an overlay and may coexist.
     if overlapping_slots(
         db,
