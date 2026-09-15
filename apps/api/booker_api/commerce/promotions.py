@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 
 from booker_api.commerce.catalog import seed_catalog
 from booker_api.commerce.entitlements import get_entitlements, require_feature
-from booker_api.commerce.orders import lock_organization, order_payload
-from booker_api.commerce.provider import ProviderUnavailable, get_provider
+from booker_api.commerce.orders import lock_organization, order_payload, resume_checkout
+from booker_api.commerce.provider import get_provider
 from booker_api.config import settings
 from booker_api.models import (
     Artist,
@@ -88,6 +88,8 @@ def create_campaign(db: Session, org_id: str, data: dict, actor_id: str) -> Prom
             or bool(credit) != data["use_credit"]
         ):
             raise HTTPException(409, "Этот ключ уже использован для другого заказа")
+        if order:
+            resume_checkout(db, order, actor_id)
         return existing
     product = (
         db.query(PromotionProduct)
@@ -136,19 +138,6 @@ def create_campaign(db: Session, org_id: str, data: dict, actor_id: str) -> Prom
         )
         db.add(order)
         db.flush()
-        try:
-            checkout = provider.create_checkout(
-                order_id=order.id,
-                amount_rub=order.amount_rub,
-                currency="RUB",
-                idempotency_key=order.id,
-            )
-            order.provider_reference = checkout.reference
-            order.status = "pending_payment"
-            meta["checkout_url"] = checkout.url
-        except ProviderUnavailable:
-            order.status = "created"
-        order.metadata_json = json.dumps(meta)
         campaign.billing_order_id = order.id
     db.add(campaign)
     db.flush()
@@ -182,6 +171,8 @@ def create_campaign(db: Session, org_id: str, data: dict, actor_id: str) -> Prom
             "target_type": data["target_type"],
         },
     )
+    if order:
+        resume_checkout(db, order, actor_id)
     return campaign
 
 

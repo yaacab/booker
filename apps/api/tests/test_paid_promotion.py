@@ -368,3 +368,30 @@ def test_unclaimed_and_unpublished_venues_cannot_buy_placement(client, SessionLo
         row.moderation_status = "needs_review"
         db.commit()
     assert client.post(route, headers=headers, json=body).status_code == 422
+
+
+def test_promotion_checkout_timeout_preserves_campaign_and_retries(client, SessionLocal, stub, supply, monkeypatch):
+    from booker_api.commerce.provider import Checkout, StubProvider
+    from booker_api.models import BillingOrder
+    calls = []
+    def checkout(self, **kw):
+        calls.append(kw)
+        with SessionLocal() as db:
+            assert db.get(BillingOrder, kw['order_id'])
+            assert db.query(PromotionCampaign).filter_by(billing_order_id=kw['order_id']).count() == 1
+        if len(calls) == 1:
+            raise TimeoutError()
+        return Checkout(reference='original-promotion')
+    monkeypatch.setattr(StubProvider, 'create_checkout', checkout)
+    result = promote(client, supply).json()
+    assert result['status'] == 'pending_payment'
+    assert result['order']['can_retry_checkout']
+    assert client.post(f"/commerce/promotions/{result['id']}/cancel", headers=supply['headers']).status_code == 409
+    repeat = promote(client, supply).json()
+    assert repeat['id'] == result['id'] and repeat['order']['status'] == 'pending_payment'
+    assert calls[0] == calls[1]
+    assert repeat['status'] == 'pending_payment'
+    with SessionLocal() as db:
+        assert db.query(PromotionCampaign).count() == 1
+        assert db.query(BillingOrder).count() == 1
+        assert db.query(AuditLog).filter_by(action='promotion.started').count() == 0

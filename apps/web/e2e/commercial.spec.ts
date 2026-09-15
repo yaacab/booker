@@ -97,3 +97,50 @@ test("Commerce notification selects the specified organization without a silent 
   await expect(page.getByRole("main").getByRole("alert")).toContainText("Нет доступа к указанному рабочему пространству");
   await expect(page.getByRole("region", { name: "Текущий тариф", exact: true })).toHaveCount(0);
 });
+
+for (const width of [1440, 390]) {
+  test(`Checkout recovery, error and keyboard retry at ${width}px`, async ({ page, request }, testInfo) => {
+    const user = await register(request, `checkout-retry-${width}-${Date.now()}@booker.test`, 'Повтор оплаты');
+    const headers = { Authorization: `Bearer ${user.token}` };
+    const orgResponse = await request.post(`${API_BASE}/orgs`, { headers, data: { name: 'Студия', kind: 'artist' } });
+    const org = await orgResponse.json();
+    const orderResponse = await request.post(`${API_BASE}/commerce/organizations/${org.id}/orders`, { headers, data: { plan_code: 'artist_pro', billing_period: 'monthly', idempotency_key: 'original-order' } });
+    expect(orderResponse.ok()).toBe(true);
+    const order = await orderResponse.json();
+    await injectSession(page, user.token, org.id);
+    await page.setViewportSize({ width, height: 900 });
+    // UI-only uncertain response fixture. Durable provider timeouts and exact
+    // idempotency are covered by API/PG tests; no real provider is connected.
+    let uncertain = true;
+    let firstAttempt = true;
+    await page.route(`**/commerce/organizations/${org.id}`, async route => {
+      const response = await route.fetch();
+      const data = await response.json();
+      if (uncertain) data.orders = data.orders.map((item: { id: string }) => item.id === order.id ? { ...item, status: 'created', checkout_url: null, can_retry_checkout: true, can_cancel: false, message: 'Ответ платёжного партнёра не получен. Повторите получение ссылки для этого заказа.' } : item);
+      await route.fulfill({ response, json: data });
+    });
+    await page.route(`**/commerce/orders/${order.id}/checkout`, async route => {
+      if (firstAttempt) {
+        firstAttempt = false;
+        await route.fulfill({ status: 503, json: { detail: 'Партнёр временно недоступен' } });
+      } else {
+        const response = await route.fetch();
+        expect(response.ok()).toBe(true);
+        uncertain = false;
+        await route.fulfill({ response });
+      }
+    });
+    await page.goto('/cabinet/performer/growth');
+    const retry = page.getByRole('button', { name: 'Повторить получение ссылки', exact: true });
+    await expect(retry).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Отменить заказ', exact: true })).toHaveCount(0);
+    await retry.click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Партнёр временно недоступен' })).toBeVisible();
+    await retry.focus(); await retry.press('Enter');
+    await expect(retry).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Завершить тестовую оплату', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.getByRole('region', { name: 'Заказы и оплата' }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('checkout-recovery.png') });
+  });
+}

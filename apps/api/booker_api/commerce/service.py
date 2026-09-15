@@ -1,5 +1,7 @@
 """Commercial lifecycle; expiry does not depend on a successful payment transport."""
 
+import json
+
 from fastapi import HTTPException
 from sqlalchemy import update
 from sqlalchemy.orm import Session
@@ -112,6 +114,8 @@ def cancel_order(db: Session, order: BillingOrder, actor_id: str) -> None:
         return
     if order.status not in {"created", "pending_payment", "failed"}:
         raise HTTPException(409, "Оплаченный заказ отменяется через возврат и поддержку")
+    if json.loads(order.metadata_json).get('checkout_state') in ('creating', 'uncertain'):
+        raise HTTPException(409, 'Сначала восстановите состояние заказа у платёжного партнёра')
     order.status = "cancelled"
     order.cancelled_at = now()
     if order.product_kind == "promotion":

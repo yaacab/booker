@@ -11,6 +11,7 @@ export type CommercialPlan = {
 export type BillingOrder = {
   id: string; organization_id: string; product_kind: string; product_code: string;
   amount_rub: number; currency: string; status: string; provider: string;
+  can_retry_checkout?: boolean; can_cancel?: boolean;
   test_mode: boolean; checkout_url: string | null; checkout_available: boolean;
   billing_period: string; created_at: string; paid_at: string | null; message: string | null;
 };

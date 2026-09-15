@@ -384,3 +384,33 @@ sandbox acceptance PSP. К результату интеграции необх�
 
 Приоритет ближайшей работы: renewal mapping и проверка полноты commerce refund mapping. До устранения этих пробелов
 раздел 34 мастер-задания не считается выполненным.
+
+### Durable commerce checkout (subscription + promotion)
+
+`commerce/orders.py:resume_checkout` сохраняет BillingOrder, исходную цену/snapshot,
+Subscription или PromotionCampaign и `metadata.checkout_state=creating` **до**
+вызова `create_subscription`/`create_checkout`. Внешний ключ всегда `order.id`.
+Адаптер обязан возвращать исходную сессию по тому же ключу, включая timeout;
+повтор не вправе регистрировать вторую подписку или повторно списывать деньги.
+Нормализуйте transport errors в ProviderUnavailable/TimeoutError/ConnectionError,
+не включайте секреты в тексты ошибок. Эти ошибки дают `created + uncertain`,
+не `failed` и не `paid`. Ответ создания сессии разрешён только pending_payment,
+с непустым reference и HTTPS checkout URL без userinfo; подписке дополнительно
+нужен subscription_reference. Disabled сохраняет created без обращения к PSP.
+
+`POST /commerce/orders/{id}/checkout` — owner/admin исходной организации (также
+platform admin по существующему RBAC), object auth, billing limiter, audit.
+Повтор исходного create с тем же ключом также восстанавливает прежний заказ.
+Готовые/terminal заказы не вызывают PSP повторно. Исходного provider менять
+нельзя; catalog edits не меняют сохранённую цену. При uncertain нельзя отменить
+заказ, включая связанное продвижение; сначала нужно получить результат исходной
+попытки. Новый заказ подписки блокируется существующим незавершённым заказом.
+После durable commit исходная организация блокируется снова, роль проверяется
+повторно; concurrent retries на PostgreSQL создают одну сессию.
+
+UI кабинета и продвижения использует серверные can_retry_checkout/can_cancel,
+сообщение и кнопку «Повторить получение ссылки». BillingOrder.status остаётся
+совместимым; состояния сессии хранятся в metadata_json, миграция не требуется.
+`billing.checkout_requested/ready/uncertain` не содержат URL/ключей/ответа партнёра.
+Это восстановление checkout, не завершённый recurring workflow и не подтверждение
+реальных денег; цикл подписки и sandbox выбранного PSP проверяются отдельно.

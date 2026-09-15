@@ -4,6 +4,7 @@ import calendar
 import hashlib
 import json
 from datetime import datetime
+from urllib.parse import urlsplit
 
 from fastapi import HTTPException
 from sqlalchemy import update
@@ -18,8 +19,9 @@ from booker_api.models import (
     Organization,
     PromotionCreditUse,
     Subscription,
+    User,
 )
-from booker_api.security import audit, aware, now
+from booker_api.security import audit, aware, now, require_org_member
 
 
 def lock_organization(db: Session, org_id: str) -> None:
@@ -52,7 +54,9 @@ def order_payload(order: BillingOrder) -> dict:
         "status": order.status,
         "provider": order.provider,
         "test_mode": order.provider == "stub",
-        "checkout_url": meta.get("checkout_url"),
+        "checkout_url": meta.get("checkout_url") if order.status == 'pending_payment' else None,
+        "can_retry_checkout": order.status == 'created' and meta.get('checkout_state') in ('creating', 'uncertain'),
+        "can_cancel": order.status in ('created', 'pending_payment', 'failed') and meta.get('checkout_state') not in ('creating', 'uncertain'),
         "checkout_available": order.provider != "disabled",
         "billing_period": meta.get("billing_period"),
         "commercial_policy_version": meta.get("commercial_policy_version"),
@@ -60,7 +64,7 @@ def order_payload(order: BillingOrder) -> dict:
         "paid_at": aware(order.paid_at) if order.paid_at else None,
         "cancelled_at": aware(order.cancelled_at) if order.cancelled_at else None,
         "refunded_at": aware(order.refunded_at) if order.refunded_at else None,
-        "message": "Онлайн-оплата пока недоступна"
+        "message": "Ответ платёжного партнёра не получен. Повторите получение ссылки для этого заказа." if order.status == 'created' and meta.get('checkout_state') in ('creating', 'uncertain') else "Онлайн-оплата пока недоступна"
         if order.provider == "disabled"
         else (
             "Тестовый режим: реальные деньги не списываются" if order.provider == "stub" else None
@@ -90,7 +94,7 @@ def create_subscription_order(
             or meta.get("billing_period") != billing_period
         ):
             raise HTTPException(409, "Этот ключ уже использован для другого заказа")
-        return existing
+        return resume_checkout(db, existing, actor_id)
     if (
         db.query(PromotionCreditUse)
         .filter_by(organization_id=org_id, idempotency_key=idempotency_key)
@@ -139,23 +143,6 @@ def create_subscription_order(
     )
     db.add(order)
     db.flush()
-    try:
-        checkout = provider.create_subscription(
-            order_id=order.id,
-            amount_rub=amount,
-            currency="RUB",
-            billing_period=billing_period,
-            idempotency_key=order.id,
-        )
-        order.provider_reference = checkout.reference
-        order.status = "pending_payment"
-        meta.update(
-            checkout_url=checkout.url, subscription_reference=checkout.subscription_reference
-        )
-    except ProviderUnavailable:
-        # A reviewable order exists; no fictitious checkout or paid entitlement.
-        order.status = "created"
-    order.metadata_json = json.dumps(meta)
     if sub is None:
         db.add(
             Subscription(
@@ -181,6 +168,60 @@ def create_subscription_order(
             "provider": provider.name,
         },
     )
+    return resume_checkout(db, order, actor_id)
+
+
+def resume_checkout(db: Session, order: BillingOrder, actor_id: str) -> BillingOrder:
+    """Persist identity before I/O; every retry uses the original provider key/price."""
+    lock_organization(db, order.organization_id)
+    db.refresh(order)
+    meta = json.loads(order.metadata_json)
+    if order.status != 'created' or order.provider_reference:
+        return order
+    provider = get_provider()
+    if provider.name != order.provider:
+        raise HTTPException(409, 'Заказ должен обработать исходный платёжный партнёр')
+    if provider.name == 'disabled':
+        return order
+    meta['checkout_state'] = 'creating'
+    order.metadata_json = json.dumps(meta)
+    audit(db, actor_user_id=actor_id, action='billing.checkout_requested', entity_type='billing_order', entity_id=order.id)
+    db.commit()  # Includes campaign/subscription and immutable catalog snapshot.
+    lock_organization(db, order.organization_id)
+    db.refresh(order)
+    if order.status != 'created' or order.provider_reference:
+        return order
+    member = require_org_member(db, db.get(User, actor_id), order.organization_id)
+    if member.role not in ('owner', 'admin'):
+        raise HTTPException(403, 'Оплатой управляет владелец или администратор организации')
+    meta = json.loads(order.metadata_json)
+    try:
+        args = {'order_id': order.id, 'amount_rub': order.amount_rub,
+            'currency': order.currency, 'idempotency_key': order.id}
+        checkout = (provider.create_subscription(**args, billing_period=meta['billing_period'])
+            if order.product_kind == 'subscription' else provider.create_checkout(**args))
+        for value in (checkout.reference,):
+            if not isinstance(value, str) or not value or len(value) > 128 or value != value.strip():
+                raise ProviderUnavailable('Invalid checkout reference')
+        if checkout.status != 'pending_payment':
+            raise ProviderUnavailable('Checkout is not evidence of capture')
+        if checkout.url is not None:
+            url = urlsplit(checkout.url)
+            if url.scheme != 'https' or not url.hostname or url.username or url.password:
+                raise ProviderUnavailable('Invalid checkout URL')
+        if order.product_kind == 'subscription' and (not isinstance(checkout.subscription_reference, str)
+            or not checkout.subscription_reference or len(checkout.subscription_reference) > 128):
+            raise ProviderUnavailable('Missing subscription reference')
+        order.provider_reference = checkout.reference
+        order.status = 'pending_payment'
+        meta.update(checkout_state='ready', checkout_url=checkout.url,
+            subscription_reference=checkout.subscription_reference)
+        audit(db, actor_user_id=actor_id, action='billing.checkout_ready', entity_type='billing_order', entity_id=order.id)
+    except (ProviderUnavailable, TimeoutError, ConnectionError, ValueError, TypeError):
+        meta['checkout_state'] = 'uncertain'
+        audit(db, actor_user_id=actor_id, action='billing.checkout_uncertain', entity_type='billing_order', entity_id=order.id)
+    order.metadata_json = json.dumps(meta)
+    db.commit()
     return order
 
 

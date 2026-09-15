@@ -385,3 +385,71 @@ def test_commercial_flag_does_not_remove_free_product_access(client, monkeypatch
     ctx = setup_negotiation(client)
     assert ctx["offer"]["version"]["quote_id"]
     assert ctx["offer"]["version"]["supplier_service_fee_rub"] == 4000
+
+
+def test_checkout_timeout_keeps_durable_identity_and_snapshot(client, SessionLocal, stub, monkeypatch):
+    from booker_api.commerce.provider import Checkout, StubProvider
+    _, headers, org = org_user(client)
+    calls = []
+    def checkout(self, **kw):
+        calls.append(kw)
+        with SessionLocal() as db:
+            saved = db.get(BillingOrder, kw['order_id'])
+            assert saved and saved.amount_rub == kw['amount_rub']
+            assert json.loads(saved.metadata_json)['checkout_state'] == 'creating'
+            assert db.query(Subscription).filter_by(organization_id=org).count() == 1
+        if len(calls) == 1:
+            raise TimeoutError('private provider response')
+        return Checkout(reference='recovered-order', url='https://checkout.example.test/saved', subscription_reference='original-sub')
+    monkeypatch.setattr(StubProvider, 'create_subscription', checkout)
+    response = buy(client, headers, org)
+    assert response.status_code == 200, response.text
+    order = response.json()
+    assert order['status'] == 'created' and order['can_retry_checkout']
+    assert not order['can_cancel'] and 'private provider' not in response.text
+    assert state(client, headers, org)['plan']['code'] == 'artist_free'
+    assert client.post(f"/commerce/orders/{order['id']}/cancel", headers=headers).status_code == 409
+    assert buy(client, headers, org, key='duplicate-attempt').status_code == 409
+    with SessionLocal() as db:
+        plan = db.query(CommercialPlan).filter_by(code='artist_pro', active=True).first()
+        plan.monthly_price_rub += 1000
+        db.commit()
+    recovered = client.post(f"/commerce/orders/{order['id']}/checkout", headers=headers)
+    assert recovered.status_code == 200, recovered.text
+    assert recovered.json()['status'] == 'pending_payment'
+    assert recovered.json()['checkout_url'] == 'https://checkout.example.test/saved'
+    assert calls[0] == calls[1]
+    assert buy(client, headers, org).json()['id'] == order['id']
+    assert len(calls) == 2
+    with SessionLocal() as db:
+        assert db.query(BillingOrder).count() == 1
+        assert db.query(AuditLog).filter_by(action='subscription.checkout_started').count() == 1
+
+
+@pytest.mark.parametrize('problem', ['status', 'url', 'subscription', 'reference'])
+def test_invalid_checkout_response_never_grants_access(client, stub, monkeypatch, problem):
+    from booker_api.commerce.provider import Checkout, StubProvider
+    _, headers, org = org_user(client)
+    def checkout(self, **kw):
+        return Checkout(reference='' if problem == 'reference' else 'ref',
+            status='paid' if problem == 'status' else 'pending_payment',
+            url='javascript:alert(1)' if problem == 'url' else None,
+            subscription_reference=None if problem == 'subscription' else 'sub')
+    monkeypatch.setattr(StubProvider, 'create_subscription', checkout)
+    result = buy(client, headers, org).json()
+    assert result['status'] == 'created' and result['can_retry_checkout']
+    assert not result['checkout_url']
+    assert state(client, headers, org)['plan']['code'] == 'artist_free'
+
+
+def test_checkout_retry_is_scoped_to_owner_and_original_provider(client, stub, monkeypatch):
+    from booker_api.commerce.provider import StubProvider
+    def timeout(self, **kw):
+        raise TimeoutError()
+    monkeypatch.setattr(StubProvider, 'create_subscription', timeout)
+    _, headers, org = org_user(client)
+    _, foreign, _ = org_user(client, suffix='foreign-checkout')
+    order = buy(client, headers, org).json()
+    assert client.post(f"/commerce/orders/{order['id']}/checkout", headers=foreign).status_code == 403
+    monkeypatch.setattr(settings, 'commerce_provider', 'disabled')
+    assert client.post(f"/commerce/orders/{order['id']}/checkout", headers=headers).status_code == 409

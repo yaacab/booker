@@ -591,3 +591,51 @@ def test_postgres_refund_webhooks_serialize_accounting(client, SessionLocal, mon
         assert db.get(Payment, event['payment_id']).status == 'partially_refunded'
         assert db.query(AuditLog).filter_by(action='payment.refunded').count() == 1
         assert db.query(AuditLog).filter_by(action='refund.webhook').count() == 1
+
+
+def test_postgres_commerce_checkout_retries_serialize_one_session(client, SessionLocal, monkeypatch):
+    from booker_api.commerce import orders
+    from booker_api.commerce.provider import Checkout, StubProvider
+    from booker_api.config import settings
+    from tests.test_commerce import org_user
+    monkeypatch.setattr(settings, 'commerce_provider', 'stub')
+    monkeypatch.setattr(settings, 'commerce_allow_stub', True)
+    monkeypatch.setattr(settings, 'commerce_webhook_secret', 'test-commerce-checkout-secret-at-least-32')
+    user, _, org = org_user(client)
+    ready, waiting, release = Signal(), Signal(), Signal()
+    thread = local()
+    original_lock = orders.lock_organization
+    calls = []
+
+    def lock(*args):
+        if thread.role == 'second':
+            waiting.set()
+        return original_lock(*args)
+
+    def checkout(self, **kw):
+        calls.append(kw)
+        ready.set()
+        assert release.wait(5)
+        return Checkout(reference='same-checkout', subscription_reference='same-subscription')
+
+    def run(role):
+        thread.role = role
+        with SessionLocal() as db:
+            row = orders.create_subscription_order(db, org, 'artist_pro', 'monthly', 'original-key', user['user_id'])
+            db.commit()
+            return row.id, row.provider_reference
+
+    monkeypatch.setattr(orders, 'lock_organization', lock)
+    monkeypatch.setattr(StubProvider, 'create_subscription', checkout)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(run, 'first')
+        try:
+            assert ready.wait(5)
+            second = pool.submit(run, 'second')
+            assert waiting.wait(5)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.2)
+        finally:
+            release.set()
+        assert first.result(timeout=5) == second.result(timeout=5)
+    assert len(calls) == 1

@@ -1732,3 +1732,32 @@ namespace, итог доступен в существующем `/admin/refunds
 UI не менялся, browser/build проверки этого изменения повторно не заявляются.
 Общая цель остаётся открытой: следующий этап — billing cycle / recurring и полный
 аудит остальных требований разделов 0–35.
+
+### Сохранение commerce checkout до вызова партнёра — 2026-09-15
+
+Подписки и платное продвижение теперь сохраняют BillingOrder, цену/snapshot,
+связанную Subscription/PromotionCampaign и состояние создаваемой сессии до
+внешнего вызова. Повтор использует исходный order.id как ключ PSP и не создаёт
+вторую сессию. Timeout оставляет created/uncertain без платного доступа; отмена
+неопределённого заказа запрещена до восстановления результата. Provider нельзя
+заменить в существующем заказе. Готовый checkout возвращается без нового вызова.
+
+POST /commerce/orders/{id}/checkout: object auth + billing owner/admin + rate
+limit + audit. UI кабинета и продвижения: русское сообщение, восстановление
+ссылки, disabled во время запроса, ошибка и повтор с клавиатуры. Checkout URL
+проверяется как HTTPS без userinfo; paid из create checkout не принимается.
+Подписке нужен сохранённый subscription_reference. Миграция не нужна — metadata.
+
+Проверки из worktree с PATH=/tmp/booker-prelaunch-tools/bin:$PATH:
+- BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/python -m pytest apps/api/tests/test_commerce.py -q — 30 passed (4.92s).
+- BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/python -m pytest apps/api/tests/test_commerce.py apps/api/tests/test_paid_promotion.py apps/api/tests/test_calendar_postgres.py -q — 62 passed (44.92s), включая concurrent retries и все 21 PostgreSQL case.
+- make lint, make web-lint — passed.
+- NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build — passed.
+- Из apps/web: BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test commercial.spec.ts promotions.spec.ts --workers=1 --reporter=line — 13 passed, 1 failed (37.9s); имя commercial.spec.ts также выбрало admin-commercial.spec.ts. Ошибка нового mobile теста: неоднозначный role=alert из-за Next route announcer.
+- После уточнения селектора: та же команда с commercial.spec.ts -g 'Checkout recovery' — 2 passed (12.6s), 1440/390, ошибка+keyboard retry; screenshot 390 проверен визуально, overflow отсутствует.
+
+UI timeout — явно отмеченная response fixture; сохранение заказа, проверка прав
+и тайм-ауты партнёра доказаны API/PG отдельно. Реальный PSP не подключён. Новые
+сценарии входят в уже включённый в CI commercial.spec.ts. Общая цель открыта:
+расчётные периоды/recurring и полный финальный аудит ещё впереди.
+- Полный прогон: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 540 passed, 2 skipped (272.90s). Все текущие API-изменения включены.

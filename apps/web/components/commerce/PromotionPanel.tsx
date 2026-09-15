@@ -90,7 +90,8 @@ export function PromotionPanel({ orgId, canManage, catalog, onChanged }: { orgId
         {campaign.order?.message && <p>{campaign.order.message}</p>}
         <div className="commerce-actions">{canManage && campaign.order?.test_mode && campaign.order.status === "pending_payment" && <button className="btn" type="button" disabled={busy} onClick={() => void action(`/commerce/orders/${campaign.order!.id}/test-complete`, { status: "paid" })}>Завершить тестовую оплату продвижения</button>}
           {campaign.order?.checkout_url && campaign.order.status === "pending_payment" && <a className="btn" href={campaign.order.checkout_url}>Оплатить продвижение</a>}
-          {canManage && ["pending_payment", "active", "scheduled"].includes(campaign.status) && <button className="btn secondary" type="button" disabled={busy} onClick={() => void action(`/commerce/promotions/${campaign.id}/cancel`)}>Остановить кампанию</button>}
+          {canManage && campaign.order?.can_retry_checkout && <button className="btn" type="button" disabled={busy} onClick={() => void action(`/commerce/orders/${campaign.order!.id}/checkout`)}>Повторить получение ссылки</button>}
+          {canManage && !campaign.order?.can_retry_checkout && ["pending_payment", "active", "scheduled"].includes(campaign.status) && <button className="btn secondary" type="button" disabled={busy} onClick={() => void action(`/commerce/promotions/${campaign.id}/cancel`)}>Остановить кампанию</button>}
         </div>
       </li>)}</ul>}
     </>}

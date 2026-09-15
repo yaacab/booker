@@ -15,6 +15,7 @@ from booker_api.commerce.orders import (
     create_subscription_order,
     lock_organization,
     order_payload,
+    resume_checkout,
     settle_event,
 )
 from booker_api.commerce.provider import (
@@ -185,6 +186,17 @@ def get_order(order_id: str, user: User = Depends(current_user), db: Session = D
         raise HTTPException(404, "Заказ не найден")
     require_org_member(db, user, order.organization_id)
     return order_payload(order)
+
+
+@router.post('/orders/{order_id}/checkout')
+def retry_checkout(order_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    order = db.get(BillingOrder, order_id)
+    if not order:
+        raise HTTPException(404, 'Заказ не найден')
+    billing_writer(db, user, order.organization_id)
+    row = resume_checkout(db, order, user.id)
+    db.commit()
+    return order_payload(row)
 
 
 @router.post("/orders/{order_id}/cancel")

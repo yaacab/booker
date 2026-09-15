@@ -338,3 +338,11 @@ status (текущее локальное), amount_rub. Повторы одно�
 повторно. `payment.refunded` остаётся однократным денежным переходом; поздний pending
 и подтверждение уже учтённого результата новым event_id не увеличивают сумму.
 Подписи, raw payload и provider references в эти события не записываются.
+
+### Восстановление commerce checkout
+
+`billing.checkout_requested`, `billing.checkout_ready`, `billing.checkout_uncertain`:
+entity=billing_order, actor=авторизованный billing writer; payload без реквизитов
+партнёра и checkout URL. requested фиксируется до внешнего вызова; uncertain
+означает неизвестный результат, не неуспешную оплату. Повтор готового заказа не
+создаёт новый checkout/audit ready. Активация по-прежнему только billing.paid.

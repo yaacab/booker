@@ -108,7 +108,8 @@ function CommerceCabinetContent({ audience }: { audience: Audience }) {
           <p className="timeline">{formatWhen(order.created_at)}</p>{order.message && <p>{order.message}</p>}
           <div className="commerce-actions">{data.can_manage && order.test_mode && order.status === "pending_payment" && <button type="button" className="btn" disabled={busy} onClick={() => void mutate(`/commerce/orders/${order.id}/test-complete`, { status: "paid" })}>Завершить тестовую оплату</button>}
             {order.checkout_url && order.status === "pending_payment" && <a className="btn" href={order.checkout_url}>Перейти к оплате</a>}
-            {data.can_manage && ["created", "pending_payment", "failed"].includes(order.status) && <button type="button" className="btn secondary" disabled={busy} onClick={() => void mutate(`/commerce/orders/${order.id}/cancel`)}>Отменить заказ</button>}
+            {data.can_manage && order.can_retry_checkout && <button type="button" className="btn" disabled={busy} onClick={() => void mutate(`/commerce/orders/${order.id}/checkout`)}>Повторить получение ссылки</button>}
+            {data.can_manage && order.can_cancel && <button type="button" className="btn secondary" disabled={busy} onClick={() => void mutate(`/commerce/orders/${order.id}/cancel`)}>Отменить заказ</button>}
           </div>
         </li>)}</ul>}
       </section>
