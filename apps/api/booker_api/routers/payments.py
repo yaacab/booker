@@ -6,7 +6,9 @@ from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from booker_api.commerce.promotions import attribute_booking
 from booker_api.config import settings
@@ -32,6 +34,8 @@ from booker_api.notifications.service import notify, org_member_notifications
 from booker_api.notifications.types import Channel
 from booker_api.payments.adapter import (
     PaymentAdapterError,
+    PaymentAdapterUnavailable,
+    VerifiedPaymentEvent,
     get_payment_adapter,
     payment_stub_enabled,
 )
@@ -315,14 +319,16 @@ def create_payment(
         session = adapter.create_session(payment_id=pay.id, amount_rub=pay.amount_rub,
             idempotency_key=pay.idempotency_key, booking_id=booking.id)
         _validate_checkout_session(session, pay)
-    except (PaymentAdapterError, TimeoutError, ConnectionError):
+        with db.begin_nested():
+            pay.checkout_url = session.checkout_url
+            pay.provider_reference = session.provider_reference
+            db.flush()
+    except (PaymentAdapterError, TimeoutError, ConnectionError, IntegrityError):
         pay.session_state = "uncertain"
         audit(db, actor_user_id=user.id, action="payment.session_uncertain", entity_type="payment",
             entity_id=pay.id, payload={"provider": pay.provider})
         db.commit()
         raise HTTPException(502, "Партнёр не подтвердил создание счёта. Повторите запрос: сохранённый платёж будет использован снова") from None
-    pay.checkout_url = session.checkout_url
-    pay.provider_reference = session.provider_reference
     pay.session_state = "ready"
     # Creating checkout is never evidence of capture; only verified events record money.
     audit(db, actor_user_id=user.id, action="payment.session_ready", entity_type="payment",
@@ -389,6 +395,8 @@ def _lock_payment_context(db: Session, payment: Payment) -> Booking:
 
 def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
     adapter = get_payment_adapter()
+    if adapter.name != "stub":
+        raise HTTPException(400, "Используйте endpoint исходных уведомлений партнёра")
     try:
         event = adapter.verify_webhook(
             event_id=body.event_id,
@@ -398,17 +406,39 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         )
     except PaymentAdapterError as exc:
         raise HTTPException(401 if "подпись" in str(exc).lower() else 400, str(exc)) from exc
+    return _apply_payment_event(event, adapter, db)
+
+
+def _apply_payment_event(event, adapter, db, *, receipt_id=None, fingerprint=None):
     payment = db.get(Payment, event.payment_id)
     if not payment:
         raise HTTPException(404, "Платёж не найден")
     if payment.provider != adapter.name:
         raise HTTPException(409, "Провайдер платежа не совпадает")
     _lock_payment_context(db, payment)
-    seen = db.get(PaymentWebhookEvent, event.event_id)
+    if isinstance(event, VerifiedPaymentEvent):
+        _validate_provider_binding(event, adapter, payment)
+    receipt_id = receipt_id or event.event_id
+    seen = db.get(PaymentWebhookEvent, receipt_id)
     if seen:
-        if seen.payment_id != payment.id or seen.status != event.status:
+        if seen.payment_id != payment.id or seen.status != event.status or seen.event_fingerprint != fingerprint:
             raise HTTPException(409, "Событие уже использовано для другого уведомления")
         return json.loads(seen.response_json)
+    if isinstance(event, VerifiedPaymentEvent) and not payment.provider_reference:
+        try:
+            with db.begin_nested():
+                payment.provider_reference = event.provider_reference
+                db.flush()
+        except IntegrityError:
+            raise HTTPException(409, "Платёж партнёра уже связан с другой оплатой") from None
+    receipt = PaymentWebhookEvent(event_id=receipt_id, payment_id=payment.id,
+        status=event.status, event_fingerprint=fingerprint, response_json="{}")
+    try:
+        with db.begin_nested():
+            db.add(receipt)
+            db.flush()
+    except IntegrityError:
+        raise HTTPException(409, "Событие партнёра уже связано с другим платежом") from None
     booking = db.get(Booking, payment.booking_id)
     if event.status == "succeeded":
         if payment.status in {"pending", "failed"}:
@@ -423,14 +453,7 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         "payment_status": payment.status,
         "booking_status": booking.status,
     }
-    db.add(
-        PaymentWebhookEvent(
-            event_id=event.event_id,
-            payment_id=payment.id,
-            status=event.status,
-            response_json=json.dumps(response),
-        )
-    )
+    receipt.response_json = json.dumps(response)
     audit(
         db,
         actor_user_id=None,
@@ -441,6 +464,50 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
     )
     db.commit()
     return response
+
+
+def _validate_provider_binding(event, adapter, payment=None):
+    if not isinstance(event, VerifiedPaymentEvent):
+        raise HTTPException(400, "Партнёр не вернул проверенные реквизиты платежа")
+    for value in (event.event_id, event.payment_id, event.merchant_id, event.provider_reference):
+        if not isinstance(value, str) or not value or len(value) > 255 or value != value.strip() or any(ord(c) < 32 for c in value):
+            raise HTTPException(400, "Некорректные реквизиты уведомления")
+    if type(event.amount_rub) is not int or event.amount_rub < 0 or event.currency != 'RUB':
+        raise HTTPException(409, "Сумма или валюта уведомления не поддерживается")
+    if not adapter.merchant_id or event.merchant_id != adapter.merchant_id:
+        raise HTTPException(409, "Получатель платежа не совпадает")
+    if event.status not in ('pending', 'succeeded', 'failed'):
+        raise HTTPException(400, "Состояние уведомления не поддерживается")
+    if payment and (event.amount_rub != payment.amount_rub or
+        (payment.provider_reference and payment.provider_reference != event.provider_reference)):
+        raise HTTPException(409, "Реквизиты партнёра не соответствуют сохранённому платежу")
+
+
+@router.post('/payments/provider-webhook')
+async def provider_webhook(request: Request, db: Session = Depends(get_db)):
+    webhook_limiter.check(client_key(request, 'provider-webhook'))
+    adapter = get_payment_adapter()
+    if adapter.name == 'stub' and not settings.allow_default_webhook_secret and settings.webhook_secret == 'dev-webhook-secret':
+        raise HTTPException(503, "Webhook-секрет не настроен")
+    payload = bytearray()
+    async for chunk in request.stream():
+        if len(payload) + len(chunk) > 65536:
+            raise HTTPException(413, "Уведомление превышает допустимый размер")
+        payload.extend(chunk)
+    try:
+        event = adapter.verify_raw_webhook(payload=bytes(payload), headers=dict(request.headers))
+    except PaymentAdapterUnavailable:
+        raise HTTPException(503, "Проверка уведомлений партнёра пока недоступна") from None
+    except PaymentAdapterError:
+        raise HTTPException(401, "Уведомление партнёра не прошло проверку") from None
+    _validate_provider_binding(event, adapter)
+    fingerprint = hashlib.sha256(json.dumps({
+        'payment_id': event.payment_id, 'status': event.status, 'amount_rub': event.amount_rub,
+        'currency': event.currency, 'merchant_id': event.merchant_id,
+        'provider_reference': event.provider_reference,
+    }, sort_keys=True).encode()).hexdigest()
+    receipt_id = hashlib.sha256(f'provider:{adapter.name}:{event.event_id}'.encode()).hexdigest()
+    return await run_in_threadpool(_apply_payment_event, event, adapter, db, receipt_id=receipt_id, fingerprint=fingerprint)
 
 
 @router.post("/payments/webhook")

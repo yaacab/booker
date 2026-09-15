@@ -1617,3 +1617,52 @@ Generic get_refund_status служит границей чтения стату�
 - Финальная миграция с UNIQUE проверена downgrade e8f9a0b1c2d3 → d7e8f9a0b1c2 и upgrade head на обеих выделенных тестовых БД. Пересоздавалась только новая таблица тестовых возвратов; production не затрагивался. Это проверка ещё не выпущенной миграции, не инструкция откатывать финансовые данные production.
 - make lint и make web-lint — passed; исходный UI после успешной сборки не менялся.
 - Повтор admin-refunds.spec.ts на окончательной миграции и API — 2 passed (9.5s), те же 1440/390 и команда выше.
+
+## Проверка исходных платёжных уведомлений — 15 сентября 2026
+
+Новый POST `/payments/provider-webhook` читает исходные bytes (до 64 KiB) и
+headers, передаёт их PaymentAdapter.verify_raw_webhook, затем проверяет полный
+VerifiedPaymentEvent: payment ID, status, amount_rub, RUB, merchant_id,
+provider_reference. Ожидаемый merchant задаётся адаптером из конфигурации,
+не берётся из входящего события. Старый JSON POST `/payments/webhook` разрешён
+только stub. Отсутствие реализации raw verification даёт 503; неверная подпись
+не доходит до доменного перехода. Реальный PSP не выбирался и не подключался.
+
+PaymentWebhookEvent получил fingerprint финансовых полей и provider-scoped
+receipt ID. Повтор с теми же нормализованными данными возвращает сохранённый
+ответ; изменённые данные конфликтуют. Receipt резервируется до capture/hooks.
+Raw payload и подпись не сохраняются в audit. Pending не подтверждает деньги,
+late failed не отменяет capture; поздняя оплата после потери hold сохраняет
+денежный факт с reservation conflict, не восстанавливая дату. Обработка БД
+вынесена в threadpool, чтобы ожидание SQL lock не блокировало async event loop.
+
+Миграция f9a0b1c2d3e4 после e8f9a0b1c2d3 добавляет nullable fingerprint и UNIQUE
+index(provider, provider_reference) у Payment. Один reference не может оплатить
+два Payment. Первый verified event может восстановить reference после потери
+checkout response. Конфликт reference при создании checkout откатывается через
+savepoint: запись остаётся uncertain без чужого URL. Исторические дубликаты
+миграция не переписывает; такой конфликт потребует сверки до rollout.
+
+Проверки:
+- Из apps/api: BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test ../../.venv/bin/python -m pytest tests/test_provider_webhook.py tests/test_payments.py tests/test_payment_guards.py tests/test_checkout_receipts.py tests/test_external_payment_confirm.py -q — 50 passed (16.78s).
+- BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres + pytest tests/test_provider_webhook.py tests/test_calendar_postgres.py -q — 35 passed (32.61s), включая все 18 PostgreSQL cases; неверный merchant/amount/currency/reference, размер тела, подпись/повторы, закрытый резерв и разные платежи.
+- Дополнительный финальный checkout test проверяет конфликт reference при ответе создания сессии: pytest tests/test_checkout_receipts.py -q — 13 passed (9.71s).
+- Alembic upgrade head на SQLite /tmp/booker-support-e2e.db и отдельной PostgreSQL booker_migrations_52962f288b3e — passed до f9a0b1c2d3e4.
+- PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint — passed.
+- Из apps/web: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test booking-payment.spec.ts admin-refunds.spec.ts --workers=1 --reporter=line — 7 passed (14.1s), desktop/390.
+
+Новый raw endpoint проверен через настоящий API test client и PostgreSQL;
+браузерный прогон проверяет сохранность существующих путей оплаты и возврата,
+не выдаётся за sandbox PSP. В этом блоке не менялись исходники UI; повторная
+web-сборка не требовалась. Полная цель остаётся открыта, следующий шаг —
+status reconciliation без создания нового checkout и дальнейший recurring mapping.
+
+Полный прогон этого блока: PATH=/tmp/booker-prelaunch-tools/bin:$PATH
+BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres
+BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api —
+502 passed, 2 skipped (250.21s). После старта полного прогона добавлен один
+checkout collision test (прошёл в наборе 13 выше) и расширена проверка raw pending:
+pytest tests/test_provider_webhook.py tests/test_calendar_postgres.py -k
+'signed_original_bytes or verified_payment_event_roundtrip' -q — 2 passed,
+33 deselected (4.06s), SQLite + PostgreSQL. Исходная реализация после полного
+прогона не менялась; lint повторно passed.

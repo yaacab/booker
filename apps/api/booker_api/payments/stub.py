@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 
 from booker_api.config import settings
 from booker_api.payments.adapter import (
@@ -9,6 +10,7 @@ from booker_api.payments.adapter import (
     PaymentAdapterError,
     PaymentSession,
     RefundOutcome,
+    VerifiedPaymentEvent,
     WebhookEvent,
 )
 
@@ -55,6 +57,27 @@ class StubPaymentAdapter(PaymentAdapter):
         if not hmac.compare_digest(expected, signature):
             raise PaymentAdapterError("Неверная подпись webhook")
         return WebhookEvent(event_id=event_id, payment_id=payment_id, status=status)
+
+    @property
+    def merchant_id(self) -> str:
+        return "stub-merchant"
+
+    def verify_raw_webhook(self, *, payload: bytes, headers: dict[str, str]) -> VerifiedPaymentEvent:
+        # Local acceptance protocol only, not a signature format for a real PSP.
+        expected = hmac.new(settings.webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
+        signature = headers.get('x-booker-signature', '')
+        if not hmac.compare_digest(expected.encode(), signature.encode()):
+            raise PaymentAdapterError("Неверная подпись уведомления")
+        def unique_fields(pairs):
+            result = dict(pairs)
+            if len(result) != len(pairs):
+                raise ValueError('duplicate fields')
+            return result
+        try:
+            body = json.loads(payload, object_pairs_hook=unique_fields)
+            return VerifiedPaymentEvent(**body)
+        except (ValueError, TypeError, UnicodeError):
+            raise PaymentAdapterError("Некорректное уведомление") from None
 
     def normalize_idempotency_key(self, key: str) -> str:
         normalized = key.strip()

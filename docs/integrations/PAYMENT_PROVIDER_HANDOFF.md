@@ -135,20 +135,47 @@ HTTP 200 webhook как обещание Confirmed: проверяется во�
 
 - `create_session(payment_id, amount_rub, idempotency_key, booking_id)` возвращает
   `PaymentSession(provider, payment_id, status, checkout_url, provider_reference)`.
-- `verify_webhook(event_id, payment_id, status, signature)` возвращает
-  `WebhookEvent(event_id, payment_id, status)`.
+- `verify_webhook(event_id, payment_id, status, signature)` — только legacy stub.
+- `verify_raw_webhook(payload: bytes, headers: dict)` проверяет исходную подпись
+  и возвращает `VerifiedPaymentEvent(event_id, payment_id, status, amount_rub,
+  currency, merchant_id, provider_reference)`.
+- `merchant_id` — ожидаемый получатель из конфигурации адаптера; default берётся
+  из BOOKER_PAYMENT_MERCHANT_ID. Его нельзя брать из входящего уведомления.
 - `normalize_idempotency_key(key)` нормализует ключ до booking scope.
 - `refund(payment_id, amount_rub, total_rub, idempotency_key)` возвращает
   `RefundOutcome(refund_id, amount_rub, kind, status)`.
 - `LedgerHooks.on_session_created/on_capture/on_refund` — интерфейс событий;
   `NoOpLedgerHooks` не является бухгалтерским регистром или банковской сверкой.
 
-Booking endpoint — `POST /payments/webhook`; текущий `WebhookIn` передаёт
-signature в JSON. Этот формат используется stub и **не является** готовым
-контрактом webhook выбранного PSP. В нём нет суммы, валюты, merchant ID и исходного
-payload. Для реального адаптера нужен проверяемый вход исходных байтов и headers
-партнёра с проверкой merchant/reference/amount/currency до доменного перехода.
-Нельзя просто подставить реальную подпись в существующий stub JSON.
+Endpoint провайдера — `POST /payments/provider-webhook`. Он передаёт адаптеру
+исходные байты и headers, ограничивает body 64 KiB и не пишет сырой payload или
+подпись в журнал. Адаптер проверяет алгоритм подписи/временную метку партнёра до
+нормализации. Сервер затем проверяет merchant, RUB, точную integer amount_rub,
+payment ID и provider_reference. Части рубля нельзя округлять молча: до изменения
+денежного контракта адаптер обязан их отклонять.
+
+Нормализованные pending/succeeded/failed применяются под теми же блокировками,
+что capture/cancel/refunds. Первое проверенное уведомление может связать reference
+с уже сохранённым Payment, если ответ создания checkout был потерян. UNIQUE
+(provider, provider_reference) не позволяет одному платежу PSP оплатить две
+внутренние записи. Ограничение действует также при сохранении checkout receipt;
+ошибочный повтор reference оставляет сессию uncertain без чужого URL.
+
+Receipt ID — SHA-256 scope provider + event ID. В PaymentWebhookEvent хранится
+fingerprint финансовых полей; повтор того же нормализованного события возвращает
+сохранённый ответ, изменение полей — 409. Повторная доставка с другим форматированием
+JSON допустима, если проверена подпись именно новых исходных байтов. ID события
+резервируется в транзакции до capture/ledger hook. Обработка синхронной БД вынесена
+из async event loop в threadpool. Миграция `f9a0b1c2d3e4` добавляет fingerprint и
+уникальный индекс references; существующие данные с дубликатами нельзя молча
+переписывать, их необходимо сверить до применения миграции.
+
+`POST /payments/webhook` с signature в JSON теперь отклоняет **все не-stub**
+адаптеры. Нельзя подключать настоящий PSP через этот устаревший формат. Для
+локальных acceptance tests StubPaymentAdapter умеет HMAC-SHA256 исходного body
+в header `X-Booker-Signature`; merchant — фиксированный stub-merchant. Это не
+сигнатурный протокол реального PSP и не разрешение включать stub в production.
+Factory и production-gates остаются fail-closed; реальный партнёр не выбирался.
 
 `POST /bookings/{booking_id}/payments` возвращает id/status/amount/provider,
 session_state и checkout_url. Payment хранит checkout_url и provider_reference;
@@ -171,8 +198,9 @@ pending; succeeded в ответе создания сессии не являе
 Это сохранение и восстановление checkout, не банковская сверка: если uncertain
 платёж уже потерял резерв/событие закрыто, повтор create_session отклоняется.
 Реальный адаптер должен уметь сверять такую сессию без создания новой (status API /
-проверенное входящее событие), а также ограничивать срок действия checkout. Raw
-webhook и сверка закрытого/истёкшего платежа остаются частью следующей реализации.
+проверенное входящее событие), а также ограничивать срок действия checkout. Общий вход
+raw webhook реализован выше; активная сверка статуса закрытого/истёкшего платежа
+без нового checkout остаётся следующей задачей.
 
 Capture использует Event → resource → slot → Payment; отмена и истечение
 резерва начинают с того же Event/resource/slot. После ожидания expire_holds
@@ -280,7 +308,7 @@ false, неизвестный commerce provider возвращает DisabledPro
 ```bash
 BOOKER_ENVIRONMENT=test BOOKER_DATABASE_URL=sqlite:// ../../.venv/bin/python -m pytest \
   tests/test_payment_adapter.py tests/test_payment_guards.py tests/test_payments.py \
-  tests/test_external_payment_confirm.py tests/test_refunds.py tests/test_commerce.py -q
+  tests/test_external_payment_confirm.py tests/test_provider_webhook.py tests/test_refunds.py tests/test_commerce.py -q
 ```
 
 Этот набор проверяет текущие адаптеры/доменные ограничения. Он не заменяет
@@ -298,6 +326,6 @@ sandbox acceptance PSP. К результату интеграции необх�
    не обещают дату, если возврат webhook сообщает reservation conflict.
 6. Отрицательные production-gate тесты и протокол отдельного допуска к запуску.
 
-Приоритет ближайшей работы: проверенный raw webhook и status reconciliation,
+Приоритет ближайшей работы: status reconciliation и raw refund mapping,
 commerce refund workflow, renewal mapping. До устранения этих пробелов
 раздел 34 мастер-задания не считается выполненным.

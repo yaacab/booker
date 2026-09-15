@@ -34,6 +34,15 @@ class WebhookEvent:
 
 
 @dataclass(frozen=True)
+class VerifiedPaymentEvent(WebhookEvent):
+    """Normalized result AFTER verification of original provider bytes/headers."""
+    amount_rub: int
+    currency: str
+    merchant_id: str
+    provider_reference: str
+
+
+@dataclass(frozen=True)
 class RefundOutcome:
     refund_id: str
     amount_rub: int
@@ -111,6 +120,20 @@ class PaymentAdapter(ABC):
         idempotency_key: str | None = None,
     ) -> RefundOutcome: ...
 
+
+    @property
+    def merchant_id(self) -> str:
+        return settings.payment_merchant_id.strip()
+
+    def verify_raw_webhook(self, *, payload: bytes, headers: dict[str, str]) -> VerifiedPaymentEvent:
+        """Verify provider signature/timestamp before decoding trusted domain fields.
+
+        Normalize amount exactly to integer RUB (reject fractional rubles until
+        domain money supports them), verify provider metadata binds payment_id,
+        and return the actual merchant/reference/currency from the signed event.
+        Never trust a caller-supplied already-normalized JSON signature instead.
+        """
+        raise PaymentAdapterUnavailable("Проверка уведомлений этого партнёра пока недоступна")
 
     def get_refund_status(self, *, payment_id: str, refund_id: str, amount_rub: int,
         total_rub: int, idempotency_key: str) -> RefundOutcome:

@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -447,6 +448,7 @@ class Contract(Base):
 
 class Payment(Base):
     __tablename__ = "payments"
+    __table_args__ = (Index("uq_payment_provider_reference", "provider", "provider_reference", unique=True),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
@@ -487,6 +489,7 @@ class PaymentWebhookEvent(Base):
     event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     payment_id: Mapped[str] = mapped_column(ForeignKey("payments.id"))
     status: Mapped[str] = mapped_column(String(32))
+    event_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     response_json: Mapped[str] = mapped_column(Text)
 
 

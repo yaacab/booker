@@ -488,3 +488,15 @@ def test_postgres_refund_approval_serializes_provider_and_remaining_amount(clien
 def test_postgres_refund_reference_is_accounted_once(client, SessionLocal, monkeypatch):
     from tests.test_refunds import test_same_provider_reference_cannot_count_as_two_refunds
     test_same_provider_reference_cannot_count_as_two_refunds(client, SessionLocal, monkeypatch)
+
+
+def test_postgres_verified_payment_event_roundtrip(client, SessionLocal):
+    from tests.test_provider_webhook import (
+        test_signed_original_bytes_capture_and_dedupe_normalized_event,
+    )
+    test_signed_original_bytes_capture_and_dedupe_normalized_event(client, SessionLocal)
+
+
+def test_postgres_provider_payment_binding_cannot_be_reused(client, SessionLocal):
+    from tests.test_provider_webhook import test_reference_and_event_id_cannot_pay_two_bookings
+    test_reference_and_event_id_cannot_pay_two_bookings(client, SessionLocal)

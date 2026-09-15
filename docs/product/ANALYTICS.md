@@ -308,3 +308,13 @@ ID, amount, cumulative refunded amount, both approval actors and provider.
 Pending/uncertain events are not cash returned. Stub remains test money; external
 confirmation is an explicit operator assertion, not a bank webhook. Provider
 error bodies, TOTP codes and transfer references are not copied into audit.
+
+
+### Verified payment delivery
+
+Raw provider events use the existing `payment.webhook` audit after binding
+merchant/amount/currency/reference. PaymentWebhookEvent stores a provider-scoped
+receipt ID and normalized financial fingerprint, not the raw payload/signature.
+The receipt is claimed before capture. Rejected mismatches do not emit a successful
+payment audit. Pending delivery does not mean capture; late capture with an
+invalid reservation still records `payment.reservation_conflict` for the operator.

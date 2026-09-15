@@ -130,3 +130,13 @@ capture/expiry в обоих порядках. Второй поток дейс�
 на PostgreSQL: 1 passed (2.98s). Итого в файле 16 cases: 14 конкурентных, отчёт
 и ограничение финансовой уникальности. Прогон refunds + предыдущие 15 PG cases
 на финальной реализации savepoint — 29 passed (36.25s).
+
+
+## Проверенные исходные уведомления PSP
+
+Добавлены два PostgreSQL integration cases: проверенные merchant/amount/reference
+и повтор/поздний failed; попытка повторно использовать reference или event ID для
+другой оплаты. Проверяется rollback чужой привязки. Всего файл содержит 18 cases:
+14 concurrency и четыре проверки SQL/domain integrity (включая отчёт).
+Прогон нового tests/test_provider_webhook.py и всех 18 PG cases — 35 passed
+(32.61s). Это local stub HMAC, не sandbox настоящего PSP.

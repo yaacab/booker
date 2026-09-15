@@ -136,3 +136,23 @@ def test_saved_url_is_hidden_when_reservation_is_no_longer_payable(client, Sessi
     result = checkout(client, ctx)
     assert result.status_code == 200
     assert result.json()['checkout_url'] is None
+
+
+def test_checkout_cannot_reuse_another_payment_provider_reference(client, SessionLocal, monkeypatch):
+    ctx = fresh(client, SessionLocal)
+    with SessionLocal() as db:
+        original = db.get(Booking, ctx['booking_id'])
+        other_booking = Booking(event_id=original.event_id, offer_id=original.offer_id, slot_id=original.slot_id, status='Cancelled')
+        db.add(other_booking); db.flush()
+        db.add(Payment(booking_id=other_booking.id, amount_rub=1000, provider='stub',
+            status='pending', idempotency_key='existing-foreign-payment', provider_reference='already-owned'))
+        db.commit()
+    def session(self, **kw):
+        return PaymentSession(provider='stub', payment_id=kw['payment_id'], status='pending',
+            checkout_url='https://pay.example.test/shared', provider_reference='already-owned')
+    monkeypatch.setattr(StubPaymentAdapter, 'create_session', session)
+    assert checkout(client, ctx).status_code == 502
+    with SessionLocal() as db:
+        payment = db.query(Payment).filter_by(booking_id=ctx['booking_id']).one()
+        assert payment.status == 'pending' and payment.session_state == 'uncertain'
+        assert payment.provider_reference is None and payment.checkout_url is None
