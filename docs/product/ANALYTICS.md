@@ -318,3 +318,13 @@ receipt ID and normalized financial fingerprint, not the raw payload/signature.
 The receipt is claimed before capture. Rejected mismatches do not emit a successful
 payment audit. Pending delivery does not mean capture; late capture with an
 invalid reservation still records `payment.reservation_conflict` for the operator.
+
+
+### Operator payment status lookup
+
+`payment.reconciliation_requested` records the authenticated operator and provider
+before querying it; it does not mean payment was captured. `payment.reconciled`
+records a new validated financial state receipt with its actor. Repeated same-state
+reads keep one state receipt while retaining each request audit. Provider response
+bodies, TOTP and creation idempotency keys are not copied into audit. Receipt state
+and current Payment/Booking state are returned distinctly by reconciliation UI.

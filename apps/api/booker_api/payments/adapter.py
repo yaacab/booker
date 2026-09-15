@@ -135,6 +135,18 @@ class PaymentAdapter(ABC):
         """
         raise PaymentAdapterUnavailable("Проверка уведомлений этого партнёра пока недоступна")
 
+    def get_payment_status(self, *, payment_id: str, provider_reference: str | None,
+        idempotency_key: str) -> VerifiedPaymentEvent:
+        """Authenticated read of the original payment, never create_session fallback.
+
+        If checkout response was lost, look up by its original idempotency key /
+        payment metadata. Verify merchant and payment binding in the provider
+        response. Return provider amount/currency/reference, not echoed request
+        values. Status is capture lifecycle only; refunds are reconciled separately.
+        A provider without such a read must fail closed, including the local stub.
+        """
+        raise PaymentAdapterUnavailable("Сверка платежа этим партнёром пока недоступна")
+
     def get_refund_status(self, *, payment_id: str, refund_id: str, amount_rub: int,
         total_rub: int, idempotency_key: str) -> RefundOutcome:
         """Read a refund without creating it; adapters must bind amount and reference.

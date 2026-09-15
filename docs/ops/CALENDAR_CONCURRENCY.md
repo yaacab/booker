@@ -140,3 +140,14 @@ capture/expiry в обоих порядках. Второй поток дейс�
 14 concurrency и четыре проверки SQL/domain integrity (включая отчёт).
 Прогон нового tests/test_provider_webhook.py и всех 18 PG cases — 35 passed
 (32.61s). Это local stub HMAC, не sandbox настоящего PSP.
+
+
+## Сверка платежа во время отмены
+
+19-й PostgreSQL case останавливает get_payment_status на границе провайдера.
+Независимое соединение отменяет Booking и коммитится до освобождения provider
+response. После ответа succeeded сверка записывает деньги, оставляет Cancelled и
+requires_operator. Это доказывает отсутствие удержания Event/resource locks во
+время внешнего read и повторную проверку domain state после него. Всего файл:
+15 concurrency и четыре SQL/domain integration cases. Полный набор reconciliation
++ 19 PG cases — 28 passed (33.17s).

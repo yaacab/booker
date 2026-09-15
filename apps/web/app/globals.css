@@ -1007,3 +1007,6 @@ details.timeline summary { cursor: pointer; }
   .cabinet-metric.is-glow::before { opacity: 0.55; }
   .chrome-puzzle-piece.is-filled .chrome-puzzle-tile { transform: none; }
 }
+
+/* Keep operator tables inside their scroll containers on narrow screens. */
+.admin-grid > * { min-width: 0; overflow-wrap: anywhere; }

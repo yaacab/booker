@@ -141,6 +141,10 @@ HTTP 200 webhook как обещание Confirmed: проверяется во�
   currency, merchant_id, provider_reference)`.
 - `merchant_id` — ожидаемый получатель из конфигурации адаптера; default берётся
   из BOOKER_PAYMENT_MERCHANT_ID. Его нельзя брать из входящего уведомления.
+- `get_payment_status(payment_id, provider_reference, idempotency_key)` —
+  authenticated read → VerifiedPaymentEvent, без создания нового checkout.
+  Если reference потерян, адаптер ищет исходный платёж по сохранённому ключу /
+  metadata. Возвращаются фактические реквизиты партнёра, не эхо аргументов.
 - `normalize_idempotency_key(key)` нормализует ключ до booking scope.
 - `refund(payment_id, amount_rub, total_rub, idempotency_key)` возвращает
   `RefundOutcome(refund_id, amount_rub, kind, status)`.
@@ -199,8 +203,41 @@ pending; succeeded в ответе создания сессии не являе
 платёж уже потерял резерв/событие закрыто, повтор create_session отклоняется.
 Реальный адаптер должен уметь сверять такую сессию без создания новой (status API /
 проверенное входящее событие), а также ограничивать срок действия checkout. Общий вход
-raw webhook реализован выше; активная сверка статуса закрытого/истёкшего платежа
-без нового checkout остаётся следующей задачей.
+raw webhook реализован выше; активная сверка статуса описана ниже.
+
+### Сверка состояния существующего booking payment
+
+`POST /admin/payments/{id}/reconcile` — platform admin с обязательно настроенным
+TOTP и свежим кодом. Body содержит только totp. Endpoint не принимает от оператора
+статус/сумму/результат и не вызывает create_session. Перед запросом фиксируется
+payment.reconciliation_requested и коммитится транзакция: ожидание сети не держит
+Event/resource/payment locks. Адаптер читает исходный provider_reference или
+creation idempotency key. Его отсутствие/неподдерживаемая сверка — 503; транспортная
+неопределённость — 502 без тела ошибки партнёра и без изменения денежного статуса.
+
+Ответ проверяется по payment ID, merchant, RUB, точной сумме и reference. Далее
+`apply_verified_payment_event` получает свежие domain locks, reread и те же
+ограничения capture, что raw webhook. Для lookup используется отдельный namespace
+receipt и fingerprint финансовых данных: одинаковые результаты не выполняют
+capture повторно, изменение provider status получает отдельный receipt. После
+обработки endpoint возвращает текущее состояние Payment/Booking, а не старый
+ответ receipt. Поэтому повтор pending после уже обработанного capture не скрывает
+сохранённую оплату и отмечает расхождение оператору. Статус частичного/полного
+возврата не перезаписывается capture lookup; возвраты сверяются отдельно.
+
+При позднем succeeded после отмены/истечения сохраняется денежный факт и
+reservation conflict, дата не восстанавливается. PostgreSQL interleaving test
+доказывает, что отмена завершается во время ожидания ответа партнёра, а дальнейшая
+сверка не отменяет эту отмену. Оператор видит в `/admin` сумму из API, состояние
+партнёра и Букера, флаг необходимости проверки и ссылку на сделку. Неопределённость
+создания checkout не показывается в Deal Room как ожидание счёта после capture.
+
+Local stub не имитирует независимую банковскую сверку: get_payment_status по
+умолчанию fail-closed. Успешные/ошибочные ответы этого внешнего read interface
+проверены fixtures адаптера в API/PG tests; UI provider-response fixtures отдельно
+помечены. Реальный адаптер должен реализовать authenticated status lookup с
+ограниченными тайм-аутами. External-перевод не направляется в этот метод и остаётся
+в отдельном ручном подтверждении оператора.
 
 Capture использует Event → resource → slot → Payment; отмена и истечение
 резерва начинают с того же Event/resource/slot. После ожидания expire_holds
@@ -308,7 +345,7 @@ false, неизвестный commerce provider возвращает DisabledPro
 ```bash
 BOOKER_ENVIRONMENT=test BOOKER_DATABASE_URL=sqlite:// ../../.venv/bin/python -m pytest \
   tests/test_payment_adapter.py tests/test_payment_guards.py tests/test_payments.py \
-  tests/test_external_payment_confirm.py tests/test_provider_webhook.py tests/test_refunds.py tests/test_commerce.py -q
+  tests/test_external_payment_confirm.py tests/test_provider_webhook.py tests/test_payment_reconciliation.py tests/test_refunds.py tests/test_commerce.py -q
 ```
 
 Этот набор проверяет текущие адаптеры/доменные ограничения. Он не заменяет
@@ -326,6 +363,6 @@ sandbox acceptance PSP. К результату интеграции необх�
    не обещают дату, если возврат webhook сообщает reservation conflict.
 6. Отрицательные production-gate тесты и протокол отдельного допуска к запуску.
 
-Приоритет ближайшей работы: status reconciliation и raw refund mapping,
+Приоритет ближайшей работы: raw refund mapping,
 commerce refund workflow, renewal mapping. До устранения этих пробелов
 раздел 34 мастер-задания не считается выполненным.

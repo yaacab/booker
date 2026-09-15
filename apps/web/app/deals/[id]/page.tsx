@@ -505,7 +505,7 @@ export default function DealPage() {
               {paymentCapabilities?.can_checkout && room.payment?.checkout_url ? (
                 <a className="btn" href={room.payment.checkout_url} rel="noreferrer">Перейти к оплате</a>
               ) : null}
-              {room.payment && ["creating", "uncertain"].includes(room.payment.session_state || "") ? (
+              {room.payment?.status === "pending" && ["creating", "uncertain"].includes(room.payment.session_state || "") ? (
                 <p role="status">Создание счёта ещё не подтверждено партнёром. Нажмите «Счёт», чтобы повторить запрос для сохранённого платежа.</p>
               ) : null}
               <p>

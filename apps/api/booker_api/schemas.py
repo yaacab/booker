@@ -295,3 +295,8 @@ class VacationClearIn(BaseModel):
         if self.resource_type not in {"artist", "hall"}:
             raise ValueError("resource_type: artist|hall")
         return self
+
+
+class PaymentReconcileIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    totp: str | None = Field(default=None, max_length=16)

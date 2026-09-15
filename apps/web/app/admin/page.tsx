@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PaymentReconciliation } from "@/components/admin/PaymentReconciliation";
 import { api, getToken } from "@/lib/api";
 import { formatWhen } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -249,7 +250,8 @@ export default function AdminPage() {
           {error}. <Link href={loginHref("/admin")}>Войти</Link>
         </p>
       ) : null}
-      <div className="grid">
+      <div className="grid admin-grid">
+        <PaymentReconciliation />
         <article className="card tint">
           <h2>Второй фактор</h2>
           {totpEnabled ? (

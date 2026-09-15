@@ -39,7 +39,13 @@ from booker_api.payments.adapter import (
     get_payment_adapter,
     payment_stub_enabled,
 )
-from booker_api.rate_limit import auth_limiter, client_key, upload_limiter, webhook_limiter
+from booker_api.rate_limit import (
+    admin_sensitive_limiter,
+    auth_limiter,
+    client_key,
+    upload_limiter,
+    webhook_limiter,
+)
 from booker_api.routers.deals import (
     _lock_booking_resources,
     _lock_event,
@@ -48,12 +54,14 @@ from booker_api.routers.deals import (
     _transition,
     _validate_event_slot,
 )
-from booker_api.schemas import PaymentIn, SignIn, WebhookIn
+from booker_api.schemas import PaymentIn, PaymentReconcileIn, SignIn, WebhookIn
 from booker_api.security import (
     audit,
     aware,
     current_user,
     now,
+    require_admin,
+    require_admin_2fa,
     require_org_writer,
 )
 
@@ -409,7 +417,7 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
     return _apply_payment_event(event, adapter, db)
 
 
-def _apply_payment_event(event, adapter, db, *, receipt_id=None, fingerprint=None):
+def _apply_payment_event(event, adapter, db, *, receipt_id=None, fingerprint=None, actor_id=None, audit_action="payment.webhook"):
     payment = db.get(Payment, event.payment_id)
     if not payment:
         raise HTTPException(404, "Платёж не найден")
@@ -456,8 +464,8 @@ def _apply_payment_event(event, adapter, db, *, receipt_id=None, fingerprint=Non
     receipt.response_json = json.dumps(response)
     audit(
         db,
-        actor_user_id=None,
-        action="payment.webhook",
+        actor_user_id=actor_id,
+        action=audit_action,
         entity_type="payment",
         entity_id=payment.id,
         payload=response,
@@ -501,13 +509,61 @@ async def provider_webhook(request: Request, db: Session = Depends(get_db)):
     except PaymentAdapterError:
         raise HTTPException(401, "Уведомление партнёра не прошло проверку") from None
     _validate_provider_binding(event, adapter)
+    return await run_in_threadpool(apply_verified_payment_event, event, adapter, db)
+
+
+def apply_verified_payment_event(event, adapter, db, *, source='provider', actor_id=None):
+    _validate_provider_binding(event, adapter)
     fingerprint = hashlib.sha256(json.dumps({
         'payment_id': event.payment_id, 'status': event.status, 'amount_rub': event.amount_rub,
         'currency': event.currency, 'merchant_id': event.merchant_id,
         'provider_reference': event.provider_reference,
     }, sort_keys=True).encode()).hexdigest()
-    receipt_id = hashlib.sha256(f'provider:{adapter.name}:{event.event_id}'.encode()).hexdigest()
-    return await run_in_threadpool(_apply_payment_event, event, adapter, db, receipt_id=receipt_id, fingerprint=fingerprint)
+    key = event.event_id if source == 'provider' else f'{event.payment_id}:{fingerprint}'
+    receipt_id = hashlib.sha256(f'{source}:{adapter.name}:{key}'.encode()).hexdigest()
+    return _apply_payment_event(event, adapter, db, receipt_id=receipt_id, fingerprint=fingerprint,
+        actor_id=actor_id, audit_action='payment.webhook' if source == 'provider' else 'payment.reconciled')
+
+
+@router.post('/admin/payments/{payment_id}/reconcile')
+def reconcile_payment(payment_id: str, body: PaymentReconcileIn, request: Request,
+    user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    admin_sensitive_limiter.check(client_key(request, 'payment-reconcile'))
+    if not user.totp_enabled:
+        raise HTTPException(403, 'Для сверки включите второй фактор администратора')
+    require_admin_2fa(user, body.totp, request)
+    payment = db.get(Payment, payment_id)
+    if not payment:
+        raise HTTPException(404, 'Платёж не найден')
+    adapter = get_payment_adapter()
+    if payment.provider != adapter.name or payment.provider == 'external':
+        raise HTTPException(409, 'Сверка требует исходного платёжного партнёра. Перевод вне платформы подтверждается отдельно')
+    lookup = {'payment_id': payment.id, 'provider_reference': payment.provider_reference,
+        'idempotency_key': payment.idempotency_key}
+    audit(db, actor_user_id=user.id, action='payment.reconciliation_requested',
+        entity_type='payment', entity_id=payment.id, payload={'provider': payment.provider})
+    db.commit()  # No event/resource/payment locks held while the partner is queried.
+    try:
+        event = adapter.get_payment_status(**lookup)
+    except PaymentAdapterUnavailable:
+        raise HTTPException(503, 'Сверка статуса у этого партнёра пока недоступна') from None
+    except (PaymentAdapterError, TimeoutError, ConnectionError):
+        raise HTTPException(502, 'Партнёр не подтвердил статус. Повторите сверку позже; новый счёт не создавался') from None
+    _validate_provider_binding(event, adapter)
+    if event.payment_id != payment_id:
+        raise HTTPException(409, 'Партнёр вернул состояние другого платежа')
+    apply_verified_payment_event(event, adapter, db, source='reconcile', actor_id=user.id)
+    # A repeated status receipt retains its original answer, but the operator must
+    # see current domain state if a webhook/refund/cancellation happened since then.
+    db.refresh(payment)
+    booking = db.get(Booking, payment.booking_id)
+    db.refresh(booking)
+    captured = payment.status in ('succeeded', 'partially_refunded', 'refunded')
+    conflict = ((payment.status == 'succeeded' and booking.status in ('AwaitingPayment', 'Cancelled'))
+        or (captured and event.status in ('pending', 'failed')))
+    return {'payment_id': payment.id, 'booking_id': booking.id, 'payment_status': payment.status,
+        'booking_status': booking.status, 'provider_status': event.status, 'amount_rub': payment.amount_rub,
+        'requires_operator': conflict, 'test_mode': payment.provider == 'stub'}
 
 
 @router.post("/payments/webhook")

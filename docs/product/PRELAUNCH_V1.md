@@ -1666,3 +1666,46 @@ pytest tests/test_provider_webhook.py tests/test_calendar_postgres.py -k
 'signed_original_bytes or verified_payment_event_roundtrip' -q — 2 passed,
 33 deselected (4.06s), SQLite + PostgreSQL. Исходная реализация после полного
 прогона не менялась; lint повторно passed.
+
+## Сверка существующего платежа — 15 сентября 2026
+
+`PaymentAdapter.get_payment_status(payment_id, provider_reference, idempotency_key)`
+добавляет authenticated read внешней границы, без fallback в create_session.
+POST `/admin/payments/{id}/reconcile` требует platform admin и обязательно
+настроенный TOTP со свежим кодом. Body не позволяет передать статус или сумму.
+Запрос аудируется и коммитится перед обращением к партнёру. Ожидание сети не
+держит domain locks; после ответа проверяются текущие payment/merchant/amount/RUB/
+reference и применяется общий verified-event путь. Повтор финансового состояния
+идемпотентен, но результат UI содержит текущие Payment/Booking, а не старый receipt.
+Состояния возврата не перезаписываются чтением capture status.
+
+Сверка работает после закрытия/истечения резерва: verified succeeded сохраняется
+как деньги с requires_operator, не восстанавливая дату. Неверные реквизиты,
+другой платёж, отсутствие TOTP/прав или сетевой сбой не подтверждают оплату.
+Реальный PSP не подключён; local stub не выдумывает банковский статус и без
+реализации read возвращает недоступность. Положительные ответы тестируются на
+границе адаптера, сам domain/API не заменяется моками.
+
+В `/admin` добавлен компонент сверки: пустое состояние, ожидание, ошибка и повтор,
+свежий TOTP для каждого чтения, статус у партнёра и в Букере, сумма из API,
+флаг расхождения/потери резерва, ссылка на сделку. Deal Room больше не показывает
+ожидание создания счёта после полученного capture при старом uncertain receipt.
+Браузер выявил прежнее растяжение всей admin grid таблицей каталога на 390px;
+локальное `.admin-grid > * { min-width:0; overflow-wrap:anywhere }` удерживает
+таблицы внутри имеющихся scroll containers и сохраняет desktop grid.
+Мобильный screenshot проверен визуально, текст и форма помещаются.
+
+Проверки из worktree, PATH=/tmp/booker-prelaunch-tools/bin:$PATH:
+- BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test pytest tests/test_payment_reconciliation.py tests/test_provider_webhook.py tests/test_payment_guards.py tests/test_checkout_receipts.py -q из apps/api через ../../.venv/bin/python — 54 passed (26.98s).
+- BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/python -m pytest apps/api/tests/test_payment_reconciliation.py apps/api/tests/test_calendar_postgres.py -q — 28 passed (33.17s). Включает все 19 PostgreSQL cases и отмену во время paused provider read.
+- BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 513 passed, 2 skipped (203.15s).
+- make lint, make web-lint — passed.
+- NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build — passed; после исправления mobile grid повторно passed.
+- Из apps/web: BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test payment-reconciliation.spec.ts booking-payment.spec.ts --workers=1 --reporter=line — 6 passed, 1 failed (12.4s), обнаружено mobile overflow.
+- После исправления той же командой только payment-reconciliation.spec.ts — 2 passed (6.5s), 1440/390, включая keyboard submit. Пять booking-payment scenarios прошли в совместном прогоне; их поведение не менялось исправлением admin CSS.
+
+Новый E2E добавлен в CI critical suite. Его ответы статуса явно являются UI
+provider-response fixtures; реальные authorization/domain transitions проверены
+API и PostgreSQL выше. Это не sandbox acceptance настоящего PSP. Новых миграций
+нет: БД остаётся на f9a0b1c2d3e4. Полная цель открыта: raw refund mapping,
+recurring и оставшиеся пункты master acceptance требуют дальнейшей работы.

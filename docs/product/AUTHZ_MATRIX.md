@@ -60,3 +60,8 @@
 Refund request/approve/reject/retry/refresh/external confirmation are separate
 mutations under `/admin/refunds`. Passing another admin ID does not approve a
 refund. List is admin-only with bounded pagination and per-user read throttling.
+
+`POST /admin/payments/{id}/reconcile`: platform admin + mandatory enabled/fresh
+TOTP, sensitive rate limit. Operator cannot submit a financial outcome. The
+provider's read response must pass merchant/payment/amount/currency/reference
+binding; no checkout creation or external transfer confirmation fallback.

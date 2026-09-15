@@ -500,3 +500,46 @@ def test_postgres_verified_payment_event_roundtrip(client, SessionLocal):
 def test_postgres_provider_payment_binding_cannot_be_reused(client, SessionLocal):
     from tests.test_provider_webhook import test_reference_and_event_id_cannot_pay_two_bookings
     test_reference_and_event_id_cannot_pay_two_bookings(client, SessionLocal)
+
+
+def test_postgres_reconciliation_read_does_not_block_cancellation(client, SessionLocal, monkeypatch):
+    from starlette.requests import Request
+
+    from booker_api.payments.adapter import VerifiedPaymentEvent
+    from booker_api.payments.stub import StubPaymentAdapter
+    from booker_api.routers import payments
+    from booker_api.schemas import PaymentReconcileIn
+    from tests.test_payment_reconciliation import operator
+    from tests.test_payments import _awaiting_payment
+    from tests.test_provider_webhook import event_for
+    from tests.totp_helpers import totp_code
+    ctx = _awaiting_payment(client)
+    admin = operator(client)
+    event = VerifiedPaymentEvent(**event_for(ctx, SessionLocal))
+    queried, release = Signal(), Signal()
+    def lookup(self, **kw):
+        queried.set()
+        assert release.wait(5)
+        return event
+    monkeypatch.setattr(StubPaymentAdapter, 'get_payment_status', lookup)
+    def read():
+        with SessionLocal() as db:
+            return payments.reconcile_payment(ctx['payment_id'], PaymentReconcileIn(totp=totp_code()),
+                Request({'type': 'http', 'headers': [], 'client': ('status-read', 1)}),
+                user=db.get(User, admin['user_id']), db=db)
+    def cancel():
+        with SessionLocal() as db:
+            return deals.cancel_booking(ctx['booking_id'], user=db.get(User, ctx['customer']['user_id']), db=db)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending = pool.submit(read)
+        try:
+            assert queried.wait(5)
+            # Cancellation commits while the status provider is still paused.
+            cancelled = pool.submit(cancel).result(timeout=3)
+            assert cancelled['status'] == 'Cancelled'
+        finally:
+            release.set()
+        result = pending.result(timeout=5)
+    assert result['payment_status'] == 'succeeded'
+    assert result['booking_status'] == 'Cancelled'
+    assert result['requires_operator']
