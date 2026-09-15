@@ -346,3 +346,14 @@ entity=billing_order, actor=авторизованный billing writer; payload
 партнёра и checkout URL. requested фиксируется до внешнего вызова; uncertain
 означает неизвестный результат, не неуспешную оплату. Повтор готового заказа не
 создаёт новый checkout/audit ready. Активация по-прежнему только billing.paid.
+
+
+### Расчётные периоды
+
+`subscription.renewal_received`: entity=billing_order, organization_id,
+cycle_number, period_start/end, status. Один receipt на подписанное событие;
+повтор не создаёт audit. `billing.paid` для продления содержит renewal=true,
+сохранённую amount_rub, provider и requires_operator. Прошлый/будущий период
+учитывается как captured заказ, но не означает доступ прямо сейчас.
+`subscription.cancelled` с reason=replacement_checkout обозначает прекращение
+старого автопродления перед новой сессией. Никаких provider secrets/PII в этих payload.

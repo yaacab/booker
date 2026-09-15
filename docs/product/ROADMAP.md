@@ -50,3 +50,5 @@ Smart Matching с тремя вариантами и сохраняемым пр
 чистый Draft с заново проверяемыми предпочтениями. Replacement UX/Business,
 полный commercial admin и общая приёмка остаются в работе. Эта ветка не merged
 и не выпущена в production; прежние отметки пилота не доказывают новый launch gate.
+
+- 2026-09-15: implemented provider-neutral recurring cycle mapping, immutable period orders, paid-at/calendar boundaries, future/gap/late/failure handling, cancellation and previous-agreement shutdown on new checkout. Evidence: PRELAUNCH_V1.md. Live PSP acceptance and final commercial launch audit remain open.

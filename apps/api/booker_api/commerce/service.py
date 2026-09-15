@@ -3,7 +3,7 @@
 import json
 
 from fastapi import HTTPException
-from sqlalchemy import update
+from sqlalchemy import and_, or_, update
 from sqlalchemy.orm import Session
 
 from booker_api.commerce.catalog import free_code, get_plan
@@ -34,7 +34,8 @@ def subscription_payload(sub: Subscription | None) -> dict | None:
 
 def expire_subscriptions(db: Session, organization_id: str | None = None, *, limit: int | None = None) -> int:
     query = db.query(Subscription).filter(
-        Subscription.status.in_(["active", "trial", "past_due"]),
+        or_(Subscription.status.in_(['active', 'trial']),
+            and_(Subscription.status == 'past_due', Subscription.cancel_at_period_end.is_(True))),
         Subscription.current_period_end <= now(),
     )
     if organization_id:
@@ -43,6 +44,11 @@ def expire_subscriptions(db: Session, organization_id: str | None = None, *, lim
     if limit is not None:
         query = query.order_by(Subscription.current_period_end, Subscription.id).limit(limit)
     for sub in query.all():
+        sub = get_subscription(db, sub.organization_id)
+        if aware(sub.current_period_end) > now():
+            continue
+        if sub.status == 'past_due' and not sub.cancel_at_period_end:
+            continue
         status = "cancelled" if sub.cancel_at_period_end else "expired"
         changed = db.execute(
             update(Subscription)
@@ -79,7 +85,10 @@ def schedule_change(db: Session, organization_id: str, plan_code: str, actor_id:
     if target.audience != org.kind:
         raise HTTPException(422, "Тариф не подходит организации")
     sub = get_subscription(db, organization_id)
-    if not sub or sub.status not in {"active", "trial"} or aware(sub.current_period_end) <= now():
+    if sub and sub.next_plan_code == target.code and sub.cancel_at_period_end:
+        return subscription_payload(sub)
+    if (not sub or sub.status not in {'active', 'trial', 'past_due', 'expired'}
+        or (aware(sub.current_period_end) <= now() and not sub.provider_subscription_id)):
         raise HTTPException(409, "Действующей подписки нет")
     current = get_plan(db, sub.plan_code)
     if target.sort_order >= current.sort_order:
@@ -94,6 +103,12 @@ def schedule_change(db: Session, organization_id: str, plan_code: str, actor_id:
             provider.cancel_subscription(sub.provider_subscription_id)
         except ProviderUnavailable as exc:
             raise HTTPException(503, str(exc)) from exc
+    if sub.agreement_order_id:
+        agreement = db.get(BillingOrder, sub.agreement_order_id)
+        if agreement:
+            meta = json.loads(agreement.metadata_json)
+            meta['renewal_cancel_effective_at'] = aware(sub.current_period_end).isoformat()
+            agreement.metadata_json = json.dumps(meta)
     sub.next_plan_code = plan_code
     sub.cancel_at_period_end = True
     audit(

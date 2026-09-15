@@ -21,7 +21,6 @@ from booker_api.models import (
     Subscription,
     User,
 )
-from booker_api.security import now
 from tests.conftest import auth_header, grant_team_plan, register
 from tests.test_offers import ack_both, setup_negotiation
 
@@ -199,7 +198,7 @@ def test_database_rejects_price_mutation_but_allows_ack(client, SessionLocal):
         assert db.get(OfferVersion, ctx["offer"]["version"]["id"]).total_rub == 106000
 
 
-def test_expiry_cancellation_and_scheduled_downgrade(client, SessionLocal, stub):
+def test_expiry_cancellation_and_scheduled_downgrade(client, SessionLocal, stub, monkeypatch):
     _, headers, org = org_user(client)
     order = buy(client, headers, org, "artist_premium").json()
     complete(client, headers, order)
@@ -213,10 +212,11 @@ def test_expiry_cancellation_and_scheduled_downgrade(client, SessionLocal, stub)
     assert current["plan"]["code"] == "artist_premium"
     assert current["subscription"]["next_plan_code"] == "artist_pro"
     with SessionLocal() as db:
-        db.query(Subscription).filter_by(organization_id=org).one().current_period_end = (
-            now() - timedelta(seconds=1)
-        )
-        db.commit()
+        boundary = db.query(Subscription).filter_by(organization_id=org).one().current_period_end
+    from booker_api.commerce import entitlements, orders, service
+    from booker_api.security import aware
+    for module in (entitlements, orders, service):
+        monkeypatch.setattr(module, 'now', lambda: aware(boundary) + timedelta(seconds=1))
     expired = state(client, headers, org)
     assert expired["plan"]["code"] == "artist_free"
     assert expired["subscription"]["status"] == "cancelled"

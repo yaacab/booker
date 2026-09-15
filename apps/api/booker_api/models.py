@@ -843,6 +843,7 @@ class Subscription(Base):
     next_plan_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     provider: Mapped[str] = mapped_column(String(32), default="disabled")
     provider_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    agreement_order_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     last_billing_order_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -855,6 +856,8 @@ class BillingOrder(Base):
     __table_args__ = (
         UniqueConstraint("organization_id", "idempotency_key", name="uq_billing_order_idempotency"),
         CheckConstraint("amount_rub >= 0"),
+        Index('uq_billing_provider_reference', 'provider', 'provider_reference', unique=True),
+        Index('uq_billing_subscription_period', 'subscription_parent_id', 'period_start', unique=True),
         CheckConstraint("status IN ('created','pending_payment','paid','failed','cancelled','refunded')"),
     )
 
@@ -868,6 +871,10 @@ class BillingOrder(Base):
     provider: Mapped[str] = mapped_column(String(32), default="disabled")
     provider_reference: Mapped[str | None] = mapped_column(String(128), nullable=True)
     idempotency_key: Mapped[str] = mapped_column(String(64))
+    subscription_parent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    period_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    entitlement_eligible: Mapped[bool] = mapped_column(Boolean, default=True, server_default='1')
     metadata_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

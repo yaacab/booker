@@ -639,3 +639,60 @@ def test_postgres_commerce_checkout_retries_serialize_one_session(client, Sessio
             release.set()
         assert first.result(timeout=5) == second.result(timeout=5)
     assert len(calls) == 1
+
+
+def test_postgres_duplicate_renewal_creates_one_paid_period(client, SessionLocal, monkeypatch):
+    import hashlib
+    import hmac
+    import json
+
+    from booker_api.commerce import renewals
+    from booker_api.config import settings
+    from booker_api.models import BillingOrder
+    from booker_api.security import now
+    from tests.test_subscription_cycles import event, setup
+    monkeypatch.setattr(settings, 'commerce_provider', 'stub')
+    monkeypatch.setattr(settings, 'commerce_allow_stub', True)
+    monkeypatch.setattr(settings, 'commerce_webhook_secret', 'test-commerce-cycle-secret-at-least-32')
+    _, _, original, anchor, reference = setup(client, SessionLocal)
+    body = event(original, anchor, reference)
+    body['occurred_at'] = now().isoformat()
+    raw = json.dumps(body).encode()
+    signature = hmac.new(settings.commerce_webhook_secret.encode(), raw, hashlib.sha256).hexdigest()
+    ready, waiting, release = Signal(), Signal(), Signal()
+    thread = local()
+    original_lock, original_audit = renewals.lock_organization, renewals.audit
+
+    def lock(*args):
+        if thread.role == 'second':
+            waiting.set()
+        return original_lock(*args)
+
+    def record(*args, **kwargs):
+        if thread.role == 'first' and kwargs.get('action') == 'billing.paid':
+            ready.set()
+            assert release.wait(5)
+        return original_audit(*args, **kwargs)
+
+    def run(role):
+        thread.role = role
+        with SessionLocal() as db:
+            result = renewals.settle_renewal(db, raw, signature)
+            db.commit()
+            return result
+
+    monkeypatch.setattr(renewals, 'lock_organization', lock)
+    monkeypatch.setattr(renewals, 'audit', record)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(run, 'first')
+        try:
+            assert ready.wait(5)
+            second = pool.submit(run, 'second')
+            assert waiting.wait(5)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.2)
+        finally:
+            release.set()
+        assert first.result(timeout=5) == second.result(timeout=5)
+    with SessionLocal() as db:
+        assert db.query(BillingOrder).filter_by(subscription_parent_id=original['id'], status='paid').count() == 1

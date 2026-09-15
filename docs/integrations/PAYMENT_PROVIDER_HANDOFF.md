@@ -323,20 +323,56 @@ event_id — 409. Поздний pending не отменяет terminal; про�
 Stub реализует только локальный HMAC acceptance protocol. Настоящий PSP не выбран,
 его подпись и sandbox acceptance остаются интеграционной задачей.
 
-### Автопродление
+### Автопродление и расчётные периоды
 
-Для каждого provider billing cycle нужен отдельный BillingOrder с сохранённой
-ценой периода и стабильным идентификатором цикла. Сегодня повтор create order
-по действующему тому же тарифу отклоняется, а `_activate_subscription` начинает
-период от момента обработки paid. Поэтому `create_subscription` и
-`subscription_reference` ещё не составляют полный renewal workflow.
+`POST /commerce/renewal-webhook` принимает оригинальные bytes +
+X-Commerce-Signature через `CommerceProvider.verify_renewal_webhook`. Адаптер
+проверяет подпись/срок события/merchant и принадлежность provider payment к
+подписке до нормализации `RenewalEvent`. Поля: event_id, initial_order_id,
+subscription_reference, reference (стабильная платёжная identity цикла),
+cycle_number (1..1200), period_start, period_end, occurred_at, status paid/failed,
+amount_rub, currency RUB. Даты timezone-aware, сумма строго integer RUB.
+Чтение тела ограничено 16 KiB до добавления очередного chunk; rate limit,
+provider gates, generic errors. Подпись stub — только локальный HMAC протокол.
 
-До подключения автосписаний требуется явная обработка cycle success/failure,
-поздней доставки, повторов, paid-at boundaries, past_due и прекращения будущих
-списаний. Нельзя продлевать текущую подписку повторной доставкой старого paid
-или выдавать новый период без отдельного заказа. Определение начал/концов
-периодов и применяемой версии цены должно быть согласовано с партнёром и
-записано в заказ, а не вычисляться заново после задержанного webhook.
+Первый paid использует подтверждённый `ProviderEvent.paid_at` (обязателен для
+не-test adapter). Только test stub может опустить дату. Order хранит period_start
+и period_end, Subscription — agreement_order_id. Задержавшаяся доставка не
+начинает месяц заново. Старые строки без этих полей миграция не дополняет
+выдуманными фактами: для recurring нужны подтверждённые даты и исходное соглашение.
+
+`commerce/renewals.py:settle_renewal` создаёт отдельный BillingOrder на цикл:
+subscription_parent_id = initial_order_id, цена/currency/catalog snapshot из
+исходного оплаченного заказа, period_start/end из календарной годовщины исходной
+оплаты. Январь 31 → февраль 28/29 → март 31; годовой цикл сохраняет годовщину.
+Ключ SHA256(initial_order_id + cycle_number); UNIQUE(parent, period_start) и
+UNIQUE(provider, provider_reference) не позволяют учесть период или платёж дважды.
+Партнёрские границы должны совпасть с согласованным календарём. Другую модель
+расчётного периода нельзя молча нормализовать в эту: конфигурация PSP должна
+соответствовать календарю договора. Повтор paid/failed возвращает сохранённый
+receipt; изменение payload под event_id — 409. Неуспешный цикл может стать paid
+под той же identity; поздний failed не отменяет paid/refunded.
+
+Будущий paid сохраняется как денежный факт, но доступ открывается только внутри
+оплаченного интервала. Непокрытый промежуток остаётся Free. `get_subscription`
+проецирует текущий оплаченный период с compare-and-set по agreement/last order/status,
+не может перезаписать конкурентное новое соглашение; lifecycle expiry синхронизирует
+проекцию перед истечением. Поздний прошлый цикл не откатывает текущий. Failed после
+истечения доступа даёт past_due без платных прав; можно прекратить будущие попытки.
+
+Отмена/понижение вызывает идемпотентный cancel_subscription и сохраняет границу
+прекращения в исходном заказе. Перед checkout нового тарифа также останавливается
+предыдущее автопродление; неизвестный результат оставляет новый checkout uncertain
+для повтора с тем же ключом. Уже оплаченные периоды не превращаются в возврат.
+Paid от прекращённого/заменённого соглашения сохраняется с entitlement_eligible=false
+и requires_operator, без предоставления нового доступа. UI показывает периоды,
+past_due и необходимость сверки. Решение о возврате остаётся человеческим.
+
+Провайдер должен обеспечить explicit recurring consent в hosted checkout,
+подтверждаемую связь consent/subscription/initial_order_id, идемпотентное прекращение
+будущих попыток и эти sandbox acceptance сценарии. Приложение само не запускает
+повторное списание по таймеру и не выдумывает платёжные события. Реальные credentials
+и merchant acceptance не выполнены; live adapter по-прежнему не выбран.
 
 ### Настройки и фактический live switch
 
@@ -382,7 +418,7 @@ sandbox acceptance PSP. К результату интеграции необх�
    не обещают дату, если возврат webhook сообщает reservation conflict.
 6. Отрицательные production-gate тесты и протокол отдельного допуска к запуску.
 
-Приоритет ближайшей работы: renewal mapping и проверка полноты commerce refund mapping. До устранения этих пробелов
+Приоритет ближайшей работы: проверка полноты commerce refund mapping и live adapter registration/gates. До устранения этих пробелов
 раздел 34 мастер-задания не считается выполненным.
 
 ### Durable commerce checkout (subscription + promotion)

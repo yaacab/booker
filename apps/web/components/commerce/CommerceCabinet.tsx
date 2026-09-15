@@ -83,13 +83,14 @@ function CommerceCabinetContent({ audience }: { audience: Audience }) {
     {ready && authed && !org && !error && <div className="empty"><p>Создайте рабочее пространство для этой роли.</p><Link className="btn" href="/profile">Создать пространство</Link></div>}
     {data && <>
       <section className="card commerce-checkout" aria-label="Текущий тариф">
+        {data.subscription?.status === "past_due" && <p role="status">Оплата нового периода не подтверждена. Платные возможности возобновятся после оплаты.</p>}
         <p className="kicker">Ваш тариф</p><h2>{data.plan.title}</h2>
         <p>{audience === "customer" ? "Сервисный сбор" : "Комиссия с гонорара"}: <strong>{feePercent(audience === "customer" ? data.plan.customer_fee_bps : data.plan.supplier_fee_bps)}</strong></p>
         {active && <p>Текущий период до {formatWhen(data.subscription!.current_period_end)}.</p>}
-        {data.subscription?.cancel_at_period_end && active && <p>После окончания периода: {names[data.subscription.next_plan_code || ""] || "бесплатный тариф"}. Для следующего платного периода потребуется оплата.</p>}
+        {data.subscription?.cancel_at_period_end && active && <p>Автопродление отключено. Уже оплаченные периоды сохраняются. Следующий выбранный тариф: {names[data.subscription.next_plan_code || ""] || "бесплатный тариф"}; платный тариф потребует новой оплаты.</p>}
         <p className="timeline">Новые комиссии применяются к новым предложениям. Уже опубликованные условия сохраняются.</p>
         <div className="commerce-actions"><Link href="/pricing" className="btn">Сравнить тарифы</Link>
-          {active && data.can_manage && !data.subscription?.cancel_at_period_end && <button type="button" className="btn secondary" disabled={busy} onClick={() => void mutate(`/commerce/organizations/${org!.id}/subscription/cancel`)}>Отменить продление</button>}
+          {(active || (data.subscription?.provider && data.subscription.provider !== "disabled" && ["past_due", "expired"].includes(data.subscription.status))) && data.can_manage && !data.subscription?.cancel_at_period_end && <button type="button" className="btn secondary" disabled={busy} onClick={() => void mutate(`/commerce/organizations/${org!.id}/subscription/cancel`)}>Отменить продление</button>}
         </div>
         {active && data.can_manage && lowerPlans.length > 0 && <div className="commerce-checkout">
           <label className="commerce-org">Тариф после текущего периода<select value={nextPlan} onChange={(e) => setNextPlan(e.target.value)}><option value="">Выберите тариф</option>{lowerPlans.map((p) => <option key={p.code} value={p.code}>{p.title}</option>)}</select></label>
@@ -105,6 +106,8 @@ function CommerceCabinetContent({ audience }: { audience: Audience }) {
         {data.orders.length === 0 ? <p className="empty">Платных заказов пока нет. Бесплатный тариф уже доступен.</p> : <ul className="commerce-orders">{data.orders.map((order) => <li key={order.id} className="commerce-order">
           <h3>{names[order.product_code] || "Заказ продвижения"} · {money(order.amount_rub)}</h3>
           <p>{order.test_mode ? "Тестовый заказ · " : ""}{ORDER_STATUS[order.status] || "Статус уточняется"}</p>
+          {order.period_start && order.period_end && <p>{order.renewal ? "Продление" : "Оплаченный период"}: {formatWhen(order.period_start)} — {formatWhen(order.period_end)}</p>}
+          {order.requires_operator && <p role="status">Платёж требует сверки оператором. Доступ по этому заказу не продлён.</p>}
           <p className="timeline">{formatWhen(order.created_at)}</p>{order.message && <p>{order.message}</p>}
           <div className="commerce-actions">{data.can_manage && order.test_mode && order.status === "pending_payment" && <button type="button" className="btn" disabled={busy} onClick={() => void mutate(`/commerce/orders/${order.id}/test-complete`, { status: "paid" })}>Завершить тестовую оплату</button>}
             {order.checkout_url && order.status === "pending_payment" && <a className="btn" href={order.checkout_url}>Перейти к оплате</a>}

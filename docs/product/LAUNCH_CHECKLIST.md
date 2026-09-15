@@ -29,3 +29,6 @@
 Коммерческий этап, совместимость: API/RBAC/versioning, full-window calendar +
 buffers, явный unknown, owner hall editor и E-CUST-04 desktop/390 проверены локально.
 Точное доказательство — `PRELAUNCH_V1.md`; оно не закрывает общий launch gate.
+
+- [x] Provider-neutral subscription periods/renewal mapping: signed cycles, fixed price/calendar, past_due, cancellation, future-access boundaries and duplicate PostgreSQL concurrency tested (2026-09-15; PRELAUNCH_V1.md).
+- [ ] Selected PSP verifies merchant, recurring consent, stable cycle payment identity, exact calendar and cancellation in sandbox; production activation remains separately gated.

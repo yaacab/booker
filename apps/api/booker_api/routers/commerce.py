@@ -232,6 +232,28 @@ def post_change_subscription(
     return result
 
 
+@router.post('/renewal-webhook')
+async def renewal_webhook(request: Request, x_commerce_signature: str = Header(default=''), db: Session = Depends(get_db)):
+    from starlette.concurrency import run_in_threadpool
+
+    from booker_api.commerce.renewals import settle_renewal
+
+    webhook_limiter.check(client_key(request, 'commerce-renewal-webhook'))
+    payload = bytearray()
+    async for chunk in request.stream():
+        if len(payload) + len(chunk) > 16384:
+            raise HTTPException(413, 'Уведомление слишком большое')
+        payload.extend(chunk)
+    try:
+        result = await run_in_threadpool(settle_renewal, db, bytes(payload), x_commerce_signature)
+    except ProviderUnavailable:
+        raise HTTPException(503, 'Проверка продлений этим партнёром пока недоступна') from None
+    except InvalidWebhook:
+        raise HTTPException(400, 'Уведомление продления не прошло проверку') from None
+    db.commit()
+    return result
+
+
 @router.post("/webhook")
 async def webhook(
     request: Request, x_commerce_signature: str = Header(default=""), db: Session = Depends(get_db)
@@ -586,7 +608,7 @@ def commercial_organizations(q: str = Query(default='', max_length=128), limit: 
     subs = {s.organization_id: s for s in db.query(Subscription).filter(Subscription.organization_id.in_([o.id for o in rows])).all()}
     return {'total': total, 'offset': offset, 'items': [{'id': org.id, 'name': org.name, 'kind': org.kind,
         'subscription': subscription_payload(subs.get(org.id)),
-        'effective_status': ('expired' if subs[org.id].status in {'active', 'trial', 'past_due'} and aware(subs[org.id].current_period_end) <= now() else subs[org.id].status) if org.id in subs else 'free'} for org in rows]}
+        'effective_status': ('expired' if subs[org.id].status in {'active', 'trial'} and aware(subs[org.id].current_period_end) <= now() else subs[org.id].status) if org.id in subs else 'free'} for org in rows]}
 
 
 @admin_router.post('/organizations/{org_id}/revoke')

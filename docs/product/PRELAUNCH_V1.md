@@ -1761,3 +1761,37 @@ UI timeout — явно отмеченная response fixture; сохранен�
 сценарии входят в уже включённый в CI commercial.spec.ts. Общая цель открыта:
 расчётные периоды/recurring и полный финальный аудит ещё впереди.
 - Полный прогон: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 540 passed, 2 skipped (272.90s). Все текущие API-изменения включены.
+
+### Расчётные периоды и recurring mapping — 2026-09-15
+
+Миграция `a0b1c2d3e4f5_subscription_periods`: subscriptions.agreement_order_id;
+billing_orders.subscription_parent_id, period_start/end, entitlement_eligible;
+UNIQUE(provider, provider_reference), UNIQUE(parent, period_start). Исторические
+даты не выдумываются. Старые строки без подтверждённых period fields продолжают
+работать до прежней границы, но не используются для автоматического renewal mapping.
+
+Первый paid сохраняет фактический paid_at (не-test adapter обязан его передать).
+POST /commerce/renewal-webhook через verify_renewal_webhook принимает подтверждённый
+цикл: original order/subscription/payment binding, fixed snapshot price, integer RUB,
+aware dates и календарные границы исходной годовщины. Отдельный заказ на каждый
+цикл; повтор и late failed не увеличивают сумму и не отменяют paid. Future paid
+открывается только в оплаченный интервал, gap остаётся Free. Past_due не даёт
+платных прав, поддерживает отмену будущих попыток. Новый тариф сначала прекращает
+предыдущее автопродление. Оплата прекращённого/заменённого соглашения сохраняется
+для оператора без активации старого тарифа. UI показывает даты и требует сверку.
+
+Проверки:
+- Из worktree, BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/python -m pytest apps/api/tests/test_subscription_cycles.py apps/api/tests/test_commerce.py -q: первый прогон 41 passed/1 failed (11.54s). Старый expiry test вручную менял кеш Subscription; после введения paid-period ledger тест переведён на реальное продвижение clock.
+- Затем с apps/api/tests/test_paid_promotion.py: 53 passed (16.66s).
+- BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/python -m pytest apps/api/tests/test_subscription_cycles.py apps/api/tests/test_calendar_postgres.py -q — 35 passed (39.16s) до последнего PG race case.
+- Та же среда, pytest apps/api/tests/test_calendar_postgres.py -k duplicate_renewal -q — 1 passed, 21 deselected (1.78s): два simultaneous callbacks создают один оплаченный период.
+- Полный финальный API: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 556 passed, 2 skipped (205.94s), все текущие API-изменения и 22 PostgreSQL cases.
+- make lint, make web-lint — passed.
+- NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build — passed; финальный build включает доступность отмены при past_due/expired и уточнение сохранения оплаченных периодов.
+- Из apps/web: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_COMMERCE_WEBHOOK_SECRET=local-test-only-commerce-webhook-secret BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test subscription-cycles.spec.ts commercial.spec.ts --workers=1 --reporter=line — 14 passed (18.7s), включая admin-commercial по имени. Новые циклы проходят настоящий signed stub receiver; реальные деньги не списываются. Screenshot 390 проверен визуально. Новый E2E включён в CI.
+- Alembic upgrade head: существующий SQLite e2e DB + PostgreSQL migration DB; downgrade f9a0b1c2d3e4 → upgrade head на PostgreSQL и отдельном SQLite /tmp/booker-cycle-migration.db прошли. Отдельный SQLite также прошёл весь путь baseline → head.
+
+Граница провайдера остаётся внешней: реальный merchant/signature/consent mapping,
+PSP sandbox acceptance и live-gates допуска не выполнены. Общая цель открыта до
+финального аудита commerce refund mapping, adapter registration, SEO, notification
+coverage и остальных требований 0–35.

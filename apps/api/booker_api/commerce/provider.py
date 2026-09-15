@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
 
 from booker_api.config import settings
 
@@ -35,6 +35,22 @@ class ProviderEvent(BaseModel):
     status: Literal["paid", "failed", "refunded"]
     amount_rub: int = Field(gt=0)
     currency: Literal["RUB"]
+    paid_at: AwareDatetime | None = None
+
+
+class RenewalEvent(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    event_id: str = Field(min_length=1, max_length=128)
+    initial_order_id: str = Field(min_length=1, max_length=36)
+    subscription_reference: str = Field(min_length=1, max_length=128)
+    reference: str = Field(min_length=1, max_length=128)
+    cycle_number: int = Field(ge=1, le=1200)
+    period_start: AwareDatetime
+    period_end: AwareDatetime
+    occurred_at: AwareDatetime
+    status: Literal['paid', 'failed']
+    amount_rub: int = Field(gt=0)
+    currency: Literal['RUB']
 
 
 class CommerceProvider(Protocol):
@@ -46,6 +62,7 @@ class CommerceProvider(Protocol):
     ) -> Checkout: ...
     def get_payment_status(self, reference: str) -> str: ...
     def verify_webhook(self, payload: bytes, signature: str) -> ProviderEvent: ...
+    def verify_renewal_webhook(self, payload: bytes, signature: str) -> RenewalEvent: ...
     def refund(self, *, reference: str, amount_rub: int, idempotency_key: str) -> str: ...
     def create_subscription(
         self,
@@ -73,6 +90,9 @@ class DisabledProvider:
         return self._unavailable()
 
     def verify_webhook(self, payload: bytes, signature: str) -> ProviderEvent:
+        return self._unavailable()
+
+    def verify_renewal_webhook(self, payload: bytes, signature: str) -> RenewalEvent:
         return self._unavailable()
 
     def refund(self, **kwargs) -> str:
@@ -121,6 +141,15 @@ class StubProvider:
             return ProviderEvent.model_validate_json(payload)
         except ValidationError as exc:
             raise InvalidWebhook("Некорректное уведомление провайдера") from exc
+
+    def verify_renewal_webhook(self, payload: bytes, signature: str) -> RenewalEvent:
+        expected = hmac.new(settings.commerce_webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected.encode(), signature.encode()):
+            raise InvalidWebhook('Неверная подпись уведомления')
+        try:
+            return RenewalEvent.model_validate_json(payload)
+        except ValidationError:
+            raise InvalidWebhook('Некорректное уведомление продления') from None
 
     def refund(self, *, reference: str, amount_rub: int, idempotency_key: str) -> str:
         return "pending"  # Settlement still requires an authenticated refunded event.

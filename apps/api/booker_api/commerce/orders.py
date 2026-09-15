@@ -3,11 +3,12 @@
 import calendar
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException
 from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from booker_api.commerce.catalog import get_plan, plan_payload
@@ -59,6 +60,10 @@ def order_payload(order: BillingOrder) -> dict:
         "can_cancel": order.status in ('created', 'pending_payment', 'failed') and meta.get('checkout_state') not in ('creating', 'uncertain'),
         "checkout_available": order.provider != "disabled",
         "billing_period": meta.get("billing_period"),
+        "period_start": aware(order.period_start) if order.period_start else None,
+        "period_end": aware(order.period_end) if order.period_end else None,
+        "renewal": order.subscription_parent_id is not None,
+        "requires_operator": not order.entitlement_eligible,
         "commercial_policy_version": meta.get("commercial_policy_version"),
         "created_at": aware(order.created_at),
         "paid_at": aware(order.paid_at) if order.paid_at else None,
@@ -196,6 +201,24 @@ def resume_checkout(db: Session, order: BillingOrder, actor_id: str) -> BillingO
         raise HTTPException(403, 'Оплатой управляет владелец или администратор организации')
     meta = json.loads(order.metadata_json)
     try:
+        if order.product_kind == 'subscription':
+            previous = get_subscription(db, order.organization_id)
+            if previous and previous.provider_subscription_id and previous.agreement_order_id != order.id:
+                if previous.provider != provider.name:
+                    raise ProviderUnavailable('Previous subscription belongs to another provider')
+                agreement = db.get(BillingOrder, previous.agreement_order_id) if previous.agreement_order_id else None
+                old_meta = json.loads(agreement.metadata_json) if agreement else {}
+                if not old_meta.get('renewal_cancel_effective_at'):
+                    # Cancellation is idempotent. A retry after a lost response
+                    # repeats the same cancellation before creating the new plan.
+                    provider.cancel_subscription(previous.provider_subscription_id)
+                    previous.cancel_at_period_end = True
+                    if agreement:
+                        old_meta['renewal_cancel_effective_at'] = aware(previous.current_period_end).isoformat()
+                        agreement.metadata_json = json.dumps(old_meta)
+                    audit(db, actor_user_id=actor_id, action='subscription.cancelled',
+                        entity_type='organization', entity_id=order.organization_id,
+                        payload={'reason': 'replacement_checkout', 'billing_order_id': order.id})
         args = {'order_id': order.id, 'amount_rub': order.amount_rub,
             'currency': order.currency, 'idempotency_key': order.id}
         checkout = (provider.create_subscription(**args, billing_period=meta['billing_period'])
@@ -212,12 +235,14 @@ def resume_checkout(db: Session, order: BillingOrder, actor_id: str) -> BillingO
         if order.product_kind == 'subscription' and (not isinstance(checkout.subscription_reference, str)
             or not checkout.subscription_reference or len(checkout.subscription_reference) > 128):
             raise ProviderUnavailable('Missing subscription reference')
-        order.provider_reference = checkout.reference
+        with db.begin_nested():
+            order.provider_reference = checkout.reference
+            db.flush()
         order.status = 'pending_payment'
         meta.update(checkout_state='ready', checkout_url=checkout.url,
             subscription_reference=checkout.subscription_reference)
         audit(db, actor_user_id=actor_id, action='billing.checkout_ready', entity_type='billing_order', entity_id=order.id)
-    except (ProviderUnavailable, TimeoutError, ConnectionError, ValueError, TypeError):
+    except (ProviderUnavailable, TimeoutError, ConnectionError, ValueError, TypeError, IntegrityError):
         meta['checkout_state'] = 'uncertain'
         audit(db, actor_user_id=actor_id, action='billing.checkout_uncertain', entity_type='billing_order', entity_id=order.id)
     order.metadata_json = json.dumps(meta)
@@ -250,6 +275,8 @@ def settle_event(db: Session, payload: bytes, signature: str) -> dict:
         or order.currency != event.currency
     ):
         raise HTTPException(409, "Уведомление не соответствует заказу")
+    if event.status == 'paid' and order.paid_at and event.paid_at and aware(order.paid_at) != event.paid_at:
+        raise HTTPException(409, 'Подтверждённая дата оплаты изменилась')
     if event.status != order.status:
         allowed = {
             "pending_payment": {"paid", "failed"},
@@ -259,7 +286,12 @@ def settle_event(db: Session, payload: bytes, signature: str) -> dict:
             raise HTTPException(409, "Недопустимый переход статуса оплаты")
         order.status = event.status
         if event.status == "paid":
-            order.paid_at = now()
+            if not event.paid_at and not provider.test_mode:
+                raise HTTPException(409, 'Партнёр не передал дату подтверждённой оплаты')
+            paid_at = event.paid_at or now()
+            if paid_at > now() + timedelta(minutes=5) or paid_at < aware(order.created_at) - timedelta(minutes=5):
+                raise HTTPException(409, 'Дата оплаты не соответствует заказу')
+            order.paid_at = paid_at
             if order.product_kind == "subscription":
                 _activate_subscription(db, order)
         elif event.status == "refunded":
@@ -307,9 +339,12 @@ def _activate_subscription(db: Session, order: BillingOrder) -> None:
         db.add(sub)
     sub.plan_code = order.product_code
     sub.billing_period = meta["billing_period"]
-    sub.status = "active"
-    sub.starts_at = now()
-    sub.current_period_end = period_end(sub.starts_at, sub.billing_period)
+    order.period_start = order.paid_at
+    order.period_end = period_end(aware(order.paid_at), sub.billing_period)
+    sub.starts_at = order.period_start
+    sub.current_period_end = order.period_end
+    sub.status = 'active' if aware(sub.current_period_end) > now() else 'expired'
+    sub.agreement_order_id = order.id
     sub.cancel_at_period_end = False
     sub.next_plan_code = None
     sub.provider = order.provider

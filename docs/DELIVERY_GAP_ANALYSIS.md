@@ -125,3 +125,8 @@ Completed → отдельный Draft с новыми ролями и optional 
 защищены от повторного открытия через новую заявку/quick-request/первичный оффер.
 Подробности и приёмка — `product/PRELAUNCH_V1.md`. Replacement UX, Business и
 остальные общие launch-гейты остаются в работе.
+
+2026-09-15 update: the product-side recurring cycle gap is implemented in
+commerce/renewals.py and paid-period projection, with API/PG/390px browser evidence
+in PRELAUNCH_V1.md. This does not certify live merchant/consent/signature mapping,
+PSP acceptance or all section-34 requirements; final audit remains open.
