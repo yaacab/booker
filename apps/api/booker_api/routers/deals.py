@@ -1551,6 +1551,9 @@ def deal_room(
         payment_writer and capabilities["available"] and booking.status == "AwaitingPayment"
         and (not payment or payment.status in {"pending", "failed"})
     )
+    capabilities["can_checkout"] = bool(payment_writer and capabilities["available"] and contract_reservation and payment
+        and booking.status == "AwaitingPayment" and payment.provider == settings.payment_provider.strip().lower()
+        and payment.status == "pending" and payment.session_state == "ready" and payment.checkout_url)
     capabilities["can_test_complete"] = bool(
         payment_writer and capabilities["test_mode"] and payment and payment.provider == "stub"
         and payment.status in {"pending", "failed"}
@@ -1607,6 +1610,8 @@ def deal_room(
             "status": payment.status,
             "amount_rub": payment.amount_rub,
             "provider": payment.provider,
+            "session_state": payment.session_state,
+            "checkout_url": payment.checkout_url if capabilities["can_checkout"] else None,
             "requires_operator": payment.status == "succeeded" and booking.status in {"AwaitingPayment", "Cancelled"},
         },
         "quote": {

@@ -103,3 +103,13 @@ capture/expiry в обоих порядках. Второй поток дейс�
 
 Текущий файл содержит 12 PostgreSQL cases: 11 конкурентных и один SQL-отчёт.
 Локальный прогон на PostgreSQL 16.15: 12 passed (23.00s).
+
+
+## Одновременное создание checkout
+
+`test_postgres_checkout_retries_share_durable_provider_session` останавливает
+первый запрос внутри adapter.create_session. Независимое соединение уже видит
+сохранённый Payment; второй запрос с другим UI-ключом ждёт Event lock. После
+ответа партнёра оба получают один payment ID и URL, адаптер вызван один раз.
+В файле теперь 13 cases: 12 конкурентных и один финансовый SQL-отчёт.
+Прогон PostgreSQL 16.15 — 13 passed (27.13s).

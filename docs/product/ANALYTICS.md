@@ -287,3 +287,12 @@ uses a generic message with ticket reference, never the private conversation tex
 state transitions. Notification delivery and domain events remain distinguishable
 in audit. Subscription dedupe includes the ended period, hold dedupe includes the
 hold ID, and payment-required dedupe includes the signed contract ID.
+
+### Booking checkout receipts
+
+- `payment.created`: committed internal Payment identity before contacting the provider; does not mean a checkout URL or capture exists.
+- `payment.session_uncertain`: provider creation response was unavailable/invalid; stable Payment ID and idempotency key remain for recovery.
+- `payment.session_ready`: validated pending checkout receipt persisted; repeat calls return it without another provider call.
+
+Session audit payloads contain the provider name, never bearer checkout URLs,
+provider error bodies or secrets. Neither session event belongs in captured GMV.

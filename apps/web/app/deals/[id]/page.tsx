@@ -54,8 +54,8 @@ type Room = {
   };
   contract: { id: string; customer_signed: boolean; supplier_signed: boolean; body: string } | null;
   documents?: { kind: string; id: string; label: string; quote_id?: string; signed: boolean }[];
-  payment_capabilities?: { available: boolean; test_mode: boolean; message: string; can_create: boolean; can_test_complete: boolean };
-  payment: { id: string; status: string; amount_rub: number; provider?: string; requires_operator?: boolean } | null;
+  payment_capabilities?: { available: boolean; test_mode: boolean; message: string; can_create: boolean; can_checkout?: boolean; can_test_complete: boolean };
+  payment: { id: string; status: string; amount_rub: number; provider?: string; session_state?: string; checkout_url?: string | null; requires_operator?: boolean } | null;
   messages: { id: string; kind: string; body: string }[];
 };
 
@@ -502,6 +502,12 @@ export default function DealPage() {
               </>
             ) : null}
               </div>
+              {paymentCapabilities?.can_checkout && room.payment?.checkout_url ? (
+                <a className="btn" href={room.payment.checkout_url} rel="noreferrer">Перейти к оплате</a>
+              ) : null}
+              {room.payment && ["creating", "uncertain"].includes(room.payment.session_state || "") ? (
+                <p role="status">Создание счёта ещё не подтверждено партнёром. Нажмите «Счёт», чтобы повторить запрос для сохранённого платежа.</p>
+              ) : null}
               <p>
                 {room.payment
                   ? `${paymentStatus} · ${money(room.payment.amount_rub)}`

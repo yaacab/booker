@@ -78,7 +78,15 @@ class PaymentAdapter(ABC):
         amount_rub: int,
         idempotency_key: str,
         booking_id: str,
-    ) -> PaymentSession: ...
+    ) -> PaymentSession:
+        """Create/retrieve pending checkout using the SAME provider idempotency key.
+
+        The application persists payment identity before calling. Retries after a
+        timeout must return the original session, never charge again. Wrap network
+        uncertainty in PaymentAdapterError. Capture is delivered as a verified event,
+        not as a successful checkout response. Do not log bearer checkout URLs.
+        """
+        ...
 
     @abstractmethod
     def verify_webhook(

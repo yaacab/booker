@@ -52,3 +52,35 @@ test("disabled capabilities leave the deal readable and hide test capture", asyn
   await expect(page.getByRole("button", { name: "Тест: подтвердить оплату" })).toHaveCount(0);
   await expect(page.getByText(`quote_id: ${seed.quoteId}`).first()).toBeVisible();
 });
+
+for (const width of [1440, 390]) {
+  test.describe(`Checkout receipt ${width}px`, () => {
+    test.use({ viewport: { width, height: 900 } });
+    test("uncertain session and private redirect have clear states", async ({ page, request }) => {
+      const seed = await seedNegotiation(request);
+      await injectSession(page, seed.customer.token, seed.customer.orgId);
+      let ready = false;
+      // Provider-boundary UI fixture; durable receipt/auth are exercised by API/PG tests.
+      await page.route(`**/deal-room/${seed.bookingId}`, async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.payment = { id: "receipt-fixture", status: "pending", amount_rub: 106000, provider: "sandbox-fixture", session_state: ready ? "ready" : "uncertain", checkout_url: ready ? "https://pay.example.test/private-session" : null };
+        body.payment_capabilities = { available: true, test_mode: false, can_create: true, can_test_complete: false, can_checkout: ready, message: "Счёт подготовлен партнёром" };
+        await route.fulfill({ response, json: body });
+      });
+      await page.goto(`/deals/${seed.bookingId}`);
+      await page.getByRole("tab", { name: "Платежи", exact: true }).click();
+      await expect(page.getByRole("status").filter({ hasText: "Создание счёта ещё не подтверждено" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Перейти к оплате", exact: true })).toHaveCount(0);
+      ready = true;
+      await page.reload();
+      await page.getByRole("tab", { name: "Платежи", exact: true }).click();
+      const redirect = page.getByRole("link", { name: "Перейти к оплате", exact: true });
+      await expect(redirect).toHaveAttribute("href", "https://pay.example.test/private-session");
+      await expect(redirect).toHaveAttribute("rel", "noreferrer");
+      await redirect.focus();
+      await expect(redirect).toBeFocused();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    });
+  });
+}

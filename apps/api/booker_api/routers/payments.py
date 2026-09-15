@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import secrets
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, update
@@ -284,51 +285,92 @@ def create_payment(
     # Serialize checkout for this booking, including SQLite where FOR UPDATE is ignored.
     db.execute(update(Booking).where(Booking.id == booking.id).values(status=Booking.status))
     db.refresh(booking)
-    existing = db.query(Payment).filter(Payment.booking_id == booking.id).first()
-    if existing:
-        return {"id": existing.id, "status": existing.status, "idempotent": True,
-                "amount_rub": existing.amount_rub, "provider": existing.provider}
+    pay = db.query(Payment).filter(Payment.booking_id == booking.id).first()
+    replay = pay is not None
+    if pay and (pay.session_state == "ready" or pay.status != "pending"):
+        return _checkout_receipt(db, pay, booking, event, replay=True)
+    if pay and pay.provider != adapter.name:
+        raise HTTPException(409, "Платёж ожидает сверки с исходным партнёром. Обратитесь к оператору")
+    version = _checkout_reservation(db, booking, event)
+    if not pay:
+        pay = Payment(booking_id=booking.id, amount_rub=version.total_rub,
+            status="pending", provider=adapter.name, idempotency_key=idempotency_key,
+            session_state="creating")
+        db.add(pay)
+        db.flush()
+        audit(db, actor_user_id=user.id, action="payment.created", entity_type="payment",
+            entity_id=pay.id, payload={"amount_rub": pay.amount_rub, "provider": pay.provider})
+        # Commit identity BEFORE an external request: a timeout/crash must not change
+        # payment_id, amount or provider idempotency key on the next attempt.
+        db.commit()
+        _lock_contract_event(db, event)
+        db.refresh(booking)
+        db.refresh(pay)
+        if pay.session_state == "ready" or pay.status != "pending":
+            return _checkout_receipt(db, pay, booking, event, replay=True)
+        version = _checkout_reservation(db, booking, event)
+    if pay.amount_rub != version.total_rub:
+        raise HTTPException(409, "Условия платежа требуют сверки. Обратитесь к оператору")
+    try:
+        session = adapter.create_session(payment_id=pay.id, amount_rub=pay.amount_rub,
+            idempotency_key=pay.idempotency_key, booking_id=booking.id)
+        _validate_checkout_session(session, pay)
+    except (PaymentAdapterError, TimeoutError, ConnectionError):
+        pay.session_state = "uncertain"
+        audit(db, actor_user_id=user.id, action="payment.session_uncertain", entity_type="payment",
+            entity_id=pay.id, payload={"provider": pay.provider})
+        db.commit()
+        raise HTTPException(502, "Партнёр не подтвердил создание счёта. Повторите запрос: сохранённый платёж будет использован снова") from None
+    pay.checkout_url = session.checkout_url
+    pay.provider_reference = session.provider_reference
+    pay.session_state = "ready"
+    # Creating checkout is never evidence of capture; only verified events record money.
+    audit(db, actor_user_id=user.id, action="payment.session_ready", entity_type="payment",
+        entity_id=pay.id, payload={"provider": pay.provider})
+    db.commit()
+    return _checkout_receipt(db, pay, booking, event, replay=replay)
+
+
+def _checkout_reservation(db, booking, event):
     _require_open_event(event)
     if booking.status != "AwaitingPayment":
         raise HTTPException(409, "Оплата доступна после подписания договора")
     contract = db.query(Contract).filter_by(booking_id=booking.id).one_or_none()
     if not contract or not (contract.customer_signed and contract.supplier_signed):
         raise HTTPException(409, "Договор не подписан обеими сторонами")
-    hold = db.query(BookingHold).filter_by(booking_id=booking.id, status="active").one_or_none()
-    slot = db.get(AvailabilitySlot, booking.slot_id)
-    if not hold or aware(hold.expires_at) <= now() or not slot or slot.status != "held":
-        raise HTTPException(409, "Срок удержания даты истёк: согласуйте резерв заново")
     offer = db.get(Offer, booking.offer_id)
-    version = db.get(OfferVersion, offer.active_version_id)
-    if not (version.customer_ack and version.supplier_ack):
-        raise HTTPException(409, "Условия не подтверждены обеими сторонами")
-    pay = Payment(
-        booking_id=booking.id,
-        amount_rub=version.total_rub,
-        status="pending",
-        provider=adapter.name,
-        idempotency_key=idempotency_key,
-    )
-    db.add(pay)
-    db.flush()
-    session = adapter.create_session(
-        payment_id=pay.id,
-        amount_rub=pay.amount_rub,
-        idempotency_key=idempotency_key,
-        booking_id=booking.id,
-    )
-    pay.status = session.status
-    audit(
-        db,
-        actor_user_id=user.id,
-        action="payment.created",
-        entity_type="payment",
-        entity_id=pay.id,
-        payload={"amount_rub": pay.amount_rub, "provider": session.provider},
-    )
-    db.commit()
-    db.refresh(pay)
-    return {"id": pay.id, "status": pay.status, "amount_rub": pay.amount_rub, "provider": pay.provider}
+    req = db.get(DealRequest, offer.request_id)
+    return _require_contract_reservation(db, booking, event, offer, req)
+
+
+def _validate_checkout_session(session, pay):
+    if session.payment_id != pay.id or session.provider != pay.provider or session.status != "pending":
+        raise PaymentAdapterError("Некорректная сессия партнёра")
+    if session.provider_reference is not None and (not session.provider_reference.strip() or len(session.provider_reference) > 255):
+        raise PaymentAdapterError("Некорректный идентификатор партнёра")
+    if session.checkout_url is not None:
+        try:
+            url = urlsplit(session.checkout_url)
+        except ValueError:
+            raise PaymentAdapterError("Некорректный адрес оплаты") from None
+        if (len(session.checkout_url) > 4096 or url.scheme != "https" or not url.hostname
+                or url.username or url.password or not session.provider_reference
+                or any(ord(c) <= 32 for c in session.checkout_url)):
+            raise PaymentAdapterError("Некорректный адрес оплаты")
+
+
+def _checkout_receipt(db, pay, booking, event, *, replay):
+    allowed = (booking.status == "AwaitingPayment" and event.status not in {"Cancelled", "Completed"}
+        and pay.provider == settings.payment_provider.strip().lower())
+    hold = db.query(BookingHold).filter_by(booking_id=booking.id, slot_id=booking.slot_id, status="active").first()
+    slot = db.get(AvailabilitySlot, booking.slot_id)
+    allowed = (allowed and hold is not None and aware(hold.expires_at) > now()
+        and event.ends_at is not None and aware(event.event_date) > now()
+        and slot is not None and slot.status == "held")
+    return {"id": pay.id, "status": pay.status, "idempotent": replay,
+        "amount_rub": pay.amount_rub, "provider": pay.provider,
+        "session_state": pay.session_state,
+        "checkout_url": pay.checkout_url if allowed and pay.status == "pending" and pay.session_state == "ready" else None}
 
 
 def _lock_payment_context(db: Session, payment: Payment) -> Booking:

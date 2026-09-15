@@ -1518,3 +1518,41 @@ Readiness E2E теперь задаёт полное окно через фор�
 Полная цель остаётся открыта: checkout receipt, реальное второе подтверждение
 возврата, pending/failed refund, нормализация raw webhook и recurring mapping
 ещё требуют реализации и проверки. Настоящий PSP не подключался.
+
+## Сохранённая платёжная сессия — 15 сентября 2026
+
+Payment теперь хранит checkout_url, provider_reference и session_state.
+Миграция d7e8f9a0b1c2 после c6d7e8f9a0b1 сохраняет старые платежи как ready без
+повторного создания сессий. Новый Payment/key коммитится до обращения к партнёру.
+При тайм-ауте ответ 502 оставляет uncertain и тот же идентификатор; повтор с другим
+UI-ключом передаёт партнёру исходные payment_id/amount/idempotency_key. Адаптер
+обязан реализовать идемпотентность на стороне PSP. Сохранённый ready возвращается
+без повторного обращения. Ответ checkout не подтверждает деньги.
+
+Проверяется binding provider/payment, pending-статус, HTTPS URL без credentials,
+наличие provider_reference при redirect. Секретные URL и ответы ошибок не идут в
+audit. Deal Room показывает переход к оплате только writer заказчика, при живом
+резерве и включённом исходном провайдере. Для uncertain есть пояснение повтора.
+Платёжный режим production остаётся выключенным.
+
+Проверки (из worktree, если не указано иначе):
+- Из apps/api: BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test ../../.venv/bin/python -m pytest tests/test_checkout_receipts.py tests/test_payment_guards.py tests/test_payments.py tests/test_external_payment_confirm.py -q — 30 passed (19.41s).
+- После финальной проверки выключенного/сменённого провайдера: тот же pytest tests/test_checkout_receipts.py tests/test_payment_guards.py -q — 24 passed (17.41s).
+- BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres + pytest tests/test_calendar_postgres.py -q — 13 passed (27.13s); новый сценарий доказывает commit до внешнего вызова и ожидание второго checkout.
+- Alembic upgrade head на SQLite /tmp/booker-support-e2e.db и отдельной PostgreSQL booker_migrations_52962f288b3e — passed до d7e8f9a0b1c2.
+- PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint, make web-lint — passed.
+- PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build — passed.
+- Из apps/web: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test booking-payment.spec.ts --workers=1 --reporter=line — 5 passed (12.0s). Два настоящих stub-flow desktop/mobile; unavailable UI; два явно обозначенных provider-boundary UI fixtures uncertain/redirect (не PSP acceptance).
+
+Сверка uncertain после закрытия события, проверка raw webhook, реальные два
+действия операторов возврата и recurring cycles остаются следующими задачами.
+
+Полный прогон этого блока: PATH=/tmp/booker-prelaunch-tools/bin:$PATH
+BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres
+BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api —
+462 passed, 2 skipped (214.12s). После него финальное ограничение ссылок для
+выключенного/сменённого провайдера, прошедшего события, потерянного слота и
+истёкшего hold перепроверено командой pytest tests/test_checkout_receipts.py
+tests/test_payment_guards.py -q — 27 passed (12.88s); make lint повторно passed.
+Полный прогон предшествует добавлению трёх последних reservation cases; их нельзя
+включать в указанное число 462. Финальная миграция и UI после build не менялись.

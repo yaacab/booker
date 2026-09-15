@@ -367,3 +367,57 @@ def test_postgres_capture_cancel_expiry_share_reservation_lock(client, SessionLo
             assert db.query(BookingHold).filter_by(booking_id=booking.id, status='active').count() == 0
         else:
             assert booking.status == 'AwaitingPayment' and slot.status == 'open'
+
+
+def test_postgres_checkout_retries_share_durable_provider_session(client, SessionLocal, monkeypatch):
+    from booker_api.models import Payment
+    from booker_api.payments.adapter import PaymentSession
+    from booker_api.payments.stub import StubPaymentAdapter
+    from booker_api.routers import payments
+    from booker_api.schemas import PaymentIn
+    from tests.test_checkout_receipts import fresh
+    ctx = fresh(client, SessionLocal)
+    first_ready, second_at_lock, release = Signal(), Signal(), Signal()
+    thread = local()
+    calls = []
+    lock_original = payments._lock_contract_event
+
+    def lock(*args):
+        if thread.role == 'second':
+            second_at_lock.set()
+        return lock_original(*args)
+
+    def session(self, **kwargs):
+        calls.append(kwargs)
+        # A different connection sees identity before the provider responds.
+        with SessionLocal() as db:
+            assert db.get(Payment, kwargs['payment_id']) is not None
+        first_ready.set()
+        assert release.wait(5)
+        return PaymentSession(provider='stub', payment_id=kwargs['payment_id'], status='pending',
+            provider_reference='pg-receipt', checkout_url='https://pay.example.test/same-session')
+
+    def run(role):
+        thread.role = role
+        with SessionLocal() as db:
+            return payments.create_payment(ctx['booking_id'], PaymentIn(idempotency_key=role),
+                user=db.get(User, ctx['customer']['user_id']), db=db)
+
+    monkeypatch.setattr(payments, '_lock_contract_event', lock)
+    monkeypatch.setattr(StubPaymentAdapter, 'create_session', session)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(run, 'first')
+        try:
+            assert first_ready.wait(5)
+            second = pool.submit(run, 'second')
+            assert second_at_lock.wait(5)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.2)
+        finally:
+            release.set()
+        a, b = first.result(timeout=5), second.result(timeout=5)
+    assert a['id'] == b['id']
+    assert a['checkout_url'] == b['checkout_url']
+    assert len(calls) == 1
+    with SessionLocal() as db:
+        assert db.query(Payment).filter_by(booking_id=ctx['booking_id']).count() == 1

@@ -454,6 +454,9 @@ class Payment(Base):
     status: Mapped[str] = mapped_column(String(32), default="pending")
     provider: Mapped[str] = mapped_column(String(32), default="disabled")
     idempotency_key: Mapped[str] = mapped_column(String(64), unique=True)
+    checkout_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    session_state: Mapped[str] = mapped_column(String(24), default="ready", server_default="ready")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
