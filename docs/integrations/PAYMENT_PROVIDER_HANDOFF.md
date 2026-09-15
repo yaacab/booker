@@ -385,13 +385,34 @@ past_due и необходимость сверки. Решение о возв�
 - актуальная конфигурация `BOOKER_REQUIRE_ADMIN_2FA_ENFORCED` для операторских
   действий, вместе с настройкой и проверкой TOTP пользователей.
 
-Merchant/public/secret key и юридические поля в Settings — точки конфигурации,
-не доказательство их проверки live-кодом. Сейчас `payment_live_enabled()` всегда
-false, неизвестный commerce provider возвращает DisabledProvider, а
-`LivePaymentAdapter` отклоняет вызовы. Готового переключателя «внести секреты и
-включить live» ещё нет. Регистрация адаптера и проверяемый production opt-in
-должны сопровождаться отрицательными тестами: отсутствие любого обязательного
-секрета/юридического допуска не включает платежи и не включает stub fallback.
+Регистрация выбранной реализации выполняется в reviewed bootstrap-коде перед
+обслуживанием запросов: `payments.adapter.register_payment_adapter(name, factory)`
+и `commerce.provider.register_commerce_provider(name, factory)`. Фабрики синхронны,
+не выполняют сетевые вызовы; возвращают соответственно PaymentAdapter с тем же
+name и CommerceProvider с тем же name/test_mode=false. Имя конкретное, lowercase,
+без точек; stub/disabled/external/live зарезервированы. Повтор той же регистрации
+допустим, замена фабрики под существующим именем отклоняется. Env не импортирует
+произвольный Python. Регистрация in-memory повторяется при запуске каждого worker.
+Пока никакой live adapter не зарегистрирован; старый LivePaymentAdapter остаётся
+fail-closed и не входит в registry.
+
+`BOOKER_PAYMENT_LIVE_OPT_IN=true` и `BOOKER_COMMERCE_LIVE_OPT_IN=true` — независимые
+переключатели, оба default false. Общий gate в `payment_activation.py` требует:
+production environment, `BOOKER_PAYMENT_SANDBOX_ACCEPTED=true`, непустые merchant /
+public / secret keys, ISO-дата `BOOKER_LAWYER_APPROVAL_DATE` не в будущем,
+`BOOKER_PAYMENT_FLOW_APPROVAL=approved`, действующий webhook secret соответствующего
+домена длиной минимум 32 символа, отключённый default secret, оба allow_stub=false
+и `BOOKER_REQUIRE_ADMIN_2FA_ENFORCED=true`. Неизвестный или незарегистрированный
+provider не включается даже при всех настройках. Booking возвращает 503, commerce
+DisabledProvider. Ошибка фабрики не раскрывает её текст и не включает stub fallback.
+
+Эти настройки — декларации владельца/оператора о выполненных внешних gates,
+не автоматическая юридическая проверка, не проверка правильности merchant keys и
+не доказательство успешного sandbox. До opt-in интегратор проверяет SDK/подписи
+на sandbox fixtures; включение и реальный smoke проводятся отдельно после допуска.
+Часть PSP-специфичных credentials может потребовать дополнительных Settings.
+Защита от пропуска каждого gate и независимость переключателей проверяются в
+`tests/test_payment_activation.py`, без сетевых вызовов и реального PSP.
 
 ### Локальная проверка и доказательства при передаче
 
@@ -418,8 +439,14 @@ sandbox acceptance PSP. К результату интеграции необх�
    не обещают дату, если возврат webhook сообщает reservation conflict.
 6. Отрицательные production-gate тесты и протокол отдельного допуска к запуску.
 
-Приоритет ближайшей работы: проверка полноты commerce refund mapping и live adapter registration/gates. До устранения этих пробелов
-раздел 34 мастер-задания не считается выполненным.
+Регистрация и opt-in gates теперь реализованы без подключения PSP. Commerce
+возврат полной суммы проходит проверенный ProviderEvent(status=refunded), сохраняет
+финансовый факт и снимает только связанные с этим заказом права; поздний возврат
+старого периода не отменяет новый. Инициирование возврата commerce в портале
+партнёра остаётся операторским действием, mapping/refund метод — границей адаптера.
+Частичные booking refunds используют отдельные PaymentRefund и four-eyes workflow.
+Приёмка конкретных refund/recurring протоколов PSP остаётся обязательной внешней
+интеграционной работой, а не подтверждённой возможностью невыбранного провайдера.
 
 ### Durable commerce checkout (subscription + promotion)
 

@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     allow_default_webhook_secret: bool = True
     payment_provider: str = "disabled"
     payment_allow_stub: bool = False
+    payment_live_opt_in: bool = False
+    commerce_live_opt_in: bool = False
+    payment_sandbox_accepted: bool = False
     payment_merchant_id: str = ""
     payment_public_key: str = ""
     payment_secret_key: str = ""

@@ -3,6 +3,7 @@
 import hashlib
 import hmac
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -169,10 +170,31 @@ class StubProvider:
         return None
 
 
+_live_providers: dict[str, Callable[[], CommerceProvider]] = {}
+
+
+def register_commerce_provider(name: str, factory: Callable[[], CommerceProvider]) -> None:
+    """Code-only registration of a reviewed provider; no dynamic env imports."""
+    from booker_api.payment_activation import validate_provider_name
+    validate_provider_name(name)
+    if not callable(factory) or (name in _live_providers and _live_providers[name] is not factory):
+        raise ValueError("Provider registration must be callable and unique")
+    _live_providers[name] = factory
+
+
 def get_provider() -> CommerceProvider:
     if stub_enabled():
         return StubProvider()
-    # Register the chosen live adapter here only after its external acceptance gates.
+    from booker_api.payment_activation import live_configuration_ready
+    name = settings.commerce_provider.strip().lower()
+    if name in _live_providers and live_configuration_ready(commerce=True):
+        try:
+            provider = _live_providers[name]()
+            if provider.name != name or provider.test_mode:
+                raise ValueError("Provider identity mismatch")
+            return provider
+        except Exception:  # noqa: BLE001 - Never expose provider constructor credentials.
+            return DisabledProvider()
     return DisabledProvider()
 
 

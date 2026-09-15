@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -190,9 +191,21 @@ def payment_stub_enabled() -> bool:
     )
 
 
+_live_adapters: dict[str, Callable[[], PaymentAdapter]] = {}
+
+
+def register_payment_adapter(name: str, factory: Callable[[], PaymentAdapter]) -> None:
+    """Call from reviewed application bootstrap; never from an HTTP request."""
+    from booker_api.payment_activation import validate_provider_name
+    validate_provider_name(name)
+    if not callable(factory) or (name in _live_adapters and _live_adapters[name] is not factory):
+        raise ValueError("Provider registration must be callable and unique")
+    _live_adapters[name] = factory
+
+
 def payment_live_enabled() -> bool:
-    # No live implementation is registered yet. Credentials alone cannot enable it.
-    return False
+    from booker_api.payment_activation import live_configuration_ready
+    return settings.payment_provider.strip().lower() in _live_adapters and live_configuration_ready()
 
 
 def payment_capabilities() -> dict:
@@ -204,6 +217,7 @@ def payment_capabilities() -> dict:
         "message": (
             "Тестовая оплата: деньги не списываются" if stub else
             "Перевод вне платформы подтверждает оператор" if external else
+            "Онлайн-оплата через платёжного партнёра" if payment_live_enabled() else
             "Оплата пока недоступна: платёжный партнёр не подключён"
         ),
     }
@@ -218,4 +232,12 @@ def get_payment_adapter() -> PaymentAdapter:
         return StubPaymentAdapter()
     if provider == "external":
         return ExternalPaymentAdapter()
+    if payment_live_enabled():
+        try:
+            adapter = _live_adapters[provider]()
+            if not isinstance(adapter, PaymentAdapter) or adapter.name != provider:
+                raise ValueError("Provider identity mismatch")
+            return adapter
+        except Exception:  # noqa: BLE001 - Never expose provider constructor credentials.
+            raise HTTPException(503, "Платёжный партнёр временно недоступен") from None
     raise HTTPException(503, "Оплата пока недоступна: платёжный партнёр не подключён")

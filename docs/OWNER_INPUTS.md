@@ -68,3 +68,16 @@ Booking checkout также выключен по умолчанию:
 `BOOKER_PAYMENT_PROVIDER=disabled`, `BOOKER_PAYMENT_ALLOW_STUB=false`.
 Тестовый booking provider требует одновременно dev/test environment, provider=stub
 и allow_stub=true; production запрещает stub независимо от opt-in.
+
+
+### Явный допуск зарегистрированного адаптера
+
+`BOOKER_PAYMENT_LIVE_OPT_IN`, `BOOKER_COMMERCE_LIVE_OPT_IN`,
+`BOOKER_PAYMENT_SANDBOX_ACCEPTED` по умолчанию false. Установка true разрешена
+только после соответствующего внешнего допуска; сами поля его не доказывают.
+Дополнительно нужны ISO-дата LAWYER_APPROVAL_DATE, PAYMENT_FLOW_APPROVAL=approved,
+merchant/public/secret keys, секреты webhook ≥32 символов, оба allow_stub=false,
+allow_default_webhook_secret=false и require_admin_2fa_enforced=true.
+Все названия имеют префикс BOOKER_. Пока нет зарегистрированного адаптера,
+никакая комбинация этих значений не включает live. Реестр и точный контракт:
+[PAYMENT_PROVIDER_HANDOFF.md](integrations/PAYMENT_PROVIDER_HANDOFF.md).
