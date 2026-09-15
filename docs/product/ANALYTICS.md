@@ -357,3 +357,8 @@ cycle_number, period_start/end, status. Один receipt на подписанн
 учитывается как captured заказ, но не означает доступ прямо сейчас.
 `subscription.cancelled` с reason=replacement_checkout обозначает прекращение
 старого автопродления перед новой сессией. Никаких provider secrets/PII в этих payload.
+
+`billing.paid.requires_operator=true` также означает поздний capture после local
+cancelled/failed checkout. Captured revenue сохраняется, entitlement не выдаётся;
+это не автоматическое решение о возврате. После verified refunded отметка сверки
+в текущем order payload снимается, исторический audit не переписывается.

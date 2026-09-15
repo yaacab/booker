@@ -696,3 +696,68 @@ def test_postgres_duplicate_renewal_creates_one_paid_period(client, SessionLocal
         assert first.result(timeout=5) == second.result(timeout=5)
     with SessionLocal() as db:
         assert db.query(BillingOrder).filter_by(subscription_parent_id=original['id'], status='paid').count() == 1
+
+
+@pytest.mark.parametrize('winner', ['cancel', 'capture'])
+def test_postgres_commerce_cancel_and_capture_preserve_money(client, SessionLocal, monkeypatch, winner):
+    from booker_api.commerce import orders, service
+    from booker_api.commerce.provider import signed_test_event
+    from booker_api.config import settings
+    from booker_api.models import BillingOrder
+    from tests.test_commerce import buy, org_user
+    monkeypatch.setattr(settings, 'commerce_provider', 'stub')
+    monkeypatch.setattr(settings, 'commerce_allow_stub', True)
+    monkeypatch.setattr(settings, 'commerce_webhook_secret', 'test-commerce-race-secret-at-least-32')
+    user, headers, org = org_user(client)
+    original = buy(client, headers, org).json()
+    raw, signature = signed_test_event(original['id'], f"stub:{original['id']}", original['amount_rub'], 'paid', 'racing-capture')
+    ready, waiting, release = Signal(), Signal(), Signal()
+    thread = local()
+    original_lock = orders.lock_organization
+    original_audit = orders.audit
+
+    def lock(*args):
+        if thread.role == 'second':
+            waiting.set()
+        return original_lock(*args)
+
+    def record(*args, **kwargs):
+        if thread.role == 'first' and kwargs.get('action') == ('billing.cancelled' if winner == 'cancel' else 'billing.paid'):
+            ready.set()
+            assert release.wait(5)
+        return original_audit(*args, **kwargs)
+
+    def run(role):
+        thread.role = role
+        action = winner if role == 'first' else ('capture' if winner == 'cancel' else 'cancel')
+        with SessionLocal() as db:
+            try:
+                if action == 'cancel':
+                    service.cancel_order(db, db.get(BillingOrder, original['id']), user['user_id'])
+                else:
+                    orders.settle_event(db, raw, signature)
+                db.commit()
+                return 200
+            except HTTPException as exc:
+                db.rollback()
+                return exc.status_code
+
+    for module in (orders, service):
+        monkeypatch.setattr(module, 'lock_organization', lock)
+        monkeypatch.setattr(module, 'audit', record)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(run, 'first')
+        try:
+            assert ready.wait(5)
+            second = pool.submit(run, 'second')
+            assert waiting.wait(5)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.2)
+        finally:
+            release.set()
+        assert first.result(timeout=5) == 200
+        assert second.result(timeout=5) == (200 if winner == 'cancel' else 409)
+    with SessionLocal() as db:
+        row = db.get(BillingOrder, original['id'])
+        assert row.status == 'paid'
+        assert row.entitlement_eligible is (winner == 'capture')

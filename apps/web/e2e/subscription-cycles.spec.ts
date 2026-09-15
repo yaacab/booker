@@ -44,3 +44,33 @@ for (const width of [1440, 390]) {
     await page.screenshot({ path: testInfo.outputPath('subscription-periods.png') });
   });
 }
+
+for (const width of [1440, 390]) {
+  test(`Late capture and refund of cancelled checkout at ${width}px`, async ({ page, request }) => {
+    const user = await register(request, `late-capture-${width}-${Date.now()}@booker.test`, 'Поздняя оплата');
+    const org = await postJson<{ id: string }>(request, '/orgs', user.token, { name: 'Студия', kind: 'artist' });
+    const order = await postJson<{ id: string; amount_rub: number; test_mode: boolean }>(request, `/commerce/organizations/${org.id}/orders`, user.token, { plan_code: 'artist_pro', billing_period: 'monthly', idempotency_key: 'cancelled-order' });
+    expect(order.test_mode).toBe(true);
+    await postJson(request, `/commerce/orders/${order.id}/cancel`, user.token, {});
+    async function deliver(status: 'paid' | 'refunded') {
+      const body = JSON.stringify({ event_id: `${order.id}-${status}`, order_id: order.id, reference: `stub:${order.id}`, status, amount_rub: order.amount_rub, currency: 'RUB' });
+      const signature = createHmac('sha256', process.env.BOOKER_COMMERCE_WEBHOOK_SECRET || 'ci-test-only-commerce-webhook-secret').update(body).digest('hex');
+      const response = await request.post(`${API_BASE}/commerce/webhook`, { data: body, headers: { 'X-Commerce-Signature': signature, 'Content-Type': 'application/json' } });
+      expect(response.ok(), await response.text()).toBe(true);
+    }
+    await deliver('paid');
+    await injectSession(page, user.token, org.id);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/cabinet/performer/growth');
+    const current = page.getByRole('region', { name: 'Текущий тариф' });
+    const history = page.getByRole('region', { name: 'Заказы и оплата' });
+    await expect(current.getByRole('heading', { name: 'Free', exact: true })).toBeVisible();
+    await expect(history.getByRole('status')).toContainText('Платёж требует сверки оператором');
+    await deliver('refunded');
+    await page.reload();
+    await expect(history).toContainText('Возвращён');
+    await expect(history.getByRole('status')).toHaveCount(0);
+    await expect(current.getByRole('heading', { name: 'Free', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}

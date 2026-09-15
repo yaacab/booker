@@ -453,3 +453,49 @@ def test_checkout_retry_is_scoped_to_owner_and_original_provider(client, stub, m
     assert client.post(f"/commerce/orders/{order['id']}/checkout", headers=foreign).status_code == 403
     monkeypatch.setattr(settings, 'commerce_provider', 'disabled')
     assert client.post(f"/commerce/orders/{order['id']}/checkout", headers=headers).status_code == 409
+
+
+@pytest.mark.parametrize('before', ['cancelled', 'failed'])
+def test_late_capture_records_money_without_reviving_purchase(client, SessionLocal, stub, before):
+    _, headers, org = org_user(client)
+    original = buy(client, headers, org).json()
+    if before == 'cancelled':
+        assert client.post(f"/commerce/orders/{original['id']}/cancel", headers=headers).status_code == 200
+    else:
+        payload, signature = signed_test_event(original['id'], f"stub:{original['id']}", original['amount_rub'], 'failed', 'failed-first')
+        assert client.post('/commerce/webhook', content=payload, headers={'X-Commerce-Signature': signature}).status_code == 200
+    replacement = buy(client, headers, org, code='artist_premium', key='replacement').json()
+    complete(client, headers, replacement)
+    payload, signature = signed_test_event(original['id'], f"stub:{original['id']}", original['amount_rub'], 'paid', 'late-paid')
+    response = client.post('/commerce/webhook', content=payload, headers={'X-Commerce-Signature': signature})
+    assert response.status_code == 200, response.text
+    assert response.json()['status'] == 'paid' and response.json()['requires_operator']
+    assert client.post('/commerce/webhook', content=payload, headers={'X-Commerce-Signature': signature}).json() == response.json()
+    assert state(client, headers, org)['plan']['code'] == 'artist_premium'
+    with SessionLocal() as db:
+        row = db.get(BillingOrder, original['id'])
+        assert row.paid_at and not row.entitlement_eligible
+        assert db.query(AuditLog).filter_by(action='billing.paid', entity_id=row.id).count() == 1
+    payload, signature = signed_test_event(original['id'], f"stub:{original['id']}", original['amount_rub'], 'refunded', 'late-refund')
+    assert client.post('/commerce/webhook', content=payload, headers={'X-Commerce-Signature': signature}).status_code == 200
+    assert state(client, headers, org)['plan']['code'] == 'artist_premium'
+
+
+
+def test_cancel_pending_checkout_stops_subscription_before_confirming(client, SessionLocal, stub, monkeypatch):
+    from booker_api.commerce.provider import StubProvider
+    _, headers, org = org_user(client)
+    original = buy(client, headers, org).json()
+    calls = []
+    def cancel(self, reference):
+        calls.append(reference)
+        if len(calls) == 1:
+            raise TimeoutError('private provider detail')
+    monkeypatch.setattr(StubProvider, 'cancel_subscription', cancel)
+    url = f"/commerce/orders/{original['id']}/cancel"
+    response = client.post(url, headers=headers)
+    assert response.status_code == 503 and 'private provider' not in response.text
+    with SessionLocal() as db:
+        assert db.get(BillingOrder, original['id']).status == 'pending_payment'
+    assert client.post(url, headers=headers).json()['status'] == 'cancelled'
+    assert calls == [f"sub:{original['id']}"] * 2

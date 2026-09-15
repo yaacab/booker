@@ -63,7 +63,7 @@ def order_payload(order: BillingOrder) -> dict:
         "period_start": aware(order.period_start) if order.period_start else None,
         "period_end": aware(order.period_end) if order.period_end else None,
         "renewal": order.subscription_parent_id is not None,
-        "requires_operator": not order.entitlement_eligible,
+        "requires_operator": order.status == "paid" and not order.entitlement_eligible,
         "commercial_policy_version": meta.get("commercial_policy_version"),
         "created_at": aware(order.created_at),
         "paid_at": aware(order.paid_at) if order.paid_at else None,
@@ -275,24 +275,39 @@ def settle_event(db: Session, payload: bytes, signature: str) -> dict:
         or order.currency != event.currency
     ):
         raise HTTPException(409, "Уведомление не соответствует заказу")
+    receipt = CommerceWebhookEvent(provider=provider.name, event_id=event.event_id,
+        order_id=order.id, payload_hash=digest, response_json='{}')
+    try:
+        with db.begin_nested():
+            db.add(receipt)
+            db.flush()  # Claim the event across organizations before accounting.
+    except IntegrityError:
+        raise HTTPException(409, 'Идентификатор уведомления уже связан с другим заказом') from None
     if event.status == 'paid' and order.paid_at and event.paid_at and aware(order.paid_at) != event.paid_at:
         raise HTTPException(409, 'Подтверждённая дата оплаты изменилась')
     if event.status != order.status:
         allowed = {
             "pending_payment": {"paid", "failed"},
             "paid": {"refunded"},
+            "cancelled": {"paid"},
+            "failed": {"paid"},
         }
         if event.status not in allowed.get(order.status, set()):
             raise HTTPException(409, "Недопустимый переход статуса оплаты")
+        previous_status = order.status
         order.status = event.status
         if event.status == "paid":
+            if previous_status in ('cancelled', 'failed'):
+                # Cancellation/failure is not proof that the provider never captured.
+                # Record verified money, but do not revive the cancelled purchase.
+                order.entitlement_eligible = False
             if not event.paid_at and not provider.test_mode:
                 raise HTTPException(409, 'Партнёр не передал дату подтверждённой оплаты')
             paid_at = event.paid_at or now()
             if paid_at > now() + timedelta(minutes=5) or paid_at < aware(order.created_at) - timedelta(minutes=5):
                 raise HTTPException(409, 'Дата оплаты не соответствует заказу')
             order.paid_at = paid_at
-            if order.product_kind == "subscription":
+            if order.product_kind == "subscription" and order.entitlement_eligible:
                 _activate_subscription(db, order)
         elif event.status == "refunded":
             order.refunded_at = now()
@@ -301,7 +316,7 @@ def settle_event(db: Session, payload: bytes, signature: str) -> dict:
                 sub.status = "cancelled"
                 sub.cancel_at_period_end = False
                 sub.next_plan_code = None
-        if order.product_kind == "promotion":
+        if order.product_kind == "promotion" and (order.entitlement_eligible or event.status == "refunded"):
             from booker_api.commerce.promotions import settle_campaign
 
             settle_campaign(db, order)
@@ -315,18 +330,12 @@ def settle_event(db: Session, payload: bytes, signature: str) -> dict:
                 "organization_id": order.organization_id,
                 "amount_rub": order.amount_rub,
                 "provider": order.provider,
+                "requires_operator": event.status == "paid" and not order.entitlement_eligible,
             },
         )
-    result = {"order_id": order.id, "status": order.status, "test_mode": provider.test_mode}
-    db.add(
-        CommerceWebhookEvent(
-            provider=provider.name,
-            event_id=event.event_id,
-            order_id=order.id,
-            payload_hash=digest,
-            response_json=json.dumps(result),
-        )
-    )
+    result = {"order_id": order.id, "status": order.status, "test_mode": provider.test_mode,
+        "requires_operator": order.status == "paid" and not order.entitlement_eligible}
+    receipt.response_json = json.dumps(result)
     db.flush()
     return result
 

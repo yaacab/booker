@@ -131,6 +131,15 @@ def cancel_order(db: Session, order: BillingOrder, actor_id: str) -> None:
         raise HTTPException(409, "Оплаченный заказ отменяется через возврат и поддержку")
     if json.loads(order.metadata_json).get('checkout_state') in ('creating', 'uncertain'):
         raise HTTPException(409, 'Сначала восстановите состояние заказа у платёжного партнёра')
+    metadata = json.loads(order.metadata_json)
+    if order.product_kind == 'subscription' and metadata.get('subscription_reference'):
+        provider = get_provider()
+        if provider.name != order.provider:
+            raise HTTPException(503, 'Отмену должен обработать исходный платёжный партнёр')
+        try:
+            provider.cancel_subscription(metadata['subscription_reference'])
+        except (ProviderUnavailable, TimeoutError, ConnectionError):
+            raise HTTPException(503, 'Партнёр не подтвердил прекращение продления. Повторите отмену') from None
     order.status = "cancelled"
     order.cancelled_at = now()
     if order.product_kind == "promotion":

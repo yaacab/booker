@@ -1795,3 +1795,26 @@ aware dates и календарные границы исходной годов
 PSP sandbox acceptance и live-gates допуска не выполнены. Общая цель открыта до
 финального аудита commerce refund mapping, adapter registration, SEO, notification
 coverage и остальных требований 0–35.
+
+### Late commerce capture после отмены — 2026-09-15
+
+Verified paid после cancelled/failed записывается в BillingOrder без повторного
+включения старого тарифа/кампании. requires_operator отображается в существующем
+кабинете. Verified full refund старого заказа не отзывает новый тариф и снимает
+текущую отметку сверки. Отмена pending subscription сначала подтверждает остановку
+recurring agreement у исходного PSP; неизвестный ответ не выдаётся за успешную
+отмену. Receipt обычного commerce webhook заявляется до финансовых изменений;
+body ограничивается при чтении, ошибки партнёра возвращаются без private details.
+
+Проверки из worktree:
+- BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/python -m pytest apps/api/tests/test_commerce.py apps/api/tests/test_paid_promotion.py apps/api/tests/test_subscription_cycles.py -q — 59 passed (13.19s), до добавления последнего cancellation retry case.
+- С BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres и apps/api/tests/test_calendar_postgres.py — 82 passed (38.23s).
+- Та же среда, pytest apps/api/tests/test_calendar_postgres.py -k commerce_cancel -q — 2 passed, 22 deselected (1.72s). Если cancel первый: paid сохраняется без доступа; если capture первый: отмена оплаченного заказа требует возврата.
+- PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint — passed.
+- Из apps/web: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_COMMERCE_WEBHOOK_SECRET=local-test-only-commerce-webhook-secret BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test subscription-cycles.spec.ts --workers=1 --reporter=line — 4 passed (8.7s). Настоящие raw signed stub events, 1440/390, без реальных денег.
+
+UI-код и схема в этом изменении не менялись; новые E2E входят в уже выбранный CI
+subscription-cycles.spec.ts. Общая цель остаётся открытой до финальной проверки
+интеграционной границы и остальных требований, включая SEO.
+- Полный финальный API: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 562 passed, 2 skipped (219.71s), включая все 24 PostgreSQL cases.
+- make web-lint — passed после новых E2E. UI-код прежний; повторную сборку неизменённого приложения не заявляем.

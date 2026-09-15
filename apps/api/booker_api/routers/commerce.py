@@ -259,15 +259,19 @@ async def webhook(
     request: Request, x_commerce_signature: str = Header(default=""), db: Session = Depends(get_db)
 ):
     webhook_limiter.check(client_key(request, "commerce-webhook"))
-    payload = await request.body()
-    if len(payload) > 16384:
-        raise HTTPException(413, "Уведомление слишком большое")
+    from starlette.concurrency import run_in_threadpool
+
+    payload = bytearray()
+    async for chunk in request.stream():
+        if len(payload) + len(chunk) > 16384:
+            raise HTTPException(413, "Уведомление слишком большое")
+        payload.extend(chunk)
     try:
-        result = settle_event(db, payload, x_commerce_signature)
-    except ProviderUnavailable as exc:
-        raise HTTPException(503, str(exc)) from exc
-    except InvalidWebhook as exc:
-        raise HTTPException(400, str(exc)) from exc
+        result = await run_in_threadpool(settle_event, db, bytes(payload), x_commerce_signature)
+    except ProviderUnavailable:
+        raise HTTPException(503, 'Проверка уведомлений этим партнёром пока недоступна') from None
+    except InvalidWebhook:
+        raise HTTPException(400, 'Уведомление партнёра не прошло проверку') from None
     db.commit()
     return result
 

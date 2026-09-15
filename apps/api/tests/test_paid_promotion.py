@@ -395,3 +395,19 @@ def test_promotion_checkout_timeout_preserves_campaign_and_retries(client, Sessi
         assert db.query(PromotionCampaign).count() == 1
         assert db.query(BillingOrder).count() == 1
         assert db.query(AuditLog).filter_by(action='promotion.started').count() == 0
+
+
+def test_late_paid_cancelled_campaign_keeps_cancellation(client, SessionLocal, stub, supply):
+    from booker_api.commerce.provider import signed_test_event
+    from booker_api.models import BillingOrder
+    campaign = promote(client, supply).json()
+    assert client.post(f"/commerce/promotions/{campaign['id']}/cancel", headers=supply['headers']).status_code == 200
+    order = campaign['order']
+    raw, signature = signed_test_event(order['id'], f"stub:{order['id']}", order['amount_rub'], 'paid', 'late-campaign-capture')
+    result = client.post('/commerce/webhook', content=raw, headers={'X-Commerce-Signature': signature})
+    assert result.status_code == 200, result.text
+    assert result.json()['requires_operator']
+    with SessionLocal() as db:
+        assert db.get(BillingOrder, order['id']).status == 'paid'
+        assert db.get(PromotionCampaign, campaign['id']).status == 'cancelled'
+        assert db.query(AuditLog).filter_by(action='promotion.started').count() == 0
