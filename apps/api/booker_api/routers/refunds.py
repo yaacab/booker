@@ -1,5 +1,7 @@
 """Operator refund requests: independent approval and confirmed provider outcomes."""
 import hashlib
+import json
+from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, constr
@@ -8,8 +10,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
-from booker_api.models import Payment, PaymentRefund, User
-from booker_api.payments.adapter import PaymentAdapterError, RefundOutcome, get_payment_adapter
+from booker_api.models import Payment, PaymentRefund, PaymentWebhookEvent, User
+from booker_api.payments.adapter import (
+    PaymentAdapterError,
+    RefundOutcome,
+    VerifiedRefundEvent,
+    get_payment_adapter,
+)
 from booker_api.rate_limit import admin_sensitive_limiter, analytics_limiter, client_key
 from booker_api.routers.payments import _lock_payment_context
 from booker_api.security import audit, now, require_admin, require_admin_2fa
@@ -279,3 +286,67 @@ def confirm_external(refund_id: str, body: ExternalIn, request: Request, user: U
     audit(db, actor_user_id=user.id, action='refund.external_confirmed', entity_type='refund', entity_id=row.id)
     db.commit()
     return payload(row, payment, user)
+
+
+def apply_verified_refund_event(event, adapter, db):
+    """Serialize signed refund outcomes with approval/retry and payment accounting."""
+    if not isinstance(event, VerifiedRefundEvent):
+        raise HTTPException(400, 'Партнёр не вернул проверенные реквизиты возврата')
+    for value in (event.event_id, event.payment_id, event.request_key, event.payment_reference,
+        event.refund_reference, event.merchant_id):
+        if not isinstance(value, str) or not value or len(value) > 255 or value != value.strip() or any(ord(c) < 32 for c in value):
+            raise HTTPException(400, 'Некорректные реквизиты уведомления')
+    if type(event.amount_rub) is not int or event.amount_rub <= 0 or event.currency != 'RUB':
+        raise HTTPException(409, 'Сумма или валюта уведомления не поддерживается')
+    if not adapter.merchant_id or event.merchant_id != adapter.merchant_id:
+        raise HTTPException(409, 'Получатель платежа не совпадает')
+    if event.status not in ('pending', 'succeeded', 'failed'):
+        raise HTTPException(400, 'Состояние уведомления не поддерживается')
+    row = db.query(PaymentRefund).filter_by(idempotency_key=event.request_key).one_or_none()
+    if not row:
+        raise HTTPException(409, 'Нет сохранённого запроса возврата. Требуется сверка оператором')
+    row, payment = locked(db, row.id)
+    if (row.provider != adapter.name or payment.provider != adapter.name or adapter.name == 'external'
+        or event.payment_id != payment.id or event.payment_reference != payment.provider_reference
+        or event.amount_rub != row.amount_rub
+        or (row.provider_reference and row.provider_reference != event.refund_reference)):
+        raise HTTPException(409, 'Уведомление не соответствует сохранённому возврату')
+    # Approval authorizes the outgoing command. A later role revocation must not
+    # erase a verified money fact for an already submitted, approved command.
+    if (not row.approved_by or row.approved_by == row.requested_by or not row.approved_at
+        or row.status in ('awaiting_approval', 'approved', 'rejected')):
+        raise HTTPException(409, 'Возврат не был подтверждён и отправлен партнёру')
+    fields = asdict(event)
+    fields.pop('event_id')
+    fingerprint = hashlib.sha256(json.dumps(fields, sort_keys=True).encode()).hexdigest()
+    receipt_id = hashlib.sha256(f'refund-provider:{adapter.name}:{event.event_id}'.encode()).hexdigest()
+    seen = db.get(PaymentWebhookEvent, receipt_id)
+    if seen:
+        if seen.payment_id != payment.id or seen.event_fingerprint != fingerprint:
+            raise HTTPException(409, 'Идентификатор уведомления уже использован для других реквизитов')
+        return json.loads(seen.response_json)
+    receipt = PaymentWebhookEvent(event_id=receipt_id, payment_id=payment.id,
+        status=event.status, event_fingerprint=fingerprint, response_json='{}')
+    try:
+        with db.begin_nested():
+            db.add(receipt)
+            db.flush()  # Claim the event before changing money, including across payments.
+    except IntegrityError:
+        raise HTTPException(409, 'Идентификатор уведомления уже учтён') from None
+    # A delayed pending event cannot undo a terminal outcome. Contradictory
+    # terminal facts require reconciliation; silently reversing them is unsafe.
+    if not (row.status in TERMINAL and event.status == 'pending'):
+        try:
+            save_outcome(db, row, payment, RefundOutcome(refund_id=event.refund_reference,
+                amount_rub=event.amount_rub, kind='full' if row.amount_rub == payment.amount_rub else 'partial',
+                status=event.status), None)
+        except PaymentAdapterError:
+            raise HTTPException(409, 'Результат возврата требует сверки оператором') from None
+    result = {'refund_id': row.id, 'payment_id': payment.id, 'status': row.status,
+        'payment_status': payment.status, 'test_mode': adapter.name == 'stub'}
+    receipt.response_json = json.dumps(result)
+    audit(db, actor_user_id=None, action='refund.webhook', entity_type='refund', entity_id=row.id,
+        payload={'payment_id': payment.id, 'provider': adapter.name, 'provider_status': event.status,
+            'status': row.status, 'amount_rub': row.amount_rub})
+    db.commit()
+    return result

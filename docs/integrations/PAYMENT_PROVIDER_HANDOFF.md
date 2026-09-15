@@ -296,13 +296,32 @@ TOTP фиксирует явное утверждение оператора о 
 создание, второе подтверждение, отклонение, повтор, сверка и external confirmation.
 `GET /admin/refunds` доступен только admin и ограничивает размер/частоту запросов.
 
-Точка нормализации результата: `routers/refunds.py:save_outcome` (вызывает
-apply_outcome внутри savepoint) под блокировкой
-платёжного контекста. Перед вызовом из будущего webhook необходимо проверить
-исходную подпись, merchant, provider/payment/refund binding, сумму и валюту.
-Публичный неподписанный endpoint изменения результата отсутствует. Проверка
-реального PSP и raw refund webhook ещё не выполнены; generic status-method
-предоставляет интеграционную границу и тестируется адаптером на границе провайдера.
+Подписанные booking refund callbacks принимает
+`POST /payments/refund-provider-webhook` (64 KiB, rate limit, factory/provider gates).
+`PaymentAdapter.verify_raw_refund_webhook(payload, headers)` проверяет оригинальные
+байты, подпись и срок события до нормализации `VerifiedRefundEvent`: event_id,
+payment_id, request_key (исходный сохранённый idempotency_key команды refund),
+payment_reference, refund_reference, amount_rub (строго integer RUB), currency,
+merchant_id, status (pending/succeeded/failed). Адаптер получает эти реквизиты из
+проверенного события/аутентифицированных metadata PSP; сопоставление по одной
+сумме недопустимо. Unknown или инициированный вне платформы refund возвращает 409
+для сверки оператором; backend не создаёт фиктивного согласованного запроса.
+
+`routers/refunds.py:apply_verified_refund_event` проверяет merchant, исходного
+provider, Payment reference, ключ/сумму PaymentRefund, независимое историческое
+approval и факт отправки (submitting/pending/uncertain). Отзыв полномочий после
+отправки не отменяет поступивший подтверждённый денежный факт. Первое событие
+может восстановить потерянный refund reference после timeout. `save_outcome`
+применяет результат под общей блокировкой платёжного контекста и savepoint;
+уникальный (provider, refund_reference) запрещает двойной учёт.
+
+Receipts сохраняются в существующей payment_webhook_events с отдельным
+namespace `refund-provider`, fingerprint включает все нормализованные реквизиты
+и ключ запроса. Повтор отдаёт сохранённый результат, изменение фактов под тем же
+event_id — 409. Поздний pending не отменяет terminal; противоречивые terminal
+состояния — 409 для сверки. `refund.webhook` не содержит raw body/подписей/secrets.
+Stub реализует только локальный HMAC acceptance protocol. Настоящий PSP не выбран,
+его подпись и sandbox acceptance остаются интеграционной задачей.
 
 ### Автопродление
 
@@ -345,7 +364,7 @@ false, неизвестный commerce provider возвращает DisabledPro
 ```bash
 BOOKER_ENVIRONMENT=test BOOKER_DATABASE_URL=sqlite:// ../../.venv/bin/python -m pytest \
   tests/test_payment_adapter.py tests/test_payment_guards.py tests/test_payments.py \
-  tests/test_external_payment_confirm.py tests/test_provider_webhook.py tests/test_payment_reconciliation.py tests/test_refunds.py tests/test_commerce.py -q
+  tests/test_external_payment_confirm.py tests/test_provider_webhook.py tests/test_payment_reconciliation.py tests/test_refunds.py tests/test_refund_webhook.py tests/test_commerce.py -q
 ```
 
 Этот набор проверяет текущие адаптеры/доменные ограничения. Он не заменяет
@@ -363,6 +382,5 @@ sandbox acceptance PSP. К результату интеграции необх�
    не обещают дату, если возврат webhook сообщает reservation conflict.
 6. Отрицательные production-gate тесты и протокол отдельного допуска к запуску.
 
-Приоритет ближайшей работы: raw refund mapping,
-commerce refund workflow, renewal mapping. До устранения этих пробелов
+Приоритет ближайшей работы: renewal mapping и проверка полноты commerce refund mapping. До устранения этих пробелов
 раздел 34 мастер-задания не считается выполненным.

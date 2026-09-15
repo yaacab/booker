@@ -43,6 +43,20 @@ class VerifiedPaymentEvent(WebhookEvent):
 
 
 @dataclass(frozen=True)
+class VerifiedRefundEvent:
+    """Signed provider facts bound to the original refund idempotency key."""
+    event_id: str
+    payment_id: str
+    request_key: str
+    payment_reference: str
+    refund_reference: str
+    amount_rub: int
+    currency: str
+    merchant_id: str
+    status: str
+
+
+@dataclass(frozen=True)
 class RefundOutcome:
     refund_id: str
     amount_rub: int
@@ -134,6 +148,17 @@ class PaymentAdapter(ABC):
         Never trust a caller-supplied already-normalized JSON signature instead.
         """
         raise PaymentAdapterUnavailable("Проверка уведомлений этого партнёра пока недоступна")
+
+    def verify_raw_refund_webhook(self, *, payload: bytes, headers: dict[str, str]) -> VerifiedRefundEvent:
+        """Verify original bytes/signature/timestamp before normalizing refund facts.
+
+        Resolve request_key from authenticated provider metadata or the original
+        idempotency key. Never infer it from amount alone. The payment reference,
+        refund reference, amount, currency and merchant must be provider facts.
+        Unknown/external refunds require operator reconciliation, not a fabricated
+        approved request. This method must never create a refund.
+        """
+        raise PaymentAdapterUnavailable("Проверка уведомлений о возвратах пока недоступна")
 
     def get_payment_status(self, *, payment_id: str, provider_reference: str | None,
         idempotency_key: str) -> VerifiedPaymentEvent:

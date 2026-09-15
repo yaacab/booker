@@ -543,3 +543,51 @@ def test_postgres_reconciliation_read_does_not_block_cancellation(client, Sessio
     assert result['payment_status'] == 'succeeded'
     assert result['booking_status'] == 'Cancelled'
     assert result['requires_operator']
+
+
+def test_postgres_refund_webhooks_serialize_accounting(client, SessionLocal, monkeypatch):
+    from booker_api.models import AuditLog, Payment, PaymentRefund
+    from booker_api.payments.adapter import VerifiedRefundEvent
+    from booker_api.payments.stub import StubPaymentAdapter
+    from booker_api.routers import refunds
+    from tests.test_refund_webhook import prepared
+
+    row, event, _ = prepared(client, SessionLocal, monkeypatch, uncertain=True)
+    ready, waiting, release = Signal(), Signal(), Signal()
+    thread = local()
+    original_lock, original_save = refunds._lock_payment_context, refunds.save_outcome
+
+    def lock(*args):
+        if thread.role == 'second':
+            waiting.set()
+        return original_lock(*args)
+
+    def save(*args):
+        if thread.role == 'first':
+            ready.set()
+            assert release.wait(5)
+        return original_save(*args)
+
+    def run(role):
+        thread.role = role
+        with SessionLocal() as db:
+            return refunds.apply_verified_refund_event(VerifiedRefundEvent(**event), StubPaymentAdapter(), db)
+
+    monkeypatch.setattr(refunds, '_lock_payment_context', lock)
+    monkeypatch.setattr(refunds, 'save_outcome', save)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(run, 'first')
+        try:
+            assert ready.wait(5)
+            second = pool.submit(run, 'second')
+            assert waiting.wait(5)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.2)
+        finally:
+            release.set()
+        assert first.result(timeout=5) == second.result(timeout=5)
+    with SessionLocal() as db:
+        assert db.get(PaymentRefund, row['id']).status == 'succeeded'
+        assert db.get(Payment, event['payment_id']).status == 'partially_refunded'
+        assert db.query(AuditLog).filter_by(action='payment.refunded').count() == 1
+        assert db.query(AuditLog).filter_by(action='refund.webhook').count() == 1

@@ -1709,3 +1709,26 @@ provider-response fixtures; реальные authorization/domain transitions п
 API и PostgreSQL выше. Это не sandbox acceptance настоящего PSP. Новых миграций
 нет: БД остаётся на f9a0b1c2d3e4. Полная цель открыта: raw refund mapping,
 recurring и оставшиеся пункты master acceptance требуют дальнейшей работы.
+
+
+### Подписанные уведомления о booking refund — 2026-09-15
+
+Реализованы `VerifiedRefundEvent`, fail-closed adapter method и
+`POST /payments/refund-provider-webhook`. Связь с сохранённой командой проверяется
+по исходному idempotency key, Payment/reference, provider, merchant, валюте и сумме.
+Учитываются только независимо согласованные и отправленные запросы. Timeout
+восстанавливается из проверенного события; повтор, чужие реквизиты и запоздалый
+pending не увеличивают сумму и не отменяют результат. Неизвестный refund и
+противоречивые terminal outcomes требуют сверки (409). Реальный PSP не подключён.
+
+Новых миграций/UI нет: receipts используют payment_webhook_events с отдельным
+namespace, итог доступен в существующем `/admin/refunds` и Payment API.
+Проверки из apps/api с BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test:
+- ../../.venv/bin/python -m pytest tests/test_refund_webhook.py tests/test_refunds.py tests/test_provider_webhook.py -q — 49 passed (31.19s).
+- С BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres: ../../.venv/bin/python -m pytest tests/test_calendar_postgres.py -k refund -q — 4 passed, 16 deselected (5.72s); два concurrent callbacks учитываются один раз.
+- Из worktree: PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint — passed.
+- Полный API-прогон из worktree: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 532 passed, 2 skipped (222.54s); PostgreSQL включён.
+
+UI не менялся, browser/build проверки этого изменения повторно не заявляются.
+Общая цель остаётся открытой: следующий этап — billing cycle / recurring и полный
+аудит остальных требований разделов 0–35.

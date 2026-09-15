@@ -328,3 +328,13 @@ records a new validated financial state receipt with its actor. Repeated same-st
 reads keep one state receipt while retaining each request audit. Provider response
 bodies, TOTP and creation idempotency keys are not copied into audit. Receipt state
 and current Payment/Booking state are returned distinctly by reconciliation UI.
+
+
+### Подписанные результаты возврата
+
+`refund.webhook` — впервые принятый signed callback для сохранённого отправленного
+PaymentRefund; entity=refund, payload: payment_id, provider, provider_status,
+status (текущее локальное), amount_rub. Повторы одного receipt не создают audit
+повторно. `payment.refunded` остаётся однократным денежным переходом; поздний pending
+и подтверждение уже учтённого результата новым event_id не увеличивают сумму.
+Подписи, raw payload и provider references в эти события не записываются.

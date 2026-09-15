@@ -11,6 +11,7 @@ from booker_api.payments.adapter import (
     PaymentSession,
     RefundOutcome,
     VerifiedPaymentEvent,
+    VerifiedRefundEvent,
     WebhookEvent,
 )
 
@@ -63,6 +64,18 @@ class StubPaymentAdapter(PaymentAdapter):
         return "stub-merchant"
 
     def verify_raw_webhook(self, *, payload: bytes, headers: dict[str, str]) -> VerifiedPaymentEvent:
+        try:
+            return VerifiedPaymentEvent(**self._verify_raw_body(payload, headers))
+        except TypeError:
+            raise PaymentAdapterError("Некорректное уведомление") from None
+
+    def verify_raw_refund_webhook(self, *, payload: bytes, headers: dict[str, str]) -> VerifiedRefundEvent:
+        try:
+            return VerifiedRefundEvent(**self._verify_raw_body(payload, headers))
+        except TypeError:
+            raise PaymentAdapterError("Некорректное уведомление") from None
+
+    def _verify_raw_body(self, payload, headers):
         # Local acceptance protocol only, not a signature format for a real PSP.
         expected = hmac.new(settings.webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
         signature = headers.get('x-booker-signature', '')
@@ -75,7 +88,9 @@ class StubPaymentAdapter(PaymentAdapter):
             return result
         try:
             body = json.loads(payload, object_pairs_hook=unique_fields)
-            return VerifiedPaymentEvent(**body)
+            if not isinstance(body, dict):
+                raise TypeError('object required')
+            return body
         except (ValueError, TypeError, UnicodeError):
             raise PaymentAdapterError("Некорректное уведомление") from None
 

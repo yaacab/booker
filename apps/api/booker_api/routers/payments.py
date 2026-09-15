@@ -491,6 +491,28 @@ def _validate_provider_binding(event, adapter, payment=None):
         raise HTTPException(409, "Реквизиты партнёра не соответствуют сохранённому платежу")
 
 
+@router.post('/payments/refund-provider-webhook')
+async def refund_provider_webhook(request: Request, db: Session = Depends(get_db)):
+    from booker_api.routers.refunds import apply_verified_refund_event
+
+    webhook_limiter.check(client_key(request, 'refund-provider-webhook'))
+    adapter = get_payment_adapter()
+    if adapter.name == 'stub' and not settings.allow_default_webhook_secret and settings.webhook_secret == 'dev-webhook-secret':
+        raise HTTPException(503, "Webhook-секрет не настроен")
+    payload = bytearray()
+    async for chunk in request.stream():
+        if len(payload) + len(chunk) > 65536:
+            raise HTTPException(413, "Уведомление превышает допустимый размер")
+        payload.extend(chunk)
+    try:
+        event = adapter.verify_raw_refund_webhook(payload=bytes(payload), headers=dict(request.headers))
+    except PaymentAdapterUnavailable:
+        raise HTTPException(503, "Проверка уведомлений партнёра пока недоступна") from None
+    except PaymentAdapterError:
+        raise HTTPException(401, "Уведомление партнёра не прошло проверку") from None
+    return await run_in_threadpool(apply_verified_refund_event, event, adapter, db)
+
+
 @router.post('/payments/provider-webhook')
 async def provider_webhook(request: Request, db: Session = Depends(get_db)):
     webhook_limiter.check(client_key(request, 'provider-webhook'))
