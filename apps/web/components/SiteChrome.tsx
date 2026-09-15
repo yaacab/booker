@@ -109,7 +109,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       const city = new URLSearchParams(window.location.search).get("city");
       title = city ? `Каталог — ${city} · Букер` : title;
     }
-    document.title = title;
+    // Public profile/collection metadata owns its descriptive title.
+    if (path !== '/catalog' && !path.startsWith('/catalog/') && !path.startsWith('/artists/') && !path.startsWith('/venues/')) document.title = title;
     if (getToken()) {
       trackClientEvent("page.view", { path });
     }

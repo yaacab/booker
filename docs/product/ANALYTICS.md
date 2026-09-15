@@ -362,3 +362,8 @@ cycle_number, period_start/end, status. Один receipt на подписанн
 cancelled/failed checkout. Captured revenue сохраняется, entitlement не выдаётся;
 это не автоматическое решение о возврате. После verified refunded отметка сверки
 в текущем order payload снимается, исторический audit не переписывается.
+
+SEO inventory (/seo/index, /seo/profiles) и server rendering публичных подборок
+не создают sponsored touches или искусственные impressions. Только карточка,
+попавшая в viewport браузера, вызывает существующий observeDiscovery/impression
+с прежней session dedupe и Do Not Track. Paid ranking на этих страницах отсутствует.

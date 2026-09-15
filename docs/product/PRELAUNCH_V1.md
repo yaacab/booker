@@ -1818,3 +1818,45 @@ subscription-cycles.spec.ts. Общая цель остаётся открыто
 интеграционной границы и остальных требований, включая SEO.
 - Полный финальный API: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 562 passed, 2 skipped (219.71s), включая все 24 PostgreSQL cases.
 - make web-lint — passed после новых E2E. UI-код прежний; повторную сборку неизменённого приложения не заявляем.
+
+### SEO: публичное перечисление и содержательные подборки — 2026-09-15
+
+GET /seo/index и /seo/profiles?kind=artists|venues&page=N перечисляют публичные
+профили всех городов без зависимости от будущих слотов и без вызова sponsored
+ranking. Только published venues; нет organization IDs, контактов и внутренних
+статусов. Выдача профилей ограничена 1000 на страницу, параметры валидируются,
+публичные обращения rate-limited. Чтение SEO inventory не создаёт PromotionTouch/audit показы.
+
+GET /seo/collections/{city_slug}/{category} предоставляет только известные
+редакционные категории пилотной Москвы при >=3 профилях; до 24 карточек на страницу,
+отдельные поля фактов и min опубликованных тарифов считаются сервером. None и 0
+различаются. Не обещаются свободная дата, итоговая цена или купленный trust.
+Новые публичные /catalog и /catalog/moskva/{category} используют действующие стили,
+SSR, canonical/OG и фактический ItemList JSON-LD (без рейтингов/выдуманных offers).
+Названия экранируются в HTML/JSON-LD; карточки имеют явные ссылки, keyboard access,
+error/retry и пустое состояние каталога. Категории без достаточных данных — 404.
+Реальные видимые карточки используют прежний observeDiscovery с DNT и dedupe;
+серверный sitemap не считается рекламным показом.
+
+/sitemap.xml теперь sitemap index, /sitemaps/pages.xml — страницы/подборки,
+/sitemaps/{artists|venues}/{N}.xml — небольшие profile URL sets. Убраны login и
+Event Studio из sitemap, добавлен pricing. При недоступном API возвращается 503
+с Retry-After, а не успешный пустой индекс. Canonical origin фиксирован bukergo.ru;
+DNS и публичные redirects не менялись. Правило robots для приватных потоков едино
+для всех ботов, прежние отдельные allow overrides убраны. Robots не заменяет auth.
+Metadata профилей уже существовали: исправлен noindex при ошибке venue API и
+дублирование бренда в title; общая оболочка не затирает описательные public titles.
+
+Проверки из worktree:
+- BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/python -m pytest apps/api/tests/test_seo.py -q — 8 passed (2.51s), включая >1000 профилей, другой город/нет календаря, hidden venue, отсутствие PII/advertising side effects, min3 и pagination.
+- PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 570 passed, 2 skipped (292.05s), все текущие API-изменения.
+- make lint и make web-lint — passed.
+- NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build — passed до browser QA; сборка повторена после устранения streaming loading wrapper.
+- Из apps/web: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test seo-catalog.spec.ts search-filters.spec.ts --workers=1 --reporter=line — 6 passed, 1 failed (13.3s). JS-disabled тест обнаружил скрытый HTML за streaming loading wrapper.
+- После удаления wrapper (индикатор перенесён в CatalogLink navigation transition), той же средой npx playwright test seo-catalog.spec.ts --workers=1 --reporter=line — 5 passed (6.4s): SSR без JS, 404, canonical/OG, sitemap с профилем Казани без календаря, 1440/390 и keyboard loading. Screenshot 390 проверен визуально.
+
+Новых миграций/секретов нет. Новая SEO suite включена в CI. Это техническая
+готовность страниц к crawling; отправка сайта поисковым системам и acquisition
+остаются вне разработки. Общая цель открыта до проверки notification coverage и
+итогового аудита требований 0–35.
+- После исправления перезаписи document.title общей оболочкой: make web-lint и финальный make web-build passed; seo-catalog.spec.ts — 5 passed (4.9s), включая проверку title после hydration. Остальной API-код не менялся после полного прогона 570 passed.

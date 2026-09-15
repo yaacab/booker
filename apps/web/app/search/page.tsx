@@ -132,7 +132,7 @@ export default async function SearchPage({
       <header className="workspace-heading">
         <div><p className="kicker">Люди и места для вашего события</p>
         <h1>Найдите свою команду</h1></div>
-        <Link className="btn secondary" href="/cabinet/customer/favorites">Избранное</Link>
+        <div className="commerce-actions"><Link href="/catalog">Подборки по задачам</Link><Link className="btn secondary" href="/cabinet/customer/favorites">Избранное</Link></div>
       </header>
       <div className="catalog-layout">
         <CatalogFilters

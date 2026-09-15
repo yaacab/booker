@@ -52,3 +52,5 @@ Smart Matching с тремя вариантами и сохраняемым пр
 и не выпущена в production; прежние отметки пилота не доказывают новый launch gate.
 
 - 2026-09-15: implemented provider-neutral recurring cycle mapping, immutable period orders, paid-at/calendar boundaries, future/gap/late/failure handling, cancellation and previous-agreement shutdown on new checkout. Evidence: PRELAUNCH_V1.md. Live PSP acceptance and final commercial launch audit remain open.
+
+- 2026-09-15: public SEO inventory across cities, paged sitemap index, published-venue visibility and server-rendered Moscow category pages with minimum content threshold implemented; JS-disabled, metadata, keyboard and mobile browser evidence in PRELAUNCH_V1.md.

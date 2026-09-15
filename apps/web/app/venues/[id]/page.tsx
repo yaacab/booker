@@ -14,9 +14,9 @@ export async function generateMetadata({
   const { id } = await params;
   try {
     const res = await fetch(`${API}/venues/${id}`, { next: { revalidate: 300 } });
-    if (!res.ok) return { title: "Площадка · Букер", robots: { index: false } };
+    if (!res.ok) return { title: "Площадка", robots: { index: false } };
     const data = (await res.json()) as { name?: string; city?: string; address?: string };
-    const title = data.name ? `${data.name} — площадка · Букер` : "Площадка · Букер";
+    const title = data.name ? `${data.name} — площадка` : "Площадка";
     const description = [data.name, data.city, data.address].filter(Boolean).join(" · ");
     return {
       title,
@@ -25,7 +25,7 @@ export async function generateMetadata({
       openGraph: { title, description, url: `/venues/${id}` },
     };
   } catch {
-    return { title: "Площадка · Букер" };
+    return { title: "Площадка", robots: { index: false } };
   }
 }
 

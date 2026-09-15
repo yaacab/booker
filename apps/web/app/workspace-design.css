@@ -247,3 +247,8 @@
 .event-repeat label { display: grid; gap: 8px; margin-block: 12px; }
 .event-repeat :is(input, fieldset) { min-width: 0; max-width: 100%; }
 .event-repeat .shortlist-pick { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+
+.public-catalog-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 20px; margin: 28px 0; }
+.public-catalog-grid > * { min-width: 0; overflow-wrap: anywhere; }
+.public-catalog-grid .card { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.public-catalog-grid .card .btn { margin-top: auto; }

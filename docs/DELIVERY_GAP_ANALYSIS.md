@@ -130,3 +130,9 @@ Completed → отдельный Draft с новыми ролями и optional 
 commerce/renewals.py and paid-period projection, with API/PG/390px browser evidence
 in PRELAUNCH_V1.md. This does not certify live merchant/consent/signature mapping,
 PSP acceptance or all section-34 requirements; final audit remains open.
+
+2026-09-15 SEO update: profile metadata existed before this unit. Replaced the
+Moscow calendar-search sitemap with public paged inventory, added content-gated
+SSR category pages, fixed canonical/robots/title handling. Browser tests cover
+JS-disabled HTML and 390px; evidence in PRELAUNCH_V1.md. Search-engine submission
+is not claimed; notification coverage and final full-master acceptance remain open.

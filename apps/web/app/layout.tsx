@@ -6,7 +6,7 @@ import "./cabinet-design.css";
 import "./reference-puzzles.css";
 import "./workspace-design.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
+const siteUrl = "https://bukergo.ru";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

@@ -15,9 +15,9 @@ export async function generateMetadata({
   const { id } = await params;
   try {
     const res = await fetch(`${API}/artists/${id}`, { next: { revalidate: 300 } });
-    if (!res.ok) return { title: "Артист · Букер", robots: { index: false } };
+    if (!res.ok) return { title: "Артист", robots: { index: false } };
     const data = (await res.json()) as { name?: string; city?: string; category?: string; presentation?: { format?: string; cover_url?: string } };
-    const title = data.name ? `${data.name} — артист · Букер` : "Артист · Букер";
+    const title = data.name ? `${data.name} — артист` : "Артист";
     const description = [data.name, data.city, categoryLabel(data.category || ""), data.presentation?.format].filter(Boolean).join(" · ");
     return {
       title,
@@ -26,7 +26,7 @@ export async function generateMetadata({
       openGraph: { title, description, url: `/artists/${id}`, images: data.presentation?.cover_url ? [data.presentation.cover_url] : undefined },
     };
   } catch {
-    return { title: "Артист · Букер", robots: { index: false } };
+    return { title: "Артист", robots: { index: false } };
   }
 }
 
