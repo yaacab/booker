@@ -6,7 +6,7 @@ import { money } from '@/lib/format';
 type MoneyRow = { provider: string; status: string; source: string; product_kind?: string; count: number; amount_rub: number };
 type Report = { period: { from: string; to: string }; as_of: string; notes: string[]; payments: MoneyRow[]; orders: MoneyRow[];
   booking_values: { kind: string; source: "recorded" | "test" | "mixed" | "unpaid"; bookings: number; gmv_known_rub: number; platform_fee_known_rub: number; missing_quotes: number; missing_fee_snapshots: number }[] };
-const STATUS: Record<string, string> = { succeeded: 'Подтверждено API', paid: 'Оплачено', pending: 'Ожидает оплаты', pending_payment: 'Ожидает оплаты', created: 'Создано', refunded: 'Возвращено', cancelled: 'Отменено', failed: 'Не оплачено' };
+const STATUS: Record<string, string> = { succeeded: 'Подтверждено API', paid: 'Оплачено', pending: 'Ожидает оплаты', pending_payment: 'Ожидает оплаты', created: 'Создано', refunded: 'Возвращено', partially_refunded: 'Частично возвращено', cancelled: 'Отменено', failed: 'Не оплачено' };
 const SOURCE: Record<string, string> = { recorded: 'Внешний платёж', test: 'Тест · деньги не списывались', unverified: 'Провайдер не подтверждён' };
 function Entries({ rows }: { rows: MoneyRow[] }) {
   if (!rows.length) return <p>За выбранный период записей нет.</p>;

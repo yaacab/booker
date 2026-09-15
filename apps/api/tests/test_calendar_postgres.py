@@ -421,3 +421,70 @@ def test_postgres_checkout_retries_share_durable_provider_session(client, Sessio
     assert len(calls) == 1
     with SessionLocal() as db:
         assert db.query(Payment).filter_by(booking_id=ctx['booking_id']).count() == 1
+
+
+@pytest.mark.parametrize('second_action', ['approve', 'create'])
+def test_postgres_refund_approval_serializes_provider_and_remaining_amount(client, SessionLocal, monkeypatch, second_action):
+    from starlette.requests import Request
+
+    from booker_api.payments.adapter import RefundOutcome
+    from booker_api.payments.stub import StubPaymentAdapter
+    from booker_api.routers import refunds
+    from tests.test_refunds import request_refund, setup
+    from tests.totp_helpers import totp_code
+    ctx, author, reviewer = setup(client)
+    row = request_refund(client, ctx, author).json()
+    ready, waiting, release = Signal(), Signal(), Signal()
+    thread = local()
+    original_lock = refunds._lock_payment_context
+    calls = []
+
+    def lock(*args):
+        if thread.role == 'second':
+            waiting.set()
+        return original_lock(*args)
+
+    def provider(self, **kw):
+        calls.append(kw)
+        ready.set()
+        assert release.wait(5)
+        return RefundOutcome(refund_id='pg-refund', amount_rub=kw['amount_rub'], kind='full', status='succeeded')
+
+    def run(role):
+        thread.role = role
+        with SessionLocal() as db:
+            req = Request({'type': 'http', 'headers': [], 'client': ('refund-test', 1)})
+            user = db.get(User, reviewer['user_id'])
+            try:
+                if role == 'second' and second_action == 'create':
+                    return refunds.create_refund(refunds.CreateIn(payment_id=ctx['payment_id'],
+                        reason='Concurrent request', idempotency_key='concurrent-request', totp=totp_code()), req, user, db)
+                return refunds.approve_refund(row['id'], refunds.ActionIn(totp=totp_code()), req, user, db)
+            except HTTPException as exc:
+                db.rollback()
+                return exc.status_code
+
+    monkeypatch.setattr(refunds, '_lock_payment_context', lock)
+    monkeypatch.setattr(StubPaymentAdapter, 'refund', provider)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(run, 'first')
+        try:
+            assert ready.wait(5)
+            second = pool.submit(run, 'second')
+            assert waiting.wait(5)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.2)
+        finally:
+            release.set()
+        a, b = first.result(timeout=5), second.result(timeout=5)
+    assert a['status'] == 'succeeded'
+    if second_action == 'approve':
+        assert b['id'] == a['id'] and b['status'] == 'succeeded'
+    else:
+        assert b == 409
+    assert len(calls) == 1
+
+
+def test_postgres_refund_reference_is_accounted_once(client, SessionLocal, monkeypatch):
+    from tests.test_refunds import test_same_provider_reference_cannot_count_as_two_refunds
+    test_same_provider_reference_cannot_count_as_two_refunds(client, SessionLocal, monkeypatch)

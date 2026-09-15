@@ -26,7 +26,7 @@
 | Service | POST | writer artist/venue org | `organization_id` |
 | Hall | POST | writer venue org owns venue | `organization_id` on venue |
 | Admin audit/metrics | GET | `is_platform_admin` | `require_admin` |
-| Admin refund | POST | admin + optional 2FA | `require_admin_2fa` |
+| Admin refund | POST | platform admin + mandatory enabled TOTP; independent actor for approve | `refunds.sensitive`, `validate_approvals` |
 | Payment webhook | POST | HMAC signature | `verify_webhook_signature` |
 
 ## Negative tests (обязательные)
@@ -56,3 +56,7 @@
 | Объект | Операция | Кто может | Guard |
 |--------|----------|-----------|-------|
 | Booking attachment | POST | writer customer/supplier on deal | `scan_upload`, size cap |
+
+Refund request/approve/reject/retry/refresh/external confirmation are separate
+mutations under `/admin/refunds`. Passing another admin ID does not approve a
+refund. List is admin-only with bounded pagination and per-user read throttling.

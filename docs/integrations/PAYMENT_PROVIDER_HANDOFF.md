@@ -79,8 +79,8 @@ Commerce endpoint: `POST /commerce/webhook`, `X-Commerce-Signature`.
 Полный refund последнего subscription order отзывает его доступ. Частичные
 refunds/пропорциональные компенсации нельзя выдавать за выполненные этим потоком.
 Их отдельная модель требуется при выборе партнёра/утверждённых правил возврата.
-Booking refunds имеют audit и проверку второго admin ID; ограничения этого
-механизма описаны ниже, полноценное второе подтверждение ещё требуется.
+Booking refunds имеют сохранённый запрос, отдельное подтверждение вторым
+администратором и состояния исполнения; см. протокол ниже.
 
 Верифицированный capture, manual grant, stub payment и начисленная fee —
 разные факты. Реальный GMV/revenue не включает тестовые заказы и manual grants.
@@ -193,14 +193,51 @@ workflow запроса возврата: требуется сохранённ�
 повтор и сверка. Возврат последнего subscription order отзывает его доступ;
 возврат старого периода не должен отзывать более новый оплаченный период.
 
-Booking `POST /admin/refunds` проверяет второго admin ID, но пока не хранит
-отдельного действия подтверждения этим администратором. Называть это завершённым
-four-eyes approval нельзя. Кроме того, текущий маршрут устанавливает refunded /
-partially_refunded по `outcome.kind`, не ожидая асинхронного `outcome.status`.
-Перед live нужны отдельное подтверждение второго оператора и отражение pending /
-failed / succeeded возврата; принятый PSP запрос не равен завершённому возврату.
-Нельзя регистрировать асинхронный live refund adapter, сохранив этот маршрут без
-изменений. Stub-результат не подтверждает реальную выплату.
+Booking возвраты хранятся в `PaymentRefund` (миграция `e8f9a0b1c2d3`).
+`POST /admin/refunds` принимает payment_id, optional amount_rub (пусто — остаток),
+reason и idempotency_key. Он создаёт awaiting_approval и не вызывает партнёра.
+`POST /admin/refunds/{id}/approve` вызывается **другим** platform admin под его
+сессией с обязательным настроенным TOTP и свежим кодом. Оба actor ID, сумма,
+основание и время подтверждения сохранены. Перед вызовом проверяются текущие
+полномочия обоих участников; старый approver_user_id в теле не принимается.
+
+Статусы: awaiting_approval → approved → submitting → pending / uncertain /
+succeeded / failed. До отправки можно reject; повтор отклонённого запроса не
+запускает возврат. Запрос и ключ коммитятся до внешнего вызова. `retry` использует
+прежний ключ; `refresh` только читает статус pending через
+`PaymentAdapter.get_refund_status(payment_id, refund_id, amount_rub, total_rub,
+idempotency_key)`. `refund` обязан быть идемпотентным у PSP; get_refund_status не
+создаёт перевод. Для сетевой неопределённости нельзя возвращать failed.
+Партнёрские succeeded/failed — терминальные результаты; противоречивый результат
+не перезаписывает завершённую запись и требует сверки. Проверяются сумма, kind и
+неизменность provider reference; UNIQUE(provider, provider_reference) запрещает
+учесть один перевод дважды, в том числе для разных платежей. Savepoint откатывает
+ложное начисление/audit при конфликте. Сырой текст ошибки не раскрывается пользователю.
+
+Только succeeded меняет Payment: сумма успешных возвратов определяет
+partially_refunded/refunded. Pending/failed/uncertain не выдают платёж за
+возвращённый. Незавершённый запрос резервирует остаток: новый запрос на этот
+платёж запрещён до завершения. Успешные частичные возвраты суммируются сервером;
+превысить исходный платёж нельзя. Исторический partially_refunded без записанной
+суммы не получает выдуманный остаток и требует отдельной сверки оператора.
+Все mutations используют Event/resource/slot/Payment locks. PostgreSQL тесты
+проверяют две одновременные approve и создание второго возврата во время первого.
+
+В режиме external approve оставляет pending. Только отдельный
+`POST /admin/refunds/{id}/confirm-external` с номером проверенного перевода и
+TOTP фиксирует явное утверждение оператора о фактическом перечислении. Это не
+банковский webhook. Stub использует стабильный refund reference и всегда
+помечен как тест без выплаты денег. UI `/admin/refunds`: очередь/фильтр/пагинация,
+создание, второе подтверждение, отклонение, повтор, сверка и external confirmation.
+`GET /admin/refunds` доступен только admin и ограничивает размер/частоту запросов.
+
+Точка нормализации результата: `routers/refunds.py:save_outcome` (вызывает
+apply_outcome внутри savepoint) под блокировкой
+платёжного контекста. Перед вызовом из будущего webhook необходимо проверить
+исходную подпись, merchant, provider/payment/refund binding, сумму и валюту.
+Публичный неподписанный endpoint изменения результата отсутствует. Проверка
+реального PSP и raw refund webhook ещё не выполнены; generic status-method
+предоставляет интеграционную границу и тестируется адаптером на границе провайдера.
 
 ### Автопродление
 
@@ -243,7 +280,7 @@ false, неизвестный commerce provider возвращает DisabledPro
 ```bash
 BOOKER_ENVIRONMENT=test BOOKER_DATABASE_URL=sqlite:// ../../.venv/bin/python -m pytest \
   tests/test_payment_adapter.py tests/test_payment_guards.py tests/test_payments.py \
-  tests/test_external_payment_confirm.py tests/test_commerce.py -q
+  tests/test_external_payment_confirm.py tests/test_refunds.py tests/test_commerce.py -q
 ```
 
 Этот набор проверяет текущие адаптеры/доменные ограничения. Он не заменяет
@@ -262,5 +299,5 @@ sandbox acceptance PSP. К результату интеграции необх�
 6. Отрицательные production-gate тесты и протокол отдельного допуска к запуску.
 
 Приоритет ближайшей работы: проверенный raw webhook и status reconciliation,
-подлинное подтверждение refund, renewal mapping. До устранения этих пробелов
+commerce refund workflow, renewal mapping. До устранения этих пробелов
 раздел 34 мастер-задания не считается выполненным.

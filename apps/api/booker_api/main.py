@@ -28,6 +28,7 @@ from booker_api.routers import (
     payments,
     presentation,
     promo,
+    refunds,
     reviews,
     saved_searches,
     services,
@@ -85,6 +86,7 @@ app.include_router(trust.router)
 app.include_router(saved_searches.router)
 app.include_router(promo.router)
 app.include_router(admin.router)
+app.include_router(refunds.router)
 app.include_router(venue_admin.router)
 
 app.include_router(commerce.router)

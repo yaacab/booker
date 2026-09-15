@@ -160,7 +160,7 @@ export default function DealPage() {
   const paymentBlocked = action.kind === "pay" && !paymentCapabilities?.can_create;
   const paymentStatus = current.payment?.status === "succeeded"
     ? (isStubPayment ? "Тест подтверждён · деньги не списывались" : "Оплата подтверждена")
-    : ({ pending: "Ожидает оплаты", failed: "Оплата не прошла", refunded: "Возврат подтверждён", cancelled: "Отменён" }[current.payment?.status ?? ""] ?? "Статус уточняется");
+    : ({ pending: "Ожидает оплаты", failed: "Оплата не прошла", refunded: "Возврат подтверждён", partially_refunded: "Часть оплаты возвращена", cancelled: "Отменён" }[current.payment?.status ?? ""] ?? "Статус уточняется");
   const isExternalPayment = paymentProvider === "external";
 
   async function createContract() {

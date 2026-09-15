@@ -296,3 +296,15 @@ hold ID, and payment-required dedupe includes the signed contract ID.
 
 Session audit payloads contain the provider name, never bearer checkout URLs,
 provider error bodies or secrets. Neither session event belongs in captured GMV.
+
+
+### Booking refund workflow
+
+`refund.requested`, `refund.approved`, `refund.submitted`, `refund.pending`,
+`refund.uncertain`, `refund.succeeded`, `refund.failed`, `refund.rejected`,
+`refund.external_pending`, `refund.external_confirmed` record distinct steps.
+`payment.refunded` is emitted only for a confirmed outcome and records the request
+ID, amount, cumulative refunded amount, both approval actors and provider.
+Pending/uncertain events are not cash returned. Stub remains test money; external
+confirmation is an explicit operator assertion, not a bank webhook. Provider
+error bodies, TOTP codes and transfer references are not copied into audit.

@@ -179,13 +179,6 @@ class DisputeIn(BaseModel):
         return value
 
 
-class RefundIn(BaseModel):
-    payment_id: str
-    approver_user_id: str
-    totp: str | None = None
-    reason: str = ""
-
-
 class VerifyIn(BaseModel):
     target_type: str
     target_id: str

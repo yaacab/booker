@@ -1556,3 +1556,64 @@ BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api —
 tests/test_payment_guards.py -q — 27 passed (12.88s); make lint повторно passed.
 Полный прогон предшествует добавлению трёх последних reservation cases; их нельзя
 включать в указанное число 462. Финальная миграция и UI после build не менялись.
+
+## Возвраты с независимым подтверждением — 15 сентября 2026
+
+Добавлена PaymentRefund и миграция e8f9a0b1c2d3 после d7e8f9a0b1c2.
+Старый POST с approver_user_id, который сразу менял статус оплаты, заменён
+сохранённым запросом и отдельным approve под сессией другого администратора.
+Настроенный TOTP и свежий код обязательны для каждого действия даже при
+отключённом общем enforcement. БД запрещает совпадение requester/approver;
+перед отправкой перечитываются текущие полномочия обоих операторов.
+
+Новые endpoints `/admin/refunds`: GET (очередь, status/payment_id, limit/offset),
+POST (reason, idempotency_key, optional amount_rub), POST /{id}/approve,
+/reject, /retry, /refresh, /confirm-external. Они проверяют platform admin,
+частоту/размер запросов, состояние, исходного партнёра, сумму и остаток; все
+изменения имеют audit. Незавершённый возврат не допускает второй запрос на тот
+же платёж. После успешного частичного возврата можно вернуть остаток.
+
+До обращения к провайдеру сохраняются запрос, подтверждение и стабильный ключ.
+Pending/failed/uncertain не меняют статус денег на refunded. Только проверенный
+succeeded суммирует успешные возвраты и устанавливает partially_refunded/refunded.
+Проверяется соответствие amount/kind/reference. Сетевые ошибки не раскрывают
+секретный ответ и оставляют uncertain; повтор использует прежний ключ.
+Generic get_refund_status служит границей чтения статуса PSP. Реальный партнёр
+не подключён. External approve оставляет pending; отдельное действие оператора
+с номером проверенного перевода фиксирует фактическое перечисление. Stub явно
+тестовый, с детерминированным refund ID; деньги не перечисляет.
+
+Страница `/admin/refunds` связана с пультом оператора. Есть загрузка, ошибка и
+повтор, пустая выборка, фильтр/пагинация, форма причины/суммы, ввод TOTP,
+независимое подтверждение, отклонение, retry, refresh и external confirmation.
+В Deal Room и коммерческом отчёте добавлено русское обозначение частичного
+возврата. Мобильный screenshot проверен визуально: текст/ID переносятся,
+горизонтального переполнения нет. CSS использует существующие компоненты.
+
+Проверки:
+- Из apps/api: BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test ../../.venv/bin/python -m pytest tests/test_refunds.py tests/test_admin.py tests/test_totp_security.py tests/test_payment_adapter.py tests/test_authz_regressions.py -q — 53 passed (19.39s).
+- BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres + pytest tests/test_calendar_postgres.py -q — 15 passed (24.39s). Две новые гонки: approve/approve и approve/новый возврат; второй запрос действительно ждёт, PSP вызывается один раз.
+- Alembic upgrade head на SQLite /tmp/booker-support-e2e.db и отдельной PostgreSQL booker_migrations_52962f288b3e — passed до e8f9a0b1c2d3.
+- PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint и make web-lint — passed.
+- PATH=/tmp/booker-prelaunch-tools/bin:$PATH NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 BOOKER_INTERNAL_API_URL=http://127.0.0.1:8013 make web-build — passed.
+- Из apps/web: PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test admin-refunds.spec.ts --workers=1 --reporter=line — 2 passed (8.0s), 1440/390. Это настоящий local API/DB/stub путь с двумя отдельными администраторами, включая error/empty UI. Две ошибки локаторов в первоначальном прогоне исправлены (route announcer и label, включавший options).
+- booking-payment.spec.ts в совместном прогоне — 5 passed; admin-refunds тогда падал только на локаторах, финальный результат выше.
+- В CI добавлен admin-refunds E2E. Critical e2e получает те же BOOKER_DATABASE_URL и BOOKER_ENVIRONMENT, что API; fixture использует local venv или установленный python3, только для test SQLite в /tmp. CI на GitHub в этом инкременте не запускался.
+
+Полный первый API-прогон: 1 failed, 477 passed, 2 skipped (245.58s) — оставшийся
+старый test_authz_regressions ожидал прежний однозапросный протокол. Он обновлён
+с сохранением проверок отказа до оплаты и идемпотентности и прошёл в focused
+наборе выше; повторный полный прогон выполняется отдельно.
+
+Оставшаяся работа полной цели включает raw PSP webhook/status reconciliation,
+возвраты commerce orders, recurring cycles, оставшиеся уведомления и SEO,
+а также итоговую сверку всех разделов мастер-задания. Этот блок не означает
+готовность реального эквайринга и не включает юридическое подтверждение.
+
+
+Финальные проверки возвратов:
+- Повтор PATH=/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 479 passed, 2 skipped (246.08s).
+- После полного прогона добавлены проверка актуальных полномочий, throttle очереди и UNIQUE(provider, provider_reference) с savepoint. Финальный pytest tests/test_refunds.py tests/test_calendar_postgres.py -q — 29 passed (36.25s); дополнительно новый PostgreSQL case `-k refund_reference_is_accounted_once` — 1 passed, 15 deselected (2.98s). Новые случаи не включены в число 479.
+- Финальная миграция с UNIQUE проверена downgrade e8f9a0b1c2d3 → d7e8f9a0b1c2 и upgrade head на обеих выделенных тестовых БД. Пересоздавалась только новая таблица тестовых возвратов; production не затрагивался. Это проверка ещё не выпущенной миграции, не инструкция откатывать финансовые данные production.
+- make lint и make web-lint — passed; исходный UI после успешной сборки не менялся.
+- Повтор admin-refunds.spec.ts на окончательной миграции и API — 2 passed (9.5s), те же 1440/390 и команда выше.

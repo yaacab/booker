@@ -8,7 +8,7 @@ from tests.conftest import auth_header, contract_otps, grant_team_plan, register
 from tests.test_admin import _promote_admin
 from tests.test_offers import ack_both, setup_negotiation
 from tests.test_payments import _awaiting_payment, _sign
-from tests.totp_helpers import TEST_TOTP_SECRET, totp_code
+from tests.totp_helpers import TEST_TOTP_SECRET
 
 
 def _succeeded_payment(client):
@@ -178,50 +178,23 @@ def test_admin_disputes_requires_admin(client):
 
 
 def test_refund_guards_status_and_idempotency(client):
-    ctx = _awaiting_payment(client)  # платёж ещё не succeeded
+    from tests.test_refunds import approve, request_refund
+    ctx = _awaiting_payment(client)
     admin = _promote_admin(client, "ref-a@booker.test", totp=TEST_TOTP_SECRET)
-    approver = _promote_admin(client, "ref-b@booker.test")
-    early = client.post(
-        "/admin/refunds",
-        json={
-            "payment_id": ctx["payment_id"],
-            "approver_user_id": approver["user_id"],
-            "totp": totp_code(),
-        },
-        headers=auth_header(admin["token"]),
-    )
-    assert early.status_code == 409
-    client.post(
-        "/payments/webhook",
-        json={
-            "event_id": "evt-ref-2",
-            "payment_id": ctx["payment_id"],
-            "status": "succeeded",
-            "signature": _sign("evt-ref-2", ctx["payment_id"], "succeeded"),
-        },
-    )
-    first = client.post(
-        "/admin/refunds",
-        json={
-            "payment_id": ctx["payment_id"],
-            "approver_user_id": approver["user_id"],
-            "totp": totp_code(),
-        },
-        headers=auth_header(admin["token"]),
-    )
+    reviewer = _promote_admin(client, "ref-b@booker.test", totp=TEST_TOTP_SECRET)
+    assert request_refund(client, ctx, admin).status_code == 409
+    client.post('/payments/webhook', json={'event_id': 'evt-ref-2', 'payment_id': ctx['payment_id'],
+        'status': 'succeeded', 'signature': _sign('evt-ref-2', ctx['payment_id'], 'succeeded')})
+    first = request_refund(client, ctx, admin)
     assert first.status_code == 200
-    second = client.post(
-        "/admin/refunds",
-        json={
-            "payment_id": ctx["payment_id"],
-            "approver_user_id": approver["user_id"],
-            "totp": totp_code(),
-        },
-        headers=auth_header(admin["token"]),
-    )
+    assert first.json()['status'] == 'awaiting_approval'
+    done = approve(client, first.json()['id'], reviewer)
+    assert done.json()['status'] == 'succeeded'
+    second = request_refund(client, ctx, admin)
     assert second.status_code == 200
-    assert second.json()["idempotent"] is True
-    assert second.json()["status"] == "refunded"
+    assert second.json()['id'] == first.json()['id']
+    assert second.json()['status'] == 'succeeded'
+    assert second.json()['payment_status'] == 'refunded'
 
 
 def test_sse_requires_auth_and_membership(client):

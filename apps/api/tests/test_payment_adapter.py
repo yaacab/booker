@@ -143,3 +143,13 @@ def test_health_payment_flags(client):
     flags = res.json()["flags"]
     assert flags["payment_provider"] == "stub"
     assert flags["payment_live_enabled"] is False
+
+
+def test_external_refund_request_never_asserts_money_was_returned():
+    from booker_api.payments.external import ExternalPaymentAdapter
+    ledger = MagicMock()
+    adapter = ExternalPaymentAdapter(ledger=ledger)
+    first = adapter.refund(payment_id='p', amount_rub=500, total_rub=1000, idempotency_key='request-key')
+    assert first.status == 'pending'
+    assert adapter.refund(payment_id='p', amount_rub=500, total_rub=1000, idempotency_key='request-key') == first
+    ledger.on_refund.assert_not_called()

@@ -105,6 +105,8 @@ jobs:
         working-directory: apps/web
         env:
           BOOKER_API_URL: http://127.0.0.1:8000
+          BOOKER_DATABASE_URL: sqlite:////tmp/booker-e2e.db
+          BOOKER_ENVIRONMENT: test
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
           BOOKER_INTERNAL_API_URL: http://127.0.0.1:8000
           # Default OFF — do not set NEXT_PUBLIC_EVENT_STUDIO_MAP_V1=1
@@ -130,5 +132,5 @@ jobs:
             e2e/commercial.spec.ts \
             e2e/promotions.spec.ts \
             e2e/growth.spec.ts \
-            e2e/opportunities.spec.ts e2e/booking-payment.spec.ts e2e/artist-presentation.spec.ts e2e/compatibility.spec.ts e2e/studio-estimate.spec.ts e2e/event-command-retry.spec.ts e2e/smart-matching.spec.ts e2e/event-budget.spec.ts e2e/event-readiness.spec.ts e2e/event-day-ops.spec.ts e2e/compare-v2.spec.ts e2e/collaboration.spec.ts e2e/event-repeat.spec.ts e2e/event-replacement.spec.ts e2e/business-workflows.spec.ts e2e/team.spec.ts e2e/support-priority.spec.ts \
+            e2e/opportunities.spec.ts e2e/booking-payment.spec.ts e2e/admin-refunds.spec.ts e2e/artist-presentation.spec.ts e2e/compatibility.spec.ts e2e/studio-estimate.spec.ts e2e/event-command-retry.spec.ts e2e/smart-matching.spec.ts e2e/event-budget.spec.ts e2e/event-readiness.spec.ts e2e/event-day-ops.spec.ts e2e/compare-v2.spec.ts e2e/collaboration.spec.ts e2e/event-repeat.spec.ts e2e/event-replacement.spec.ts e2e/business-workflows.spec.ts e2e/team.spec.ts e2e/support-priority.spec.ts \
             --reporter=line

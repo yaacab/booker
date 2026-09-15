@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import secrets
 
 from booker_api.config import settings
 from booker_api.payments.adapter import (
@@ -78,7 +77,7 @@ class StubPaymentAdapter(PaymentAdapter):
         if amount_rub <= 0 or amount_rub > total_rub:
             raise PaymentAdapterError("Некорректная сумма возврата")
         kind = "full" if amount_rub == total_rub else "partial"
-        refund_id = f"stub-refund-{payment_id}-{secrets.token_hex(4)}"
+        refund_id = "stub-refund-" + hashlib.sha256(f"{payment_id}:{idempotency_key}:{amount_rub}".encode()).hexdigest()[:40]
         self.ledger.on_refund(payment_id, amount_rub, kind)
         return RefundOutcome(
             refund_id=refund_id,

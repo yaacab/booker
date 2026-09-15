@@ -460,6 +460,27 @@ class Payment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class PaymentRefund(Base):
+    __tablename__ = "payment_refunds"
+    __table_args__ = (CheckConstraint("amount_rub > 0"),
+        UniqueConstraint("provider", "provider_reference", name="uq_refund_provider_reference"),
+        CheckConstraint("approved_by IS NULL OR approved_by != requested_by"),
+        CheckConstraint("status IN ('awaiting_approval','approved','submitting','pending','uncertain','succeeded','failed','rejected')"))
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    payment_id: Mapped[str] = mapped_column(ForeignKey("payments.id"), index=True)
+    amount_rub: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32), default="awaiting_approval", index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(64), unique=True)
+    requested_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    approved_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    provider_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class PaymentWebhookEvent(Base):
     __tablename__ = "payment_webhook_events"
 

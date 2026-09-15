@@ -112,6 +112,16 @@ class PaymentAdapter(ABC):
     ) -> RefundOutcome: ...
 
 
+    def get_refund_status(self, *, payment_id: str, refund_id: str, amount_rub: int,
+        total_rub: int, idempotency_key: str) -> RefundOutcome:
+        """Read a refund without creating it; adapters must bind amount and reference.
+
+        Pending is not a payout. A succeeded/failed refund outcome is terminal.
+        Never map a transport error or unknown status to failed.
+        """
+        raise PaymentAdapterUnavailable("Сверка возврата этим партнёром пока недоступна")
+
+
 def payment_stub_enabled() -> bool:
     return (
         settings.environment.strip().lower() in {"dev", "development", "test"}
