@@ -26,6 +26,7 @@ def subscription_payload(sub: Subscription | None) -> dict | None:
         "cancel_at_period_end": sub.cancel_at_period_end,
         "next_plan_code": sub.next_plan_code,
         "provider": sub.provider,
+        "updated_at": aware(sub.updated_at).isoformat(),
     }
 
 

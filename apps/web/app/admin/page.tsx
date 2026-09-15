@@ -241,6 +241,7 @@ export default function AdminPage() {
     <main>
       <p className="kicker">Операторский контур</p>
       <h1>Пульт управления</h1>
+      <p><Link className="btn secondary" href="/admin/commerce">Коммерция: тарифы и подписки</Link></p>
       <p className="timeline">Спорные ситуации рассматривает оператор. Действия сохраняются в журнале аудита.</p>
       {error ? (
         <p>

@@ -4,7 +4,7 @@ import json
 from datetime import timedelta
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import update
 from sqlalchemy.orm import Session
@@ -42,7 +42,7 @@ from booker_api.models import (
     User,
 )
 from booker_api.rate_limit import analytics_limiter, client_key, messaging_limiter, webhook_limiter
-from booker_api.security import audit, current_user, now, require_admin, require_org_member
+from booker_api.security import audit, aware, current_user, now, require_admin, require_org_member
 
 
 def commercial_gate(request: Request):
@@ -80,6 +80,7 @@ class PlanUpdate(StrictInput):
 
 
 class GrantInput(StrictInput):
+    expected_updated_at: str | None = Field(default=None, max_length=64)
     plan_code: str = Field(min_length=1, max_length=64)
     status: Literal["active", "trial", "past_due", "cancelled", "expired"] = "active"
     days: int = Field(ge=1, le=366)
@@ -274,6 +275,8 @@ def update_plan(
     code: str, body: PlanUpdate, user: User = Depends(require_admin), db: Session = Depends(get_db)
 ):
     messaging_limiter.check(f"admin-commerce:{user.id}")
+    if len(body.reason.strip()) < 3:
+        raise HTTPException(422, "Укажите содержательную причину изменения")
     validate_features(body.features)
     plan = get_plan(db, code)
     # Free remains usable, regardless of an accidental admin edit.
@@ -337,6 +340,9 @@ def grant_plan(
     if plan.audience != org.kind:
         raise HTTPException(422, "Тариф не подходит типу организации")
     sub = get_subscription(db, org_id)
+    _check_subscription_version(sub, body.expected_updated_at)
+    if len(body.reason.strip()) < 3:
+        raise HTTPException(422, "Укажите содержательную причину изменения")
     if sub and sub.provider_subscription_id:
         raise HTTPException(409, "Сначала отмените автопродление действующей подписки")
     if sub is None:
@@ -544,3 +550,53 @@ def update_promotion_price(
         "price_rub": newer.price_rub,
         "version": newer.version,
     }
+
+
+class RevokeInput(StrictInput):
+    expected_updated_at: str = Field(min_length=1, max_length=64)
+    reason: str = Field(min_length=3, max_length=500)
+
+
+def _check_subscription_version(sub, expected):
+    if expected is not None and expected != (aware(sub.updated_at).isoformat() if sub else ''):
+        raise HTTPException(409, 'Подписка изменилась. Обновите данные перед действием')
+
+
+@admin_router.get('/organizations')
+def commercial_organizations(q: str = Query(default='', max_length=128), limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=100000), user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    analytics_limiter.check(f'admin-commerce-list:{user.id}')
+    query = db.query(Organization)
+    if q.strip():
+        query = query.filter((Organization.id == q.strip()) | Organization.name.contains(q.strip(), autoescape=True))
+    total = query.count()
+    rows = query.order_by(Organization.name, Organization.id).offset(offset).limit(limit).all()
+    subs = {s.organization_id: s for s in db.query(Subscription).filter(Subscription.organization_id.in_([o.id for o in rows])).all()}
+    return {'total': total, 'offset': offset, 'items': [{'id': org.id, 'name': org.name, 'kind': org.kind,
+        'subscription': subscription_payload(subs.get(org.id)),
+        'effective_status': ('expired' if subs[org.id].status in {'active', 'trial', 'past_due'} and aware(subs[org.id].current_period_end) <= now() else subs[org.id].status) if org.id in subs else 'free'} for org in rows]}
+
+
+@admin_router.post('/organizations/{org_id}/revoke')
+def revoke_plan(org_id: str, body: RevokeInput, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    messaging_limiter.check(f'admin-commerce:{user.id}')
+    if len(body.reason.strip()) < 3:
+        raise HTTPException(422, 'Укажите содержательную причину отзыва')
+    lock_organization(db, org_id)
+    sub = get_subscription(db, org_id)
+    if not sub:
+        raise HTTPException(404, 'Подписка не найдена')
+    _check_subscription_version(sub, body.expected_updated_at)
+    if sub.provider_subscription_id:
+        raise HTTPException(409, 'Сначала отключите автопродление у платёжного провайдера')
+    if sub.status in {'cancelled', 'expired'}:
+        return subscription_payload(sub)
+    before = subscription_payload(sub)
+    sub.status = 'cancelled'
+    sub.current_period_end = now()
+    sub.cancel_at_period_end = False
+    sub.next_plan_code = None
+    audit(db, actor_user_id=user.id, action='subscription.admin_revoke', entity_type='organization', entity_id=org_id,
+        payload={'plan_code': sub.plan_code, 'previous_status': before['status'], 'reason': body.reason.strip(), 'refund_created': False})
+    db.commit()
+    return subscription_payload(sub)
