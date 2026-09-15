@@ -123,3 +123,43 @@ def test_e2e_auth_limit_cannot_relax_production(monkeypatch):
     assert auth_request_limit() == 1000
     monkeypatch.setattr(settings, "test_auth_rate_limit", 1000000)
     assert auth_request_limit() == 1000
+
+
+@pytest.mark.parametrize('problem', ['closed_event', 'foreign_hold', 'amount'])
+def test_capture_preserves_money_but_does_not_claim_invalid_reservation(client, SessionLocal, problem):
+    from booker_api.models import AuditLog, Event
+    ctx = _awaiting_payment(client)
+    with SessionLocal() as db:
+        booking = db.get(Booking, ctx['booking_id'])
+        hold = db.query(BookingHold).filter_by(booking_id=booking.id, status='active').one()
+        if problem == 'closed_event':
+            db.get(Event, booking.event_id).status = 'Cancelled'
+        elif problem == 'foreign_hold':
+            other = Booking(event_id=booking.event_id, offer_id=booking.offer_id, slot_id=booking.slot_id, status='DateHeld')
+            db.add(other); db.flush(); hold.booking_id = other.id
+        else:
+            db.get(Payment, ctx['payment_id']).amount_rub += 1
+        db.commit(); hold_id = hold.id
+    response = webhook(client, ctx['payment_id'], f'conflict-{problem}')
+    assert response.status_code == 200, response.text
+    assert response.json()['payment_status'] == 'succeeded'
+    assert response.json()['booking_status'] == 'AwaitingPayment'
+    with SessionLocal() as db:
+        assert db.get(AvailabilitySlot, db.get(Booking, ctx['booking_id']).slot_id).status == 'held'
+        assert db.get(BookingHold, hold_id).status == 'active'
+        assert db.query(AuditLog).filter_by(action='payment.reservation_conflict', entity_id=ctx['payment_id']).count() == 1
+
+
+def test_new_checkout_rejects_closed_event(client, SessionLocal):
+    from booker_api.models import Event
+    ctx = _awaiting_payment(client)
+    with SessionLocal() as db:
+        payment = db.get(Payment, ctx['payment_id'])
+        booking = db.get(Booking, ctx['booking_id'])
+        db.delete(payment)
+        db.get(Event, booking.event_id).status = 'Cancelled'
+        db.commit()
+    result = client.post(f"/bookings/{ctx['booking_id']}/payments", headers=auth_header(ctx['customer']['token']), json={'idempotency_key': 'closed-event'})
+    assert result.status_code == 409
+    with SessionLocal() as db:
+        assert db.query(Payment).filter_by(booking_id=ctx['booking_id']).count() == 0

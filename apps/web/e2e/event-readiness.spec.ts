@@ -22,12 +22,6 @@ for (const width of [1440, 390]) {
       const venue = await postJson<{ id: string; hall_id: string }>(request, "/venues", supplier.token, { organization_id: venueOrg.id, name: "Зал события", city, capacity: 150 });
       const hallFacts = { capacity: 150, stage_area_m2: 20, power_kw: 5, basic_sound: true, microphones: 3, equipment: ["CDJ"], restrictions: "" };
       expect((await request.put(`${API_BASE}/halls/${venue.hall_id}/technical`, { headers: { Authorization: `Bearer ${supplier.token}` }, data: { ...hallFacts, expected_version: 0 } })).ok()).toBe(true);
-      const offers: { id: string; booking_id: string }[] = [];
-      for (const [kind, id, index] of [["artist", artist.id, 0], ["hall", venue.hall_id, 1]] as const) {
-        const slot = await postJson<{ id: string }>(request, "/slots", supplier.token, { resource_type: kind, resource_id: id, starts_at: new Date(startMs - 3600000).toISOString(), ends_at: new Date(startMs + 4 * 3600000).toISOString() });
-        const req = await postJson<{ id: string }>(request, `/events/${event.id}/requests`, customer.token, { resource_type: kind, resource_id: id, requirement_id: event.requirements[index].id });
-        offers.push(await postJson(request, `/requests/${req.id}/offers`, supplier.token, { slot_id: slot.id, honorarium_rub: 100000 }));
-      }
       await injectSession(page, customer.token, org.id);
       let fail = true;
       await page.route(`${API_BASE}/events/${event.id}/readiness`, async (route) => {
@@ -43,6 +37,14 @@ for (const width of [1440, 390]) {
       const planning = page.getByRole("form", { name: "Параметры подбора" });
       await planning.getByLabel("Окончание, по Москве").fill(new Date(new Date(end).getTime() + 3 * 3600000).toISOString().slice(0, 16));
       await planning.getByRole("button", { name: "Сохранить параметры", exact: true }).click();
+      await expect(panel.getByRole("heading", { name: "Уточнить окно события", exact: true })).toHaveCount(0);
+      const offers: { id: string; booking_id: string }[] = [];
+      for (const [kind, id, index] of [["artist", artist.id, 0], ["hall", venue.hall_id, 1]] as const) {
+        const slot = await postJson<{ id: string }>(request, "/slots", supplier.token, { resource_type: kind, resource_id: id, starts_at: new Date(startMs - 3600000).toISOString(), ends_at: new Date(startMs + 4 * 3600000).toISOString() });
+        const req = await postJson<{ id: string }>(request, `/events/${event.id}/requests`, customer.token, { resource_type: kind, resource_id: id, requirement_id: event.requirements[index].id });
+        offers.push(await postJson(request, `/requests/${req.id}/offers`, supplier.token, { slot_id: slot.id, honorarium_rub: 100000 }));
+      }
+      await panel.getByRole("button", { name: "Обновить готовность" }).click();
       await expect(panel.getByRole("heading", { name: "Проверить условия предложения", exact: true })).toBeVisible();
       await expect(page.getByText("Все роли в составе закрыты", { exact: false })).toHaveCount(0);
       for (const offer of offers) {

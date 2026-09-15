@@ -1496,3 +1496,25 @@ commercial/admin/PG прогон — 34 passed (16.22s). Сборка интер
 смена периода и пустая выборка, фильтр кампаний, прежние grant/revoke/price
 действия. make lint и web-lint прошли. Экраны отчёта просмотрены на обеих ширинах.
 Удалённый CI и production не запускались.
+
+
+## Capture и конкуренция резерва — 15 сентября 2026
+
+Унифицирован порядок блокировок оплаты, отмены и истечения. Подтверждение оплаты
+проверяет собственный действующий резерв, открытое событие и сумму quote; конфликт
+сохраняет денежный факт и требует оператора, не обещая дату. Истечение после
+capture перечитывает consumed hold и не освобождает слот. Создание нового платежа
+для закрытого события запрещено. Новых миграций и изменений UI здесь нет.
+Readiness E2E теперь задаёт полное окно через форму до создания предложений,
+сохраняя проверку неизвестного окна и ошибки загрузки.
+
+Проверено из worktree с PATH=/tmp/booker-prelaunch-tools/bin:$PATH:
+- BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api — 452 passed, 2 skipped (191.44s).
+- Отдельный tests/test_calendar_postgres.py на той же PostgreSQL — 12 passed (23.00s).
+- make lint — passed.
+- Из apps/web, BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db BOOKER_ENVIRONMENT=test BOOKER_API_URL=http://127.0.0.1:8013 BOOKER_WEB_URL=http://127.0.0.1:3013 npx playwright test event-readiness.spec.ts --workers=1 --reporter=line — 2 passed (14.7s), 1440/390.
+- event-budget.spec.ts в предыдущем совместном прогоне — 2 passed; readiness в том прогоне падал на устаревшем порядке fixture, исправлен и перепроверен отдельной командой выше.
+
+Полная цель остаётся открыта: checkout receipt, реальное второе подтверждение
+возврата, pending/failed refund, нормализация raw webhook и recurring mapping
+ещё требуют реализации и проверки. Настоящий PSP не подключался.

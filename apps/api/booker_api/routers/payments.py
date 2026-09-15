@@ -37,6 +37,7 @@ from booker_api.payments.adapter import (
 from booker_api.rate_limit import auth_limiter, client_key, upload_limiter, webhook_limiter
 from booker_api.routers.deals import (
     _lock_booking_resources,
+    _lock_event,
     _lock_open_event,
     _require_open_event,
     _transition,
@@ -192,8 +193,7 @@ def create_contract(
 
 
 def _lock_contract_event(db, event):
-    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
-    db.refresh(event)
+    _lock_event(db, event)
 
 
 @router.post("/contracts/{contract_id}/sign")
@@ -280,6 +280,7 @@ def create_payment(
     except PaymentAdapterError as exc:
         raise HTTPException(400, str(exc)) from exc
     idempotency_key = hashlib.sha256(f"{booking.id}:{raw_key}".encode()).hexdigest()
+    _lock_contract_event(db, event)
     # Serialize checkout for this booking, including SQLite where FOR UPDATE is ignored.
     db.execute(update(Booking).where(Booking.id == booking.id).values(status=Booking.status))
     db.refresh(booking)
@@ -287,6 +288,7 @@ def create_payment(
     if existing:
         return {"id": existing.id, "status": existing.status, "idempotent": True,
                 "amount_rub": existing.amount_rub, "provider": existing.provider}
+    _require_open_event(event)
     if booking.status != "AwaitingPayment":
         raise HTTPException(409, "Оплата доступна после подписания договора")
     contract = db.query(Contract).filter_by(booking_id=booking.id).one_or_none()
@@ -329,6 +331,20 @@ def create_payment(
     return {"id": pay.id, "status": pay.status, "amount_rub": pay.amount_rub, "provider": pay.provider}
 
 
+def _lock_payment_context(db: Session, payment: Payment) -> Booking:
+    booking = db.get(Booking, payment.booking_id)
+    event = db.get(Event, booking.event_id) if booking else None
+    if not event:
+        raise HTTPException(404, "Бронь не найдена")
+    _lock_contract_event(db, event)
+    db.refresh(booking)
+    _lock_booking_resources(db, [booking])
+    db.execute(select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
+    db.execute(update(Payment).where(Payment.id == payment.id).values(status=Payment.status))
+    db.refresh(payment)
+    return booking
+
+
 def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
     adapter = get_payment_adapter()
     try:
@@ -345,8 +361,7 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         raise HTTPException(404, "Платёж не найден")
     if payment.provider != adapter.name:
         raise HTTPException(409, "Провайдер платежа не совпадает")
-    db.execute(update(Payment).where(Payment.id == payment.id).values(status=Payment.status))
-    db.refresh(payment)
+    _lock_payment_context(db, payment)
     seen = db.get(PaymentWebhookEvent, event.event_id)
     if seen:
         if seen.payment_id != payment.id or seen.status != event.status:
@@ -434,21 +449,25 @@ def stub_complete(
 
 def _confirm_captured_booking(db: Session, payment: Payment, booking: Booking | None) -> None:
     """Capture is a money fact; expired/conflicting reservations need an operator."""
-    if not booking or booking.status != "AwaitingPayment":
+    if booking and booking.status in {"Confirmed", "InProgress", "Completed"}:
         return
-    hold = db.query(BookingHold).filter_by(booking_id=booking.id, status="active").one_or_none()
-    slot = db.get(AvailabilitySlot, booking.slot_id)
-    if not hold or aware(hold.expires_at) <= now() or not slot or slot.status != "held":
+    try:
+        if not booking or booking.status != "AwaitingPayment":
+            raise HTTPException(409, "Сделка закрыта или не ожидает оплаты")
+        event = db.get(Event, booking.event_id)
+        offer = db.get(Offer, booking.offer_id)
+        req = db.get(DealRequest, offer.request_id)
+        version = _require_contract_reservation(db, booking, event, offer, req)
+        if version.total_rub != payment.amount_rub:
+            raise HTTPException(409, "Сумма оплаты не соответствует условиям")
+    except HTTPException as exc:
         audit(db, actor_user_id=None, action="payment.reservation_conflict",
               entity_type="payment", entity_id=payment.id,
-              payload={"booking_id": booking.id, "requires_operator": True})
+              payload={"booking_id": booking.id if booking else None, "requires_operator": True, "reason": str(exc.detail)})
         return
-    claimed = db.execute(update(AvailabilitySlot).where(
-        AvailabilitySlot.id == slot.id, AvailabilitySlot.status == "held"
-    ).values(status="confirmed"))
-    if claimed.rowcount != 1:
-        raise HTTPException(409, "Дата больше не удерживается")
-    hold.status = "consumed"
+    db.execute(update(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).values(status="confirmed"))
+    for hold in db.query(BookingHold).filter_by(booking_id=booking.id, slot_id=booking.slot_id, status="active").all():
+        hold.status = "consumed"
     _transition(booking, "Confirmed")
     attribute_booking(db, booking)
     conv = db.query(Conversation).filter_by(booking_id=booking.id).one_or_none()
@@ -467,8 +486,7 @@ def capture_payment_as_succeeded(
     note: str,
 ) -> dict:
     """Shared capture path for stub webhook / external admin confirm."""
-    db.execute(update(Payment).where(Payment.id == payment.id).values(status=Payment.status))
-    db.refresh(payment)
+    _lock_payment_context(db, payment)
     seen = db.get(PaymentWebhookEvent, event_id)
     if seen:
         if seen.payment_id != payment.id or seen.status != "succeeded":

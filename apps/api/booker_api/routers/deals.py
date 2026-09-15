@@ -74,9 +74,13 @@ def _require_open_event(event: Event) -> None:
         raise HTTPException(409, "Событие закрыто. Для новых заявок создайте новое событие")
 
 
-def _lock_open_event(db: Session, event: Event) -> None:
+def _lock_event(db: Session, event: Event) -> None:
     db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
     db.refresh(event)
+
+
+def _lock_open_event(db: Session, event: Event) -> None:
+    _lock_event(db, event)
     _require_open_event(event)
 
 
@@ -182,6 +186,17 @@ def expire_holds(db: Session, *, limit: int | None = None) -> int:
     query = db.query(BookingHold).filter(BookingHold.status == "active", BookingHold.expires_at <= moment).order_by(BookingHold.expires_at, BookingHold.id)
     holds = query.limit(limit).all() if limit is not None else query.all()
     for hold in holds:
+        booking = db.get(Booking, hold.booking_id)
+        event = db.get(Event, booking.event_id) if booking else None
+        if not event:
+            continue
+        _lock_event(db, event)
+        _lock_booking_resources(db, [booking])
+        db.execute(select(AvailabilitySlot).where(AvailabilitySlot.id == hold.slot_id).with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
+        db.refresh(booking)
+        db.refresh(hold)
+        if hold.status != 'active':
+            continue
         if aware(hold.expires_at) > moment:
             continue
         changed = db.execute(update(BookingHold).where(BookingHold.id == hold.id, BookingHold.status == 'active', BookingHold.expires_at <= moment).values(status='expired'))
@@ -610,8 +625,7 @@ def cancel_booking(
     else:
         raise HTTPException(403, "Нет доступа")
     # Same parent/resource order as hold: do not race a newly acquired reservation.
-    db.execute(update(Event).where(Event.id == event.id).values(title=Event.title))
-    db.refresh(event)
+    _lock_event(db, event)
     db.refresh(booking)
     db.refresh(req)
     if booking.status in {"Cancelled", "Completed"}:

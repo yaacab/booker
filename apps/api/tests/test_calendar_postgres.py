@@ -286,3 +286,84 @@ def test_postgres_commercial_report_cohorts_and_source_groups(client, SessionLoc
         test_revenue_separates_money_quotes_tests_and_unknown_fees,
     )
     test_revenue_separates_money_quotes_tests_and_unknown_fees(client, SessionLocal)
+
+
+@pytest.mark.parametrize('first_action,second_action', [('capture', 'cancel'), ('cancel', 'capture'), ('capture', 'expiry'), ('expiry', 'capture')])
+def test_postgres_capture_cancel_expiry_share_reservation_lock(client, SessionLocal, monkeypatch, first_action, second_action):
+    from datetime import timedelta
+
+    from booker_api.models import Booking, Payment
+    from booker_api.routers import payments
+    from tests.test_payments import _awaiting_payment, _sign
+    ctx = _awaiting_payment(client)
+    ready, second_at_lock, release = Signal(), Signal(), Signal()
+    thread = local()
+    real_now = deals.now
+    from booker_api.security import aware
+    with SessionLocal() as db:
+        expiry_moment = aware(db.query(BookingHold).filter_by(booking_id=ctx["booking_id"], status="active").one().expires_at)+timedelta(seconds=1)
+    def logical_now():
+        return expiry_moment if first_action == 'expiry' or getattr(thread, 'action', '') == 'expiry' else real_now()
+    monkeypatch.setattr(deals, 'now', logical_now)
+    monkeypatch.setattr(payments, 'now', logical_now)
+    original_deal_lock, original_payment_lock = deals._lock_event, payments._lock_contract_event
+    def lock(original, *args, **kwargs):
+        if getattr(thread, 'role', '') == 'second':
+            second_at_lock.set()
+        return original(*args, **kwargs)
+    monkeypatch.setattr(deals, '_lock_event', lambda *a, **kw: lock(original_deal_lock, *a, **kw))
+    monkeypatch.setattr(payments, '_lock_contract_event', lambda *a, **kw: lock(original_payment_lock, *a, **kw))
+    def pause():
+        if thread.role == 'first':
+            ready.set()
+            assert release.wait(10)
+    original_confirm, original_transition, original_audit = payments._confirm_captured_booking, deals._transition, deals.audit
+    def confirm(*a, **kw):
+        result = original_confirm(*a, **kw)
+        if first_action == 'capture':
+            pause()
+        return result
+    def transition(booking, target):
+        result = original_transition(booking, target)
+        if first_action == 'cancel' and target == 'Cancelled':
+            pause()
+        return result
+    def audit(*a, **kw):
+        if first_action == 'expiry' and kw.get('action') == 'hold.expired':
+            pause()
+        return original_audit(*a, **kw)
+    monkeypatch.setattr(payments, '_confirm_captured_booking', confirm)
+    monkeypatch.setattr(deals, '_transition', transition)
+    monkeypatch.setattr(deals, 'audit', audit)
+    def run(role, action):
+        thread.role, thread.action = role, action
+        with SessionLocal() as db:
+            if action == 'capture':
+                if role == 'first':
+                    return payments._apply_payment_webhook(payments.WebhookIn(event_id='capture-race', payment_id=ctx['payment_id'], status='succeeded', signature=_sign('capture-race', ctx['payment_id'], 'succeeded')), db)
+                return payments.capture_payment_as_succeeded(db, payment=db.get(Payment, ctx['payment_id']), actor_user_id=None, event_id='capture-race', note='test capture')
+            if action == 'cancel':
+                return deals.cancel_booking(ctx['booking_id'], user=db.get(User, ctx['customer']['user_id']), db=db)
+            result = deals.expire_holds(db); db.commit(); return result
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(run, 'first', first_action)
+        try:
+            assert ready.wait(10)
+            second = pool.submit(run, 'second', second_action)
+            assert second_at_lock.wait(10)
+            with pytest.raises(TimeoutError):
+                second.result(timeout=0.2)
+        finally:
+            release.set()
+        first.result(timeout=10); second.result(timeout=10)
+    with SessionLocal() as db:
+        booking = db.get(Booking, ctx['booking_id'])
+        slot = db.get(AvailabilitySlot, booking.slot_id)
+        assert db.get(Payment, ctx['payment_id']).status == 'succeeded'
+        if 'cancel' in {first_action, second_action}:
+            assert booking.status == 'Cancelled' and slot.status == 'open'
+        elif first_action == 'capture':
+            assert booking.status == 'Confirmed' and slot.status == 'confirmed'
+            assert db.query(BookingHold).filter_by(booking_id=booking.id, status='active').count() == 0
+        else:
+            assert booking.status == 'AwaitingPayment' and slot.status == 'open'
