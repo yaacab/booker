@@ -250,6 +250,10 @@ export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<
   await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: "supplier" }, ctx.owner.orgId);
   await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.customer.token, { side: "customer" }, ctx.customer.orgId);
 
+  const order = await postJson<{ id: string }>(request,
+    `/commerce/organizations/${ctx.customer.orgId}/orders`, ctx.customer.token,
+    { plan_code: "customer_business", billing_period: "monthly", idempotency_key: `race-seats-${suffix}` });
+  await postJson(request, `/commerce/orders/${order.id}/test-complete`, ctx.customer.token, { status: "paid" });
   const customer2 = await register(request, `e2e-deal-c2-${suffix}@booker.test`, "E2E Deal Клиент2");
   await postJson(
     request,
@@ -361,15 +365,14 @@ export type CrossRoleSeed = {
 
 /** Demo seed: событие с заявками на DJ Nova и Клуб Сигнал (без офферов). */
 export async function seedCrossRoleEvent(request: APIRequestContext): Promise<CrossRoleSeed> {
-  const customer = await login(request, DEMO_ACCOUNTS.customer);
+  const customer = await register(request, `cross-customer-${Date.now()}-${Math.random().toString(36).slice(2)}@booker.test`, "Организатор тестового события");
   const artist = await login(request, DEMO_ACCOUNTS.artist);
   const venueUser = await login(request, DEMO_ACCOUNTS.venue);
 
-  const customerMe = await fetchMe(request, customer.token);
   const artistMe = await fetchMe(request, artist.token);
   const venueMe = await fetchMe(request, venueUser.token);
 
-  const custOrg = customerMe.organizations.find((o) => o.kind === "customer");
+  const custOrg = await postJson<{ id: string }>(request, "/orgs", customer.token, { name: "Организатор тестового события", kind: "customer" });
   const artistOrg = artistMe.organizations.find((o) => o.kind === "artist");
   const venueOrg = venueMe.organizations.find((o) => o.kind === "venue");
   if (!custOrg || !artistOrg || !venueOrg) {

@@ -16,7 +16,7 @@ test.describe("Customer cabinet §11.2 scenarios", () => {
     await page.goto("/cabinet/customer");
     const cabinet = page.getByRole("main", { name: "Студия событий" });
     await expect(cabinet.getByRole("heading", { name: "Студия событий" })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByLabel("Прогресс по сделке")).toBeVisible();
+    await expect(cabinet.getByRole("region", { name: "Продолжить организацию событий", exact: true })).toBeVisible();
     await expect(cabinet.getByRole("link", { name: "Новое событие" })).toBeVisible();
     await expect(cabinet.getByRole("link", { name: "Каталог", exact: true })).toBeVisible();
     await expect(cabinet.getByRole("link", { name: "Избранное" })).toBeVisible();

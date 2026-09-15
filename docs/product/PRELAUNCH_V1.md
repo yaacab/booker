@@ -1893,3 +1893,45 @@ BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api`:
 `PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint web-lint` — passed.
 Frontend product code не изменён: используется ранее проверенная сборка SEO
 из `/tmp/booker-seo-build-latest.log`. Общая приёмка 0–35 ещё не завершена.
+
+
+### Общий PR E2E и backup regression — 2026-09-15
+
+Из текущего `.github/workflows/ci.yml` запущен весь список Playwright (126 tests,
+один worker, API 8013 / production web build 3013, disposable SQLite).
+Первый проход: **120 passed, 6 failed, 5.3m**. Все шесть падений относились к
+старым test fixtures/selectors: прежний progress/заголовок поиска, два одинаковых
+названия события и добавление второго участника в Free. Продуктовые ограничения
+не ослаблялись. Фикстуры покупают Business через явный stub; cross-role использует
+отдельного заказчика, чтобы повтор не менял общий demo account и не исчерпывал seats.
+
+Повтор:
+`npx playwright test e2e/cabinet-customer.spec.ts e2e/cabinets-cross-role.spec.ts
+ e2e/deal-path.spec.ts e2e/org-switch.spec.ts e2e/search-persist.spec.ts
+ --workers=1 --reporter=line` — **14 passed / 1 failed, 56.6s**.
+Оставшийся cross-role выявил неоднозначную кнопку hold; последующий проход
+также выявил общую demo subscription, после чего customer fixture изолирован.
+Финально `npx playwright test e2e/cabinets-cross-role.spec.ts --workers=1
+--reporter=line` — **2 passed, 21.2s**. Все первоначально упавшие сценарии имеют
+успешный повтор. Это несколько прогонов, а не заявление «126 passed одним запуском».
+Логи повторов: `/tmp/booker-final-e2e-retry.log`,
+`/tmp/booker-cross-role-final.log`, `/tmp/booker-cross-role-final2.log`.
+
+Команды выполнялись из `apps/web` с PATH=/tmp/booker-prelaunch-tools/bin:$PATH,
+BOOKER_DATABASE_URL=sqlite:////tmp/booker-support-e2e.db, BOOKER_ENVIRONMENT=test,
+BOOKER_API_URL=http://127.0.0.1:8013, BOOKER_WEB_URL=http://127.0.0.1:3013,
+BOOKER_COMMERCE_WEBHOOK_SECRET=local-test-only-commerce-webhook-secret (исключительно
+локальный тестовый ключ, не production secret). Общий запуск извлекал имена
+`e2e/*.spec.ts` из CI и передавал их `npx playwright test ... --workers=1 --reporter=line`.
+
+В CI добавлены существующие admin-commercial и offer-validity scenarios;
+один worker исключает гонку глобальной цены с тестами покупки тарифа.
+GitHub runner получает sqlite3 CLI, чтобы backup/restore не пропускались.
+Локально официальный Ubuntu sqlite3 3.45.1 распакован в /tmp без системной установки:
+`PATH=/tmp/booker-sqlite-runtime/extracted/usr/bin:/tmp/booker-prelaunch-tools/bin:$PATH
+ BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test .venv/bin/python -m pytest
+ apps/api/tests/test_backup_restore.py -q` — **3 passed, 0.17s**.
+Два skip полного API-прогона были именно отсутствием sqlite3 CLI; теперь оба
+проверены. Лог `/tmp/booker-final-backup.log`.
+`make web-lint` повторён после правок TypeScript тестов — passed.
+GitHub Actions на remote SHA и production release не запускались.

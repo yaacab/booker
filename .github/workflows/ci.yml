@@ -16,6 +16,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: SQLite backup and restore runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sqlite3
       - run: pip install -e ".[dev]"
       - run: ruff check booker_api tests
       - run: pytest -q
@@ -129,8 +133,8 @@ jobs:
             e2e/cabinet-a11y.spec.ts \
             e2e/studio-autosave.spec.ts \
             e2e/onboarding.spec.ts \
-            e2e/commercial.spec.ts e2e/subscription-cycles.spec.ts e2e/seo-catalog.spec.ts \
+            e2e/commercial.spec.ts e2e/subscription-cycles.spec.ts e2e/seo-catalog.spec.ts e2e/admin-commercial.spec.ts e2e/offer-validity.spec.ts \
             e2e/promotions.spec.ts \
             e2e/growth.spec.ts \
             e2e/opportunities.spec.ts e2e/booking-payment.spec.ts e2e/admin-refunds.spec.ts e2e/payment-reconciliation.spec.ts e2e/artist-presentation.spec.ts e2e/compatibility.spec.ts e2e/studio-estimate.spec.ts e2e/event-command-retry.spec.ts e2e/smart-matching.spec.ts e2e/event-budget.spec.ts e2e/event-readiness.spec.ts e2e/event-day-ops.spec.ts e2e/compare-v2.spec.ts e2e/collaboration.spec.ts e2e/event-repeat.spec.ts e2e/event-replacement.spec.ts e2e/business-workflows.spec.ts e2e/team.spec.ts e2e/support-priority.spec.ts \
-            --reporter=line
+            --workers=1 --reporter=line
