@@ -651,6 +651,14 @@ def _confirm_captured_booking(db: Session, payment: Payment, booking: Booking | 
         audit(db, actor_user_id=None, action="payment.reservation_conflict",
               entity_type="payment", entity_id=payment.id,
               payload={"booking_id": booking.id if booking else None, "requires_operator": True, "reason": str(exc.detail)})
+        if booking:
+            from booker_api.notifications.lifecycle import booking_notice
+            booking_notice(db, booking, template="event.blocker",
+                subject="Оплата требует проверки резерва",
+                body=("Тестовое подтверждение оплаты получено; деньги не списывались. "
+                      if payment.provider == "stub" else "Провайдер подтвердил оплату. ")
+                     + "Бронирование не подтверждено: резерв или условия сделки изменились. Откройте сделку и обратитесь в поддержку для сверки оплаты и даты.",
+                key=f"payment-reservation:{payment.id}")
         return
     db.execute(update(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).values(status="confirmed"))
     for hold in db.query(BookingHold).filter_by(booking_id=booking.id, slot_id=booking.slot_id, status="active").all():

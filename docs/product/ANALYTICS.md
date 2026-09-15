@@ -283,10 +283,13 @@ uses a generic message with ticket reference, never the private conversation tex
 ### Operational lifecycle notifications
 
 `subscription.expired`, `promotion.expired`, `hold.expired`, `booking.cancelled`,
-`replacement.required`, `payment.required` are in-app templates tied to actual
+`replacement.required`, `payment.required`, `event.blocker` are in-app templates tied to actual
 state transitions. Notification delivery and domain events remain distinguishable
 in audit. Subscription dedupe includes the ended period, hold dedupe includes the
 hold ID, and payment-required dedupe includes the signed contract ID.
+`event.blocker` notifies both booking organizations when verified capture cannot
+confirm the reservation. It is deduplicated by payment ID, links to Deal Room,
+and explicitly labels stub money. Ordinary incomplete drafts do not emit it.
 
 ### Booking checkout receipts
 

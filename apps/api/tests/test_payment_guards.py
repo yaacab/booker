@@ -127,7 +127,7 @@ def test_e2e_auth_limit_cannot_relax_production(monkeypatch):
 
 @pytest.mark.parametrize('problem', ['closed_event', 'foreign_hold', 'amount'])
 def test_capture_preserves_money_but_does_not_claim_invalid_reservation(client, SessionLocal, problem):
-    from booker_api.models import AuditLog, Event
+    from booker_api.models import AuditLog, Event, InboxNotification
     ctx = _awaiting_payment(client)
     with SessionLocal() as db:
         booking = db.get(Booking, ctx['booking_id'])
@@ -148,6 +148,15 @@ def test_capture_preserves_money_but_does_not_claim_invalid_reservation(client, 
         assert db.get(AvailabilitySlot, db.get(Booking, ctx['booking_id']).slot_id).status == 'held'
         assert db.get(BookingHold, hold_id).status == 'active'
         assert db.query(AuditLog).filter_by(action='payment.reservation_conflict', entity_id=ctx['payment_id']).count() == 1
+        rows = db.query(InboxNotification).filter_by(template='event.blocker').all()
+        assert {row.recipient_user_id for row in rows} == {ctx['customer']['user_id'], ctx['owner']['user_id']}
+        assert len(rows) == 2
+        assert all(row.href == f"/deals/{ctx['booking_id']}" for row in rows)
+        assert all('Бронирование не подтверждено' in row.body and 'деньги не списывались' in row.body for row in rows)
+    for event_id in [f'conflict-{problem}', f'conflict-repeat-{problem}']:
+        assert webhook(client, ctx['payment_id'], event_id).status_code == 200
+    with SessionLocal() as db:
+        assert db.query(InboxNotification).filter_by(template='event.blocker').count() == 2
 
 
 def test_new_checkout_rejects_closed_event(client, SessionLocal):

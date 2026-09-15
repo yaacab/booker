@@ -1860,3 +1860,36 @@ Metadata профилей уже существовали: исправлен no
 остаются вне разработки. Общая цель открыта до проверки notification coverage и
 итогового аудита требований 0–35.
 - После исправления перезаписи document.title общей оболочкой: make web-lint и финальный make web-build passed; seo-catalog.spec.ts — 5 passed (4.9s), включая проверку title после hydration. Остальной API-код не менялся после полного прогона 570 passed.
+
+
+### Event blocker notification — 2026-09-15
+
+Проверена coverage раздела 21: request.created / offer.created в notifications/service,
+offer.expired в offer_validity, hold.expired в deals.expire_holds,
+opportunity.matched в opportunities (с согласием и entitlement), promotion.expired /
+subscription.expired в commerce lifecycle, payment.required при подписании договора,
+replacement.required при отмене участника. Сроки обрабатывает существующая bounded
+maintenance; чтение произвольного Draft не создаёт тревог.
+
+Закрыт пропущенный event.blocker: проверенный capture при утраченном резерве,
+закрытом событии или несовпадении суммы уведомляет участников обеих организаций.
+Ссылка ведёт в существующий Deal Room с requires_operator и обращением в поддержку.
+Нотификация не подтверждает бронь, не обещает возврат и отдельно обозначает stub.
+Ключ содержит Payment.id; повторный webhook не создаёт дубликат.
+
+Проверка: `.venv/bin/python -m pytest apps/api/tests/test_payment_guards.py
+apps/api/tests/test_payment_reconciliation.py apps/api/tests/test_lifecycle_notifications.py -q`
+из корня worktree с BOOKER_DATABASE_URL=sqlite:// и BOOKER_ENVIRONMENT=test:
+**27 passed, 14.05s**. Проверены закрытый Event, чужой hold, другая сумма, точные
+получатели обеих организаций, ссылка, текст и повторные event IDs.
+Реальных email/SMS/push нет. Миграций и новых публичных endpoints нет.
+
+
+Общий API-прогон этого изменения (включая 24 PostgreSQL concurrency cases):
+`PATH=/tmp/booker-prelaunch-tools/bin:$PATH
+BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres
+BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api`:
+**570 passed, 2 skipped, 334.31s**. Лог `/tmp/booker-final-api.log`.
+`PATH=/tmp/booker-prelaunch-tools/bin:$PATH make lint web-lint` — passed.
+Frontend product code не изменён: используется ранее проверенная сборка SEO
+из `/tmp/booker-seo-build-latest.log`. Общая приёмка 0–35 ещё не завершена.
