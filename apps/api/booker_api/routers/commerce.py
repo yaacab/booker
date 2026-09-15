@@ -1,7 +1,7 @@
 """Commercial API: membership, billing roles, rate limits, audit and provider gates."""
 
 import json
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -600,3 +600,40 @@ def revoke_plan(org_id: str, body: RevokeInput, user: User = Depends(require_adm
         payload={'plan_code': sub.plan_code, 'previous_status': before['status'], 'reason': body.reason.strip(), 'refund_created': False})
     db.commit()
     return subscription_payload(sub)
+
+
+@admin_router.get('/revenue')
+def commercial_revenue(date_from: date | None = None, date_to: date | None = None,
+    user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    from booker_api.commerce.reporting import revenue
+    analytics_limiter.check(f'admin-commerce-revenue:{user.id}')
+    return revenue(db, date_from, date_to)
+
+
+@admin_router.get('/campaigns')
+def commercial_campaigns(state: Literal['all', 'draft', 'pending_payment', 'scheduled', 'active', 'expired', 'cancelled', 'rejected'] = 'all',
+    limit: int = Query(default=25, ge=1, le=100), offset: int = Query(default=0, ge=0, le=100000),
+    user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    from sqlalchemy import and_, or_
+
+    from booker_api.models import PromotionCampaign, PromotionCreditUse
+    analytics_limiter.check(f'admin-commerce-campaigns:{user.id}')
+    instant = now()
+    query = db.query(PromotionCampaign, Organization, BillingOrder, PromotionCreditUse).select_from(PromotionCampaign).join(
+        Organization, Organization.id == PromotionCampaign.organization_id).outerjoin(
+        BillingOrder, BillingOrder.id == PromotionCampaign.billing_order_id).outerjoin(
+        PromotionCreditUse, PromotionCreditUse.campaign_id == PromotionCampaign.id)
+    if state == 'expired':
+        query = query.filter(or_(PromotionCampaign.status == 'expired', and_(PromotionCampaign.status.in_(['active', 'scheduled']), PromotionCampaign.ends_at <= instant)))
+    elif state != 'all':
+        query = query.filter(PromotionCampaign.status == state)
+        if state in {'active', 'scheduled'}:
+            query = query.filter(PromotionCampaign.ends_at > instant)
+    total = query.count()
+    rows = query.order_by(PromotionCampaign.created_at.desc(), PromotionCampaign.id).offset(offset).limit(limit).all()
+    return {'total': total, 'offset': offset, 'items': [{'id': c.id, 'organization_name': org.name, 'organization_id': org.id,
+        'product_code': c.product_code, 'stored_status': c.status,
+        'status': 'expired' if c.status in {'active', 'scheduled'} and aware(c.ends_at) <= instant else c.status,
+        'starts_at': aware(c.starts_at), 'ends_at': aware(c.ends_at), 'href': f'/{"artists" if c.target_type == "artist" else "venues"}/{c.target_id}',
+        'included_credit': credit is not None, 'order': {'id': order.id, 'status': order.status, 'provider': order.provider, 'amount_rub': order.amount_rub} if order else None,
+        'requires_payment_review': bool(order and order.status == 'paid' and c.status in {'rejected', 'cancelled'})} for c, org, order, credit in rows]}

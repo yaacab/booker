@@ -279,3 +279,10 @@ def test_postgres_both_contract_signatures_commit_once(client, SessionLocal, mon
         assert db.query(AuditLog).filter_by(action='contract.signed', entity_id=contract['id']).count() == 2
         assert db.query(InboxNotification).filter_by(template='payment.required').count() == 1
         assert db.query(Message).filter_by(body='Договор подписан. Ожидается предоплата.').count() == 1
+
+
+def test_postgres_commercial_report_cohorts_and_source_groups(client, SessionLocal):
+    from tests.test_commercial_revenue import (
+        test_revenue_separates_money_quotes_tests_and_unknown_fees,
+    )
+    test_revenue_separates_money_quotes_tests_and_unknown_fees(client, SessionLocal)

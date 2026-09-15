@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { CommercialCampaigns } from '@/components/admin/CommercialCampaigns';
+import { CommercialRevenue } from '@/components/admin/CommercialRevenue';
 import { api } from '@/lib/api';
 import { formatWhen, money } from '@/lib/format';
 
@@ -49,6 +51,7 @@ export default function CommercialAdmin() {
     <p>Тарифы и доступ организаций. Изменения сохраняются в журнале с указанием причины.</p>
     {error ? <div role="alert" className="card"><p>{error}</p><button type="button" disabled={busy} onClick={() => void load()}>Обновить данные</button></div> : null}
     {notice ? <p role="status">{notice}</p> : null}
+    {plans.length > 0 ? <><CommercialRevenue /><CommercialCampaigns /></> : null}
     <section className="card" aria-labelledby="admin-plans">
       <h2 id="admin-plans">Тарифы</h2>
       <p>Новая цена применяется к новым заказам. Суммы существующих заказов и предложений сохраняются.</p>

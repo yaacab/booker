@@ -13,6 +13,18 @@ for (const width of [1440, 390]) {
     const admin = await postJson<{ token: string }>(request, '/auth/login', '', { email: 'admin@booker.test', password: 'password1' });
     await injectSession(page, admin.token, org.id);
     await page.goto('/admin/commerce');
+    const revenue = page.getByRole('region', { name: 'Выручка и стоимость сделок' });
+    await expect(revenue.getByRole('heading', { name: 'Платежи по сделкам', exact: true })).toBeVisible();
+    await revenue.getByRole('heading', { name: 'Платежи по сделкам', exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('commercial-revenue.png') });
+    await revenue.getByLabel('Начало периода').fill('2020-01-01');
+    await revenue.getByLabel('Конец периода').fill('2020-01-01');
+    await revenue.getByRole('button', { name: 'Обновить отчёт' }).click();
+    await expect(revenue.getByText('За выбранный период записей нет.', { exact: true })).toHaveCount(2);
+    const campaigns = page.getByRole('region', { name: 'Кампании продвижения' });
+    await campaigns.getByRole('combobox', { name: 'Статус кампании', exact: true }).selectOption('rejected');
+    const campaignData = await getJson<{ total: number }>(request, '/admin/commerce/campaigns?state=rejected', admin.token);
+    await expect(campaigns.getByText(`Найдено: ${campaignData.total}`, { exact: true })).toBeVisible();
     await page.getByLabel('Организация: название или ID').fill(org.id);
     await page.getByRole('button', { name: 'Найти организацию', exact: true }).click();
     await page.getByRole('button', { name: /^Управлять Пульт/ }).click();
