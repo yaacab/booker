@@ -2,7 +2,9 @@
 
 OWNER DIRECTIVE 2026-09-12: preparation for commercial launch and monetization.
 
-Статус: **в работе**. Этот документ не подтверждает готовность запуска.
+Статус: **техническая приёмка завершена** — [актуальная сводка](PRELAUNCH_ACCEPTANCE.md).
+Этот документ сохраняет хронологию, включая прежние открытые вопросы и неудачные
+прогоны. Они не заменяют актуальный итог и не подтверждают production release.
 Полный объём — разделы 0–35 задания владельца от 2026-09-12.
 
 ## Исходное состояние, 2026-09-12
@@ -31,16 +33,16 @@ OWNER DIRECTIVE 2026-09-12: preparation for commercial launch and monetization.
 - Юридический пакет остаётся черновиком; provider boundary допустим,
   реальные платежи/production/DNS/merge запрещены этой задачей.
 
-## Последовательность и критерии доказательства
+## Последовательность и критерии доказательства (исходный план)
 
-- [ ] 1–4, 6: Contract v3, catalog, models/migration, providers, fees/entitlements.
-- [ ] 5, 8, 22: pricing, кабинеты, admin commercial center.
-- [ ] 7, 9–11: promotion ranking/attribution, Growth, Opportunities, EPK.
-- [ ] 12–20: matching, compare, compatibility, readiness, budget, collaboration,
+- [x] 1–4, 6: Contract v3, catalog, models/migration, providers, fees/entitlements.
+- [x] 5, 8, 22: pricing, кабинеты, admin commercial center.
+- [x] 7, 9–11: promotion ranking/attribution, Growth, Opportunities, EPK.
+- [x] 12–20: matching, compare, compatibility, readiness, budget, collaboration,
   repeat, replacement, Business.
-- [ ] 21, 23–28: notifications, analytics, SEO/trust/security, mobile/states/flags.
-- [ ] 29–31: API coverage, все именованные E2E desktop/390, CI и build.
-- [ ] 32–35: документация, provider handoff, аудит каждого требования и отчёт.
+- [x] 21, 23–28: notifications, analytics, SEO/trust/security, mobile/states/flags.
+- [x] 29–31: API coverage, все именованные E2E desktop/390, CI и build.
+- [x] 32–35: документация, provider handoff, аудит каждого требования и отчёт.
 
 Для каждого пункта нужны конкретные UI/API/DB/auth/audit/tests и состояния
 loading/empty/error, где применимо. Наличие страницы или зелёный узкий тест
@@ -1935,3 +1937,29 @@ GitHub runner получает sqlite3 CLI, чтобы backup/restore не пр�
 проверены. Лог `/tmp/booker-final-backup.log`.
 `make web-lint` повторён после правок TypeScript тестов — passed.
 GitHub Actions на remote SHA и production release не запускались.
+
+
+### Регистрация PSP и явный допуск — финальная проверка 2026-09-15
+
+Аудит обнаружил hardcoded payment_live_enabled=false. Вместо изменения state
+machines подготовлены code-only registry в booking/commerce и общий gate
+payment_activation.py. Неизвестный provider, отсутствие любого допуска/секрета,
+reserved name, замена регистрации, неверный identity/test mode и ошибка фабрики
+не приводят к stub fallback или success. Никакой live adapter не зарегистрирован.
+Новые настройки и bootstrap contract описаны в PAYMENT_PROVIDER_HANDOFF и OWNER_INPUTS.
+Регистрация адаптера не заменяет SDK/protocol, merchant и sandbox acceptance PSP.
+
+Узко: test_payment_activation + test_commerce + test_payment_guards —
+**80 passed, 13.22s** (`/tmp/booker-activation-tests.log`). После изменения fallback
+и UTC date validation: test_payment_activation — **32 passed, 0.17s**
+(`/tmp/booker-activation-latest.log`). `make lint` — passed.
+
+Финальная команда из корня worktree:
+```bash
+PATH=/tmp/booker-sqlite-runtime/extracted/usr/bin:/tmp/booker-prelaunch-tools/bin:$PATH BOOKER_TEST_POSTGRES_URL=postgresql+psycopg://art67@127.0.0.1:55433/postgres BOOKER_DATABASE_URL=sqlite:// BOOKER_ENVIRONMENT=test make test-api
+```
+Результат: **604 passed, 0 skipped, 339.87s**. Включены PostgreSQL concurrency и
+backup/restore с файлами. Лог `/tmp/booker-activation-full.log`.
+Две предупреждающие записи — deprecation TestClient/anyio, не пропущенные тесты.
+Frontend product code после принятой SEO сборки не менялся; web-lint после правок
+E2E прошёл. Итог всех разделов и граница внешних действий — PRELAUNCH_ACCEPTANCE.md.

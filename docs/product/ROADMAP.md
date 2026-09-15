@@ -1,5 +1,12 @@
 # Дорожная карта
 
+Актуальный коммерческий этап OWNER DIRECTIVE 2026-09-12:
+[сводная приёмка](PRELAUNCH_ACCEPTANCE.md), [журнал проверок](PRELAUNCH_V1.md).
+Коммерция, Growth и Business из разделов 1–33 реализованы в отдельной ветке;
+техническая приёмка завершена, включая activation gate и 604 API-теста. Исторические планы ниже
+сохранены как история и не отменяют Contract v3. Live PSP, юрист и production —
+отдельные внешние шаги.
+
 Пилот (код сейчас): identity, каталог+календарь, заявка, Deal Room, hold, оффер с `quote_id`, админ+audit, UI Backstage, Service+залы, буферы слотов, Event Studio, `request.requirement_id` + GET event.requests, связь Deal Room ↔ событие, факты профиля (сделки).
 
 Очередь блупринта v1.0:

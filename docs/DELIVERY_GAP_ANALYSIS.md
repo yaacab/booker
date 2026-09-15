@@ -1,5 +1,11 @@
 # Spec v3 — Delivery Gap Analysis
 
+Актуальная приёмка ветки `feat/prelaunch-commercial-v1` на 2026-09-15:
+[PRELAUNCH_ACCEPTANCE.md](product/PRELAUNCH_ACCEPTANCE.md).
+Ниже сохранён исторический аудит 2026-09-06 и журнал уточнений. Его значения
+Exists/Tested/Deployed **не описывают текущую рабочую ветку** и не подтверждают
+актуальный production. Статус запуска определяется внешними gates в OWNER_INPUTS.
+
 Источник: [Buker_Cursor_Complete_Spec_v3_2026-09-06.md](specs/Buker_Cursor_Complete_Spec_v3_2026-09-06.md)
 
 SHA аудита: `c90d091` · ветка `feat/master-plan-execution` · PR #14 OPEN
