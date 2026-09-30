@@ -15,7 +15,15 @@ type ResearchVenue = { id: string; name: string };
 test.describe("Wave 1 search / home", () => {
   test("главная ведёт в каталог проверенных площадок", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("main").getByRole("link", { name: /Подобрать площадку/ }).click();
+    const heroStep = page
+      .getByRole("group", { name: "Как складывается выступление" })
+      .getByRole("button", { name: /Событие/ });
+    await heroStep.click();
+    await expect(heroStep).toHaveAttribute("aria-pressed", "true");
+
+    const venueLink = page.getByRole("main").getByRole("link", { name: /Подобрать площадку/ });
+    await expect(venueLink).toHaveAttribute("href", "/search?kind=venue");
+    await venueLink.click();
     await expect(page).toHaveURL(/kind=venue/);
     await expect(
       page.getByRole("heading", { level: 1, name: "Найдите площадку для вашего события" }),
