@@ -35,6 +35,11 @@ router = APIRouter(tags=["identity"])
 
 @router.post("/auth/register")
 def register(body: RegisterIn, request: Request, db: Session = Depends(get_db)):
+    if not settings.public_registration_enabled:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Саморегистрация временно закрыта. Букер работает как закрытый пилот по приглашениям.",
+        )
     auth_limiter.check(client_key(request, "register"))
     if db.query(User).filter(User.email == body.email.lower()).one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, "Email уже занят")

@@ -7,9 +7,19 @@ import { api, createOrgWithConfirm, setActiveOrg, setToken } from "@/lib/api";
 import { cabinetPathForKind } from "@/lib/cabinetRoutes";
 import { safeNext } from "@/lib/next";
 
-export default function AuthPage({ artistWelcome = false }: { artistWelcome?: boolean }) {
+type AuthPageProps = {
+  artistWelcome?: boolean;
+  publicRegistrationEnabled: boolean;
+};
+
+export default function AuthPage({
+  artistWelcome = false,
+  publicRegistrationEnabled,
+}: AuthPageProps) {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "register" | "recover" | "reset">(artistWelcome ? "register" : "login");
+  const [mode, setMode] = useState<"login" | "register" | "recover" | "reset">(
+    artistWelcome && publicRegistrationEnabled ? "register" : "login",
+  );
   const [resetToken, setResetToken] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -18,14 +28,14 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
-    if (query.get("mode") === "register") setMode("register");
+    if (query.get("mode") === "register" && publicRegistrationEnabled) setMode("register");
     if (query.get("role") === "artist") setSelectedRole("artist");
     const token = new URLSearchParams(window.location.search).get("reset");
     if (token) {
       setResetToken(token);
       setMode("reset");
     }
-  }, []);
+  }, [publicRegistrationEnabled]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,6 +44,10 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
     setPending(true);
     const form = new FormData(e.currentTarget);
     try {
+      if (mode === "register" && !publicRegistrationEnabled) {
+        setError("Саморегистрация временно закрыта. Войдите по приглашению.");
+        return;
+      }
       if (mode === "reset") {
         await api("/auth/recover/confirm", {
           method: "POST",
@@ -130,13 +144,17 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
       {artistWelcome ? <aside className="artist-benefits" aria-label="Букер для артистов">
         <p className="kicker">Твоя следующая сцена</p>
         <h1>Ты создаёшь атмосферу.<br /><em>Мы помогаем встретиться.</em></h1>
-        <p className="artist-benefits-lead">С заказчиками, которым нужен именно твой талант. Создай кабинет и собери всё для будущих выступлений в одном месте.</p>
+        <p className="artist-benefits-lead">{publicRegistrationEnabled
+          ? "С заказчиками, которым нужен именно твой талант. Создай кабинет и собери всё для будущих выступлений в одном месте."
+          : "Сейчас Букер работает как закрытый пилот. Если тебе уже выдали доступ, войди в существующий кабинет."}</p>
         <ol>
           <li><span>01</span><div><h2>Покажи, что умеешь</h2><p>Профиль с видео, программой и условиями поможет заказчику познакомиться с тобой.</p></div></li>
           <li><span>02</span><div><h2>Выбирай свои выступления</h2><p>Смотри открытые заказы, откликайся на подходящие события и получай личные заявки.</p></div></li>
           <li><span>03</span><div><h2>Договорись без путаницы</h2><p>Даты, предложения и переписка с заказчиком — в общем пространстве сделки.</p></div></li>
         </ol>
-        <p className="artist-benefits-foot">Сначала кабинет. Фото, программу и свободные даты добавишь следующим шагом.</p>
+        <p className="artist-benefits-foot">{publicRegistrationEnabled
+          ? "Сначала кабинет. Фото, программу и свободные даты добавишь следующим шагом."
+          : "Новые участники подключаются по приглашению команды пилота."}</p>
       </aside> : <aside className="login-story" aria-label="О Букере"><p className="kicker">Артисты. События. Букер.</p><h2>Хорошие события<br />начинаются с людей.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Находите артистов и заказы, обсуждайте детали и сохраняйте договорённости в одном месте.</p></aside>}
       <section className="login-fields">
       {!artistWelcome && <p className="brand-lockup-wrap">
@@ -144,6 +162,16 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
       </p>}
       <p className="kicker">{kicker}</p>
       {artistWelcome ? <h2>{mode === "register" ? "Начни с простого" : heading}</h2> : <h1>{heading}</h1>}
+      {!publicRegistrationEnabled && mode === "login" ? (
+        <div className="registration-closed-note" role="status">
+          <strong>Саморегистрация временно закрыта</strong>
+          <p>
+            Букер работает как закрытый пилот. Если у вас уже есть аккаунт или приглашение,
+            войдите ниже. По вопросам доступа напишите на{" "}
+            <a href="mailto:hello@bukergo.ru">hello@bukergo.ru</a>.
+          </p>
+        </div>
+      ) : null}
       {mode === "register" ? (
         <p className="timeline">{artistWelcome ? "Три поля — и у тебя будет кабинет артиста." : "Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи."}</p>
       ) : mode === "reset" ? (
@@ -247,9 +275,15 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
           </button>
         ) : (
           <>
-            <button type="button" className="secondary" onClick={() => setMode(mode === "login" ? "register" : "login")}>
-              {mode === "login" ? "Создать аккаунт" : "Вернуться ко входу"}
-            </button>
+            {publicRegistrationEnabled ? (
+              <button type="button" className="secondary" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+                {mode === "login" ? "Создать аккаунт" : "Вернуться ко входу"}
+              </button>
+            ) : mode !== "login" ? (
+              <button type="button" className="secondary" onClick={() => setMode("login")}>
+                Вернуться ко входу
+              </button>
+            ) : null}
             {mode === "login" ? (
               <button type="button" className="secondary" onClick={() => setMode("recover")}>
                 Забыли пароль?

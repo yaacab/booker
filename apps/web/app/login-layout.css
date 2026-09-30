@@ -11,6 +11,10 @@ html .site-content .login-fields { background:transparent !important; width:100%
 .site-content .login-fields h1 { text-align:center; font-size:clamp(30px,2.8vw,40px); line-height:1.15; margin:0 0 18px; text-wrap:balance; }
 .site-content .login-fields > p { text-align:center; color:var(--edition-muted); margin:12px 0 18px; }
 .site-content .login-fields > p:last-child { justify-content:center; }
+.site-content .registration-closed-note { width:100%; margin:0 0 18px; padding:16px 18px; border:1px solid var(--edition-line); border-radius:16px; background:var(--edition-panel); color:var(--edition-text); }
+.site-content .registration-closed-note strong { display:block; margin-bottom:6px; }
+.site-content .registration-closed-note p { margin:0; color:var(--edition-muted); font-size:14px; line-height:1.6; }
+.site-content .registration-closed-note a { color:inherit; font-weight:650; }
 .site-content[data-section="login"] .login-fields form.card { width:100%; padding:clamp(22px,2.5vw,34px); background:var(--edition-panel) !important; border:1px solid var(--edition-line) !important; box-shadow:none; }
 .site-content .login-fields form > label { width:100%; text-align:left; color:var(--edition-text); }
 .site-content .login-fields input:not([type="checkbox"]) { width:100%; min-height:48px; padding:12px 14px; font-size:16px; }
@@ -43,6 +47,7 @@ html[data-edition="black"] .site-content .login-story{background:#141819;border-
 html[data-edition="black"] .site-content .login-fields{background:#1c2121!important;border:1px solid #394240;border-radius:30px;padding:40px;display:flex;flex-direction:column;justify-content:center;min-height:600px}
 html[data-edition="black"] .site-content .login-fields>.kicker{font-size:10px;letter-spacing:.12em;margin-top:0;margin-bottom:14px}
 html[data-edition="black"] .site-content .login-fields h1{font-weight:650;font-size:36px;letter-spacing:-.045em;margin-bottom:28px}
+html[data-edition="black"] .site-content .registration-closed-note{background:#141819;border-color:#4b574d}
 html[data-edition="black"] .site-content[data-section="login"] .login-fields form.card{background:transparent!important;border:0!important;padding:0;border-radius:0;backdrop-filter:none;box-shadow:none}
 html[data-edition="black"] .site-content .login-fields form>label{font-size:13px;gap:10px}
 html[data-edition="black"] .site-content .login-fields input:not([type="checkbox"]){background:#111616!important;border:1px solid #4c5851!important;border-radius:12px;min-height:50px}

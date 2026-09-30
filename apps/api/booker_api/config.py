@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     push_provider: str = "disabled"
     in_app_provider: str = "dev"
     password_reset_ttl_hours: int = 2
+    # Fail closed until the legal pack and public personal-data flow are approved.
+    # Local and test environments must opt in explicitly as well.
+    public_registration_enabled: bool = False
     # Commerce is fail-closed; test checkout needs both environment and opt-in.
     environment: str = "production"
     commerce_provider: str = "disabled"

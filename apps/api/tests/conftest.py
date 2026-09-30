@@ -28,6 +28,14 @@ def explicit_test_payment_provider(monkeypatch):
 
 
 @pytest.fixture()
+def public_registration_enabled(monkeypatch):
+    """API tests opt into self-registration instead of inheriting an environment bypass."""
+    from booker_api.config import settings
+
+    monkeypatch.setattr(settings, "public_registration_enabled", True)
+
+
+@pytest.fixture()
 def engine():
     eng = create_engine(
         "sqlite://",
@@ -65,7 +73,7 @@ def reset_rate_limiters():
 
 
 @pytest.fixture()
-def client(SessionLocal) -> Generator[TestClient, None, None]:
+def client(SessionLocal, public_registration_enabled) -> Generator[TestClient, None, None]:
     def override():
         db = SessionLocal()
         try:
