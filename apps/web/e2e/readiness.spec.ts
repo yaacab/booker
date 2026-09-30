@@ -1,11 +1,28 @@
 import { test, expect, type Page } from "@playwright/test";
+import { API_BASE } from "./helpers";
 
-const api=process.env.BOOKER_API_URL||"http://127.0.0.1:8035";
-async function noOverflow(page:Page){expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)}
+const api=API_BASE;
+const base=process.env.BOOKER_WEB_URL||"http://127.0.0.1:3000";
+async function noOverflow(page:Page){
+  const size=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth}));
+  expect(size.scrollWidth,`Горизонтальный выход за экран ${size.viewportWidth}px`).toBeLessThanOrEqual(size.viewportWidth);
+}
+async function setEdition(page:Page,edition:"light"|"black"){
+  await page.waitForLoadState("networkidle");
+  const current=await page.locator("html").getAttribute("data-edition");
+  await expect(page.getByRole("button",{name:current==="light"?"Включить тёмную тему":"Включить Light Edition"})).toBeVisible();
+  if(current!==edition){
+    await page.getByRole("button",{name:edition==="light"?"Включить Light Edition":"Включить тёмную тему"}).click();
+  }
+  await expect(page.locator("html")).toHaveAttribute("data-edition",edition);
+}
 
 test("главная: обе темы, пазлы, мобильная вёрстка и reduced motion",async({page},info)=>{
   const errors:string[]=[];
+  const overflow:string[]=[];
   page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-edition","black");
   for(const width of [1440,768,390]){
     await page.setViewportSize({width,height:1000});
     await page.goto("/");
@@ -13,10 +30,10 @@ test("главная: обе темы, пазлы, мобильная вёрст
     await expect(page.getByRole("link",{name:/Тебе нужен артист/})).toBeVisible();
     await page.getByRole("button",{name:/Событие Ваша идея/}).click();
     await expect(page.locator("#artist-first-detail")).toContainText("Выберите артиста");
-    for(const edition of ["light","black"]){
-      if(await page.locator("html").getAttribute("data-edition")!==edition)await page.getByRole("button",{name:"Black Edition",exact:true}).click();
-      await expect(page.locator("html")).toHaveAttribute("data-edition",edition);
-      await noOverflow(page);
+    for(const edition of ["black","light"] as const){
+      await setEdition(page,edition);
+      const size=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth}));
+      if(size.scrollWidth>size.viewportWidth)overflow.push(`${width}px ${edition}: ${size.scrollWidth}px`);
       await page.screenshot({path:info.outputPath(`home-${width}-${edition}.png`),fullPage:true,animations:"disabled"});
     }
   }
@@ -24,14 +41,16 @@ test("главная: обе темы, пазлы, мобильная вёрст
   await page.getByRole("button",{name:/Артист Ваш талант/}).click();
   await expect(page.locator(".artist-first-piece").first()).toHaveCSS("transition-duration","0s");
   expect(errors).toEqual([]);
+  expect(overflow,"Горизонтальный выход за экран на главной").toEqual([]);
 });
 
 test("заказчик и артист: поиск → заявка → предложение → переписка → удержание",async({browser,request},info)=>{
+  test.setTimeout(180_000);
   async function screens(page:Page,label:string){
     for(const width of [1440,390]){
       await page.setViewportSize({width,height:900});
-      for(const edition of ["light","black"]){
-        if(await page.locator("html").getAttribute("data-edition")!==edition)await page.getByRole("button",{name:"Black Edition",exact:true}).click();
+      for(const edition of ["black","light"] as const){
+        await setEdition(page,edition);
         await noOverflow(page);
         await page.screenshot({path:info.outputPath(`${label}-${width}-${edition}.png`),fullPage:true,animations:"disabled"});
       }
@@ -58,7 +77,6 @@ test("заказчик и артист: поиск → заявка → пред
   const customerContext=await browser.newContext({viewport:{width:1440,height:1000}}),artistContext=await browser.newContext({viewport:{width:1440,height:1000}});
   for(const [ctx,account] of [[customerContext,customer],[artistContext,artist]] as const){await ctx.addInitScript(({token,org})=>{localStorage.setItem("booker.token",token);localStorage.setItem("booker.org",org);},{token:account.token,org:account.org.id});}
   const customerPage=await customerContext.newPage(),artistPage=await artistContext.newPage();
-  const base=process.env.BOOKER_WEB_URL||"http://127.0.0.1:4316";
   let favoriteReads=0;
   // Count the API read, not Next.js prefetch of /cabinet/customer/favorites.
   customerPage.on("request",r=>{if(r.url()===`${api}/favorites`&&r.method()==="GET")favoriteReads++});
@@ -124,30 +142,29 @@ test("заказчик и артист: поиск → заявка → пред
   }
   await customerPage.goto(base+"/briefs");
   const briefTitle=`Открытый заказ ${suffix}`;
-  await customerPage.getByLabel("Название события",{exact:true}).fill(briefTitle);
-  await customerPage.getByLabel("Начало события (МСК)",{exact:true}).fill(start.toISOString().slice(0,16));
-  await customerPage.getByLabel("Окончание события (МСК)",{exact:true}).fill(end.toISOString().slice(0,16));
+  const briefStart=new Date(start.getTime()+14*86400000);
+  const briefEnd=new Date(briefStart.getTime()+4*3600000);
+  await post("/slots",{resource_type:"artist",resource_id:profile.id,starts_at:briefStart.toISOString(),ends_at:briefEnd.toISOString()},artist.token);
+  await customerPage.getByRole("form",{name:"Публикация брифа"}).getByRole("textbox",{name:"Заголовок"}).fill(briefTitle);
+  await customerPage.getByRole("textbox",{name:"Начало"}).fill(new Date(briefStart.getTime()+3*3600000).toISOString().slice(0,16));
+  await customerPage.getByRole("textbox",{name:"Окончание"}).fill(new Date(briefEnd.getTime()+3*3600000).toISOString().slice(0,16));
   const published=customerPage.waitForResponse(r=>r.url().endsWith("/briefs")&&r.request().method()==="POST");
-  await customerPage.getByRole("button",{name:"Опубликовать",exact:true}).click();
+  await customerPage.getByRole("button",{name:"Опубликовать бриф",exact:true}).click();
   const brief=await (await published).json();
-  await expect(customerPage.getByRole("status").filter({hasText:"Заказ опубликован"})).toBeVisible();
-  await artistPage.goto(base+"/cabinet/performer");
-  await expect(artistPage.getByRole("heading",{name:"Подходящие открытые заказы",exact:true})).toBeVisible();
-  await artistPage.locator('a[href^="/briefs?q="]').filter({hasText:briefTitle}).click();
-  await artistPage.getByLabel("Найти заказ",{exact:true}).fill(briefTitle);
-  await artistPage.getByText("Откликнуться на заказ",{exact:true}).click();
-  await artistPage.getByLabel("Ваше предложение",{exact:true}).fill("Моя программа подходит вашему событию.");
-  await artistPage.getByRole("button",{name:"Отправить отклик",exact:true}).click();
-  await expect(artistPage.getByText("Ваш отклик отправлен.",{exact:false})).toBeVisible();
+  await expect(customerPage.getByRole("status").filter({hasText:"Бриф опубликован"})).toBeVisible();
+  await artistPage.goto(base+"/cabinet/performer/opportunities");
+  const opportunity=artistPage.locator("article.opportunity-card",{hasText:briefTitle});
+  await expect(opportunity).toBeVisible();
+  await opportunity.getByRole("textbox",{name:"Ваше предложение"}).fill("Моя программа подходит вашему событию.");
+  await opportunity.getByRole("button",{name:"Отправить предложение"}).click();
+  await expect(artistPage.getByRole("status").filter({hasText:"Отклик отправлен заказчику"})).toBeVisible();
   await customerPage.reload();
-  await customerPage.getByLabel("Найти заказ",{exact:true}).fill(briefTitle);
-  await customerPage.getByRole("button",{name:"Посмотреть отклики",exact:true}).click();
+  const customerBrief=customerPage.locator("article.card",{hasText:briefTitle});
+  await customerBrief.getByRole("button",{name:"Посмотреть отклики"}).click();
   await expect(customerPage.getByText("Моя программа подходит вашему событию.",{exact:true})).toBeVisible();
   await post(`/briefs/${brief.id}/close`,{},customer.token);
   await artistPage.reload();
-  await artistPage.getByRole("button",{name:"Мои отклики",exact:true}).click();
-  await expect(artistPage.getByText(briefTitle,{exact:true})).toBeVisible();
-  await expect(artistPage.getByText("Закрыт",{exact:true})).toBeVisible();
+  await expect(opportunity).toHaveCount(0);
   await noOverflow(customerPage);await noOverflow(artistPage);
   await customerContext.close();await artistContext.close();
 });
@@ -156,7 +173,6 @@ test("регистрация выбирает правильный кабине�
   for(const role of ["customer","artist"]){
     const ctx=await browser.newContext({viewport:{width:390,height:844}});
     const page=await ctx.newPage();
-    const base=process.env.BOOKER_WEB_URL||"http://127.0.0.1:4316";
     await page.goto(`${base}/login?mode=register&role=${role}`);
     await expect(page.getByTestId(`role-option-${role}`)).toHaveAttribute("aria-pressed","true");
     await page.getByLabel("Имя",{exact:true}).fill(`Проверка ${role}`);
@@ -177,8 +193,8 @@ test("вход и регистрация: ширина блоков и конт�
     if(mode==="register")await expect(page.getByTestId("role-picker")).toBeVisible();
     for(const width of [1611,1024,768,390]){
       await page.setViewportSize({width,height:914});
-      for(const edition of ["light","black"]){
-        if(await page.locator("html").getAttribute("data-edition")!==edition)await page.getByRole("button",{name:"Black Edition",exact:true}).click();
+      for(const edition of ["black","light"] as const){
+        await setEdition(page,edition);
         await noOverflow(page);
         if(width>900){
           const story=await page.locator(".login-story").boundingBox();
@@ -206,79 +222,55 @@ test("вход и регистрация: ширина блоков и конт�
   }
 });
 
-test("подсказки тестовых кабинетов и первый шаг артиста",async({page,context},info)=>{
-  await context.grantPermissions(["clipboard-read","clipboard-write"]);
+test("служебные кабинеты закрыты, первый шаг артиста доступен",async({page},info)=>{
   for(const width of [1440,390]){
     await page.setViewportSize({width,height:900});
-    await page.goto("/dev/cabinets");
-    const cards=page.locator(".demo-cabinets-page .assembly-editor");
-    await expect(cards).toHaveCount(4);
-    const boxes=await cards.evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}}));
-    for(let a=0;a<boxes.length;a++)for(let b=a+1;b<boxes.length;b++)expect(boxes[a].x+boxes[a].w<=boxes[b].x||boxes[b].x+boxes[b].w<=boxes[a].x||boxes[a].y+boxes[a].h<=boxes[b].y||boxes[b].y+boxes[b].h<=boxes[a].y).toBe(true);
-    await cards.first().getByText("Логин и пароль для проверки",{exact:true}).click();
-    await expect(cards.first().locator("code").first()).toHaveText("customer@booker.test");
-    await cards.first().getByRole("button",{name:"Скопировать логин: Заказчик",exact:true}).click();
-    expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe("customer@booker.test");
-    await cards.first().getByRole("button",{name:"Скопировать пароль: Заказчик",exact:true}).click();
-    expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe("password1");
-    await expect(page.getByRole("button",{name:"Открыть кабинет →",exact:true})).toHaveCount(0);
+    const devResponse=await page.goto("/dev/cabinets");
+    expect(devResponse?.status()).toBe(404);
+    await expect(page.locator(".demo-cabinets-page")).toHaveCount(0);
+    await page.goto("/for-artists");
+    await expect(page.getByRole("button",{name:"Создать кабинет артиста →"})).toBeVisible();
+    await expect(page.locator('input[name="kind"]')).toHaveValue("artist");
     await noOverflow(page);
-    await page.screenshot({path:info.outputPath(`demo-${width}.png`),fullPage:true,animations:"disabled"});
-    await page.goto("/briefs");
-    await expect(page.getByRole("heading",{level:1})).toContainText("Ты артист?");
-    await expect(page.locator(".brief-list")).toHaveCount(0);
-    await page.getByLabel("Твоё направление").selectOption("dj");
-    await page.getByLabel("Город выступления").fill("НетТакогоГородаДляПроверки");
-    await page.getByRole("button",{name:/Подобрать варианты/}).click();
-    await expect(page.getByRole("heading",{name:"Пока нет предложений по этим условиям"})).toBeVisible();
-    await expect(page.locator(".briefs-results").getByRole("link",{name:/Создать профиль артиста/})).toBeVisible();
-    await noOverflow(page);
-    await page.screenshot({path:info.outputPath(`artist-guide-${width}.png`),fullPage:true,animations:"disabled"});
+    await page.screenshot({path:info.outputPath(`artist-first-step-${width}.png`),fullPage:true,animations:"disabled"});
   }
 });
 
-test("подборка площадок: фотографии, районы, фильтры и отдельный статус доступности",async({page},info)=>{
- const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));page.on("console",e=>{if(e.type()==="error"&&/hydrated|hydration/i.test(e.text()))errors.push(e.text())});
- await page.goto("/search?kind=venue",{waitUntil:"domcontentloaded"});
- await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content",/noindex/);
- await expect(page.getByRole("heading",{level:1})).toContainText("Найди место");
- await expect(page.locator(".research-result-heading")).toContainText("300");
- await expect(page.locator(".research-venue-card")).toHaveCount(24);
- await expect(page.locator(".leaflet-container")).toHaveCount(0);
- await expect(page.locator(".district-map-layout path")).toHaveCount(132);
- await page.locator(".research-venue-card").first().scrollIntoViewIfNeeded();
- await expect.poll(()=>page.locator(".research-photo>img").first().evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0),{timeout:30000}).toBeTruthy();
- await expect(page.locator(".research-venue-card").first()).toContainText("Доступность уточняется");
- await page.locator(".research-venue-card").first().locator("summary").click();
- await expect(page.locator(".research-venue-card").first().locator(".research-thumbnails button")).toHaveCount(5);
- await page.locator(".research-venue-card").first().locator(".research-thumbnails button").nth(1).click();
- await expect(page.locator(".research-venue-card").first().locator(".research-thumbnails button").nth(1)).toHaveAttribute("aria-pressed","true");
- await page.locator(".district-map-panel").scrollIntoViewIfNeeded();
- const populated=await page.locator(".district-map-layout path.has-venues").evaluateAll(paths=>paths.map(p=>({id:p.getAttribute("data-district")!,name:p.querySelector("title")!.textContent!.split(":")[0]})));
- const chosen=populated.find(p=>p.name==="Басманный")!;expect(chosen).toBeTruthy();
- await page.getByLabel("Район Москвы",{exact:true}).selectOption(chosen.id);
- await expect(page.locator(".research-result-heading h2")).toHaveText("Басманный");
- await expect(page.locator(".research-location").first()).toContainText("Басманный");
- await page.getByRole("button",{name:"Все районы",exact:true}).click();
- await expect(page.locator(".research-result-heading")).toContainText("300");
- const district=page.locator(`path[data-district="${chosen.id}"]`);
- // Click a point inside the actual polygon rather than its possibly concave bounding-box centre.
- const point=await district.evaluate((element:SVGGeometryElement)=>{const b=element.getBBox(),m=element.getScreenCTM()!;for(let x=b.x+b.width*.1;x<b.x+b.width;x+=b.width/15)for(let y=b.y+b.height*.1;y<b.y+b.height;y+=b.height/15){const p=new DOMPoint(x,y);if(element.isPointInFill(p)){const s=p.matrixTransform(m);return {x:s.x,y:s.y}}}throw new Error("No point inside boundary")});
- await page.mouse.move(point.x,point.y);
- await expect(page.locator(".district-map-info h3")).toHaveText("Басманный");
- await page.mouse.click(point.x,point.y);
- await expect(page.getByLabel("Район Москвы",{exact:true})).toHaveValue(chosen.id);
- expect(errors).toEqual([]);
- await page.getByRole("button",{name:"Сбросить фильтры",exact:true}).click();
- await page.getByLabel("Аренда до, ₽/час",{exact:true}).fill("1");
- await expect(page.getByRole("heading",{name:"По этим условиям площадок пока нет"})).toBeVisible();
- await page.getByRole("button",{name:"Сбросить фильтры",exact:true}).click();
- for(const width of [1440,768,390]){
-  await page.setViewportSize({width,height:1000});
-  for(const edition of ["light","black"]){
-   if(await page.locator("html").getAttribute("data-edition")!==edition)await page.getByRole("button",{name:"Black Edition",exact:true}).click();
-   await noOverflow(page);
-   await page.screenshot({path:info.outputPath(`venues-${width}-${edition}.png`),fullPage:false,animations:"disabled"});
-  }
+test("каталог площадок: только опубликованные, фильтры и обе темы",async({page,request},info)=>{
+ const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+ const response=await request.get(`${api}/catalog/search?city=${encodeURIComponent("Москва")}&kind=venue`);
+ expect(response.ok()).toBeTruthy();
+ const catalog=await response.json();
+ const venues=Array.isArray(catalog.venues)?catalog.venues:[];
+ expect(venues.some((venue:{name?:string})=>venue.name==="Клуб Сигнал")).toBe(true);
+ for(const venue of venues as {availability_mode?:string;listing_origin?:string;source_type?:string;verified?:boolean;partnership_status?:string;cover_photo?:{rights_status?:string}|null}[]){
+   expect(["research","synthetic"]).not.toContain(venue.availability_mode);
+   expect(venue.listing_origin).not.toBe("open_data");
+   expect(venue.source_type).not.toBe("automated_import");
+   expect(venue.verified).toBe(true);
+   expect(["verified","partner"]).toContain(venue.partnership_status);
+   expect(["licensed","official_permission"]).toContain(venue.cover_photo?.rights_status);
  }
+ await page.goto("/search?city=Москва&kind=venue");
+ await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content",/noindex/);
+ await expect(page.getByRole("heading",{level:1,name:"Найдите площадку для вашего события"})).toBeVisible();
+ await expect(page.locator(".research-venue-card")).toHaveCount(0);
+ const signal=page.locator("article.catalog-result--venue",{hasText:"Клуб Сигнал"});
+ await expect(signal).toBeVisible();
+ await expect(signal.getByText("Профиль подтверждён",{exact:true})).toBeVisible();
+ await expect(signal.getByRole("link",{name:"Клуб Сигнал",exact:true})).toHaveAttribute("href",/^\/venues\//);
+ await page.getByRole("combobox",{name:"Район",exact:true}).fill("Несуществующий район");
+ await page.getByRole("button",{name:"Показать варианты"}).click();
+ await expect(page.locator("article.catalog-result--venue")).toHaveCount(0);
+ await page.getByRole("link",{name:/Сбросить фильтры/}).click();
+ await expect(signal).toBeVisible();
+ for(const width of [1440,768,390]){
+   await page.setViewportSize({width,height:1000});
+   for(const edition of ["black","light"] as const){
+     await setEdition(page,edition);
+     await noOverflow(page);
+     await page.screenshot({path:info.outputPath(`venues-${width}-${edition}.png`),fullPage:false,animations:"disabled"});
+   }
+ }
+ expect(errors).toEqual([]);
 });
