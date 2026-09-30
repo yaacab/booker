@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from booker_api.payments.adapter import (
     PaymentAdapter,
     PaymentAdapterError,
@@ -67,12 +69,11 @@ class ExternalPaymentAdapter(PaymentAdapter):
         if amount_rub <= 0 or amount_rub > total_rub:
             raise PaymentAdapterError("Некорректная сумма возврата")
         kind = "full" if amount_rub == total_rub else "partial"
-        self.ledger.on_refund(payment_id, amount_rub, kind)
         return RefundOutcome(
-            refund_id=f"external-refund-{payment_id}",
+            refund_id="external-refund-" + hashlib.sha256(f"{payment_id}:{idempotency_key}:{amount_rub}".encode()).hexdigest()[:40],
             amount_rub=amount_rub,
             kind=kind,
-            status="succeeded",
+            status="pending",
         )
 
 

@@ -10,6 +10,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from booker_api.calendar import lock_calendar_resources
 from booker_api.ical_import import _count_open_overlaps, _resolve_resource, calendar_targets
 from booker_api.models import AvailabilitySlot
 from booker_api.security import audit, aware, now
@@ -46,6 +47,7 @@ def set_vacation(
     actor_user_id: str,
 ) -> dict:
     _resolve_resource(db, org_id, resource_type, resource_id)
+    lock_calendar_resources(db, [(resource_type, resource_id)])
     start = aware(starts_at)
     end = aware(ends_at)
     if start >= end:
@@ -101,6 +103,7 @@ def clear_vacation(
     actor_user_id: str,
 ) -> dict:
     _resolve_resource(db, org_id, resource_type, resource_id)
+    lock_calendar_resources(db, [(resource_type, resource_id)])
     row = _vacation_slot(db, resource_type, resource_id)
     if not row:
         return {"cleared": False}

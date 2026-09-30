@@ -1,14 +1,16 @@
 import { api } from "@/lib/api";
+import { eventCommandKey } from "@/lib/eventCommands";
 import { categoryLabel } from "@/lib/copy";
-import { formatDay, initials, moscowToday } from "@/lib/format";
+import { formatDay, initials } from "@/lib/format";
 import type {
   AvailabilityState,
-  BudgetHint,
   EventStudioDraft,
   TalentItem,
   VenueItem,
 } from "./types";
 import { EMPTY_DRAFT } from "./types";
+
+function draftStorage(): Storage { return typeof sessionStorage !== "undefined" && sessionStorage.getItem("booker.demo.token") ? sessionStorage : localStorage; }
 
 const DRAFT_KEY = "booker.eventStudioMapDraft";
 
@@ -24,7 +26,11 @@ type CatalogItem = {
   open_slots?: number;
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
+  honorarium_from_rub?: number | null;
   availability_mode?: string;
+  district?: string;
+  address?: string;
+  metro?: string;
 };
 
 type CatalogResponse = {
@@ -40,11 +46,6 @@ const TONE_BY_CATEGORY: Record<string, string> = {
   cover: "emerald",
   makeup: "rose",
 };
-
-function minHonorarium(tariffs?: { honorarium_rub: number }[]): number | null {
-  if (!tariffs?.length) return null;
-  return Math.min(...tariffs.map((t) => t.honorarium_rub));
-}
 
 function availabilityOf(item: CatalogItem, date?: string): { state: AvailabilityState; label: string } {
   const slots = item.open_slots ?? 0;
@@ -73,7 +74,7 @@ export function mapCatalogTalent(item: CatalogItem, date?: string): TalentItem {
     name: item.name,
     categoryCode: item.category,
     roleLabel: categoryLabel(item.category) || item.category,
-    honorariumFrom: minHonorarium(item.tariffs),
+    honorariumFrom: item.honorarium_from_rub ?? null,
     verified: Boolean(item.verified),
     availability: avail.state,
     availabilityLabel: avail.label,
@@ -89,7 +90,10 @@ export function mapCatalogVenue(item: CatalogItem): VenueItem {
     id: item.id,
     name: item.name,
     city: item.city,
-    honorariumFrom: minHonorarium(item.tariffs),
+    district: item.district,
+    address: item.address,
+    metro: item.metro,
+    honorariumFrom: item.honorarium_from_rub ?? null,
     availabilityLabel: synthetic ? "Календарь ориентировочный" : undefined,
   };
 }
@@ -107,22 +111,6 @@ export async function loadCatalog(
   return api<CatalogResponse>(`/catalog/search?${params.toString()}`, { signal });
 }
 
-export function budgetHintFromSelection(
-  talents: TalentItem[],
-  venues: VenueItem[],
-  draft: EventStudioDraft,
-): BudgetHint | null {
-  const selectedTalents = talents.filter((t) => draft.talentIds.includes(t.id));
-  const venue = venues.find((v) => v.id === draft.venueId);
-  const amounts = [
-    ...selectedTalents.map((t) => t.honorariumFrom).filter((n): n is number => n != null),
-    ...(venue?.honorariumFrom != null ? [venue.honorariumFrom] : []),
-  ];
-  if (!amounts.length) return null;
-  const minRub = amounts.reduce((sum, n) => sum + n, 0);
-  return { minRub, maxRub: Math.round(minRub * 1.28), isEstimate: true };
-}
-
 export type StoredDraft = {
   draft: EventStudioDraft;
   savedAt: string;
@@ -131,7 +119,7 @@ export type StoredDraft = {
 export function loadStoredDraft(): StoredDraft | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(DRAFT_KEY);
+    const raw = draftStorage().getItem(DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredDraft;
     if (!parsed.draft) return null;
@@ -146,12 +134,12 @@ export function loadStoredDraft(): StoredDraft | null {
 
 export function saveStoredDraft(draft: EventStudioDraft): StoredDraft {
   const payload: StoredDraft = { draft, savedAt: new Date().toISOString() };
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+  draftStorage().setItem(DRAFT_KEY, JSON.stringify(payload));
   return payload;
 }
 
 export function clearStoredDraft(): void {
-  localStorage.removeItem(DRAFT_KEY);
+  draftStorage().removeItem(DRAFT_KEY);
 }
 
 export function bumpDraftVersion(draft: EventStudioDraft): EventStudioDraft {
@@ -162,20 +150,13 @@ export function isDraftVersionConflict(local: EventStudioDraft, incoming: EventS
   return Boolean(incoming.version && local.version && incoming.version < local.version);
 }
 
-function eventIso(draft: EventStudioDraft): string {
-  const base = draft.date || moscowToday();
-  const time = draft.startsAt || "12:00";
-  return new Date(`${base}T${time}:00+03:00`).toISOString();
-}
-
-function talentCategoryCodes(talentIds: string[], talents: TalentItem[]): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const id of talentIds) {
-    const t = talents.find((item) => item.id === id);
-    if (!t) continue;
-    counts.set(t.categoryCode, (counts.get(t.categoryCode) || 0) + 1);
-  }
-  return counts;
+function eventInterval(draft: EventStudioDraft): { start: string; end: string } {
+  if (!draft.date || !draft.startsAt || !draft.endsAt) throw new Error("Укажите дату, начало и окончание события");
+  const start = new Date(`${draft.date}T${draft.startsAt}:00+03:00`);
+  const end = new Date(`${draft.date}T${draft.endsAt}:00+03:00`);
+  if (draft.endsNextDay) end.setUTCDate(end.getUTCDate() + 1);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) throw new Error("Окончание должно быть позже начала. Для события после полуночи отметьте следующий день.");
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 export function newSubmitIdempotencyKey(): string {
@@ -209,86 +190,45 @@ export function peekSubmitIdempotencyResult(idempotencyKey: string): string | nu
 
 export async function submitEventStudioDraft(
   draft: EventStudioDraft,
-  talents: TalentItem[],
   idempotencyKey: string,
 ): Promise<{ eventId: string; reused: boolean }> {
-  const cached = peekSubmitIdempotencyResult(idempotencyKey);
-  if (cached) {
-    return { eventId: cached, reused: true };
-  }
-
-  // Pin key before POST so a remount mid-flight keeps the same key.
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
-  }
-
+  // A cached event ID cannot prove that every selected participant received the request.
+  // Replay both create and individual request commands against durable server receipts.
+  const interval = eventInterval(draft);
   const me = await api<{ organizations: { id: string; kind: string }[]; active_organization_id?: string }>("/me");
-  const org =
-    me.organizations.find((o) => o.id === me.active_organization_id && o.kind === "customer") ||
-    me.organizations.find((o) => o.kind === "customer") ||
-    me.organizations[0];
+  const org = me.organizations.find((o) => o.id === me.active_organization_id && o.kind === "customer") || me.organizations.find((o) => o.kind === "customer");
   if (!org) throw new Error("Сначала войдите как заказчик");
-
-  // Re-check after await — concurrent retry may have finished the create.
-  const raced = peekSubmitIdempotencyResult(idempotencyKey);
-  if (raced) {
-    return { eventId: raced, reused: true };
-  }
-
-  const roleCounts = talentCategoryCodes(draft.talentIds, talents);
+  const selectedIds = [...new Set(draft.talentIds)];
+  const selected = await Promise.all(selectedIds.map((id) => api<{ id: string; category: string }>(`/artists/${id}`)));
+  const roleCounts = new Map<string, number>();
+  for (const profile of selected) roleCounts.set(profile.category, (roleCounts.get(profile.category) || 0) + 1);
   const requirements = [...roleCounts.entries()].map(([category_code, qty]) => ({ category_code, qty }));
   if (draft.venueId) requirements.push({ category_code: "venue", qty: 1 });
-
-  const created = await api<{ id: string; requirements?: { id: string; category_code: string }[] }>("/events", {
-    method: "POST",
-    body: JSON.stringify({
-      organization_id: org.id,
-      title: draft.title.trim() || draft.kind || "Событие",
-      city: draft.city || "Москва",
-      event_date: eventIso(draft),
-      guest_count: draft.guests || 50,
-      budget_rub: null,
-      requirements,
-      notes: [
-        `формат:${draft.kind}`,
-        draft.date ? `дата:${draft.date}` : "дата:позже",
-        `состав:${draft.talentIds.length || 0}`,
-        draft.venueId ? `площадка:${draft.venueId}` : "площадка:не выбрана",
-        `требования:${draft.requirements.join(",")}`,
-        `idempotency:${idempotencyKey}`,
-      ].join("; "),
-    }),
+  const payload = {
+    organization_id: org.id,
+    title: draft.title.trim() || draft.kind || "Событие",
+    city: draft.city || "Москва",
+    event_date: interval.start,
+    ends_at: interval.end,
+    event_type: draft.kind,
+    guest_count: draft.guests,
+    budget_rub: draft.budgetRub ?? null,
+    requirements,
+    notes: `требования:${draft.requirements.join(",")}`,
+  };
+  const created = await api<{ id: string; reused?: boolean; requirements: { id: string; category_code: string }[] }>("/events", {
+    method: "POST", body: JSON.stringify({ ...payload, idempotency_key: await eventCommandKey(idempotencyKey, { payload, artistIds: selectedIds, venueId: draft.venueId || null }) }),
   });
-
-  // Persist result immediately after create so a retry cannot POST another event,
-  // even if the /requests loop fails mid-way.
+  const reqByCategory = new Map((created.requirements || []).map((r) => [r.category_code, r.id]));
+  const requests = [
+    ...selected.map((profile) => ({ resource_type: "artist", resource_id: profile.id, requirement_id: reqByCategory.get(profile.category) })),
+    ...(draft.venueId ? [{ resource_type: "venue", resource_id: draft.venueId, requirement_id: reqByCategory.get("venue") }] : []),
+  ];
+  for (const body of requests) {
+    await api(`/events/${created.id}/requests`, { method: "POST", body: JSON.stringify({ ...body, idempotency_key: await eventCommandKey(created.id, body) }) });
+  }
   sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
   sessionStorage.setItem(`${IDEMPOTENCY_KEY}:result`, created.id);
-
-  const reqByCategory = new Map((created.requirements || []).map((r) => [r.category_code, r.id]));
-  for (const talentId of draft.talentIds) {
-    const talent = talents.find((t) => t.id === talentId);
-    if (!talent) continue;
-    await api(`/events/${created.id}/requests`, {
-      method: "POST",
-      body: JSON.stringify({
-        resource_type: "artist",
-        resource_id: talentId,
-        requirement_id: reqByCategory.get(talent.categoryCode) || undefined,
-      }),
-    });
-  }
-  if (draft.venueId) {
-    await api(`/events/${created.id}/requests`, {
-      method: "POST",
-      body: JSON.stringify({
-        resource_type: "venue",
-        resource_id: draft.venueId,
-        requirement_id: reqByCategory.get("venue") || undefined,
-      }),
-    });
-  }
-
   clearStoredDraft();
-  return { eventId: created.id, reused: false };
+  return { eventId: created.id, reused: Boolean(created.reused) };
 }

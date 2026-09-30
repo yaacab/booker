@@ -4,7 +4,11 @@ import { API_BASE, apiHealth, injectSession, seedRequestAwaitingOffer } from "./
 test("главная: бренд и поиск", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Букер" }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Показать свободных" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Талант найдёт своё событие." }),
+  ).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Найти артиста" }).first()).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: /Подобрать площадку/ })).toBeVisible();
 });
 
 test("юридический пакет опубликован как черновик", async ({ page }) => {
@@ -36,7 +40,9 @@ test("заявка → оффер: API seed, artist cabinet, Deal Room", async (
 
 test("студия события и каталог доступны", async ({ page }) => {
   await page.goto("/events/new");
-  await expect(page.getByRole("heading").first()).toBeVisible();
-  await page.goto("/search");
-  await expect(page.getByRole("heading", { name: /Свободные артисты/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Новая заявка" })).toBeVisible();
+  await page.goto("/search?kind=artist");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Найдите тех, кто нужен именно вам" }),
+  ).toBeVisible();
 });

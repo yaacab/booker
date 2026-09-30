@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, getActiveOrg } from "@/lib/api";
 import { loginHref } from "@/lib/next";
+import { readFavorites } from "@/lib/favoriteReads";
 
 export type FavoriteTargetType = "artist" | "venue";
 
@@ -37,7 +38,8 @@ export function FavoriteToggle({
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
-    if (!getToken()) {
+    const token = getToken(), org = getActiveOrg();
+    if (!token) {
       setSignedIn(false);
       setFavoriteId(null);
       setReady(true);
@@ -45,10 +47,9 @@ export function FavoriteToggle({
     }
     setSignedIn(true);
     try {
-      const res = await api<{ items: FavoriteItem[] }>(
-        `/favorites?target_type=${encodeURIComponent(targetType)}&target_id=${encodeURIComponent(targetId)}`,
-      );
-      const hit = res.items?.[0];
+      const items = await readFavorites();
+      if (getToken() !== token || getActiveOrg() !== org) return;
+      const hit = items.find(item=>item.target_type===targetType && item.target_id===targetId);
       setFavoriteId(hit?.id ?? null);
       setError("");
     } catch {

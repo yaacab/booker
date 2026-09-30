@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 
 
 def _setup(client):
@@ -10,6 +10,7 @@ def _setup(client):
     vh = auth_header(viewer["token"])
 
     cust_org = client.post("/orgs", json={"name": "Заказчик", "kind": "customer"}, headers=ch).json()
+    grant_team_plan(client, cust_org['id'])
     added = client.post(
         f"/orgs/{cust_org['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer"},

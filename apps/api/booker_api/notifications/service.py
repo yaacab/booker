@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 
+from booker_api.config import settings
 from booker_api.models import TeamMember, User
+from booker_api.notifications.inbox import enqueue_inbox
 from booker_api.notifications.registry import transport_for
 from booker_api.notifications.types import Channel, Notification
 
@@ -13,6 +15,8 @@ def notify(
 ) -> list[dict]:
     results: list[dict] = []
     for item in notifications:
+        if item.channel == Channel.IN_APP and settings.in_app_provider != "disabled":
+            enqueue_inbox(db, item)
         result = transport_for(item.channel).send(
             db,
             actor_user_id=actor_user_id,
@@ -32,8 +36,12 @@ def org_member_notifications(
     entity_type: str,
     entity_id: str,
     channels: tuple[Channel, ...] = (Channel.IN_APP, Channel.EMAIL),
+    roles: tuple[str, ...] | None = None,
 ) -> list[Notification]:
-    members = db.query(TeamMember).filter(TeamMember.organization_id == organization_id).all()
+    query = db.query(TeamMember).filter(TeamMember.organization_id == organization_id)
+    if roles is not None:
+        query = query.filter(TeamMember.role.in_(roles))
+    members = query.all()
     out: list[Notification] = []
     for member in members:
         user = db.get(User, member.user_id)

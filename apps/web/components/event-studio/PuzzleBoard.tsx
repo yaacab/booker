@@ -12,6 +12,7 @@ export type PuzzleSlot = {
 export type PuzzleBoardProps = {
   slots: PuzzleSlot[];
   reducedMotion?: boolean;
+  onSlotSelect?: (slot: PuzzleSlot) => void;
 };
 
 /** Flat / tab / blank — matches wooden reference interlocking (form only). */
@@ -73,11 +74,15 @@ function piecePath(col: number, row: number, sides: [Side, Side, Side, Side]): s
   const y = OY + row * H;
   const [top, right, bottom, left] = sides;
   return [
-    `M ${x} ${y}`,
-    hEdge(x, y, x + W, top, -1),
-    vEdge(x + W, y, y + H, right, 1),
-    hEdge(x + W, y + H, x, bottom, 1),
-    vEdge(x, y + H, y, left, -1),
+    `M ${x+10} ${y}`,
+    hEdge(x+10, y, x + W-10, top, -1),
+    `Q ${x+W} ${y} ${x+W} ${y+10}`,
+    vEdge(x + W, y+10, y + H-10, right, 1),
+    `Q ${x+W} ${y+H} ${x+W-10} ${y+H}`,
+    hEdge(x + W-10, y + H, x+10, bottom, 1),
+    `Q ${x} ${y+H} ${x} ${y+H-10}`,
+    vEdge(x, y + H-10, y+10, left, -1),
+    `Q ${x} ${y} ${x+10} ${y}`,
     "Z",
   ].join(" ");
 }
@@ -90,14 +95,10 @@ function labelPosition(index: number): { left: string; top: string } {
   const cx = OX + col * W + W / 2;
   const cy = OY + row * H + H / 2;
 
-  // Labels sit in gutters beside pieces — never drawn on chrome surfaces.
-  if (col === 0) return { left: `${((OX * 0.48) / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
-  if (col === 2) return { left: `${((vbW - OX * 0.48) / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
-  if (row === 0) return { left: `${(cx / vbW) * 100}%`, top: `${((OY * 0.42) / vbH) * 100}%` };
-  return { left: `${(cx / vbW) * 100}%`, top: `${((vbH - OY * 0.42) / vbH) * 100}%` };
+  return { left: `${(cx / vbW) * 100}%`, top: `${(cy / vbH) * 100}%` };
 }
 
-export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoardProps) {
+export default function PuzzleBoard({ slots, reducedMotion = false, onSlotSelect }: PuzzleBoardProps) {
   const gradientId = useId().replace(/:/g, "");
   const padded = useMemo(
     () =>
@@ -133,8 +134,6 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
     <div className={`puzzle-board${reducedMotion ? " puzzle-board--reduced" : ""}`}>
       <div
         className="puzzle-board-stage"
-        role="img"
-        aria-label="Сборка события: хромированный пазл из даты, площадки и ролей"
       >
         <svg
           className="puzzle-board-svg"
@@ -156,9 +155,9 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
                   y2="1"
                 >
                   <stop offset="0%" stopColor="var(--chrome-hi, #f2f4f7)" />
-                  <stop offset="38%" stopColor="var(--chrome-mid, #b8bec8)" />
+                  <stop offset="25%" stopColor="#f5fff9" /><stop offset="45%" stopColor="#7b9184" /><stop offset="49%" stopColor="#526b5a" /><stop offset="52%" stopColor="#f1fff1" />
                   <stop offset="62%" stopColor="var(--chrome-hi, #f2f4f7)" />
-                  <stop offset="100%" stopColor="var(--chrome-lo, #6e7582)" />
+                  <stop offset="83%" stopColor="#b2c9b5" /><stop offset="100%" stopColor="#effff0" />
                 </linearGradient>
               );
             })}
@@ -191,14 +190,15 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
                   .filter(Boolean)
                   .join(" ")}
               >
+                <path d={piecePath(col,row,sides)} transform="translate(0 7)" fill="#64796a" />
                 <path
                   d={piecePath(col, row, sides)}
-                  fill={filled ? `url(#${gradientId}-chrome-${i})` : "rgba(184, 190, 200, 0.08)"}
+                  fill={`url(#${gradientId}-chrome-${i})`}
                   stroke={filled ? "var(--chrome-mid, #b8bec8)" : "var(--chrome-lo, #6e7582)"}
                   strokeWidth={filled ? 1.6 : 1.4}
-                  strokeDasharray={filled ? undefined : "5 4"}
+                  strokeDasharray={undefined}
                   filter={filled ? `url(#${gradientId}-shadow)` : undefined}
-                  opacity={filled ? 1 : 0.55}
+                  opacity={filled ? 1 : 0.9}
                 />
                 {filled ? (
                   <path
@@ -223,14 +223,13 @@ export default function PuzzleBoard({ slots, reducedMotion = false }: PuzzleBoar
                 className={`puzzle-label puzzle-label--${side}${slot.filled ? " is-filled" : ""}`}
                 style={{ left: pos.left, top: pos.top }}
               >
-                <strong>{slot.label}</strong>
-                {slot.detail ? <span>{slot.detail}</span> : null}
+                {onSlotSelect ? <button type="button" onClick={() => onSlotSelect(slot)} aria-label={`${slot.label}: ${slot.detail || (slot.filled ? "выбрано" : "добавить")}`}><strong>{slot.label}</strong>{slot.detail ? <span>{slot.detail}</span> : null}</button> : <><strong>{slot.label}</strong>{slot.detail ? <span>{slot.detail}</span> : null}</>}
               </li>
             );
           })}
         </ul>
       </div>
-      {/* Текстовая версия для скринридеров: визуальные подписи скрыты под role="img". */}
+      {/* Состояние сборки доступно отдельно от интерактивных подписей. */}
       <ul className="sr-only">
         {padded.map((slot) => (
           <li key={`sr-${slot.id}`}>

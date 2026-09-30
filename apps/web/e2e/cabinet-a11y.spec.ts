@@ -18,7 +18,7 @@ const CABINET_ROLES: CabinetRole[] = [
     account: DEMO_ACCOUNTS.customer,
     orgKind: "customer",
     path: "/cabinet/customer",
-    heading: "Студия событий",
+    heading: "Привет, Анна!",
     dataCabinet: "customer",
   },
   {
@@ -26,7 +26,7 @@ const CABINET_ROLES: CabinetRole[] = [
     account: DEMO_ACCOUNTS.artist,
     orgKind: "artist",
     path: "/cabinet/performer",
-    heading: "Календарь исполнителя",
+    heading: "Кабинет артиста",
     dataCabinet: "performer",
   },
   {
@@ -34,7 +34,7 @@ const CABINET_ROLES: CabinetRole[] = [
     account: DEMO_ACCOUNTS.venue,
     orgKind: "venue",
     path: "/cabinet/venue",
-    heading: "Пульт площадки",
+    heading: "Кабинет площадки",
     dataCabinet: "venue",
   },
 ];
@@ -70,12 +70,11 @@ async function expectCabinetCoreA11y(page: Page, role: CabinetRole): Promise<voi
   await expect(focused).toHaveAccessibleName(/содержан/i);
 
   const skipToWidgets = page.getByRole("link", { name: "К виджетам кабинета" });
-  if (await skipToWidgets.count()) {
-    await skipToWidgets.focus();
-    await expect(skipToWidgets).toBeFocused();
-    await page.keyboard.press("Enter");
-    await expect(page.locator("#cabinet-widgets")).toBeInViewport();
-  }
+  await expect(skipToWidgets).toHaveCount(1);
+  await skipToWidgets.focus();
+  await expect(skipToWidgets).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("region", { name: "Виджеты кабинета" })).toBeInViewport();
 
   await expect(page.getByRole("button", { name: "Выйти из аккаунта" })).toBeVisible();
 }
@@ -95,7 +94,7 @@ test.describe("Cabinet a11y §7.5", () => {
     await injectSession(page, session.token, org.id);
     await page.goto("/cabinet/customer");
 
-    await expect(page.getByRole("heading", { level: 1, name: "Студия событий" })).toBeVisible({
+    await expect(page.getByRole("heading", { level: 1, name: "Привет, Анна!" })).toBeVisible({
       timeout: 15_000,
     });
 
@@ -106,20 +105,14 @@ test.describe("Cabinet a11y §7.5", () => {
     await expect(page.locator(":focus")).toHaveAttribute("href", "#content");
 
     const skipToWidgets = page.getByRole("link", { name: "К виджетам кабинета" });
-    if (await skipToWidgets.isVisible()) {
-      await skipToWidgets.focus();
-      await page.keyboard.press("Enter");
-      await expect(page.locator("#cabinet-widgets")).toBeInViewport();
-    }
+    await expect(skipToWidgets).toHaveCount(1);
+    await skipToWidgets.focus();
+    await expect(skipToWidgets).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("region", { name: "Виджеты кабинета" })).toBeInViewport();
 
     const widgetsRegion = page.getByRole("region", { name: "Виджеты кабинета" });
-    if (await widgetsRegion.isVisible()) {
-      const firstWidgetLink = widgetsRegion.locator(".dashboard-list a").first();
-      if (await firstWidgetLink.count()) {
-        await firstWidgetLink.focus();
-        await expect(firstWidgetLink).toBeFocused();
-      }
-    }
+    await expect(widgetsRegion).toBeVisible();
 
     await expect(page.getByRole("button", { name: "Выйти из аккаунта" })).toBeVisible();
   });
@@ -136,18 +129,17 @@ test.describe("Cabinet a11y §7.5", () => {
     await injectSession(page, session.token, org.id);
     await page.goto("/cabinet/performer");
 
-    await expect(page.getByRole("heading", { level: 1, name: "Календарь исполнителя" })).toBeVisible({
+    await expect(page.getByRole("heading", { level: 1, name: "Кабинет артиста" })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByRole("heading", { level: 2, name: "Свободные слоты" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Открытые слоты" })).toBeVisible();
 
     const widget = page.locator("section.dashboard-widget").first();
-    if (await widget.count()) {
-      const labelledBy = await widget.getAttribute("aria-labelledby");
-      expect(labelledBy).toBeTruthy();
-      if (labelledBy) {
-        await expect(page.locator(`#${labelledBy}`)).toBeVisible();
-      }
+    await expect(widget).toBeVisible();
+    const labelledBy = await widget.getAttribute("aria-labelledby");
+    expect(labelledBy).toBeTruthy();
+    if (labelledBy) {
+      await expect(page.locator(`#${labelledBy}`)).toBeVisible();
     }
   });
 
@@ -158,12 +150,11 @@ test.describe("Cabinet a11y §7.5", () => {
     await expectCabinetCoreA11y(page, CABINET_ROLES[2]);
 
     const widget = page.locator("section.dashboard-widget").first();
-    if (await widget.count()) {
-      const labelledBy = await widget.getAttribute("aria-labelledby");
-      expect(labelledBy).toBeTruthy();
-      if (labelledBy) {
-        await expect(page.locator(`#${labelledBy}`)).toBeVisible();
-      }
+    await expect(widget).toBeVisible();
+    const labelledBy = await widget.getAttribute("aria-labelledby");
+    expect(labelledBy).toBeTruthy();
+    if (labelledBy) {
+      await expect(page.locator(`#${labelledBy}`)).toBeVisible();
     }
   });
 

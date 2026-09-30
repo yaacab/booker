@@ -6,7 +6,7 @@ export type VenueRequest = {
   offer_id: string | null;
   booking_id: string | null;
   slot_id: string | null;
-  honorarium_rub: number;
+  honorarium_rub: number | null;
 };
 
 export type VenueBooking = {
@@ -22,6 +22,8 @@ export type VenueDealRoom = {
   status: string;
   quote: {
     quote_id: string;
+    valid_until?: string | null;
+    acceptance_expired?: boolean;
     honorarium_rub: number;
     total_rub: number;
     customer_ack: boolean;

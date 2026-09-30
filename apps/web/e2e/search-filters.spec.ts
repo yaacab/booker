@@ -1,27 +1,87 @@
 import { expect, test } from "@playwright/test";
+import { API_BASE, apiHealth, login } from "./helpers";
+
+type PublicVenue = {
+  id: string;
+  name: string;
+  verified: boolean;
+  availability_mode?: string;
+  partnership_status?: string;
+  cover_photo?: { url: string; rights_status: string } | null;
+};
+
+type ResearchVenue = { id: string; name: string };
 
 test.describe("Wave 1 search / home", () => {
-  test("home dual search: venue guests → catalog", async ({ page }) => {
+  test("главная ведёт в каталог проверенных площадок", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Площадка" }).click();
-    await expect(page.getByLabel("Гостей от")).toBeVisible();
-    await page.getByRole("button", { name: "Показать свободных" }).click();
+    const heroStep = page
+      .getByRole("group", { name: "Как складывается выступление" })
+      .getByRole("button", { name: /Событие/ });
+    await heroStep.click();
+    await expect(heroStep).toHaveAttribute("aria-pressed", "true");
+
+    const venueLink = page.getByRole("main").getByRole("link", { name: /Подобрать площадку/ });
+    await expect(venueLink).toHaveAttribute("href", "/search?kind=venue");
+    await venueLink.click();
     await expect(page).toHaveURL(/kind=venue/);
-    await expect(page).toHaveURL(/guests=80/);
-    await expect(page.getByRole("heading", { name: "Свободные артисты и площадки" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Найдите площадку для вашего события" }),
+    ).toBeVisible();
+    await expect(page.locator("aside.catalog-filters")).toBeVisible();
+    await expect(page.getByText("Это подборка из открытых источников", { exact: false })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Клуб Сигнал" }).first()).toBeVisible();
   });
 
-  test("catalog filters expose format and budget fields", async ({ page }) => {
+  test("каталог артистов показывает только относящиеся к артистам фильтры", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/search?city=Москва&kind=artist");
+    await expect(page.getByRole("radio", { name: "Артисты" })).toBeChecked();
     await expect(page.getByLabel("Формат (исполнитель)")).toBeVisible();
     await expect(page.getByLabel("Бюджет до, ₽")).toBeVisible();
-    await expect(page.getByLabel("Гостей от (зал)")).toBeVisible();
+    await expect(page.getByLabel("Гостей от", { exact: true })).toHaveCount(0);
   });
 
-  test("E03: synthetic venues never show confirmed-free chip as sole claim", async ({ page }) => {
-    await page.goto("/search?city=Москва&kind=venue");
-    const synth = page.getByText("календарь ориентировочный").first();
-    await expect(synth).toBeVisible({ timeout: 20_000 });
+  test("research и synthetic площадки изолированы от публичного каталога", async ({ request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+
+    const admin = await login(request, "admin@booker.test");
+    const researchResponse = await request.get(
+      `${API_BASE}/catalog/demo/venues?city=${encodeURIComponent("Москва")}&limit=500`,
+      { headers: { Authorization: `Bearer ${admin.token}` } },
+    );
+    expect(researchResponse.ok()).toBeTruthy();
+    const research = (await researchResponse.json()) as {
+      mode: string;
+      count: number;
+      items: ResearchVenue[];
+    };
+    expect(research.mode).toBe("investor_demo_research");
+    expect(research.count).toBeGreaterThan(0);
+    expect(research.items.length).toBe(research.count);
+
+    const publicResponse = await request.get(
+      `${API_BASE}/catalog/search?city=${encodeURIComponent("Москва")}&kind=venue`,
+    );
+    expect(publicResponse.ok()).toBeTruthy();
+    const publicVenues = ((await publicResponse.json()) as { venues?: PublicVenue[] }).venues ?? [];
+    const publicIds = new Set(publicVenues.map((venue) => venue.id));
+
+    expect(publicVenues.some((venue) => venue.name === "Клуб Сигнал")).toBe(true);
+
+    expect(research.items.filter((venue) => publicIds.has(venue.id))).toEqual([]);
+    expect(
+      publicVenues.filter((venue) =>
+        ["research", "synthetic"].includes(venue.availability_mode ?? ""),
+      ),
+    ).toEqual([]);
+    for (const venue of publicVenues) {
+      expect(venue.verified, `${venue.name}: verified`).toBe(true);
+      expect(venue.availability_mode, `${venue.name}: owner calendar`).toBe("owner");
+      expect(["verified", "partner"], `${venue.name}: partnership`).toContain(
+        venue.partnership_status,
+      );
+      expect(venue.cover_photo, `${venue.name}: publishable media`).toBeTruthy();
+    }
   });
 });

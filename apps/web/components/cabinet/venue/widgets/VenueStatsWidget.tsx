@@ -16,7 +16,7 @@ export function VenueStatsWidget({ stats, requestCount }: Props) {
   return (
     <DashboardWidget
       title="Бронирования"
-      hint="Сводка по /bookings — просмотры и воронка появятся позже"
+      hint="Заявки, подтверждённые и завершённые бронирования"
       accent="venue"
       span="full"
       isEmpty={stats.total === 0 && requestCount === 0}

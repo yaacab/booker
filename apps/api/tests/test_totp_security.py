@@ -55,12 +55,11 @@ def test_refund_requires_valid_totp_code(client):
         },
     )
     admin = _promote_admin(client, "totp-refund@booker.test", totp=TEST_TOTP_SECRET)
-    other = _promote_admin(client, "totp-refund2@booker.test")
     bad = client.post(
         "/admin/refunds",
         json={
             "payment_id": ctx["payment_id"],
-            "approver_user_id": other["user_id"],
+            "reason": "Проверка кода возврата", "idempotency_key": "totp-refund-key",
             "totp": "000000",
         },
         headers=auth_header(admin["token"]),
@@ -70,7 +69,7 @@ def test_refund_requires_valid_totp_code(client):
         "/admin/refunds",
         json={
             "payment_id": ctx["payment_id"],
-            "approver_user_id": other["user_id"],
+            "reason": "Проверка кода возврата", "idempotency_key": "totp-refund-key",
             "totp": totp_code(),
         },
         headers=auth_header(admin["token"]),

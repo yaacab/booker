@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PaymentReconciliation } from "@/components/admin/PaymentReconciliation";
 import { api, getToken } from "@/lib/api";
 import { formatWhen } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -36,18 +37,20 @@ type Dashboards = {
 };
 type PeriodMetrics = Record<string, Metric | PaymentMetric | Dashboards> & { dashboards?: Dashboards };
 type Metrics = { periods: { "7": PeriodMetrics; "30": PeriodMetrics } };
+type VenueCatalogRow = { id: string; name: string; address: string; source_type: string; partnership_status: string; is_claimed: boolean; moderation_status: string; completeness_score: number; data_freshness_status: string };
+type VenueCatalogReport = { total: number; automated: number; unverified: number; verified: number; partners: number; published: number; needs_review: number };
 
 const ACTION: Record<string, string> = {
   "slot.created": "слот",
   "request.created": "заявка",
   "requirement.created": "требование",
   "offer.created": "оффер",
-  "offer.ack": "кивок",
+  "offer.ack": "подтверждение предложения",
   "offer.version": "новая версия цены",
   "hold.created": "hold",
   "dispute.opened": "спор",
   "verification.decided": "верификация",
-  "workspace.switched": "смена workspace",
+  "workspace.switched": "смена рабочего пространства",
   "service.created": "услуга",
   "hall.created": "зал",
 };
@@ -55,7 +58,7 @@ const ACTION: Record<string, string> = {
 const FUNNEL_LABELS: Record<string, string> = {
   "request.created": "Заявки",
   "offer.created": "Офферы",
-  "workspace.switched": "Смены workspace",
+  "workspace.switched": "Смены пространства",
   "service.created": "Услуги",
   "hall.created": "Залы",
   "client.event": "Клиентские события",
@@ -74,6 +77,8 @@ const FUNNEL_STEP_LABELS: Record<string, string> = {
 };
 
 export default function AdminPage() {
+  const [section, setSection] = useState("queue");
+  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [queue, setQueue] = useState<Queue | null>(null);
   const [audit, setAudit] = useState<Audit["items"]>([]);
@@ -85,6 +90,10 @@ export default function AdminPage() {
   const [externalPaymentId, setExternalPaymentId] = useState("");
   const [externalBusy, setExternalBusy] = useState(false);
   const [externalNotice, setExternalNotice] = useState("");
+  const [venueRows, setVenueRows] = useState<VenueCatalogRow[]>([]);
+  const [venueReport, setVenueReport] = useState<VenueCatalogReport | null>(null);
+  const [catalogBusy, setCatalogBusy] = useState<string | null>(null);
+  const [venueComments, setVenueComments] = useState<Record<string, string>>({});
 
   async function load() {
     if (!getToken()) {
@@ -92,16 +101,20 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [me, q, a, m] = await Promise.all([
+      const [me, q, a, m, catalogRows, catalogReport] = await Promise.all([
         api<{ totp_enabled?: boolean }>("/me"),
         api<Queue>("/admin/verifications"),
         api<Audit>("/admin/audit"),
         api<Metrics>("/admin/metrics"),
+        api<{ items: VenueCatalogRow[] }>("/admin/venue-catalog/venues?limit=50"),
+        api<VenueCatalogReport>("/admin/venue-catalog/report"),
       ]);
       setTotpEnabled(Boolean(me.totp_enabled));
       setQueue(q);
       setAudit(a.items.slice(0, 20));
       setMetrics(m);
+      setVenueRows(catalogRows.items);
+      setVenueReport(catalogReport);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Нет доступа");
@@ -163,15 +176,53 @@ export default function AdminPage() {
     }
   }
 
+  async function changeVenueStatus(id: string, partnershipStatus: string) {
+    setCatalogBusy(id + ":status");
+    try {
+      await api("/admin/venue-catalog/venues/" + encodeURIComponent(id) + "/status", {
+        method: "POST",
+        body: JSON.stringify({
+          partnership_status: partnershipStatus,
+          comment: venueComments[id]?.trim() || "Изменено оператором",
+        }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось изменить статус площадки");
+    } finally {
+      setCatalogBusy(null);
+    }
+  }
+
+  async function changeVenueModeration(id: string, moderationStatus: string) {
+    setCatalogBusy(id + ":moderation");
+    try {
+      await api("/admin/venue-catalog/venues/" + encodeURIComponent(id) + "/moderation", {
+        method: "POST",
+        body: JSON.stringify({
+          moderation_status: moderationStatus,
+          comment: venueComments[id]?.trim() || "Изменено оператором",
+        }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось изменить модерацию");
+    } finally {
+      setCatalogBusy(null);
+    }
+  }
+
   function renderTargets(targetType: "artist" | "venue", title: string, items: VerifyTarget[]) {
+    const filtered = items.filter(item => item.name.toLocaleLowerCase("ru").includes(search.toLocaleLowerCase("ru")));
     return (
-      <>
-        <h3>{title}</h3>
-        {items.map((item) => {
+      <section className="operator-target-group">
+        <h3>{title} <span>{items.length}</span></h3>
+        {filtered.map((item) => {
           const key = `${targetType}:${item.id}`;
           return (
-            <p key={item.id}>
-              {item.name} · {item.status === "pending" ? "ожидает проверки" : item.status}{" "}
+            <div className="operator-target" key={item.id}>
+              <div><Link href={`/${targetType === "artist" ? "artists" : "venues"}/${encodeURIComponent(item.id)}`}>{item.name}</Link><span className="operator-status">{item.status === "pending" ? "Ожидает проверки" : item.status}</span></div>
+              <div className="operator-target-actions">
               <button type="button" disabled={busyKey === key} onClick={() => void decide(targetType, item.id, true)}>
                 Подтвердить
               </button>{" "}
@@ -183,82 +234,89 @@ export default function AdminPage() {
               >
                 Отказать
               </button>
-            </p>
+              </div>
+            </div>
           );
         })}
-        {items.length === 0 ? <p>Очередь пуста.</p> : null}
-      </>
+        {filtered.length === 0 ? <p className="operator-empty">{items.length ? "Нет профилей с таким именем." : "Сейчас нет профилей для проверки."}</p> : null}
+      </section>
     );
   }
 
+  const sections = [
+    ["queue", "Проверка профилей"], ["venues", "Каталог площадок"], ["audit", "Журнал действий"],
+    ["metrics", "Статистика"], ["payment", "Внешняя оплата"], ["security", "Второй фактор"],
+  ];
+
   return (
-    <main>
-      <p className="kicker">Операторский контур</p>
-      <h1>Пульт управления</h1>
-      <p className="timeline">Спорные ситуации рассматривает оператор. Действия сохраняются в журнале аудита.</p>
-      {error ? (
-        <p>
-          {error}. <Link href={loginHref("/admin")}>Войти</Link>
-        </p>
-      ) : null}
-      <div className="grid">
-        <article className="card tint">
-          <h2>Второй фактор</h2>
-          {totpEnabled ? (
-            <p className="timeline">TOTP включён. Для возвратов укажите код в запросе.</p>
-          ) : (
-            <form onSubmit={enableTotp} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
-              <p className="timeline">Пилот: задайте 6+ символов как код второго фактора.</p>
-              <label>
-                Код TOTP
-                <input value={totpSecret} onChange={(e) => setTotpSecret(e.target.value)} minLength={6} required />
-              </label>
-              <button type="submit" disabled={totpBusy}>
-                {totpBusy ? "Сохраняем…" : "Включить 2FA"}
-              </button>
-            </form>
-          )}
-        </article>
-        <article className="card">
-          <h2>External-оплата</h2>
-          <form onSubmit={confirmExternalPayment} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
-            <label>
-              Payment id
-              <input
-                value={externalPaymentId}
-                onChange={(e) => setExternalPaymentId(e.target.value)}
-                required
-              />
-            </label>
-            <button type="submit" disabled={externalBusy}>
-              {externalBusy ? "Подтверждаем…" : "Подтвердить external-оплату"}
-            </button>
-            {externalNotice ? <p className="timeline">{externalNotice}</p> : null}
-          </form>
-        </article>
-        <article className="card">
-          <h2>Верификация</h2>
-          {queue ? (
-            <>
-              {renderTargets("artist", "Артисты", queue.artists ?? [])}
-              {renderTargets("venue", "Площадки", queue.venues ?? [])}
-            </>
-          ) : !error ? (
-            <p className="timeline">Загрузка очереди…</p>
+    <main className="operator-reference">
+      <header className="operator-heading"><div><p className="eyebrow">Рабочее пространство</p><h1>Панель оператора</h1><p>Проверки профилей, статистика и история действий в Букере.</p><div className="commerce-actions"><Link className="btn secondary" href="/admin/refunds">Возвраты</Link><Link className="btn secondary" href="/admin/commerce">Тарифы и подписки</Link></div></div><button type="button" className="btn secondary" onClick={() => void load()}>Обновить данные</button></header>
+      {error && <p className="operator-error" role="alert">{error}. <Link href={loginHref("/admin")}>Войти в аккаунт оператора</Link></p>}
+      <dl className="operator-summary">
+        <div><dt>В очереди</dt><dd>{queue ? queue.queue.length : "—"}</dd><span>На рассмотрении</span></div>
+        <div><dt>Артисты</dt><dd>{queue ? queue.artists.length : "—"}</dd><span>Проверка профилей</span></div>
+        <div><dt>Площадки</dt><dd>{queue ? (queue.venues ?? []).length : "—"}</dd><span>Проверка профилей</span></div>
+        <div><dt>Записи журнала</dt><dd>{queue ? audit.length : "—"}</dd><span>Последние действия</span></div>
+      </dl>
+      <div className="operator-workspace">
+        <nav className="operator-nav" aria-label="Разделы панели оператора">
+          {sections.map(([id, label]) => <button key={id} type="button" aria-pressed={section === id} aria-controls={`operator-${id}`} onClick={() => setSection(id)}>{label}</button>)}
+          <Link href="/cabinet">Мой кабинет</Link>
+          <Link href="/support">Поддержка</Link>
+        </nav>
+        <div className="operator-panels">
+<section id="operator-venues" hidden={section !== "venues"} aria-label="Каталог площадок" className="operator-panel">        <article className="card" style={{ gridColumn: "1 / -1" }}>
+          <h2>Каталог площадок</h2>
+          {venueReport ? (
+            <p className="timeline">
+              Всего: {venueReport.total} · опубликовано: {venueReport.published} · на проверке: {venueReport.needs_review} · подтверждено: {venueReport.verified} · партнеры: {venueReport.partners}
+            </p>
           ) : null}
-        </article>
-        <article className="card">
-          <h2>Споры</h2>
-          <p>Категория и материалы поступают из Deal Room. Решение принимает оператор.</p>
-        </article>
-        <article className="card tint">
-          <h2>Риск</h2>
-          <p>Прямой перевод вне платформы, просроченный hold, отказ платежа — в журнале.</p>
-        </article>
-        <article className="card">
-          <h2>Поддержка</h2>
-          <p>Пилот: живой оператор, цель ответа в рабочее окно — 30 минут на срыв даты.</p>
-        </article>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr><th>Площадка</th><th>Источник</th><th>Сотрудничество</th><th>Подтверждена</th><th>Качество</th><th>Комментарий</th><th>Модерация</th></tr></thead>
+              <tbody>
+                {venueRows.map((row) => (
+                  <tr key={row.id}>
+                    <td><strong>{row.name}</strong><br /><span className="timeline">{row.address}</span></td>
+                    <td>{row.source_type === "automated_import" ? "Автоматический импорт" : row.source_type}</td>
+                    <td>
+                      <select value={row.partnership_status} disabled={catalogBusy?.startsWith(row.id)} onChange={(e) => void changeVenueStatus(row.id, e.target.value)}>
+                        <option value="unverified_listing">Нет договоренности</option>
+                        <option value="claimed">Карточка заявлена</option>
+                        <option value="verified">Данные подтверждены</option>
+                        <option value="partner">Партнер</option>
+                      </select>
+                    </td>
+                    <td>{row.is_claimed ? "Да" : "Нет"}</td>
+                    <td>{row.completeness_score}% · {row.data_freshness_status}</td>
+                    <td>
+                      <input
+                        aria-label={"Комментарий к " + row.name}
+                        value={venueComments[row.id] ?? ""}
+                        onChange={(e) => setVenueComments((current) => ({ ...current, [row.id]: e.target.value }))}
+                        placeholder="Например: представитель подтвердил данные"
+                      />
+                    </td>
+                    <td>
+                      <button type="button" disabled={catalogBusy?.startsWith(row.id) || row.moderation_status === "published"} onClick={() => void changeVenueModeration(row.id, "published")}>Опубликовать</button>{" "}
+                      <button type="button" className="secondary" disabled={catalogBusy?.startsWith(row.id) || row.moderation_status === "needs_review"} onClick={() => void changeVenueModeration(row.id, "needs_review")}>На проверку</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article></section>
+          <section id="operator-queue" hidden={section !== "queue"} aria-label="Проверка профилей" className="operator-panel">
+            <div className="operator-panel-heading"><h2>Проверка профилей</h2><label>Найти профиль<input type="search" placeholder="Имя или название" value={search} onChange={e => setSearch(e.target.value)} /></label></div>
+            {queue ? <>{renderTargets("artist", "Артисты", queue.artists ?? [])}{renderTargets("venue", "Площадки", queue.venues ?? [])}</> : <p>{error ? "Очередь доступна после входа оператора." : "Загружаем очередь…"}</p>}
+          </section>
+          <section id="operator-audit" hidden={section !== "audit"} aria-label="Журнал действий" className="operator-panel">
+            <h2>Журнал действий</h2><p>Последние 20 записей. Действия оператора сохраняются автоматически.</p>
+            {audit.length ? <div className="operator-table-scroll" tabIndex={0} role="region" aria-label="Записи журнала"><table><thead><tr><th scope="col">Действие</th><th scope="col">Объект</th><th scope="col">Дата</th></tr></thead><tbody>{audit.map(row => <tr key={row.id}><td>{ACTION[row.action] || row.action}</td><td>{row.entity_type}</td><td>{formatWhen(row.created_at)}</td></tr>)}</tbody></table></div> : <p>{error ? "Журнал доступен после входа оператора." : "Пока нет записей для отображения."}</p>}
+          </section>
+          <section id="operator-metrics" hidden={section !== "metrics"} aria-label="Статистика" className="operator-panel">
         <article className="card">
           <h2>Воронка пилота</h2>
           <p className="timeline">Агрегаты из журнала аудита за 7 и 30 дней.</p>
@@ -290,7 +348,7 @@ export default function AdminPage() {
               ))}
             </div>
           ) : (
-            <p>Загрузка метрик…</p>
+            <p>{error ? "Метрики недоступны." : "Загрузка метрик…"}</p>
           )}
         </article>
         {metrics?.periods["7"]?.dashboards ? (
@@ -347,16 +405,50 @@ export default function AdminPage() {
             })}
           </article>
         ) : null}
+
+          </section>
+          <section id="operator-payment" hidden={section !== "payment"} aria-label="Внешняя оплата" className="operator-panel">
+        <PaymentReconciliation />
         <article className="card">
-          <h2>Аудит</h2>
-          <ul>
-            {audit.map((row) => (
-              <li key={row.id} className="mono">
-                {ACTION[row.action] || row.action} · {row.entity_type} · {formatWhen(row.created_at)}
-              </li>
-            ))}
-          </ul>
+          <h2>Внешняя оплата</h2>
+          <form onSubmit={confirmExternalPayment} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
+            <label>
+              Идентификатор платежа
+              <input
+                value={externalPaymentId}
+                onChange={(e) => setExternalPaymentId(e.target.value)}
+                required
+              />
+            </label>
+            <button type="submit" disabled={externalBusy}>
+              {externalBusy ? "Подтверждаем…" : "Подтвердить внешнюю оплату"}
+            </button>
+            {externalNotice ? <p className="timeline">{externalNotice}</p> : null}
+          </form>
         </article>
+
+          </section>
+          <section id="operator-security" hidden={section !== "security"} aria-label="Второй фактор" className="operator-panel">
+        <article className="card tint">
+          <h2>Второй фактор</h2>
+          {totpEnabled ? (
+            <p className="timeline">TOTP включён. Для возвратов укажите код в запросе.</p>
+          ) : (
+            <form onSubmit={enableTotp} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
+              <p className="timeline">Пилот: задайте 6+ символов как код второго фактора.</p>
+              <label>
+                Код TOTP
+                <input type="password" autoComplete="off" value={totpSecret} onChange={(e) => setTotpSecret(e.target.value)} minLength={6} required />
+              </label>
+              <button type="submit" disabled={totpBusy}>
+                {totpBusy ? "Сохраняем…" : "Включить 2FA"}
+              </button>
+            </form>
+          )}
+        </article>
+
+          </section>
+        </div>
       </div>
     </main>
   );

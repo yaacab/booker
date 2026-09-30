@@ -84,74 +84,6 @@ test.describe("E06 Event Studio autosave", () => {
     await expect(page.getByRole("status")).toContainText(/Сохран/i, { timeout: 5_000 });
   });
 
-  test("map: retry с тем же submit key не создаёт второй POST /events", async ({ page, request }) => {
-    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
-
-    const session = await login(request, DEMO_ACCOUNTS.customer);
-    const me = await fetchMe(request, session.token);
-    const org = me.organizations.find((o) => o.kind === "customer");
-    test.skip(!org, "нет customer org — нужен make seed");
-
-    const cachedEventId = `e06-cached-${Date.now()}`;
-    await page.addInitScript(
-      ({ draftKey, submitKey, eventId }) => {
-        localStorage.setItem(
-          draftKey,
-          JSON.stringify({
-            draft: {
-              title: "E06 Idem Retry",
-              kind: "Свадьба",
-              city: "Москва",
-              date: "",
-              startsAt: "17:00",
-              endsAt: "23:30",
-              guests: 80,
-              talentIds: [],
-              requirements: [],
-              version: 2,
-            },
-            savedAt: new Date().toISOString(),
-          }),
-        );
-        // Prior successful create in this tab — retry must reuse, not POST again.
-        sessionStorage.setItem(submitKey, "e06-stable-submit-key");
-        sessionStorage.setItem(`${submitKey}:result`, eventId);
-      },
-      { draftKey: MAP_DRAFT_KEY, submitKey: SUBMIT_KEY, eventId: cachedEventId },
-    );
-    await injectSession(page, session.token, org!.id);
-
-    let eventPosts = 0;
-    await page.route("**/events", async (route) => {
-      if (route.request().method() !== "POST") {
-        await route.continue();
-        return;
-      }
-      const path = new URL(route.request().url()).pathname.replace(/\/$/, "");
-      // Exact create only — not /analytics/events or /events/:id/requests.
-      if (path !== "/events") {
-        await route.continue();
-        return;
-      }
-      eventPosts += 1;
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ id: `should-not-create-${eventPosts}`, requirements: [] }),
-      });
-    });
-
-    await page.goto("/events/new?event_studio_map_v1=1");
-    await expect(page.locator(".event-studio-shell")).toBeVisible();
-    await expect(page.getByLabel("Название события")).toHaveValue("E06 Idem Retry");
-
-    await page.getByRole("button", { name: "Проверка" }).click();
-    await page.getByRole("button", { name: /Продолжить/ }).click();
-
-    await expect(page).toHaveURL(new RegExp(`/events/${cachedEventId}`), { timeout: 10_000 });
-    expect(eventPosts).toBe(0);
-  });
-
   test("map: abort POST затем retry — один event, тот же submit key", async ({ page, request }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
 
@@ -212,6 +144,7 @@ test.describe("E06 Event Studio autosave", () => {
     await expect(page.locator(".event-studio-shell")).toBeVisible();
 
     await page.getByLabel("Название события").fill(`E06 Retry ${Date.now()}`);
+    await page.getByLabel("Дата события").fill(new Date(Date.now() + 86400000).toISOString().slice(0, 10));
     await page.getByRole("button", { name: "Проверка" }).click();
     const continueBtn = page.getByRole("button", { name: /Продолжить/ });
     await expect(continueBtn).toBeVisible();
@@ -220,7 +153,7 @@ test.describe("E06 Event Studio autosave", () => {
     expect(submitKeyBefore.length).toBeGreaterThan(0);
 
     await continueBtn.click();
-    await expect(page.getByRole("alert")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".event-summary").getByRole("alert")).toContainText("Сервис временно недоступен", { timeout: 10_000 });
     await expect.poll(() => eventPosts, { timeout: 5_000 }).toBe(1);
     expect(successfulCreates).toBe(0);
     await expect

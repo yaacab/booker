@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken, trackClientEvent } from "@/lib/api";
 import { moscowToday } from "@/lib/format";
+import { eventCommandError } from "@/lib/eventCommands";
 import { loginHref } from "@/lib/next";
 import {
-  budgetHintFromSelection,
   bumpDraftVersion,
   clearSubmitIdempotency,
   EVENT_STUDIO_DRAFT_STORAGE_KEY,
@@ -130,7 +130,6 @@ export default function EventStudioShell() {
     return () => window.clearTimeout(timer);
   }, [hydrated, reloadCatalog]);
 
-  const budgetHint = useMemo(() => budgetHintFromSelection(talents, venues, draft), [talents, venues, draft]);
 
   async function handleContinue() {
     if (submitLockRef.current) return;
@@ -142,7 +141,8 @@ export default function EventStudioShell() {
       setSubmitError("Укажите название события.");
       return;
     }
-    if (draft.date && draft.date.slice(0, 10) < moscowToday()) {
+    if (!draft.date) { setSubmitError("Укажите дату события."); return; }
+    if (draft.date.slice(0, 10) < moscowToday()) {
       setSubmitError("Выберите текущую или будущую дату.");
       return;
     }
@@ -153,13 +153,13 @@ export default function EventStudioShell() {
       if (!idempotencyRef.current) {
         idempotencyRef.current = getOrCreateSubmitIdempotencyKey();
       }
-      const { eventId, reused } = await submitEventStudioDraft(draft, talents, idempotencyRef.current);
+      const { eventId, reused } = await submitEventStudioDraft(draft, idempotencyRef.current);
       if (reused) {
         setSubmitError("Заявка уже отправлена — открываем событие.");
       }
       router.push(`/events/${eventId}`);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Не удалось отправить");
+      setSubmitError(eventCommandError(err));
     } finally {
       submitLockRef.current = false;
       setSubmitting(false);
@@ -169,9 +169,11 @@ export default function EventStudioShell() {
   if (!hydrated) {
     return (
       <main className="event-studio-shell">
-        <p className="kicker">Event Studio Map</p>
-        <h1 className="event-studio-loading-title">Загрузка карты события</h1>
-        <div className="skeleton" style={{ minHeight: 240 }} />
+        <div className="studio-loading-panel" aria-busy="true">
+          <p className="studio-eyebrow">Конструктор события</p>
+          <h1 className="event-studio-loading-title">Загружаем ваши планы</h1>
+          <div className="skeleton" style={{ minHeight: 240 }} />
+        </div>
       </main>
     );
   }
@@ -184,7 +186,6 @@ export default function EventStudioShell() {
       }
       talents={talents}
       venues={venues}
-      budgetHint={budgetHint}
       loadingTalents={loadingTalents}
       talentsError={talentsError}
       saveStatus={saveStatus}

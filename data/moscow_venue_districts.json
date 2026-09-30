@@ -1,0 +1,2316 @@
+{
+  "boundary_source": "https://www.openstreetmap.org/copyright",
+  "boundary_timestamp": "2026-05-31T22:37:44Z",
+  "coordinate_source": "Individual SpeedRent source cards, data-coords attribute",
+  "checked_at": "2026-09-11",
+  "items": [
+    {
+      "id": "speedrent:9249822",
+      "source_url": "https://www.speedrent.ru/venue/9249822",
+      "lat": 55.7845702,
+      "lon": 37.6721201,
+      "district_id": "1257218",
+      "district": "Красносельский"
+    },
+    {
+      "id": "speedrent:249787",
+      "source_url": "https://www.speedrent.ru/venue/249787",
+      "lat": 55.757592,
+      "lon": 37.63288,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:4104387",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:8597869",
+      "source_url": "https://www.speedrent.ru/venue/8597869",
+      "lat": 55.708889,
+      "lon": 37.656375,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:6724501",
+      "source_url": "https://www.speedrent.ru/venue/6724501",
+      "lat": 55.731446,
+      "lon": 37.628421,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:8909031",
+      "source_url": "https://www.speedrent.ru/venue/8909031",
+      "lat": 55.708889,
+      "lon": 37.656375,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:6724179",
+      "source_url": "https://www.speedrent.ru/venue/6724179",
+      "lat": 55.731446,
+      "lon": 37.628421,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:6724546",
+      "source_url": "https://www.speedrent.ru/venue/6724546",
+      "lat": 55.731446,
+      "lon": 37.628421,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:3227872",
+      "source_url": "https://www.speedrent.ru/venue/3227872",
+      "lat": 55.771585,
+      "lon": 37.68173,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:4207123",
+      "source_url": "https://www.speedrent.ru/venue/4207123",
+      "lat": 55.779631,
+      "lon": 37.576412,
+      "district_id": "445298",
+      "district": "Беговой"
+    },
+    {
+      "id": "speedrent:8804439",
+      "source_url": "https://www.speedrent.ru/venue/8804439",
+      "lat": 55.708889,
+      "lon": 37.656375,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:6724388",
+      "source_url": "https://www.speedrent.ru/venue/6724388",
+      "lat": 55.731446,
+      "lon": 37.628421,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:6724370",
+      "source_url": "https://www.speedrent.ru/venue/6724370",
+      "lat": 55.731446,
+      "lon": 37.628421,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:6724418",
+      "source_url": "https://www.speedrent.ru/venue/6724418",
+      "lat": 55.731446,
+      "lon": 37.628421,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:3227916",
+      "source_url": "https://www.speedrent.ru/venue/3227916",
+      "lat": 55.771585,
+      "lon": 37.68173,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8804526",
+      "source_url": "https://www.speedrent.ru/venue/8804526",
+      "lat": 55.708889,
+      "lon": 37.656375,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:3228006",
+      "source_url": "https://www.speedrent.ru/venue/3228006",
+      "lat": 55.771585,
+      "lon": 37.68173,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6724472",
+      "source_url": "https://www.speedrent.ru/venue/6724472",
+      "lat": 55.731446,
+      "lon": 37.628421,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:6724438",
+      "source_url": "https://www.speedrent.ru/venue/6724438",
+      "lat": 55.731446,
+      "lon": 37.628421,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:3228048",
+      "source_url": "https://www.speedrent.ru/venue/3228048",
+      "lat": 55.771585,
+      "lon": 37.68173,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:2056856",
+      "source_url": "https://www.speedrent.ru/venue/2056856",
+      "lat": 55.722801,
+      "lon": 37.691998,
+      "district_id": "1278096",
+      "district": "Южнопортовый"
+    },
+    {
+      "id": "speedrent:2056900",
+      "source_url": "https://www.speedrent.ru/venue/2056900",
+      "lat": 55.722801,
+      "lon": 37.691998,
+      "district_id": "1278096",
+      "district": "Южнопортовый"
+    },
+    {
+      "id": "speedrent:7996564",
+      "source_url": "https://www.speedrent.ru/venue/7996564",
+      "lat": 55.807811,
+      "lon": 37.584456,
+      "district_id": "1252424",
+      "district": "Бутырский"
+    },
+    {
+      "id": "speedrent:1366334",
+      "source_url": "https://www.speedrent.ru/venue/1366334",
+      "lat": 55.816166,
+      "lon": 37.636437,
+      "district_id": "1250619",
+      "district": "Останкинский"
+    },
+    {
+      "id": "speedrent:8804400",
+      "source_url": "https://www.speedrent.ru/venue/8804400",
+      "lat": 55.708889,
+      "lon": 37.656375,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:8804470",
+      "source_url": "https://www.speedrent.ru/venue/8804470",
+      "lat": 55.708889,
+      "lon": 37.656375,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:8475054",
+      "source_url": "https://www.speedrent.ru/venue/8475054",
+      "lat": 55.771585,
+      "lon": 37.68173,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8948758",
+      "source_url": "https://www.speedrent.ru/venue/8948758",
+      "lat": 55.708889,
+      "lon": 37.656375,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:8601161",
+      "source_url": "https://www.speedrent.ru/venue/8601161",
+      "lat": 55.708889,
+      "lon": 37.656375,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:8802566",
+      "source_url": "https://www.speedrent.ru/venue/8802566",
+      "lat": 55.708889,
+      "lon": 37.656375,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:722937",
+      "source_url": "https://www.speedrent.ru/venue/722937",
+      "lat": 55.751138,
+      "lon": 37.732314,
+      "district_id": "1299013",
+      "district": "Перово"
+    },
+    {
+      "id": "speedrent:6650714",
+      "source_url": "https://www.speedrent.ru/venue/6650714",
+      "lat": 55.784678,
+      "lon": 37.706971,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:6117307",
+      "source_url": "https://www.speedrent.ru/venue/6117307",
+      "lat": 55.751298,
+      "lon": 37.733116,
+      "district_id": "1299013",
+      "district": "Перово"
+    },
+    {
+      "id": "speedrent:6192590",
+      "source_url": "https://www.speedrent.ru/venue/6192590",
+      "lat": 55.753651,
+      "lon": 37.752122,
+      "district_id": "1299013",
+      "district": "Перово"
+    },
+    {
+      "id": "speedrent:9239685",
+      "source_url": "https://www.speedrent.ru/venue/9239685",
+      "lat": 55.7847674,
+      "lon": 37.7074649,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:2490716",
+      "source_url": "https://www.speedrent.ru/venue/2490716",
+      "lat": 55.691285,
+      "lon": 37.623111,
+      "district_id": "444908",
+      "district": "Донской"
+    },
+    {
+      "id": "speedrent:4122307",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:5481115",
+      "source_url": "https://www.speedrent.ru/venue/5481115",
+      "lat": 55.799541,
+      "lon": 37.492248,
+      "district_id": "431464",
+      "district": "Щукино"
+    },
+    {
+      "id": "speedrent:1074027",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:8327308",
+      "source_url": "https://www.speedrent.ru/venue/8327308",
+      "lat": 55.785118,
+      "lon": 37.716432,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:4722446",
+      "source_url": "https://www.speedrent.ru/venue/4722446",
+      "lat": 55.740325,
+      "lon": 37.609731,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:5463072",
+      "source_url": "https://www.speedrent.ru/venue/5463072",
+      "lat": 55.8064436,
+      "lon": 37.7456149,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:8787689",
+      "source_url": "https://www.speedrent.ru/venue/8787689",
+      "lat": 55.780238,
+      "lon": 37.700622,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8422925",
+      "source_url": "https://www.speedrent.ru/venue/8422925",
+      "lat": 55.794462,
+      "lon": 37.749149,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:2875559",
+      "source_url": "https://www.speedrent.ru/venue/2875559",
+      "lat": 55.734567,
+      "lon": 37.551699,
+      "district_id": "446114",
+      "district": "Дорогомилово"
+    },
+    {
+      "id": "speedrent:8776992",
+      "source_url": "https://www.speedrent.ru/venue/8776992",
+      "lat": 55.783043,
+      "lon": 37.702751,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:7566650",
+      "source_url": "https://www.speedrent.ru/venue/7566650",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:3975661",
+      "source_url": "https://www.speedrent.ru/venue/3975661",
+      "lat": 55.784956,
+      "lon": 37.706685,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:641946",
+      "source_url": "https://www.speedrent.ru/venue/641946",
+      "lat": 55.784956,
+      "lon": 37.706685,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:2241775",
+      "source_url": "https://www.speedrent.ru/venue/2241775",
+      "lat": 55.770036,
+      "lon": 37.686491,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5117405",
+      "source_url": "https://www.speedrent.ru/venue/5117405",
+      "lat": 55.826498,
+      "lon": 37.573357,
+      "district_id": "445276",
+      "district": "Тимирязевский"
+    },
+    {
+      "id": "speedrent:4755850",
+      "source_url": "https://www.speedrent.ru/venue/4755850",
+      "lat": 55.7694292,
+      "lon": 37.6863114,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5474506",
+      "source_url": "https://www.speedrent.ru/venue/5474506",
+      "lat": 55.8064436,
+      "lon": 37.7456149,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:6498928",
+      "source_url": "https://www.speedrent.ru/venue/6498928",
+      "lat": 55.654731,
+      "lon": 37.702769,
+      "district_id": "455451",
+      "district": "Печатники"
+    },
+    {
+      "id": "speedrent:6748625",
+      "source_url": "https://www.speedrent.ru/venue/6748625",
+      "lat": 55.784823,
+      "lon": 37.707121,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:6560301",
+      "source_url": "https://www.speedrent.ru/venue/6560301",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:3265843",
+      "source_url": "https://www.speedrent.ru/venue/3265843",
+      "lat": 55.78486,
+      "lon": 37.707665,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:8423125",
+      "source_url": "https://www.speedrent.ru/venue/8423125",
+      "lat": 55.794462,
+      "lon": 37.749149,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:5449252",
+      "source_url": "https://www.speedrent.ru/venue/5449252",
+      "lat": 55.800802,
+      "lon": 37.639674,
+      "district_id": "1250526",
+      "district": "Алексеевский"
+    },
+    {
+      "id": "speedrent:4231354",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:506068",
+      "source_url": "https://www.speedrent.ru/venue/506068",
+      "lat": 55.784991,
+      "lon": 37.706483,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:6017878",
+      "source_url": "https://www.speedrent.ru/venue/6017878",
+      "lat": 55.784857,
+      "lon": 37.717597,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:616183",
+      "source_url": "https://www.speedrent.ru/venue/616183",
+      "lat": 55.756634,
+      "lon": 37.675657,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:540417",
+      "source_url": "https://www.speedrent.ru/venue/540417",
+      "lat": 55.748792,
+      "lon": 37.666019,
+      "district_id": "1275608",
+      "district": "Таганский"
+    },
+    {
+      "id": "speedrent:6315341",
+      "source_url": "https://www.speedrent.ru/venue/6315341",
+      "lat": 55.794462,
+      "lon": 37.749149,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:6011450",
+      "source_url": "https://www.speedrent.ru/venue/6011450",
+      "lat": 55.784857,
+      "lon": 37.717597,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:6017908",
+      "source_url": "https://www.speedrent.ru/venue/6017908",
+      "lat": 55.784857,
+      "lon": 37.717597,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:6017789",
+      "source_url": "https://www.speedrent.ru/venue/6017789",
+      "lat": 55.784857,
+      "lon": 37.717597,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:6748593",
+      "source_url": "https://www.speedrent.ru/venue/6748593",
+      "lat": 55.784823,
+      "lon": 37.707121,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:359047",
+      "source_url": "https://www.speedrent.ru/venue/359047",
+      "lat": 55.766542,
+      "lon": 37.678281,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6183917",
+      "source_url": "https://www.speedrent.ru/venue/6183917",
+      "lat": 55.766542,
+      "lon": 37.678281,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:3539723",
+      "source_url": "https://www.speedrent.ru/venue/3539723",
+      "lat": 55.784991,
+      "lon": 37.706483,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:6548226",
+      "source_url": "https://www.speedrent.ru/venue/6548226",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:9093134",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:9093123",
+      "source_url": "https://www.speedrent.ru/venue/9093123",
+      "lat": 55.6493702,
+      "lon": 37.6061772,
+      "district_id": "535662",
+      "district": "Нагорный"
+    },
+    {
+      "id": "speedrent:6559792",
+      "source_url": "https://www.speedrent.ru/venue/6559792",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:8307065",
+      "source_url": "https://www.speedrent.ru/venue/8307065",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:8307501",
+      "source_url": "https://www.speedrent.ru/venue/8307501",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:9217519",
+      "source_url": "https://www.speedrent.ru/venue/9217519",
+      "lat": 55.6493702,
+      "lon": 37.6061772,
+      "district_id": "535662",
+      "district": "Нагорный"
+    },
+    {
+      "id": "speedrent:6829095",
+      "source_url": "https://www.speedrent.ru/venue/6829095",
+      "lat": 55.838324,
+      "lon": 37.572379,
+      "district_id": "445276",
+      "district": "Тимирязевский"
+    },
+    {
+      "id": "speedrent:9217542",
+      "source_url": "https://www.speedrent.ru/venue/9217542",
+      "lat": 55.6493702,
+      "lon": 37.6061772,
+      "district_id": "535662",
+      "district": "Нагорный"
+    },
+    {
+      "id": "speedrent:6560340",
+      "source_url": "https://www.speedrent.ru/venue/6560340",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:6560375",
+      "source_url": "https://www.speedrent.ru/venue/6560375",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:6560444",
+      "source_url": "https://www.speedrent.ru/venue/6560444",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:6012001",
+      "source_url": "https://www.speedrent.ru/venue/6012001",
+      "lat": 55.784857,
+      "lon": 37.717597,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:6560202",
+      "source_url": "https://www.speedrent.ru/venue/6560202",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:8004436",
+      "source_url": "https://www.speedrent.ru/venue/8004436",
+      "lat": 55.784857,
+      "lon": 37.717597,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:6560415",
+      "source_url": "https://www.speedrent.ru/venue/6560415",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:7867431",
+      "source_url": "https://www.speedrent.ru/venue/7867431",
+      "lat": 55.784857,
+      "lon": 37.717597,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:3509324",
+      "source_url": "https://www.speedrent.ru/venue/3509324",
+      "lat": 55.766255,
+      "lon": 37.678279,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7735174",
+      "source_url": "https://www.speedrent.ru/venue/7735174",
+      "lat": 55.79389,
+      "lon": 37.67016,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:8465977",
+      "source_url": "https://www.speedrent.ru/venue/8465977",
+      "lat": 55.794414,
+      "lon": 37.753497,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:4189506",
+      "source_url": "https://www.speedrent.ru/venue/4189506",
+      "lat": 55.794502,
+      "lon": 37.753559,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:4412936",
+      "source_url": "https://www.speedrent.ru/venue/4412936",
+      "lat": 55.678616,
+      "lon": 37.643609,
+      "district_id": "535655",
+      "district": "Нагатино-Садовники"
+    },
+    {
+      "id": "speedrent:7553164",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:5865933",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:6482549",
+      "source_url": "https://www.speedrent.ru/venue/6482549",
+      "lat": 55.7411042,
+      "lon": 37.6105447,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:8202352",
+      "source_url": "https://www.speedrent.ru/venue/8202352",
+      "lat": 55.793834,
+      "lon": 37.75276,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:8860096",
+      "source_url": "https://www.speedrent.ru/venue/8860096",
+      "lat": 55.782856,
+      "lon": 37.70311,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:7608571",
+      "source_url": "https://www.speedrent.ru/venue/7608571",
+      "lat": 55.734623,
+      "lon": 37.626987,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:3902495",
+      "source_url": "https://www.speedrent.ru/venue/3902495",
+      "lat": 55.76448,
+      "lon": 37.616467,
+      "district_id": "1257786",
+      "district": "Тверской"
+    },
+    {
+      "id": "speedrent:2240764",
+      "source_url": "https://www.speedrent.ru/venue/2240764",
+      "lat": 55.751315,
+      "lon": 37.733257,
+      "district_id": "1299013",
+      "district": "Перово"
+    },
+    {
+      "id": "speedrent:8665359",
+      "source_url": "https://www.speedrent.ru/venue/8665359",
+      "lat": 55.734623,
+      "lon": 37.626987,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:9067913",
+      "source_url": "https://www.speedrent.ru/venue/9067913",
+      "lat": 55.8029143,
+      "lon": 37.5827392,
+      "district_id": "445281",
+      "district": "Савёловский"
+    },
+    {
+      "id": "speedrent:7698450",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:8665632",
+      "source_url": "https://www.speedrent.ru/venue/8665632",
+      "lat": 55.802872,
+      "lon": 37.582682,
+      "district_id": "445281",
+      "district": "Савёловский"
+    },
+    {
+      "id": "speedrent:9011819",
+      "source_url": "https://www.speedrent.ru/venue/9011819",
+      "lat": 55.769585,
+      "lon": 37.678936,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8259964",
+      "source_url": "https://www.speedrent.ru/venue/8259964",
+      "lat": 55.73586,
+      "lon": 37.653442,
+      "district_id": "1275608",
+      "district": "Таганский"
+    },
+    {
+      "id": "speedrent:6734234",
+      "source_url": "https://www.speedrent.ru/venue/6734234",
+      "lat": 55.7687284,
+      "lon": 37.679138,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:3778845",
+      "source_url": "https://www.speedrent.ru/venue/3778845",
+      "lat": 55.766609,
+      "lon": 37.677894,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:4556601",
+      "source_url": "https://www.speedrent.ru/venue/4556601",
+      "lat": 55.8064436,
+      "lon": 37.7456149,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:7553049",
+      "source_url": "https://www.speedrent.ru/venue/7553049",
+      "lat": 55.769804,
+      "lon": 37.684694,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9226473",
+      "source_url": "https://www.speedrent.ru/venue/9226473",
+      "lat": 55.7399909,
+      "lon": 37.6102837,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:9166956",
+      "source_url": "https://www.speedrent.ru/venue/9166956",
+      "lat": 55.7847674,
+      "lon": 37.7074649,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:5712199",
+      "source_url": "https://www.speedrent.ru/venue/5712199",
+      "lat": 55.784705,
+      "lon": 37.707865,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:6549792",
+      "source_url": "https://www.speedrent.ru/venue/6549792",
+      "lat": 55.740654,
+      "lon": 37.609263,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:6579635",
+      "source_url": "https://www.speedrent.ru/venue/6579635",
+      "lat": 55.8008055,
+      "lon": 37.6393317,
+      "district_id": "1250526",
+      "district": "Алексеевский"
+    },
+    {
+      "id": "speedrent:5127214",
+      "source_url": "https://www.speedrent.ru/venue/5127214",
+      "lat": 55.800839,
+      "lon": 37.638923,
+      "district_id": "1250526",
+      "district": "Алексеевский"
+    },
+    {
+      "id": "speedrent:3703249",
+      "source_url": "https://www.speedrent.ru/venue/3703249",
+      "lat": 55.794659,
+      "lon": 37.753236,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:4522931",
+      "source_url": "https://www.speedrent.ru/venue/4522931",
+      "lat": 55.776937,
+      "lon": 37.676026,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:318101",
+      "source_url": "https://www.speedrent.ru/venue/318101",
+      "lat": 55.794948,
+      "lon": 37.610413,
+      "district_id": "1252407",
+      "district": "Марьина Роща"
+    },
+    {
+      "id": "speedrent:9168851",
+      "source_url": "https://www.speedrent.ru/venue/9168851",
+      "lat": 55.7345411,
+      "lon": 37.7114087,
+      "district_id": "1278046",
+      "district": "Нижегородский"
+    },
+    {
+      "id": "speedrent:7845287",
+      "source_url": "https://www.speedrent.ru/venue/7845287",
+      "lat": 55.767757,
+      "lon": 37.673933,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8966592",
+      "source_url": "https://www.speedrent.ru/venue/8966592",
+      "lat": 55.802872,
+      "lon": 37.582682,
+      "district_id": "445281",
+      "district": "Савёловский"
+    },
+    {
+      "id": "speedrent:7552482",
+      "source_url": "https://www.speedrent.ru/venue/7552482",
+      "lat": 55.769804,
+      "lon": 37.684694,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9340556",
+      "error": "coordinates_missing"
+    },
+    {
+      "id": "speedrent:8730934",
+      "source_url": "https://www.speedrent.ru/venue/8730934",
+      "lat": 55.795803,
+      "lon": 37.700406,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:8673649",
+      "source_url": "https://www.speedrent.ru/venue/8673649",
+      "lat": 55.802872,
+      "lon": 37.582682,
+      "district_id": "445281",
+      "district": "Савёловский"
+    },
+    {
+      "id": "speedrent:9058215",
+      "source_url": "https://www.speedrent.ru/venue/9058215",
+      "lat": 55.74107,
+      "lon": 37.610844,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:8466980",
+      "source_url": "https://www.speedrent.ru/venue/8466980",
+      "lat": 55.775955,
+      "lon": 37.691468,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6542801",
+      "source_url": "https://www.speedrent.ru/venue/6542801",
+      "lat": 55.77169,
+      "lon": 37.666625,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8966590",
+      "source_url": "https://www.speedrent.ru/venue/8966590",
+      "lat": 55.802872,
+      "lon": 37.582682,
+      "district_id": "445281",
+      "district": "Савёловский"
+    },
+    {
+      "id": "speedrent:9341960",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:8461284",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:3017747",
+      "source_url": "https://www.speedrent.ru/venue/3017747",
+      "lat": 55.809135,
+      "lon": 37.453675,
+      "district_id": "431464",
+      "district": "Щукино"
+    },
+    {
+      "id": "speedrent:8601829",
+      "source_url": "https://www.speedrent.ru/venue/8601829",
+      "lat": 55.775955,
+      "lon": 37.691468,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6829728",
+      "source_url": "https://www.speedrent.ru/venue/6829728",
+      "lat": 55.838324,
+      "lon": 37.572379,
+      "district_id": "445276",
+      "district": "Тимирязевский"
+    },
+    {
+      "id": "speedrent:9064184",
+      "source_url": "https://www.speedrent.ru/venue/9064184",
+      "lat": 55.775955,
+      "lon": 37.691468,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7551344",
+      "source_url": "https://www.speedrent.ru/venue/7551344",
+      "lat": 55.769804,
+      "lon": 37.684694,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9099612",
+      "source_url": "https://www.speedrent.ru/venue/9099612",
+      "lat": 55.775955,
+      "lon": 37.691468,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7636362",
+      "source_url": "https://www.speedrent.ru/venue/7636362",
+      "lat": 55.767757,
+      "lon": 37.673933,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9140384",
+      "source_url": "https://www.speedrent.ru/venue/9140384",
+      "lat": 55.8029143,
+      "lon": 37.5827392,
+      "district_id": "445281",
+      "district": "Савёловский"
+    },
+    {
+      "id": "speedrent:8731133",
+      "source_url": "https://www.speedrent.ru/venue/8731133",
+      "lat": 55.795803,
+      "lon": 37.700406,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:6560186",
+      "source_url": "https://www.speedrent.ru/venue/6560186",
+      "lat": 55.73773,
+      "lon": 37.730212,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:3408496",
+      "source_url": "https://www.speedrent.ru/venue/3408496",
+      "lat": 55.688035,
+      "lon": 37.857378,
+      "district_id": "548619",
+      "district": "Выхино-Жулебино"
+    },
+    {
+      "id": "speedrent:6829637",
+      "source_url": "https://www.speedrent.ru/venue/6829637",
+      "lat": 55.838324,
+      "lon": 37.572379,
+      "district_id": "445276",
+      "district": "Тимирязевский"
+    },
+    {
+      "id": "speedrent:8460866",
+      "source_url": "https://www.speedrent.ru/venue/8460866",
+      "lat": 55.794414,
+      "lon": 37.753497,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:8623310",
+      "source_url": "https://www.speedrent.ru/venue/8623310",
+      "lat": 55.775955,
+      "lon": 37.691468,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6839089",
+      "source_url": "https://www.speedrent.ru/venue/6839089",
+      "lat": 55.776375,
+      "lon": 37.690228,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7325477",
+      "source_url": "https://www.speedrent.ru/venue/7325477",
+      "lat": 55.753651,
+      "lon": 37.752122,
+      "district_id": "1299013",
+      "district": "Перово"
+    },
+    {
+      "id": "speedrent:8769731",
+      "source_url": "https://www.speedrent.ru/venue/8769731",
+      "lat": 55.795803,
+      "lon": 37.700406,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:9245677",
+      "source_url": "https://www.speedrent.ru/venue/9245677",
+      "lat": 55.6493702,
+      "lon": 37.6061772,
+      "district_id": "535662",
+      "district": "Нагорный"
+    },
+    {
+      "id": "speedrent:6921455",
+      "source_url": "https://www.speedrent.ru/venue/6921455",
+      "lat": 55.653787,
+      "lon": 37.608068,
+      "district_id": "535662",
+      "district": "Нагорный"
+    },
+    {
+      "id": "speedrent:3101788",
+      "source_url": "https://www.speedrent.ru/venue/3101788",
+      "lat": 55.67839,
+      "lon": 37.642572,
+      "district_id": "535655",
+      "district": "Нагатино-Садовники"
+    },
+    {
+      "id": "speedrent:3618769",
+      "source_url": "https://www.speedrent.ru/venue/3618769",
+      "lat": 55.67889,
+      "lon": 37.642572,
+      "district_id": "535655",
+      "district": "Нагатино-Садовники"
+    },
+    {
+      "id": "speedrent:9256955",
+      "source_url": "https://www.speedrent.ru/venue/9256955",
+      "lat": 55.652507,
+      "lon": 37.605562,
+      "district_id": "535662",
+      "district": "Нагорный"
+    },
+    {
+      "id": "speedrent:6542974",
+      "source_url": "https://www.speedrent.ru/venue/6542974",
+      "lat": 55.778902,
+      "lon": 37.690614,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6542885",
+      "source_url": "https://www.speedrent.ru/venue/6542885",
+      "lat": 55.778902,
+      "lon": 37.690614,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7947713",
+      "source_url": "https://www.speedrent.ru/venue/7947713",
+      "lat": 55.767757,
+      "lon": 37.673933,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9342014",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:8458180",
+      "source_url": "https://www.speedrent.ru/venue/8458180",
+      "lat": 55.708922,
+      "lon": 37.689995,
+      "district_id": "455451",
+      "district": "Печатники"
+    },
+    {
+      "id": "speedrent:5828600",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:8730924",
+      "source_url": "https://www.speedrent.ru/venue/8730924",
+      "lat": 55.795803,
+      "lon": 37.700406,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:8731099",
+      "source_url": "https://www.speedrent.ru/venue/8731099",
+      "lat": 55.795803,
+      "lon": 37.700406,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:2661440",
+      "source_url": "https://www.speedrent.ru/venue/2661440",
+      "lat": 55.67889,
+      "lon": 37.642272,
+      "district_id": "535655",
+      "district": "Нагатино-Садовники"
+    },
+    {
+      "id": "speedrent:8733270",
+      "source_url": "https://www.speedrent.ru/venue/8733270",
+      "lat": 55.795803,
+      "lon": 37.700406,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:9245644",
+      "source_url": "https://www.speedrent.ru/venue/9245644",
+      "lat": 55.6493702,
+      "lon": 37.6061772,
+      "district_id": "535662",
+      "district": "Нагорный"
+    },
+    {
+      "id": "speedrent:2231681",
+      "source_url": "https://www.speedrent.ru/venue/2231681",
+      "lat": 55.67839,
+      "lon": 37.642572,
+      "district_id": "535655",
+      "district": "Нагатино-Садовники"
+    },
+    {
+      "id": "speedrent:5779767",
+      "source_url": "https://www.speedrent.ru/venue/5779767",
+      "lat": 55.679169,
+      "lon": 37.571128,
+      "district_id": "1281220",
+      "district": "Академический"
+    },
+    {
+      "id": "speedrent:6494840",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:8219292",
+      "source_url": "https://www.speedrent.ru/venue/8219292",
+      "lat": 55.836237,
+      "lon": 37.623873,
+      "district_id": "1250619",
+      "district": "Останкинский"
+    },
+    {
+      "id": "speedrent:7465927",
+      "source_url": "https://www.speedrent.ru/venue/7465927",
+      "lat": 55.785099,
+      "lon": 37.654991,
+      "district_id": "1257218",
+      "district": "Красносельский"
+    },
+    {
+      "id": "speedrent:8240012",
+      "source_url": "https://www.speedrent.ru/venue/8240012",
+      "lat": 55.805133,
+      "lon": 37.520653,
+      "district_id": "446079",
+      "district": "Аэропорт"
+    },
+    {
+      "id": "speedrent:9009571",
+      "source_url": "https://www.speedrent.ru/venue/9009571",
+      "lat": 55.7401891,
+      "lon": 37.6097633,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:6498017",
+      "source_url": "https://www.speedrent.ru/venue/6498017",
+      "lat": 55.740005,
+      "lon": 37.609523,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:8501774",
+      "source_url": "https://www.speedrent.ru/venue/8501774",
+      "lat": 55.781362,
+      "lon": 37.568632,
+      "district_id": "445298",
+      "district": "Беговой"
+    },
+    {
+      "id": "speedrent:3903515",
+      "source_url": "https://www.speedrent.ru/venue/3903515",
+      "lat": 55.756538,
+      "lon": 37.674552,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:3372053",
+      "source_url": "https://www.speedrent.ru/venue/3372053",
+      "lat": 55.69146,
+      "lon": 37.623223,
+      "district_id": "444908",
+      "district": "Донской"
+    },
+    {
+      "id": "speedrent:3372282",
+      "source_url": "https://www.speedrent.ru/venue/3372282",
+      "lat": 55.784914,
+      "lon": 37.706834,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:4227962",
+      "source_url": "https://www.speedrent.ru/venue/4227962",
+      "lat": 55.783316,
+      "lon": 37.572944,
+      "district_id": "445298",
+      "district": "Беговой"
+    },
+    {
+      "id": "speedrent:9252159",
+      "source_url": "https://www.speedrent.ru/venue/9252159",
+      "lat": 55.7751131,
+      "lon": 37.6761629,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:292882",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:3683740",
+      "source_url": "https://www.speedrent.ru/venue/3683740",
+      "lat": 55.812044,
+      "lon": 37.635287,
+      "district_id": "1250619",
+      "district": "Останкинский"
+    },
+    {
+      "id": "speedrent:5090158",
+      "source_url": "https://www.speedrent.ru/venue/5090158",
+      "lat": 55.698293,
+      "lon": 37.625656,
+      "district_id": "444908",
+      "district": "Донской"
+    },
+    {
+      "id": "speedrent:6638469",
+      "source_url": "https://www.speedrent.ru/venue/6638469",
+      "lat": 55.760661,
+      "lon": 37.664384,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9252167",
+      "source_url": "https://www.speedrent.ru/venue/9252167",
+      "lat": 55.7751131,
+      "lon": 37.6761629,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5265368",
+      "source_url": "https://www.speedrent.ru/venue/5265368",
+      "lat": 55.784126,
+      "lon": 37.704026,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:9253575",
+      "source_url": "https://www.speedrent.ru/venue/9253575",
+      "lat": 55.7606112,
+      "lon": 37.6643426,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8783829",
+      "source_url": "https://www.speedrent.ru/venue/8783829",
+      "lat": 55.761016,
+      "lon": 37.624525,
+      "district_id": "364001",
+      "district": "Мещанский"
+    },
+    {
+      "id": "speedrent:8504465",
+      "source_url": "https://www.speedrent.ru/venue/8504465",
+      "lat": 55.784253,
+      "lon": 37.721651,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:7959148",
+      "source_url": "https://www.speedrent.ru/venue/7959148",
+      "lat": 55.741059,
+      "lon": 37.610862,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:7959146",
+      "source_url": "https://www.speedrent.ru/venue/7959146",
+      "lat": 55.741059,
+      "lon": 37.610862,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:6438893",
+      "source_url": "https://www.speedrent.ru/venue/6438893",
+      "lat": 55.762627,
+      "lon": 37.661239,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7591289",
+      "source_url": "https://www.speedrent.ru/venue/7591289",
+      "lat": 55.792676,
+      "lon": 37.675683,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:8404629",
+      "source_url": "https://www.speedrent.ru/venue/8404629",
+      "lat": 55.784253,
+      "lon": 37.721651,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:7734842",
+      "source_url": "https://www.speedrent.ru/venue/7734842",
+      "lat": 55.79389,
+      "lon": 37.67016,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:7734623",
+      "source_url": "https://www.speedrent.ru/venue/7734623",
+      "lat": 55.79389,
+      "lon": 37.67016,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:6587746",
+      "source_url": "https://www.speedrent.ru/venue/6587746",
+      "lat": 55.737329,
+      "lon": 37.616818,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:2710801",
+      "source_url": "https://www.speedrent.ru/venue/2710801",
+      "lat": 55.794462,
+      "lon": 37.749149,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:4744920",
+      "source_url": "https://www.speedrent.ru/venue/4744920",
+      "lat": 55.784546,
+      "lon": 37.706601,
+      "district_id": "1299106",
+      "district": "Преображенское"
+    },
+    {
+      "id": "speedrent:8671627",
+      "source_url": "https://www.speedrent.ru/venue/8671627",
+      "lat": 55.778487,
+      "lon": 37.672379,
+      "district_id": "1257218",
+      "district": "Красносельский"
+    },
+    {
+      "id": "speedrent:6209514",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:4381719",
+      "source_url": "https://www.speedrent.ru/venue/4381719",
+      "lat": 55.704595,
+      "lon": 37.621094,
+      "district_id": "444908",
+      "district": "Донской"
+    },
+    {
+      "id": "speedrent:4406245",
+      "source_url": "https://www.speedrent.ru/venue/4406245",
+      "lat": 55.766485,
+      "lon": 37.678099,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7851643",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:6544418",
+      "source_url": "https://www.speedrent.ru/venue/6544418",
+      "lat": 55.762871,
+      "lon": 37.66086,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7431905",
+      "source_url": "https://www.speedrent.ru/venue/7431905",
+      "lat": 55.761943,
+      "lon": 37.681299,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6540083",
+      "source_url": "https://www.speedrent.ru/venue/6540083",
+      "lat": 55.778902,
+      "lon": 37.690614,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6542838",
+      "source_url": "https://www.speedrent.ru/venue/6542838",
+      "lat": 55.778902,
+      "lon": 37.690614,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5832727",
+      "source_url": "https://www.speedrent.ru/venue/5832727",
+      "lat": 55.809408,
+      "lon": 37.758431,
+      "district_id": "1319142",
+      "district": "Гольяново"
+    },
+    {
+      "id": "speedrent:7870122",
+      "source_url": "https://www.speedrent.ru/venue/7870122",
+      "lat": 55.778092,
+      "lon": 37.736487,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:3452070",
+      "source_url": "https://www.speedrent.ru/venue/3452070",
+      "lat": 55.78691,
+      "lon": 37.584416,
+      "district_id": "445298",
+      "district": "Беговой"
+    },
+    {
+      "id": "speedrent:9121849",
+      "source_url": "https://www.speedrent.ru/venue/9121849",
+      "lat": 55.7766203,
+      "lon": 37.6747365,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5000508",
+      "source_url": "https://www.speedrent.ru/venue/5000508",
+      "lat": 55.778333,
+      "lon": 37.69162,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6374787",
+      "source_url": "https://www.speedrent.ru/venue/6374787",
+      "lat": 55.715707,
+      "lon": 37.881569,
+      "district_id": "1255576",
+      "district": "Косино-Ухтомский"
+    },
+    {
+      "id": "speedrent:6374912",
+      "source_url": "https://www.speedrent.ru/venue/6374912",
+      "lat": 55.715707,
+      "lon": 37.881569,
+      "district_id": "1255576",
+      "district": "Косино-Ухтомский"
+    },
+    {
+      "id": "speedrent:6472314",
+      "source_url": "https://www.speedrent.ru/venue/6472314",
+      "lat": 55.760661,
+      "lon": 37.664384,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:4299884",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:6451118",
+      "source_url": "https://www.speedrent.ru/venue/6451118",
+      "lat": 55.762966,
+      "lon": 37.660611,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:4227901",
+      "error": "coordinates_missing"
+    },
+    {
+      "id": "speedrent:8733987",
+      "source_url": "https://www.speedrent.ru/venue/8733987",
+      "lat": 55.69146,
+      "lon": 37.623223,
+      "district_id": "444908",
+      "district": "Донской"
+    },
+    {
+      "id": "speedrent:4233319",
+      "source_url": "https://www.speedrent.ru/venue/4233319",
+      "lat": 55.778902,
+      "lon": 37.690614,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7433564",
+      "source_url": "https://www.speedrent.ru/venue/7433564",
+      "lat": 55.761943,
+      "lon": 37.681299,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8500393",
+      "source_url": "https://www.speedrent.ru/venue/8500393",
+      "lat": 55.784253,
+      "lon": 37.721651,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:4698621",
+      "source_url": "https://www.speedrent.ru/venue/4698621",
+      "lat": 55.766101,
+      "lon": 37.67811,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6427968",
+      "source_url": "https://www.speedrent.ru/venue/6427968",
+      "lat": 55.787775,
+      "lon": 37.584502,
+      "district_id": "445298",
+      "district": "Беговой"
+    },
+    {
+      "id": "speedrent:9118959",
+      "source_url": "https://www.speedrent.ru/venue/9118959",
+      "lat": 55.7157173,
+      "lon": 37.8815569,
+      "district_id": "1255576",
+      "district": "Косино-Ухтомский"
+    },
+    {
+      "id": "speedrent:7623813",
+      "source_url": "https://www.speedrent.ru/venue/7623813",
+      "lat": 55.753651,
+      "lon": 37.752122,
+      "district_id": "1299013",
+      "district": "Перово"
+    },
+    {
+      "id": "speedrent:7176216",
+      "source_url": "https://www.speedrent.ru/venue/7176216",
+      "lat": 55.758595,
+      "lon": 37.63364,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8754685",
+      "source_url": "https://www.speedrent.ru/venue/8754685",
+      "lat": 55.7157173,
+      "lon": 37.8815569,
+      "district_id": "1255576",
+      "district": "Косино-Ухтомский"
+    },
+    {
+      "id": "speedrent:9183162",
+      "source_url": "https://www.speedrent.ru/venue/9183162",
+      "lat": 55.8109671,
+      "lon": 37.6239962,
+      "district_id": "1250619",
+      "district": "Останкинский"
+    },
+    {
+      "id": "speedrent:7693910",
+      "source_url": "https://www.speedrent.ru/venue/7693910",
+      "lat": 55.715707,
+      "lon": 37.881569,
+      "district_id": "1255576",
+      "district": "Косино-Ухтомский"
+    },
+    {
+      "id": "speedrent:8620804",
+      "source_url": "https://www.speedrent.ru/venue/8620804",
+      "lat": 55.794011,
+      "lon": 37.670193,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:631962",
+      "source_url": "https://www.speedrent.ru/venue/631962",
+      "lat": 55.775985,
+      "lon": 37.678027,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:2910426",
+      "source_url": "https://www.speedrent.ru/venue/2910426",
+      "lat": 55.753024,
+      "lon": 37.670968,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:3569923",
+      "source_url": "https://www.speedrent.ru/venue/3569923",
+      "lat": 55.773424,
+      "lon": 37.669702,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:4116659",
+      "source_url": "https://www.speedrent.ru/venue/4116659",
+      "lat": 55.756214,
+      "lon": 37.676735,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:9329920",
+      "source_url": "https://www.speedrent.ru/venue/9329920",
+      "lat": 55.7587417,
+      "lon": 37.6822455,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:2806962",
+      "source_url": "https://www.speedrent.ru/venue/2806962",
+      "lat": 55.721736,
+      "lon": 37.631263,
+      "district_id": "1281209",
+      "district": "Даниловский"
+    },
+    {
+      "id": "speedrent:1465312",
+      "source_url": "https://www.speedrent.ru/venue/1465312",
+      "lat": 55.755533,
+      "lon": 37.60146,
+      "district_id": "1275551",
+      "district": "Пресненский"
+    },
+    {
+      "id": "speedrent:277459",
+      "source_url": "https://www.speedrent.ru/venue/277459",
+      "lat": 55.69146,
+      "lon": 37.623223,
+      "district_id": "444908",
+      "district": "Донской"
+    },
+    {
+      "id": "speedrent:9252163",
+      "source_url": "https://www.speedrent.ru/venue/9252163",
+      "lat": 55.7751131,
+      "lon": 37.6761629,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5798476",
+      "source_url": "https://www.speedrent.ru/venue/5798476",
+      "lat": 55.746943,
+      "lon": 37.6547,
+      "district_id": "1275608",
+      "district": "Таганский"
+    },
+    {
+      "id": "speedrent:276035",
+      "source_url": "https://www.speedrent.ru/venue/276035",
+      "lat": 55.73478,
+      "lon": 37.625711,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:3187614",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:4119721",
+      "source_url": "https://www.speedrent.ru/venue/4119721",
+      "lat": 55.79895,
+      "lon": 37.606963,
+      "district_id": "1252407",
+      "district": "Марьина Роща"
+    },
+    {
+      "id": "speedrent:2834101",
+      "source_url": "https://www.speedrent.ru/venue/2834101",
+      "lat": 55.786153,
+      "lon": 37.721218,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:5951389",
+      "source_url": "https://www.speedrent.ru/venue/5951389",
+      "lat": 55.778038,
+      "lon": 37.691382,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5187540",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:9329924",
+      "source_url": "https://www.speedrent.ru/venue/9329924",
+      "lat": 55.7587417,
+      "lon": 37.6822455,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:5662261",
+      "source_url": "https://www.speedrent.ru/venue/5662261",
+      "lat": 55.877296,
+      "lon": 37.328288,
+      "district_id": null,
+      "district": null
+    },
+    {
+      "id": "speedrent:9252157",
+      "source_url": "https://www.speedrent.ru/venue/9252157",
+      "lat": 55.7757877,
+      "lon": 37.6776732,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:2801344",
+      "source_url": "https://www.speedrent.ru/venue/2801344",
+      "lat": 55.738125,
+      "lon": 37.640575,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:3272918",
+      "source_url": "https://www.speedrent.ru/venue/3272918",
+      "lat": 55.761649,
+      "lon": 37.547153,
+      "district_id": "1275551",
+      "district": "Пресненский"
+    },
+    {
+      "id": "speedrent:2737668",
+      "source_url": "https://www.speedrent.ru/venue/2737668",
+      "lat": 55.76288,
+      "lon": 37.615264,
+      "district_id": "1257786",
+      "district": "Тверской"
+    },
+    {
+      "id": "speedrent:4529869",
+      "source_url": "https://www.speedrent.ru/venue/4529869",
+      "lat": 55.738125,
+      "lon": 37.640575,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:5782007",
+      "source_url": "https://www.speedrent.ru/venue/5782007",
+      "lat": 55.993258,
+      "lon": 37.213259,
+      "district_id": "1320566",
+      "district": "Матушкино"
+    },
+    {
+      "id": "speedrent:1422334",
+      "source_url": "https://www.speedrent.ru/venue/1422334",
+      "lat": 55.786485,
+      "lon": 37.721615,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:201724",
+      "source_url": "https://www.speedrent.ru/venue/201724",
+      "lat": 55.741809,
+      "lon": 37.599112,
+      "district_id": "1255987",
+      "district": "Хамовники"
+    },
+    {
+      "id": "speedrent:4522925",
+      "source_url": "https://www.speedrent.ru/venue/4522925",
+      "lat": 55.770533,
+      "lon": 37.686991,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:729268",
+      "source_url": "https://www.speedrent.ru/venue/729268",
+      "lat": 55.749041,
+      "lon": 37.666955,
+      "district_id": "1275608",
+      "district": "Таганский"
+    },
+    {
+      "id": "speedrent:2822352",
+      "source_url": "https://www.speedrent.ru/venue/2822352",
+      "lat": 55.7771467,
+      "lon": 37.6762637,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9252169",
+      "source_url": "https://www.speedrent.ru/venue/9252169",
+      "lat": 55.7751131,
+      "lon": 37.6761629,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:4676587",
+      "source_url": "https://www.speedrent.ru/venue/4676587",
+      "lat": 55.810931,
+      "lon": 37.623905,
+      "district_id": "1250619",
+      "district": "Останкинский"
+    },
+    {
+      "id": "speedrent:5951144",
+      "source_url": "https://www.speedrent.ru/venue/5951144",
+      "lat": 55.778038,
+      "lon": 37.691382,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5952845",
+      "source_url": "https://www.speedrent.ru/venue/5952845",
+      "lat": 55.778038,
+      "lon": 37.691382,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9329918",
+      "source_url": "https://www.speedrent.ru/venue/9329918",
+      "lat": 55.7587417,
+      "lon": 37.6822455,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:5952307",
+      "source_url": "https://www.speedrent.ru/venue/5952307",
+      "lat": 55.778038,
+      "lon": 37.691382,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:2626298",
+      "source_url": "https://www.speedrent.ru/venue/2626298",
+      "lat": 55.749541,
+      "lon": 37.666955,
+      "district_id": "1275608",
+      "district": "Таганский"
+    },
+    {
+      "id": "speedrent:599286",
+      "source_url": "https://www.speedrent.ru/venue/599286",
+      "lat": 55.740983,
+      "lon": 37.610323,
+      "district_id": "1275627",
+      "district": "Якиманка"
+    },
+    {
+      "id": "speedrent:2717712",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:4715576",
+      "source_url": "https://www.speedrent.ru/venue/4715576",
+      "lat": 55.778124,
+      "lon": 37.691511,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:4715559",
+      "source_url": "https://www.speedrent.ru/venue/4715559",
+      "lat": 55.777914,
+      "lon": 37.691197,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5738655",
+      "source_url": "https://www.speedrent.ru/venue/5738655",
+      "lat": 55.738125,
+      "lon": 37.640575,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:4715593",
+      "source_url": "https://www.speedrent.ru/venue/4715593",
+      "lat": 55.778121,
+      "lon": 37.691255,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5952237",
+      "source_url": "https://www.speedrent.ru/venue/5952237",
+      "lat": 55.778038,
+      "lon": 37.691382,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9252161",
+      "source_url": "https://www.speedrent.ru/venue/9252161",
+      "lat": 55.7751131,
+      "lon": 37.6761629,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5952189",
+      "source_url": "https://www.speedrent.ru/venue/5952189",
+      "lat": 55.778038,
+      "lon": 37.691382,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:6931618",
+      "source_url": "https://www.speedrent.ru/venue/6931618",
+      "lat": 55.757506,
+      "lon": 37.635215,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7792217",
+      "source_url": "https://www.speedrent.ru/venue/7792217",
+      "lat": 55.797684,
+      "lon": 37.766462,
+      "district_id": "1319245",
+      "district": "Измайлово"
+    },
+    {
+      "id": "speedrent:8418731",
+      "source_url": "https://www.speedrent.ru/venue/8418731",
+      "lat": 55.816611,
+      "lon": 37.753191,
+      "district_id": "1319078",
+      "district": "Метрогородок"
+    },
+    {
+      "id": "speedrent:5444819",
+      "source_url": "https://www.speedrent.ru/venue/5444819",
+      "lat": 55.736958,
+      "lon": 37.688896,
+      "district_id": "1275608",
+      "district": "Таганский"
+    },
+    {
+      "id": "speedrent:4416899",
+      "source_url": "https://www.speedrent.ru/venue/4416899",
+      "lat": 55.810931,
+      "lon": 37.623905,
+      "district_id": "1250619",
+      "district": "Останкинский"
+    },
+    {
+      "id": "speedrent:3996905",
+      "source_url": "https://www.speedrent.ru/venue/3996905",
+      "lat": 55.81347,
+      "lon": 37.584964,
+      "district_id": "1252424",
+      "district": "Бутырский"
+    },
+    {
+      "id": "speedrent:3164294",
+      "source_url": "https://www.speedrent.ru/venue/3164294",
+      "lat": 55.738125,
+      "lon": 37.640575,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:4529815",
+      "source_url": "https://www.speedrent.ru/venue/4529815",
+      "lat": 55.738125,
+      "lon": 37.640575,
+      "district_id": "1255942",
+      "district": "Замоскворечье"
+    },
+    {
+      "id": "speedrent:9329916",
+      "source_url": "https://www.speedrent.ru/venue/9329916",
+      "lat": 55.7587417,
+      "lon": 37.6822455,
+      "district_id": "1278064",
+      "district": "Лефортово"
+    },
+    {
+      "id": "speedrent:7139447",
+      "source_url": "https://www.speedrent.ru/venue/7139447",
+      "lat": 55.760661,
+      "lon": 37.664384,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5080205",
+      "source_url": "https://www.speedrent.ru/venue/5080205",
+      "lat": 55.778147,
+      "lon": 37.691266,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:9252165",
+      "source_url": "https://www.speedrent.ru/venue/9252165",
+      "lat": 55.7751131,
+      "lon": 37.6761629,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5653088",
+      "source_url": "https://www.speedrent.ru/venue/5653088",
+      "lat": 55.7842966,
+      "lon": 37.7216561,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:3784444",
+      "source_url": "https://www.speedrent.ru/venue/3784444",
+      "lat": 55.777737,
+      "lon": 37.691467,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:5952327",
+      "source_url": "https://www.speedrent.ru/venue/5952327",
+      "lat": 55.778038,
+      "lon": 37.691382,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:8410119",
+      "source_url": "https://www.speedrent.ru/venue/8410119",
+      "lat": 55.784253,
+      "lon": 37.721651,
+      "district_id": "1299031",
+      "district": "Соколиная Гора"
+    },
+    {
+      "id": "speedrent:2363608",
+      "source_url": "https://www.speedrent.ru/venue/2363608",
+      "lat": 55.765266,
+      "lon": 37.590462,
+      "district_id": "1275551",
+      "district": "Пресненский"
+    },
+    {
+      "id": "speedrent:6367002",
+      "source_url": "https://www.speedrent.ru/venue/6367002",
+      "lat": 55.736635,
+      "lon": 37.689536,
+      "district_id": "1275608",
+      "district": "Таганский"
+    },
+    {
+      "id": "speedrent:5414206",
+      "error": "UnicodeDecodeError"
+    },
+    {
+      "id": "speedrent:8632548",
+      "source_url": "https://www.speedrent.ru/venue/8632548",
+      "lat": 55.794011,
+      "lon": 37.670193,
+      "district_id": "364551",
+      "district": "Сокольники"
+    },
+    {
+      "id": "speedrent:6472635",
+      "source_url": "https://www.speedrent.ru/venue/6472635",
+      "lat": 55.760661,
+      "lon": 37.664384,
+      "district_id": "2162195",
+      "district": "Басманный"
+    },
+    {
+      "id": "speedrent:7120903",
+      "source_url": "https://www.speedrent.ru/venue/7120903",
+      "lat": 55.757506,
+      "lon": 37.635215,
+      "district_id": "2162195",
+      "district": "Басманный"
+    }
+  ]
+}

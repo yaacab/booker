@@ -16,9 +16,50 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: SQLite backup and restore runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sqlite3
       - run: pip install -e ".[dev]"
       - run: ruff check booker_api tests
       - run: pytest -q
+
+  calendar-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: booker_test
+          POSTGRES_PASSWORD: local-ci-test-only
+          POSTGRES_DB: booker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booker_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: Migrate empty PostgreSQL database
+        env:
+          BOOKER_DATABASE_URL: postgresql+psycopg://booker_test:local-ci-test-only@127.0.0.1:5432/booker_test
+          BOOKER_ENVIRONMENT: test
+        run: alembic upgrade head
+      - name: Calendar and quote concurrency on PostgreSQL
+        env:
+          BOOKER_TEST_POSTGRES_URL: postgresql+psycopg://booker_test:local-ci-test-only@127.0.0.1:5432/booker_test
+          BOOKER_DATABASE_URL: sqlite://
+          BOOKER_ENVIRONMENT: test
+        run: pytest tests/test_calendar_postgres.py -q
 
   web:
     runs-on: ubuntu-latest
@@ -30,7 +71,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npm install
+      - run: npm ci
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run build
@@ -54,27 +95,37 @@ jobs:
       - name: Start API
         working-directory: apps/api
         run: |
-          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PAYMENT_PROVIDER=stub \
+          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PUBLIC_REGISTRATION_ENABLED=1 BOOKER_PAYMENT_PROVIDER=stub BOOKER_PAYMENT_ALLOW_STUB=true BOOKER_TEST_AUTH_RATE_LIMIT=1000 BOOKER_ENVIRONMENT=test \
+            BOOKER_COMMERCE_PROVIDER=stub BOOKER_COMMERCE_ALLOW_STUB=true \
+            BOOKER_COMMERCE_WEBHOOK_SECRET=ci-test-only-commerce-webhook-secret \
             uvicorn booker_api.main:app --host 127.0.0.1 --port 8000 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
+          curl --fail --silent --show-error --retry 29 --retry-delay 1 --retry-connrefused \
+            http://127.0.0.1:8000/health
       - name: Web install + Playwright
         working-directory: apps/web
         run: |
-          npm install
+          npm ci
           npx playwright install --with-deps chromium
       - name: Critical e2e (flag + supply nav)
         working-directory: apps/web
         env:
           BOOKER_API_URL: http://127.0.0.1:8000
+          BOOKER_PYTHON_BIN: python
+          BOOKER_DATABASE_URL: sqlite:////tmp/booker-e2e.db
+          BOOKER_ENVIRONMENT: test
+          BOOKER_PUBLIC_REGISTRATION_ENABLED: "1"
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
           BOOKER_INTERNAL_API_URL: http://127.0.0.1:8000
           # Default OFF — do not set NEXT_PUBLIC_EVENT_STUDIO_MAP_V1=1
         run: |
           npm run build
           npx next start -H 127.0.0.1 -p 3000 &
-          for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          curl --fail --silent --show-error --retry 39 --retry-delay 1 --retry-connrefused \
+            http://127.0.0.1:3000/ >/dev/null
           npx playwright test \
             e2e/event-studio-map.spec.ts \
+            e2e/edition-theme.spec.ts \
+            e2e/mobile-overflow.spec.ts \
             e2e/supply-nav.spec.ts \
             e2e/search-filters.spec.ts \
             e2e/search-persist.spec.ts \
@@ -88,4 +139,8 @@ jobs:
             e2e/cabinet-a11y.spec.ts \
             e2e/studio-autosave.spec.ts \
             e2e/onboarding.spec.ts \
-            --reporter=line
+            e2e/commercial.spec.ts e2e/subscription-cycles.spec.ts e2e/seo-catalog.spec.ts e2e/admin-commercial.spec.ts e2e/offer-validity.spec.ts \
+            e2e/promotions.spec.ts \
+            e2e/growth.spec.ts \
+            e2e/opportunities.spec.ts e2e/booking-payment.spec.ts e2e/admin-refunds.spec.ts e2e/payment-reconciliation.spec.ts e2e/artist-presentation.spec.ts e2e/compatibility.spec.ts e2e/studio-estimate.spec.ts e2e/event-command-retry.spec.ts e2e/smart-matching.spec.ts e2e/event-budget.spec.ts e2e/event-readiness.spec.ts e2e/event-day-ops.spec.ts e2e/compare-v2.spec.ts e2e/collaboration.spec.ts e2e/event-repeat.spec.ts e2e/event-replacement.spec.ts e2e/business-workflows.spec.ts e2e/team.spec.ts e2e/support-priority.spec.ts \
+            --workers=1 --reporter=line

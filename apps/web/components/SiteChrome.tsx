@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { DemoBanner } from "./DemoBanner";
+import { EditionToggle } from "./EditionToggle";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
+import { WorkspaceNavigation } from "@/components/WorkspaceNavigation";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { api, getActiveOrg, getToken, setToken, trackClientEvent } from "@/lib/api";
 import { orgKindToCabinetMode, supplyCalendarHref, supplyRequestsHref, type CabinetMode } from "@/lib/cabinetRoutes";
@@ -15,6 +18,7 @@ const DEFAULT_TITLE = "Букер — сделки с артистами и пл
 
 function tabTitle(path: string): string {
   if (path === "/") return DEFAULT_TITLE;
+  if (path.startsWith("/pricing")) return "Тарифы · Букер";
   if (path.startsWith("/search")) return "Каталог · Букер";
   if (path.startsWith("/events/new")) return "Новая заявка · Букер";
   if (path.startsWith("/events/")) return "Событие · Букер";
@@ -40,9 +44,14 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [inboxError, setInboxError] = useState(false);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [inboxRefresh, setInboxRefresh] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLSpanElement>(null);
   const [notifications, setNotifications] = useState<
-    { id: string; subject?: string | null; body?: string | null }[]
+    { id: string; subject?: string | null; body?: string | null; href?: string | null }[]
   >([]);
   const path = usePathname();
   // Флаг студии зависит от window.location.search — считаем только после маунта,
@@ -50,8 +59,25 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [fullScreenStudio, setFullScreenStudio] = useState(false);
 
   useEffect(() => {
+    if (!notificationsOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!notificationsRef.current?.contains(event.target as Node)) setNotificationsOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNotificationsOpen(false);
+        if (notificationsRef.current?.contains(document.activeElement)) notificationsRef.current.querySelector("button")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => { document.removeEventListener("pointerdown", closeOutside); document.removeEventListener("keydown", closeOnEscape); };
+  }, [notificationsOpen]);
+
+  useEffect(() => {
     setAuthed(Boolean(getToken()));
-    setAdmin(localStorage.getItem(ADMIN_KEY) === "1");
+    setAdmin(sessionStorage.getItem("booker.demo.token") ? sessionStorage.getItem("booker.demo.admin") === "1" : localStorage.getItem(ADMIN_KEY) === "1");
+    setNotificationsOpen(false);
   }, [path]);
 
   useEffect(() => {
@@ -77,10 +103,22 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       setNotificationsOpen(false);
       return;
     }
-    void api<{ items: { id: string; subject?: string | null; body?: string | null }[] }>("/notifications")
-      .then((res) => setNotifications(res.items || []))
-      .catch(() => setNotifications([]));
-  }, [path, authed]);
+    const c = new AbortController(); setInboxLoading(true);
+    void api<{ items: { id: string; subject?: string | null; body?: string | null; href?: string | null }[]; unread_count: number }>("/notifications?limit=5", { signal: c.signal })
+      .then(res => { if (!c.signal.aborted) { setNotifications(res.items || []); setUnreadCount(res.unread_count); setInboxError(false); } })
+      .catch(() => { if (!c.signal.aborted) setInboxError(true); })
+      .finally(() => { if (!c.signal.aborted) setInboxLoading(false); });
+    return () => c.abort();
+  }, [path, authed, inboxRefresh]);
+
+  useEffect(() => {
+    if (!authed) return;
+    const refresh = () => setInboxRefresh(v => v + 1);
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener("booker:inbox-changed", refresh);
+    window.addEventListener("focus", refresh);
+    return () => { clearInterval(timer); window.removeEventListener("booker:inbox-changed", refresh); window.removeEventListener("focus", refresh); };
+  }, [authed]);
 
   useEffect(() => {
     setFullScreenStudio(path === "/events/new" && isEventStudioMapV1());
@@ -92,7 +130,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       const city = new URLSearchParams(window.location.search).get("city");
       title = city ? `Каталог — ${city} · Букер` : title;
     }
-    document.title = title;
+    // Public profile/collection metadata owns its descriptive title.
+    if (path !== '/catalog' && !path.startsWith('/catalog/') && !path.startsWith('/artists/') && !path.startsWith('/venues/')) document.title = title;
     if (getToken()) {
       trackClientEvent("page.view", { path });
     }
@@ -129,13 +168,14 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   if (fullScreenStudio) {
     return (
       <div id="content" key="event-studio-fullscreen" className="studio-fullscreen-root">
-        {children}
+        <DemoBanner /><EditionToggle />{children}
       </div>
     );
   }
 
   return (
     <>
+      <DemoBanner />
       <div id="scroll-progress" className="scroll-progress" aria-hidden />
       <a className="skip" href="#content">
         К содержанию
@@ -144,9 +184,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         <header className="top surface-glass">
           <Link className="brand" href="/" aria-label="Букер">
             <BrandLockup />
+            <span className="brand-tagline">Люди. Места. События.</span>
           </Link>
-          <nav className="nav-public" aria-label="Основное">
-            {!isSupply ? (
+          <nav className={`nav-public${!authed ? " nav-reference-public" : ""}`} aria-label="Основное">
+            {authed && !isSupply ? (
               <Link href="/search" aria-current={path.startsWith("/search") ? "page" : undefined}>
                 Каталог
               </Link>
@@ -167,9 +208,11 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 {primaryWorkLabel}
               </Link>
             ) : (
-              <Link href="/events/new" aria-current={path.startsWith("/events/new") ? "page" : undefined}>
-                Создать заявку
-              </Link>
+              <>
+                <Link href="/search?kind=artist">Найти артиста</Link>
+                <Link href="/for-artists">Артистам</Link>
+                <Link href="/#process-title">Как это работает</Link>
+              </>
             )}
             {authed ? (
               <Link
@@ -198,24 +241,27 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               </Link>
             ) : null}
             {authed ? (
-              <span style={{ position: "relative" }}>
+              <span ref={notificationsRef} style={{ position: "relative" }}>
                 <button
                   type="button"
                   className="linkish"
                   aria-expanded={notificationsOpen}
-                  onClick={() => setNotificationsOpen((open) => !open)}
+                  aria-controls="notification-list"
+                  onClick={() => { setNotificationsOpen(open => !open); setInboxRefresh(v => v + 1); }}
                 >
                   Уведомления
-                  {notifications.length > 0 ? (
+                  {unreadCount > 0 ? (
                     <span className="chip wait" style={{ marginLeft: 6 }}>
-                      {notifications.length}
+                      {unreadCount}
                     </span>
                   ) : null}
                 </button>
                 {notificationsOpen ? (
                   <div
                     className="card surface-glass"
-                    role="menu"
+                    id="notification-list"
+                    role="region"
+                    aria-label="Последние уведомления"
                     style={{
                       position: "absolute",
                       right: 0,
@@ -229,13 +275,17 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                       padding: 12,
                     }}
                   >
-                    {notifications.length === 0 ? (
+                    <Link href="/notifications" onClick={() => setNotificationsOpen(false)}>Все уведомления</Link>
+                    {inboxLoading && <p role="status">Загрузка…</p>}
+                    {inboxError && <p role="alert">Не удалось обновить уведомления. Откройте список для повтора.</p>}
+                    {!inboxLoading && !inboxError && notifications.length === 0 ? (
                       <p className="timeline">Пока пусто</p>
                     ) : (
                       notifications.map((item) => (
                         <div key={item.id}>
                           <strong>{item.subject || "Уведомление"}</strong>
                           {item.body ? <p className="timeline">{item.body}</p> : null}
+                          {item.href && <Link href={item.href} onClick={() => setNotificationsOpen(false)}>Открыть</Link>}
                         </div>
                       ))
                     )}
@@ -256,11 +306,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               >
                 Выйти
               </button>
-            ) : (
-              <Link href={loginHref(path)}>Войти</Link>
-            )}
+            ) : null}
           </nav>
-          <div className="nav-mobile-auth">
+          <EditionToggle />
+          <div className={`nav-mobile-auth${!authed ? " reference-login" : ""}`}>
             {authed ? (
               <button
                 type="button"
@@ -278,25 +327,16 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <div id="content">{children}</div>
-        <footer className="site-footer surface-glass">
-          <p>Букер объединяет заявку, свободный слот, предложение и подтверждения в одном рабочем пространстве.</p>
-          <p>
-            <Link href="/legal/offer">Оферта</Link>
-            {" · "}
-            <Link href="/legal/privacy">Персональные данные</Link>
-            {" · "}
-            <Link href="/legal/disputes">Споры</Link>
-            {" · "}
-            <Link href="/legal/cookies">Cookie-файлы</Link>
-            {" · "}
-            <Link href="/faq">Помощь</Link>
-            {" · "}
-            <a href="mailto:hello@bukergo.ru">hello@bukergo.ru</a>
-          </p>
+        <div className={authed && /^\/(cabinet|profile|deals|briefs|compare|s)(\/|$)/.test(path) ? "workspace-layout" : undefined}>
+          {authed && /^\/(cabinet|profile|deals|briefs|compare|s)(\/|$)/.test(path) && <WorkspaceNavigation mode={cabinetMode} admin={admin} />}
+          <div id="content" className="site-content" data-section={path.split("/")[1] || "home"}>{children}</div>
+        </div>
+        <footer className="site-footer surface-glass reference-footer">
+          <Link href="/" className="footer-brand" aria-label="Букер — главная"><BrandLockup /><span>Люди. Места. События.</span></Link>
+          <nav aria-label="Информация о сервисе"><Link href="/legal/offer">Оферта</Link><Link href="/legal/privacy">Персональные данные</Link><Link href="/legal/disputes">Споры</Link><Link href="/legal/cookies">Cookie</Link><Link href="/pricing">Тарифы</Link><Link href="/faq">Вопросы и ответы</Link><Link href="/support">Поддержка</Link><a href="mailto:hello@bukergo.ru">hello@bukergo.ru</a></nav>
         </footer>
       </div>
-      <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">
+      {path !== "/for-artists" && <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация" style={{ gridTemplateColumns: `repeat(${authed ? 5 : 4}, minmax(0, 1fr))` }}>
         <Link href="/" aria-label="Главная" className={path === "/" ? "on" : ""}>
           Главная
         </Link>
@@ -328,10 +368,11 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         >
           {isSupply ? "Заявки" : "Сделки"}
         </Link>
+        {authed && <Link href="/notifications" className={path === "/notifications" ? "on" : ""}>Входящие</Link>}
         <Link href={authed ? "/profile" : loginHref("/profile")} className={path.startsWith("/profile") ? "on" : ""}>
           Профиль
         </Link>
-      </nav>
+      </nav>}
     </>
   );
 }

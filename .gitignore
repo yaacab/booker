@@ -9,7 +9,7 @@ __pycache__/
 .coverage
 htmlcov/
 dist/
-node_modules/
+node_modules
 .next/
 out/
 *.tsbuildinfo
@@ -25,3 +25,4 @@ apps/api/.data/
 apps/web/test-results/
 apps/web/playwright-report/
 apps/web/e2e/.demo-tokens.json
+outputs/readiness-browser/

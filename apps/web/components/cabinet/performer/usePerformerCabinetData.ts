@@ -100,8 +100,8 @@ export function usePerformerCabinetData() {
   const newRequests = useMemo(
     () =>
       requests
-        .filter((r) => !r.offer_id && !r.booking_id)
-        .sort((a, b) => (b.event_date || "").localeCompare(a.event_date || "")),
+        .filter((r) => !r.offer_id && !r.booking_id && !["Cancelled", "Declined", "Expired", "Completed"].includes(r.status))
+        .sort((a, b) => (a.event_date || "").localeCompare(b.event_date || "")),
     [requests],
   );
 
@@ -117,13 +117,13 @@ export function usePerformerCabinetData() {
     () =>
       dealRooms
         .filter((d) => {
-          if (d.hold?.status !== "active" || !d.hold.expires_at) return false;
-          const diff = new Date(d.hold.expires_at).getTime() - now;
+          if (d.status !== "Negotiation" || !d.quote.valid_until) return false;
+          const diff = new Date(d.quote.valid_until).getTime() - now;
           return diff > 0 && diff <= HOLD_SOON_MS;
         })
         .sort(
           (a, b) =>
-            new Date(a.hold!.expires_at).getTime() - new Date(b.hold!.expires_at).getTime(),
+            new Date(a.quote.valid_until!).getTime() - new Date(b.quote.valid_until!).getTime(),
         ),
     [dealRooms, now],
   );
@@ -222,11 +222,13 @@ export function usePerformerCabinetData() {
     bookings,
     newRequests,
     awaitingResponse,
+    negotiations: dealRooms.filter(d=>d.status==="Negotiation"),
     expiringOffers,
     activeHolds,
     upcomingPerformances,
     calendarConflicts,
     profileIncomplete,
+    profileCompleteness: completeness?.applicable ? completeness : null,
     empty,
     offerBusy,
     sendOffer,

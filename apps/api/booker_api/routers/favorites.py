@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
+from booker_api.growth.service import record_signal
 from booker_api.models import Artist, Favorite, User, Venue
 from booker_api.security import current_user, membership, require_org_member
 
@@ -137,6 +138,8 @@ def add_favorite(
     )
     db.add(row)
     try:
+        db.flush()
+        record_signal(db, body.target_type, body.target_id, "favorite", f"favorite:{user.id}", user.id)
         db.commit()
     except IntegrityError:
         db.rollback()

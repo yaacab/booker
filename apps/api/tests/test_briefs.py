@@ -136,6 +136,17 @@ def test_publish_list_respond_close(client):
     owner_list = client.get(f"/briefs/{brief['id']}/responses", headers=ctx["ch"])
     assert owner_list.status_code == 200
     assert len(owner_list.json()["items"]) == 2
+    assert {r["supplier_name"] for r in owner_list.json()["items"]} == {"DJ Crew", "Зал Лофт"}
+
+    mine = client.get("/brief-responses/mine", params={"organization_id": ctx["artist_org"]["id"]}, headers=ctx["ah"])
+    assert mine.status_code == 200
+    assert len(mine.json()["items"]) == 1
+    assert mine.json()["items"][0]["brief"]["id"] == brief["id"]
+    _assert_no_pii(mine.json()["items"][0]["brief"])
+    forbidden = client.get("/brief-responses/mine", params={"organization_id": ctx["artist_org"]["id"]}, headers=ctx["vh"])
+    assert forbidden.status_code == 403
+    anonymous = client.get("/brief-responses/mine", params={"organization_id": ctx["artist_org"]["id"]})
+    assert anonymous.status_code == 401
 
     stranger_list = client.get(f"/briefs/{brief['id']}/responses", headers=ctx["ah"])
     assert stranger_list.status_code == 403
@@ -148,6 +159,8 @@ def test_publish_list_respond_close(client):
 
     open_list = client.get("/briefs")
     assert open_list.json()["items"] == []
+    history = client.get("/brief-responses/mine", params={"organization_id": ctx["artist_org"]["id"]}, headers=ctx["ah"])
+    assert history.json()["items"][0]["brief"]["status"] == "closed"
 
     after_close = client.post(
         f"/briefs/{brief['id']}/responses",

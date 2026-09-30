@@ -11,7 +11,7 @@
 - медиа / представитель;
 - верификация (`verified` / approved).
 
-Без календаря — **не в выдаче**. Open-data площадки с синтетическим календарём помечать честно (`openDataVenue` / «календарь ориентировочный») и переводить на owner calendar через outreach.
+Без владельческого календаря — **не в выдаче**. Research/open-data карточки не показываются в публичном `/catalog/search`; через outreach их переводят в подтверждённые owner-профили и только затем проводят через полный publication gate.
 
 ## ICP supply пилота
 
@@ -33,6 +33,6 @@ DJ, ведущий, фото, декор, площадка (Москва). Не 
 4. Первые 1–2 сделки — с сопровождением Букера (external pay ок).
 5. Еженедельно: % active profiles, time-to-offer, отказы «вне продукта».
 
-## Площадки open-data → owner
+## Research-кандидаты → owner
 
-См. `VENUE_OPEN_IMPORT.md` и `VENUE_OUTREACH_CONTACT` в `OWNER_INPUTS.md`. Цель — сменить synthetic calendar на владельческий hold.
+См. `VENUE_OPEN_IMPORT.md` и `VENUE_OUTREACH_CONTACT` в `OWNER_INPUTS.md`. Цель — получить подтверждённого представителя, владельческий календарь, серверный тариф и медиа с разрешёнными правами до появления площадки в публичной выдаче.

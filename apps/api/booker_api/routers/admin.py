@@ -22,8 +22,9 @@ from booker_api.models import (
 from booker_api.rate_limit import admin_sensitive_limiter, client_key
 from booker_api.routers.deals import _transition
 from booker_api.routers.payments import capture_payment_as_succeeded
-from booker_api.schemas import DisputeIn, RefundIn, TotpEnableIn, VerifyIn
+from booker_api.schemas import DisputeIn, TotpEnableIn, VerifyIn
 from booker_api.security import audit, current_user, now, require_admin, require_admin_2fa
+from booker_api.venue_catalog import change_partnership_status
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -197,8 +198,22 @@ def decide_verification(
         target = db.get(Venue, body.target_id)
     if not target:
         raise HTTPException(404, "Цель верификации не найдена")
-    target.verified = body.approve
-    target.verified_status = "approved" if body.approve else "rejected"
+    if isinstance(target, Venue):
+        fallback_status = (
+            "unverified_listing"
+            if target.source_type == "automated_import"
+            else "claimed"
+        )
+        change_partnership_status(
+            db,
+            target,
+            "verified" if body.approve else fallback_status,
+            changed_by=user.id,
+            comment=body.notes,
+        )
+        target.verified_status = "approved" if body.approve else "rejected"
+    else:
+        target.verified = body.approve
     row = Verification(
         target_type=body.target_type,
         target_id=body.target_id,
@@ -248,61 +263,6 @@ def open_dispute(
     db.commit()
     db.refresh(dispute)
     return {"id": dispute.id, "status": dispute.status, "ai_decides": False}
-
-
-@router.post("/refunds")
-def refund(
-    body: RefundIn,
-    request: Request,
-    user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    admin_sensitive_limiter.check(client_key(request, "admin-refund"))
-    require_admin_2fa(user, body.totp, request)
-    if body.approver_user_id == user.id:
-        raise HTTPException(403, "Возврат требует второго администратора")
-    approver = db.get(User, body.approver_user_id)
-    if not approver or not approver.is_platform_admin:
-        raise HTTPException(403, "Подтверждающий должен быть администратором")
-    payment = db.get(Payment, body.payment_id)
-    if not payment:
-        raise HTTPException(404, "Платёж не найден")
-    if payment.status in {"refunded", "partially_refunded"}:
-        return {"id": payment.id, "status": payment.status, "idempotent": True}
-    if payment.status != "succeeded":
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Возврат возможен только для успешного платежа",
-        )
-    from booker_api.payments.adapter import PaymentAdapterError, get_payment_adapter
-
-    adapter = get_payment_adapter()
-    try:
-        outcome = adapter.refund(
-            payment_id=payment.id,
-            amount_rub=payment.amount_rub,
-            total_rub=payment.amount_rub,
-            idempotency_key=f"refund-{payment.id}",
-        )
-    except PaymentAdapterError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    payment.status = "refunded" if outcome.kind == "full" else "partially_refunded"
-    audit(
-        db,
-        actor_user_id=user.id,
-        action="payment.refunded",
-        entity_type="payment",
-        entity_id=payment.id,
-        payload={
-            "approver_user_id": approver.id,
-            "reason": body.reason,
-            "refund_id": outcome.refund_id,
-            "amount_rub": outcome.amount_rub,
-            "kind": outcome.kind,
-        },
-    )
-    db.commit()
-    return {"id": payment.id, "status": payment.status}
 
 
 @router.post("/payments/{payment_id}/confirm-external")

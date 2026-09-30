@@ -3,6 +3,7 @@ const ORG_KEY = "booker.org";
 
 export function apiBase(): string {
   if (typeof window !== "undefined") {
+    if (sessionStorage.getItem("booker.demo.token")) return "/development-api";
     return process.env.NEXT_PUBLIC_API_URL || "/api";
   }
   return (
@@ -14,22 +15,32 @@ export function apiBase(): string {
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem("booker.demo.token") || localStorage.getItem(TOKEN_KEY);
 }
 
 export function getActiveOrg(): string | null {
   if (typeof window === "undefined") return null;
+  if (sessionStorage.getItem("booker.demo.token")) return sessionStorage.getItem("booker.demo.org");
   return localStorage.getItem(ORG_KEY);
 }
 
 export function setActiveOrg(id: string | null): void {
   if (typeof window === "undefined") return;
+  if (sessionStorage.getItem("booker.demo.token")) {
+    if(id) sessionStorage.setItem("booker.demo.org",id); else sessionStorage.removeItem("booker.demo.org");
+    return;
+  }
   if (id) localStorage.setItem(ORG_KEY, id);
   else localStorage.removeItem(ORG_KEY);
 }
 
 export function setToken(token: string | null): void {
   if (typeof window === "undefined") return;
+  if (sessionStorage.getItem("booker.demo.token")) {
+    if(token)sessionStorage.setItem("booker.demo.token",token);
+    else for(const key of ["booker.demo.token","booker.demo.org","booker.demo.admin"])sessionStorage.removeItem(key);
+    return;
+  }
   if (token) localStorage.setItem(TOKEN_KEY, token);
   else {
     localStorage.removeItem(TOKEN_KEY);
@@ -50,6 +61,14 @@ export function isWriteRole(role?: string | null): boolean {
   return role === "owner" || role === "admin" || role === "manager";
 }
 
+/** Keep proxy HTML, exception bodies and validation input values out of product copy. */
+export function apiErrorMessage(status: number, detail: unknown): string {
+  if (status >= 500) return "Сервис временно недоступен. Попробуйте ещё раз позже.";
+  if (typeof detail === "string" && detail.trim() && detail.length <= 500 && !/<[a-z!/]/i.test(detail)) return detail;
+  if (Array.isArray(detail)) return "Проверьте заполненные поля и повторите отправку.";
+  return "Не удалось выполнить запрос. Обновите страницу или попробуйте позже.";
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json");
@@ -59,15 +78,15 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (org) headers.set("X-Booker-Org", org);
   const res = await fetch(`${apiBase()}${path}`, { ...init, headers });
   const text = await res.text();
-  let data: { detail?: unknown } = {};
+  let data: unknown = {};
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
-    data = { detail: text };
+    throw new ApiError(apiErrorMessage(res.status, undefined), res.status);
   }
   if (!res.ok) {
-    const detail = data.detail;
-    const message = typeof detail === "string" ? detail : text || res.statusText;
+    const detail = data && typeof data === "object" && "detail" in data ? data.detail : undefined;
+    const message = apiErrorMessage(res.status, detail);
     throw new ApiError(message, res.status);
   }
   return data as T;

@@ -10,21 +10,21 @@ const ROLES = [
     email: DEMO_ACCOUNTS.customer,
     orgKind: "customer",
     route: "/cabinet/customer",
-    heading: "Студия событий",
+    heading: "Привет, Анна!",
   },
   {
     key: "performer",
     email: DEMO_ACCOUNTS.artist,
     orgKind: "artist",
     route: "/cabinet/performer",
-    heading: "Календарь исполнителя",
+    heading: "Кабинет артиста",
   },
   {
     key: "venue",
     email: DEMO_ACCOUNTS.venue,
     orgKind: "venue",
     route: "/cabinet/venue",
-    heading: "Пульт площадки",
+    heading: "Кабинет площадки",
   },
 ] as const;
 

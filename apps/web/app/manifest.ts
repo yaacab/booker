@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Слот, цифра с сервера и подписи в одной комнате.",
     start_url: "/",
     display: "standalone",
-    background_color: "#F3F0E9",
-    theme_color: "#2D6A66",
+    background_color: "#101112",
+    theme_color: "#101112",
     lang: "ru",
     shortcuts: [
       { name: "Открыть каталог", short_name: "Каталог", url: "/search" },

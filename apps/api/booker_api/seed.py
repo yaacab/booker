@@ -16,16 +16,32 @@ from booker_api.models import (
     User,
     Venue,
     VenueHall,
+    VenuePhoto,
     VenueTariff,
 )
 from booker_api.security import hash_password, now
 
 DEMO_PASSWORD = "password1"
+DEMO_VENUE_NAME = "Клуб Сигнал"
+DEMO_VENUE_ORG = "Сигнал"
+
+
+def _demo_venue(db: Session) -> Venue | None:
+    return (
+        db.query(Venue)
+        .join(Organization, Organization.id == Venue.organization_id)
+        .filter(
+            Venue.name == DEMO_VENUE_NAME,
+            Organization.name == DEMO_VENUE_ORG,
+            Organization.kind == "venue",
+        )
+        .one_or_none()
+    )
 
 
 def _ensure_venue_user(db: Session) -> bool:
     """Владелец площадки «Клуб Сигнал» для cross-role E2E."""
-    venue = db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none()
+    venue = _demo_venue(db)
     if not venue:
         return False
     user = db.query(User).filter(User.email == "venue@booker.test").one_or_none()
@@ -82,7 +98,7 @@ def _ensure_cross_role_catalog(db: Session) -> int:
     if nova and not _open_in_horizon(db, "artist", nova.id):
         db.add(_slot("artist", nova.id, 14, 18))
         added += 1
-    venue = db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none()
+    venue = _demo_venue(db)
     if venue:
         hall = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).first()
         if hall and not _open_in_horizon(db, "hall", hall.id):
@@ -91,11 +107,82 @@ def _ensure_cross_role_catalog(db: Session) -> int:
     return added
 
 
+def _ensure_demo_venue_publication(db: Session) -> None:
+    """Keep the owner-managed demo venue inside the public catalog gate."""
+    venue = _demo_venue(db)
+    if not venue:
+        return
+    db.flush()
+
+    checked_at = now()
+    venue.verified = True
+    venue.verified_status = "approved"
+    venue.listing_origin = "owner"
+    venue.availability_mode = "owner"
+    venue.source_type = "owner_submission"
+    venue.partnership_status = "verified"
+    venue.is_partner = True
+    venue.is_claimed = True
+    venue.moderation_status = "published"
+    venue.data_freshness_status = "fresh"
+    venue.verified_at = venue.verified_at or checked_at
+    venue.last_verified_at = checked_at
+    venue.partnership_started_at = venue.partnership_started_at or checked_at
+    venue.status_changed_at = checked_at
+
+    hall = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).first()
+    if hall is None:
+        hall = VenueHall(venue_id=venue.id, name="Основной зал", capacity=venue.capacity)
+        db.add(hall)
+        db.flush()
+
+    calendar_horizon = checked_at + timedelta(days=30)
+    owner_slot = (
+        db.query(AvailabilitySlot)
+        .filter(
+            AvailabilitySlot.resource_type == "hall",
+            AvailabilitySlot.resource_id == hall.id,
+            AvailabilitySlot.status == "open",
+            AvailabilitySlot.ends_at >= calendar_horizon,
+        )
+        .first()
+    )
+    if owner_slot is None:
+        db.add(_slot("hall", hall.id, 31, 19))
+
+    tariff = (
+        db.query(VenueTariff)
+        .filter(VenueTariff.venue_id == venue.id, VenueTariff.honorarium_rub > 0)
+        .first()
+    )
+    if tariff is None:
+        db.add(
+            VenueTariff(
+                venue_id=venue.id,
+                title="Аренда вечер",
+                honorarium_rub=220000,
+            )
+        )
+
+    photo_url = "/design/puzzle-venue.png"
+    photo = (
+        db.query(VenuePhoto)
+        .filter(VenuePhoto.venue_id == venue.id, VenuePhoto.photo_url == photo_url)
+        .one_or_none()
+    )
+    if photo is None:
+        photo = VenuePhoto(venue_id=venue.id, photo_url=photo_url)
+        db.add(photo)
+    photo.photo_source_url = "https://bukergo.ru/design/puzzle-venue.png"
+    photo.photo_rights_status = "official_permission"
+
+
 def seed(db: Session) -> dict[str, str]:
     if db.query(User).filter(User.email == "customer@booker.test").one_or_none():
         added = enrich_catalog(db)
         added += _ensure_cross_role_catalog(db)
         venue_user_added = _ensure_venue_user(db)
+        _ensure_demo_venue_publication(db)
         db.commit()
         return {"status": "already_seeded", "catalog_added": added, "venue_user_added": venue_user_added}
 
@@ -169,8 +256,9 @@ def seed(db: Session) -> dict[str, str]:
     db.commit()
     enrich_catalog(db)
     _ensure_cross_role_catalog(db)
-    db.commit()
     _ensure_venue_user(db)
+    _ensure_demo_venue_publication(db)
+    db.commit()
     return {
         "status": "ok",
         "customer": "customer@booker.test",
@@ -461,7 +549,7 @@ def enrich_catalog(db: Session) -> int:
         for day in pack["days"]:
             db.add(_slot("artist", artist.id, day, 18))
         added += 1
-    if not db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none():
+    if _demo_venue(db) is None:
         venue_user = db.query(User).filter(User.email == "venue@booker.test").one_or_none()
         if not venue_user:
             venue_user = User(
@@ -472,7 +560,7 @@ def enrich_catalog(db: Session) -> int:
             )
             db.add(venue_user)
             db.flush()
-        vorg = Organization(name="Сигнал", kind="venue", city="Москва")
+        vorg = Organization(name=DEMO_VENUE_ORG, kind="venue", city="Москва")
         db.add(vorg)
         db.flush()
         db.add(
@@ -485,7 +573,7 @@ def enrich_catalog(db: Session) -> int:
         )
         venue = Venue(
             organization_id=vorg.id,
-            name="Клуб Сигнал",
+            name=DEMO_VENUE_NAME,
             city="Москва",
             capacity=250,
             verified=True,

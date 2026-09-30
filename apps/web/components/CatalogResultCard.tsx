@@ -1,23 +1,38 @@
 "use client";
 
 import Link from "next/link";
+import { ProfileMedia } from "@/components/ProfileMedia";
+import { useEffect, useRef } from "react";
+import { observeDiscovery } from "@/lib/discovery";
+import { api } from "@/lib/api";
 import { FavoriteToggle, type FavoriteTargetType } from "@/components/FavoriteToggle";
 import { CHIP, categoryLabel } from "@/lib/copy";
-import { formatDay, formatWhen, initials, money } from "@/lib/format";
+import { formatDay, formatWhen, money, guestsLabel } from "@/lib/format";
 
 type CatalogItem = {
+  sponsored?: boolean; sponsored_label?: string; promotion_touch_id?: string;
   id: string;
   name: string;
   city: string;
   category?: string;
   verified: boolean;
+  media_url?: string | null;
   open_slots?: number;
   next_open_at?: string | null;
   tariffs?: { honorarium_rub: number }[];
+  capacity?: number;
   address?: string;
   metro?: string;
   availability_mode?: string;
   listing_origin?: string;
+  source_type?: string;
+  partnership_status?: string;
+  public_disclosure?: string | null;
+  cover_photo?: {
+    url: string;
+    source_url?: string;
+    rights_status?: "licensed" | "official_permission";
+  } | null;
   matching_halls?: { id: string; name: string; capacity: number }[];
 };
 
@@ -38,55 +53,66 @@ function slotState(item: CatalogItem): { label: string; cls: string } {
 }
 
 export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardProps) {
+  const cardRef = useRef<HTMLElement>(null);
+  const touch = item.sponsored ? item.promotion_touch_id : undefined;
+  const targetHref = touch ? `${href}${href.includes("?") ? "&" : "?"}promotion_touch_id=${encodeURIComponent(touch)}` : href;
+  useEffect(() => {
+    if (!cardRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        observeDiscovery(kind, item.id, "impression");
+        if (touch) void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "impression" }), keepalive: true }).catch(() => {});
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [touch, kind, item.id]);
+  function onProfileClick() {
+    if (touch) void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "click" }), keepalive: true }).catch(() => {});
+  }
   const st = slotState(item);
   const synthetic = item.availability_mode === "synthetic";
   const hallHint = item.matching_halls?.[0];
 
+  const displayedTariff = item.tariffs?.[0];
+  const category = kind === "venue" ? "Площадка" : categoryLabel(item.category || "");
+  const availabilityTitle = date
+    ? `На ${formatDay(`${date}T12:00:00+03:00`)}`
+    : item.next_open_at ? `Ближайшая дата: ${formatWhen(item.next_open_at)}` : st.label;
+
   return (
-    <article className="card">
-      <div className="card-head">
-        <Link href={href} style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
-          <span className="avatar" aria-hidden>
-            {initials(item.name)}
-          </span>
-          <strong>{item.name}</strong>
+    <article ref={cardRef} className={`card catalog-result catalog-result--${kind}`}>
+      {item.sponsored ? <span className="chip">{item.sponsored_label || "Продвижение"}</span> : null}
+      <div className="catalog-card-media">
+        <Link className="catalog-image-link" href={targetHref} onClick={onProfileClick} aria-label={`Открыть профиль: ${item.name}`}>
+          <ProfileMedia src={kind === "venue" ? item.cover_photo?.url || item.media_url : item.media_url} name={item.name} compact />
         </Link>
-        <FavoriteToggle compact targetType={kind} targetId={item.id} />
+        <span className={`catalog-availability chip ${st.cls}`} title={availabilityTitle}>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2" /><path d="M6 2v4M14 2v4M3 8h14M6 11h2M11 11h2" /></svg>
+          {st.label}
+        </span>
+        <FavoriteToggle compact className="catalog-card-favorite" targetType={kind} targetId={item.id} />
       </div>
-      <Link href={href} style={{ color: "inherit", textDecoration: "none" }}>
-        {kind === "artist" ? (
-          <div>
-            {item.city} · {categoryLabel(item.category || "")}
-          </div>
-        ) : (
-          <div>
-            {item.city} · площадка
-            {item.metro ? ` · м. ${item.metro}` : ""}
-            {hallHint ? ` · зал до ${hallHint.capacity}` : ""}
-          </div>
-        )}
-        {kind === "venue" && item.address ? <p className="timeline">{item.address}</p> : null}
-        <p>
-          <span className={`chip ${st.cls}`}>{st.label}</span>{" "}
-          {kind === "venue" && item.listing_origin === "open_data" ? (
-            <span className="chip wait">{CHIP.openDataVenue}</span>
-          ) : kind === "venue" && synthetic ? (
-            <span className="chip wait">{CHIP.syntheticCalendar}</span>
-          ) : item.verified ? (
-            <span className="chip ok">{CHIP.verified}</span>
-          ) : (
-            <span className="chip wait">{CHIP.pending}</span>
-          )}
-        </p>
-        <p className="mono">
-          {date ? `слот на ${formatDay(`${date}T12:00:00+03:00`)}` : formatWhen(item.next_open_at)}
-        </p>
-        {item.tariffs?.[0] ? (
-          <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
-        ) : kind === "venue" ? (
-          <p className="timeline">цена по запросу</p>
-        ) : null}
-      </Link>
+      <div className="catalog-card-content">
+        <div className="card-head">
+          <Link href={targetHref} onClick={onProfileClick}><strong>{item.name}</strong></Link>
+          {item.verified ? <span className="catalog-verified-mark" role="img" aria-label={CHIP.verified} title={CHIP.verified}>✓</span> : null}
+        </div>
+        <p className="catalog-card-location">{category} <span aria-hidden="true">·</span> {item.city}{item.metro ? ` · м. ${item.metro}` : ""}</p>
+        <div className="catalog-card-facts">
+          {kind === "venue" && item.public_disclosure ? <span>{item.public_disclosure}</span> : null}
+          {kind === "venue" && (hallHint?.capacity || item.capacity) ? <span>{`До ${guestsLabel(hallHint?.capacity || item.capacity || 0)}`}</span> : null}
+          {kind === "venue" && item.listing_origin === "open_data" ? <span className="catalog-origin-note">Владелец не подключён</span> : !item.verified ? <span>Профиль не подтверждён</span> : <span>Профиль подтверждён</span>}
+          {hallHint?.name ? <span>{hallHint.name}</span> : null}
+        </div>
+        {kind === "venue" && item.address ? <p className="catalog-card-address">{item.address}</p> : null}
+        {item.next_open_at && !synthetic ? <p className="catalog-card-date">{date ? `На ${formatDay(`${date}T12:00:00+03:00`)}` : `Ближайшая: ${formatWhen(item.next_open_at)}`}</p> : null}
+        <div className="catalog-card-footer">
+          <p className="catalog-price">{displayedTariff ? <><span>Ориентир</span>{money(displayedTariff.honorarium_rub)}</> : <span className="catalog-price-request">Цена по запросу</span>}</p>
+          <Link className="btn secondary catalog-open" href={targetHref} onClick={onProfileClick}>Выбрать дату <span aria-hidden="true">↗</span></Link>
+        </div>
+      </div>
     </article>
   );
 }

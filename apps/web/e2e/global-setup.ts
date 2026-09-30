@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -34,8 +34,10 @@ async function loginDemo(email: string): Promise<{ token: string; user_id: strin
 export default async function globalSetup() {
   const apiDir = path.resolve(__dirname, "../../api");
   const venvPython = path.resolve(apiDir, "../../.venv/bin/python");
-  const pythonBin = fs.existsSync(venvPython) ? venvPython : "python3";
-  execSync(`${pythonBin} -m booker_api.seed`, {
+  const pythonBin =
+    process.env.BOOKER_PYTHON_BIN ??
+    (fs.existsSync(venvPython) ? venvPython : "python3");
+  execFileSync(pythonBin, ["-m", "booker_api.seed"], {
     cwd: apiDir,
     stdio: "inherit",
     env: {

@@ -1,4 +1,54 @@
-from tests.conftest import auth_header, register
+from booker_api.config import Settings, settings
+from booker_api.models import User
+from tests.conftest import auth_header, grant_team_plan, register
+
+
+def _registration_payload(email: str) -> dict:
+    return {
+        "email": email,
+        "password": "password1",
+        "full_name": "Участник пилота",
+        "phone": "+79000000000",
+        "accept_offer": True,
+        "accept_privacy": True,
+        "marketing_opt_in": False,
+    }
+
+
+def test_public_registration_defaults_to_closed(monkeypatch):
+    monkeypatch.delenv("BOOKER_PUBLIC_REGISTRATION_ENABLED", raising=False)
+    configured = Settings(_env_file=None, environment="production")
+    assert configured.environment == "production"
+    assert configured.public_registration_enabled is False
+
+
+def test_closed_registration_rejects_direct_api_but_keeps_login(
+    client,
+    SessionLocal,
+    monkeypatch,
+):
+    existing = register(client, "invited@booker.test", "Приглашённый участник")
+    monkeypatch.setattr(settings, "public_registration_enabled", False)
+
+    denied = client.post(
+        "/auth/register",
+        json=_registration_payload("public-signup@booker.test"),
+    )
+    assert denied.status_code == 403
+    assert denied.json()["detail"].startswith("Саморегистрация временно закрыта")
+
+    db = SessionLocal()
+    try:
+        assert db.query(User).filter(User.email == "public-signup@booker.test").one_or_none() is None
+    finally:
+        db.close()
+
+    login = client.post(
+        "/auth/login",
+        json={"email": "invited@booker.test", "password": "password1"},
+    )
+    assert login.status_code == 200
+    assert login.json()["user_id"] == existing["user_id"]
 
 
 def test_register_requires_legal_accept(client):
@@ -58,6 +108,7 @@ def test_member_without_confirm_cannot_ack_offer(client):
         json={"name": "Артисты", "kind": "artist"},
         headers=auth_header(owner["token"]),
     ).json()
+    grant_team_plan(client, artist_org['id'])
     add = client.post(
         f"/orgs/{artist_org['id']}/members",
         json={"user_id": manager["user_id"], "role": "manager", "can_confirm_offer": False},

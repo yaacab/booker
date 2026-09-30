@@ -1,0 +1,3 @@
+"use client";
+import {useEffect,useState} from "react";
+export function DemoBanner(){const [demo,setDemo]=useState(false);useEffect(()=>{setDemo(!!sessionStorage.getItem("booker.demo.token"))},[]);if(!demo)return null;return <aside className="demo-session-banner"><strong>ДЕМО-РЕЖИМ</strong> Отдельные тестовые данные · реальные операции не выполняются <a href="/dev/cabinets">Сменить роль</a><button className="linkish" onClick={()=>{for(const key of ["booker.demo.token","booker.demo.org","booker.demo.admin"])sessionStorage.removeItem(key);window.location.href="/"}}>Выйти из демо</button></aside>}

@@ -1,13 +1,13 @@
 /** Публичные подписи. Юридические страницы живут отдельно. */
 
 export const CHIP = {
-  verified: "фейс-контроль ок",
-  pending: "ещё знакомимся",
-  slotOk: "можно брать",
-  slotWait: "надо уточнить",
-  slotNone: "календарь молчит",
+  verified: "профиль подтверждён",
+  pending: "профиль не подтверждён",
+  slotOk: "есть свободные даты",
+  slotWait: "доступность уточняется",
+  slotNone: "нет свободных дат",
   syntheticCalendar: "календарь ориентировочный",
-  openDataVenue: "каталог площадок · владелец не подключён",
+  openDataVenue: "информация из открытых источников",
 };
 
 export const KIND_LABEL: Record<string, string> = {

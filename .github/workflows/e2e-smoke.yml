@@ -23,24 +23,28 @@ jobs:
       - name: Start API
         working-directory: apps/api
         run: |
-          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PAYMENT_PROVIDER=stub \
+          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PUBLIC_REGISTRATION_ENABLED=1 BOOKER_PAYMENT_PROVIDER=stub BOOKER_PAYMENT_ALLOW_STUB=true BOOKER_TEST_AUTH_RATE_LIMIT=1000 BOOKER_ENVIRONMENT=test \
             uvicorn booker_api.main:app --host 127.0.0.1 --port 8030 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8030/health && break; sleep 1; done
+          curl --fail --silent --show-error --retry 29 --retry-delay 1 --retry-connrefused \
+            http://127.0.0.1:8030/health
       - name: Web install + Playwright
         working-directory: apps/web
         run: |
-          npm install
+          npm ci
           npx playwright install --with-deps chromium
       - name: E2E flow smoke
         working-directory: apps/web
         env:
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          BOOKER_API_URL: http://127.0.0.1:8030
+          BOOKER_WEB_URL: http://127.0.0.1:3000
+          BOOKER_PUBLIC_REGISTRATION_ENABLED: "1"
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8030
           BOOKER_INTERNAL_API_URL: http://127.0.0.1:8030
         run: |
           npm run build
           npx next start -H 127.0.0.1 -p 3000 &
-          for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          curl --fail --silent --show-error --retry 39 --retry-delay 1 --retry-connrefused \
+            http://127.0.0.1:3000/ >/dev/null
           npx playwright test \
             e2e/flow.spec.ts \
             e2e/cabinets-cross-role.spec.ts \

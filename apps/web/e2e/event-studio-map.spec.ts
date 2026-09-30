@@ -13,7 +13,7 @@ test.describe("Event Studio Map v1", () => {
     await expect(page.locator(".event-studio-shell")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Соберите событие", exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Основное" })).toHaveCount(0);
-    await expect(page.getByRole("status")).toContainText(/Сохран/i);
+    await expect(page.locator(".studio-heading").getByRole("status")).toContainText(/Сохран/i);
     await expect(page.getByLabel("Этапы создания события")).toBeVisible();
     await expect(page.getByLabel("Карта события")).toBeVisible();
   });
@@ -33,7 +33,7 @@ test.describe("Event Studio Map v1", () => {
     const toggle = page.locator(".mobile-panel-toggle");
     await expect(toggle).toBeVisible();
     await toggle.click();
-    await expect(page.getByRole("complementary", { name: "Добавить исполнителя" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Добавить исполнителя" })).toBeVisible();
     await expect(page.getByLabel("Поиск исполнителя")).toBeVisible();
     await page.getByLabel("Закрыть панель").click();
     await expect(toggle).toBeVisible();

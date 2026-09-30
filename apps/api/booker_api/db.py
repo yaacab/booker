@@ -2,7 +2,9 @@ from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from booker_api.config import settings
 
@@ -38,7 +40,30 @@ def ensure_missing_columns(bind) -> None:
         bind, "availability_slots", "external_uid", "external_uid VARCHAR(255)"
     )
     _add_column_if_missing(bind, "requests", "requirement_id", "requirement_id VARCHAR(36)")
+    for column in (
+        "customer_service_fee_rub", "supplier_service_fee_rub", "customer_total_rub",
+        "supplier_payout_rub", "platform_revenue_rub",
+    ):
+        _add_column_if_missing(bind, "offer_versions", column, f"{column} INTEGER")
+    for column in ("customer_service_fee_rate", "supplier_service_fee_rate"):
+        _add_column_if_missing(bind, "offer_versions", column, f"{column} FLOAT")
+    _add_column_if_missing(bind, "offer_versions", "commercial_policy_version",
+                           "commercial_policy_version VARCHAR(128)")
+    for column, ddl in (
+        ("event_type", "event_type VARCHAR(64) NOT NULL DEFAULT ''"),
+        ("share_budget", "share_budget BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("budget_min_rub", "budget_min_rub INTEGER"),
+        ("budget_max_rub", "budget_max_rub INTEGER"),
+        ("public_requirements_json", "public_requirements_json TEXT NOT NULL DEFAULT '{}'"),
+    ):
+        _add_column_if_missing(bind, "public_briefs", column, ddl)
+    _add_column_if_missing(bind, "brief_responses", "target_type", "target_type VARCHAR(16)")
+    _add_column_if_missing(bind, "brief_responses", "target_id", "target_id VARCHAR(36)")
+    _add_column_if_missing(bind, "shared_shortlists", "event_id", "event_id VARCHAR(36)")
+    _add_column_if_missing(bind, "shared_shortlists", "collaborative", "collaborative BOOLEAN NOT NULL DEFAULT FALSE")
     ts_type = "TIMESTAMPTZ" if dialect == "postgresql" else "DATETIME"
+    _add_column_if_missing(bind, "events", "ends_at", f"ends_at {ts_type}")
+    _add_column_if_missing(bind, "events", "event_type", "event_type VARCHAR(128) NOT NULL DEFAULT ''")
     _add_column_if_missing(
         bind,
         "session_tokens",
@@ -65,16 +90,74 @@ def ensure_missing_columns(bind) -> None:
     _add_column_if_missing(
         bind, "venues", "availability_mode", "availability_mode VARCHAR(32) DEFAULT 'owner'"
     )
+    _add_column_if_missing(bind, "venues", "venue_type", "venue_type VARCHAR(64) DEFAULT ''")
+    _add_column_if_missing(
+        bind,
+        "venues",
+        "administrative_district",
+        "administrative_district VARCHAR(32) DEFAULT ''",
+    )
+    _add_column_if_missing(bind, "venues", "latitude", "latitude FLOAT")
+    _add_column_if_missing(bind, "venues", "longitude", "longitude FLOAT")
+    _add_column_if_missing(bind, "venues", "phone", "phone VARCHAR(64) DEFAULT ''")
+    _add_column_if_missing(bind, "venues", "email", "email VARCHAR(255) DEFAULT ''")
+    _add_column_if_missing(
+        bind, "venues", "official_website", "official_website VARCHAR(512) DEFAULT ''"
+    )
+    _add_column_if_missing(
+        bind, "venues", "source_type", "source_type VARCHAR(32) DEFAULT 'owner_submission'"
+    )
+    _add_column_if_missing(
+        bind, "venues", "partnership_status", "partnership_status VARCHAR(32) DEFAULT 'claimed'"
+    )
+    _add_column_if_missing(bind, "venues", "is_partner", "is_partner BOOLEAN DEFAULT 0")
+    _add_column_if_missing(bind, "venues", "is_claimed", "is_claimed BOOLEAN DEFAULT 1")
+    _add_column_if_missing(
+        bind, "venues", "moderation_status", "moderation_status VARCHAR(32) DEFAULT 'published'"
+    )
+    _add_column_if_missing(
+        bind, "venues", "completeness_score", "completeness_score INTEGER DEFAULT 0"
+    )
+    _add_column_if_missing(bind, "venues", "details_json", "details_json TEXT DEFAULT '{}'")
+    _add_column_if_missing(bind, "venues", "verified_at", f"verified_at {ts_type}")
+    _add_column_if_missing(bind, "venues", "verified_by", "verified_by VARCHAR(36)")
+    _add_column_if_missing(
+        bind, "venues", "partnership_started_at", f"partnership_started_at {ts_type}"
+    )
+    _add_column_if_missing(bind, "venues", "status_changed_at", f"status_changed_at {ts_type}")
+    _add_column_if_missing(bind, "venues", "last_verified_at", f"last_verified_at {ts_type}")
+    _add_column_if_missing(bind, "venues", "last_crawled_at", f"last_crawled_at {ts_type}")
+    _add_column_if_missing(
+        bind,
+        "venues",
+        "data_freshness_status",
+        "data_freshness_status VARCHAR(32) DEFAULT 'needs_review'",
+    )
 
 
 def ensure_sqlite_columns(bind) -> None:
     ensure_missing_columns(bind)
+    from booker_api.commerce.snapshots import install_sqlite_guard
+
+    install_sqlite_guard(bind)
 
 
 def make_engine(url: str | None = None):
     db_url = url or settings.database_url
     connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
-    return create_engine(db_url, connect_args=connect_args, future=True)
+    parsed = make_url(db_url)
+    file_sqlite = (
+        parsed.get_backend_name() == "sqlite"
+        and parsed.database not in (None, "", ":memory:")
+        and not parsed.database.startswith("file::memory:")
+        and parsed.query.get("mode") != "memory"
+    )
+    # Sync authentication and endpoints run in separate worker phases. A small
+    # QueuePool can block every worker at checkout before authenticated requests
+    # get a worker to finish and return their connection. SQLite file connections
+    # are cheap; close each with its request instead of queuing workers for them.
+    options = {"poolclass": NullPool} if file_sqlite else {}
+    return create_engine(db_url, connect_args=connect_args, future=True, **options)
 
 
 def run_migrations(url: str | None = None) -> None:
@@ -99,7 +182,7 @@ def init_schema(bind=None) -> None:
         run_migrations(str(target.url))
         return
     Base.metadata.create_all(bind=target)
-    ensure_missing_columns(target)
+    ensure_sqlite_columns(target)
 
 
 def get_db() -> Generator[Session, None, None]:

@@ -14,12 +14,17 @@ test.describe("Customer cabinet §11.2 scenarios", () => {
     await injectSession(page, session.token, org!.id);
 
     await page.goto("/cabinet/customer");
-    const cabinet = page.getByRole("main", { name: "Студия событий" });
-    await expect(cabinet.getByRole("heading", { name: "Студия событий" })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByLabel("Прогресс по сделке")).toBeVisible();
-    await expect(cabinet.getByRole("link", { name: "Новое событие" })).toBeVisible();
-    await expect(cabinet.getByRole("link", { name: "Каталог", exact: true })).toBeVisible();
-    await expect(cabinet.getByRole("link", { name: "Избранное" })).toBeVisible();
+    const cabinet = page.locator('main[data-cabinet="customer"]');
+    await expect(cabinet).toBeVisible({ timeout: 15_000 });
+    await expect(cabinet.getByRole("heading", { level: 1, name: "Привет, Анна!" })).toBeVisible({ timeout: 15_000 });
+    await expect(cabinet.getByRole("region", { name: "Продолжить организацию событий", exact: true })).toBeVisible();
+    await expect(cabinet.getByRole("link", { name: "Найти артиста", exact: true }).first()).toHaveAttribute("href", "/search?kind=artist");
+    await expect(cabinet.getByRole("link", { name: "Заказы и отклики", exact: true })).toHaveAttribute("href", "/briefs");
+    await expect(
+      page
+        .getByRole("navigation", { name: "Навигация рабочего пространства" })
+        .getByRole("link", { name: "Избранное", exact: true }),
+    ).toHaveAttribute("href", "/cabinet/customer/favorites");
 
     await page.goto("/cabinet/customer/favorites");
     await expect(page.getByRole("heading", { name: "Избранное" })).toBeVisible({ timeout: 15_000 });

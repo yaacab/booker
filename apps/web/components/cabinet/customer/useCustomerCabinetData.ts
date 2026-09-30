@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, getActiveOrg, getToken, setActiveOrg, trackClientEvent } from "@/lib/api";
 import { cabinetPathForKind } from "@/lib/cabinetRoutes";
 import type { CustomerBooking, CustomerDealRoom, CustomerEvent } from "./types";
+import type { PlanningEvent } from "../PlanningPriorities";
 
 const DEAL_ROOM_STATUSES = new Set(["Negotiation", "DateHeld", "AwaitingContract", "AwaitingPayment"]);
 const HOLD_SOON_MS = 48 * 3600_000;
@@ -15,9 +16,12 @@ export function useCustomerCabinetData() {
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [organizationId, setOrganizationId] = useState("");
   const [orgName, setOrgName] = useState("");
   const [events, setEvents] = useState<CustomerEvent[]>([]);
   const [dealRooms, setDealRooms] = useState<CustomerDealRoom[]>([]);
+  const [planningEvents,setPlanningEvents]=useState<PlanningEvent[]>([]);
+  const [planningError,setPlanningError]=useState("");
 
   const load = useCallback(async () => {
     if (!getToken()) {
@@ -47,12 +51,17 @@ export function useCustomerCabinetData() {
       }
       setActiveOrg(org.id);
       setOrgName(org.name);
+      setOrganizationId(org.id);
       const q = `?organization_id=${encodeURIComponent(org.id)}`;
       const [ev, bk] = await Promise.all([
         api<{ items: CustomerEvent[] }>(`/events${q}`),
         api<{ items: CustomerBooking[] }>(`/bookings${q}`),
       ]);
       setEvents(ev.items);
+      const upcoming=ev.items.filter(e=>!["Cancelled","Completed"].includes(e.status)&&new Date(e.event_date).getTime()>=Date.now()-86400000).sort((a,b)=>new Date(a.event_date).getTime()-new Date(b.event_date).getTime()).slice(0,8);
+      const planning=await Promise.allSettled(upcoming.map(e=>api<PlanningEvent>(`/events/${e.id}`)));
+      setPlanningEvents(planning.flatMap(r=>r.status==="fulfilled"?[r.value]:[]));
+      setPlanningError(planning.some(r=>r.status==="rejected")?"Не удалось загрузить состав некоторых событий. Откройте событие, чтобы проверить заявки.":"");
       const activeBookings = bk.items.filter((b) => DEAL_ROOM_STATUSES.has(b.status));
       const rooms = await Promise.all(
         activeBookings.map((b) =>
@@ -97,7 +106,7 @@ export function useCustomerCabinetData() {
   const newOffers = useMemo(
     () =>
       dealRooms.filter(
-        (d) => d.status === "Negotiation" && d.quote.supplier_ack && !d.quote.customer_ack,
+        (d) => d.status === "Negotiation",
       ),
     [dealRooms],
   );
@@ -158,6 +167,9 @@ export function useCustomerCabinetData() {
     email,
     fullName,
     orgName,
+    organizationId,
+    planningEvents,
+    planningError,
     upcomingEvents,
     drafts,
     newOffers,

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import { CATEGORY, KIND_LABEL, categoryLabel } from "@/lib/copy";
-import { formatWhen, guestsLabel, moscowDate } from "@/lib/format";
+import { formatWhen, guestsLabel, moscowDate, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import {
   BLOCKER_LABEL,
@@ -21,20 +21,29 @@ import {
   type EventRequestLite,
   type RequirementLite,
 } from "@/lib/eventDayOps";
+import { ShortlistManager } from "@/components/ShortlistManager";
+import { EventRepeat, RepeatPreferences } from "@/components/event-planning/EventRepeat";
+import { EventReadiness } from "@/components/event-planning/EventReadiness";
+import { EventBudget } from "@/components/event-planning/EventBudget";
+import { BusinessNotes } from "@/components/business/BusinessNotes";
+import { EventReplacement } from "@/components/event-planning/EventReplacement";
+import { EventMatching } from "@/components/event-planning/EventMatching";
 import { STATUS_LABEL } from "@/lib/status";
 
-type Requirement = RequirementLite & { notes?: string };
+type Requirement = RequirementLite & { notes?: string; required?: boolean };
 
 type DraftItem = {
   id?: string;
   category_code: string;
   qty: number;
   role_label: string;
+  required: boolean;
 };
 
 type EventRequest = EventRequestLite & {
   resource_type?: string;
   resource_id?: string;
+  resource_name?: string;
 };
 
 type EventDetail = {
@@ -43,6 +52,9 @@ type EventDetail = {
   status: string;
   city?: string;
   event_date: string;
+  ends_at?: string | null;
+  event_type?: string;
+  budget_rub?: number | null;
   guest_count?: number;
   organization_id?: string;
   requirements?: Requirement[];
@@ -75,14 +87,6 @@ function searchHref(
   if (exclude?.length) q.set("exclude", exclude.join(","));
   return `/search?${q.toString()}`;
 }
-
-type ReplacementPlan = {
-  needs_replacement: boolean;
-  open_slots: number;
-  cancelled_requests: { id: string; resource_name?: string | null; status: string }[];
-  exclude_resource_ids: string[];
-  search: { date: string; category: string; city: string; exclude?: string };
-};
 
 function DayStatusPanel({
   eventId,
@@ -231,78 +235,8 @@ function DayStatusPanel({
   );
 }
 
-function ReplacementPanel({
-  eventId,
-  requirementId,
-  label,
-  date,
-  city,
-  category,
-}: {
-  eventId: string;
-  requirementId: string;
-  label: string;
-  date: string;
-  city?: string;
-  category: string;
-}) {
-  const [plan, setPlan] = useState<ReplacementPlan | null>(null);
-  const [loadError, setLoadError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    api<ReplacementPlan>(`/events/${eventId}/requirements/${requirementId}/replacement`)
-      .then((data) => {
-        if (!cancelled) {
-          setPlan(data);
-          setLoadError("");
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setPlan(null);
-          setLoadError(err instanceof Error ? err.message : "Не удалось загрузить план замены");
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [eventId, requirementId]);
-
-  if (loadError) {
-    return (
-      <p className="timeline" role="alert">
-        {loadError}
-      </p>
-    );
-  }
-  if (!plan?.needs_replacement) return null;
-
-  const exclude = plan.exclude_resource_ids;
-  return (
-    <article className="card tint" style={{ marginTop: "0.75rem" }}>
-      <strong>Замена: {label}</strong>
-      <p className="timeline">
-        Нужно закрыть {plan.open_slots} {plan.open_slots === 1 ? "позицию" : "позиции"}. Предыдущие исполнители исключены из
-        каталога.
-      </p>
-      <ul className="timeline" style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {plan.cancelled_requests.map((item) => (
-          <li key={item.id}>
-            {item.resource_name || "Исполнитель"} — {STATUS_LABEL[item.status] || item.status}
-          </li>
-        ))}
-      </ul>
-      <p>
-        <Link
-          className="btn"
-          href={searchHref(date, category, city || plan.search.city, eventId, requirementId, exclude)}
-        >
-          Подобрать замену
-        </Link>
-      </p>
-    </article>
-  );
+function roleLabel(req: Requirement): string {
+  return categoryLabel(req.category_code) || req.role_label || req.category_code;
 }
 
 function fillRate(requirements: Requirement[], requests: EventRequest[]): { closed: number; total: number } {
@@ -317,16 +251,13 @@ function fillRate(requirements: Requirement[], requests: EventRequest[]): { clos
   return { closed, total };
 }
 
-function roleLabel(req: Requirement): string {
-  return categoryLabel(req.category_code) || req.role_label || req.category_code;
-}
-
 function toDraft(items: Requirement[]): DraftItem[] {
   return items.map((item) => ({
     id: item.id,
     category_code: item.category_code,
     qty: qtyOf(item.qty),
     role_label: item.role_label || "",
+    required: item.required !== false,
   }));
 }
 
@@ -353,10 +284,12 @@ export default function EventPage() {
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [canWrite, setCanWrite] = useState(false);
+  const [planningRefresh, setPlanningRefresh] = useState(0);
   const [draft, setDraft] = useState<DraftItem[]>([]);
   const [editError, setEditError] = useState("");
   const [saving, setSaving] = useState(false);
   const [packError, setPackError] = useState("");
+  const [editingRoles, setEditingRoles] = useState(false);
 
   async function loadEvent(id: string) {
     const [data, me] = await Promise.all([
@@ -401,6 +334,7 @@ export default function EventPage() {
           ...(item.id ? { id: item.id } : {}),
           category_code: item.category_code,
           qty: qtyOf(item.qty),
+          required: item.required,
           ...(item.role_label.trim() ? { role_label: item.role_label.trim() } : {}),
         }));
       const res = await api<{ requirements: Requirement[] }>(`/events/${event.id}/requirements`, {
@@ -418,7 +352,7 @@ export default function EventPage() {
 
   function addRow() {
     const code = CATEGORY_CODES.find((c) => !draft.some((d) => d.category_code === c)) || CATEGORY_CODES[0];
-    setDraft((rows) => [...rows, { category_code: code, qty: 1, role_label: "" }]);
+    setDraft((rows) => [...rows, { category_code: code, qty: 1, role_label: "", required: true }]);
   }
 
   function updateRow(index: number, patch: Partial<DraftItem>) {
@@ -468,18 +402,13 @@ export default function EventPage() {
   const date = moscowDate(event.event_date);
 
   return (
-    <main>
-      <p className="kicker">Состав события</p>
-      <h1>{event.title}</h1>
-      <div>
-        <span className={`chip ${chipCls(event.status)}`}>{STATUS_LABEL[event.status] || event.status}</span>
-      </div>
-      <p className="mono">
-        {formatWhen(event.event_date)}
-        {event.city ? ` · ${event.city}` : ""}
-        {event.guest_count ? ` · ${guestsLabel(event.guest_count)}` : ""}
-      </p>
-      <p>
+    <main className="event-reference-page">
+      <header className="event-control-hero">
+        <div><Link className="deal-back" href="/cabinet">← Мои события</Link><p className="studio-eyebrow">Событие / {event.id.slice(0, 8)}</p><h1>{event.title}</h1><p className="event-control-meta"><span>{formatWhen(event.event_date)}{event.ends_at ? ` — ${formatWhen(event.ends_at)}` : ""}</span>{event.city ? <span>{event.city}</span> : null}{event.guest_count ? <span>{guestsLabel(event.guest_count)}</span> : null}{event.event_type ? <span>{event.event_type}</span> : null}{event.budget_rub != null ? <span>Ваш бюджет: {money(event.budget_rub)}</span> : null}</p><span className={`chip ${chipCls(event.status)}`}>{STATUS_LABEL[event.status] || event.status}</span></div>
+        <aside className="event-readiness"><span className="kicker">Команда события</span><strong>{filledPositions}<span> / {totalPositions}</span></strong><p>{totalPositions === 0 ? "Добавьте роли для вашего события" : filledPositions === totalPositions ? "Все позиции закрыты" : "Позиций закрыто"}</p>{totalPositions > 0 ? <progress max={totalPositions} value={filledPositions} aria-label="Закрытие состава" /> : null}</aside>
+      </header>
+      <div className="event-control-actions">
+        {canWrite ? <button type="button" className="secondary" onClick={() => { setEditingRoles(true); requestAnimationFrame(() => document.getElementById("event-role-editor")?.scrollIntoView({ block: "center" })); }}>Редактировать состав</button> : null}
         <button
           type="button"
           className="secondary"
@@ -500,32 +429,114 @@ export default function EventPage() {
               });
           }}
         >
-          Скачать offline-pack
+          Скачать план события
         </button>
-      </p>
+      </div>
       {packError ? (
         <p className="timeline" role="alert">
           {packError}
         </p>
       ) : null}
-      {totalPositions > 0 ? (
-        <article className="card tint reveal">
-          <strong>Закрытие состава</strong>
-          <p className="timeline">
-            {filledPositions} из {totalPositions} позиций закрыто
-            {filledPositions < totalPositions
-              ? " — остальные ждут подтверждённую сделку или Deal Room"
-              : " — все роли в составе закрыты"}
+      {event.status === "Completed" ? <EventRepeat eventId={event.id} /> : <RepeatPreferences eventId={event.id} onUpdated={() => { setPlanningRefresh((value) => value + 1); void loadEvent(event.id); }} />}
+      <EventReadiness eventId={event.id} refreshKey={event} />
+      <ShortlistManager eventId={event.id} organizationId={event.organization_id} />
+      <EventBudget eventId={event.id} refreshKey={event} />
+      <BusinessNotes key={event.id} eventId={event.id} />
+      <EventMatching eventId={event.id} contextKey={`${JSON.stringify(event.requirements)}:${planningRefresh}`} onRequestsUpdated={() => void loadEvent(event.id)} />
+      <div id="event-day"><DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} /></div>
+      <div className="event-control-body">
+      <section className="event-team-section"><div className="event-section-title"><h2>Команда события</h2><span>{requirements.length} ролей</span></div>
+      {canWrite ? (
+        <details id="event-role-editor" className="card event-role-editor" open={editingRoles} onToggle={(e) => setEditingRoles(e.currentTarget.open)}>
+          <summary>Состав и роли <span aria-hidden="true">+</span></summary>
+          <p className="timeline">Добавьте роли и укажите, сколько участников нужно.</p>
+          {draft.length === 0 ? <p className="timeline">Пока нет позиций — добавьте роль.</p> : null}
+          {draft.map((row, index) => (
+            <div className="event-role-edit-row" key={row.id || `draft-${index}`}>
+              <label>
+                Категория{" "}
+                <select
+                  value={row.category_code}
+                  onChange={(e) => updateRow(index, { category_code: e.target.value })}
+                >
+                  {CATEGORY_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {categoryLabel(code)}
+                    </option>
+                  ))}
+                </select>
+              </label>{" "}
+              <label className="row"><input type="checkbox" checked={row.required} onChange={(e) => updateRow(index, { required: e.target.checked })} />Обязательная позиция</label>{" "}
+              <label>
+                Кол-во{" "}
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={row.qty}
+                  onChange={(e) => updateRow(index, { qty: qtyOf(Number(e.target.value)) })}
+                />
+              </label>{" "}
+              <label>
+                Подпись{" "}
+                <input
+                  type="text"
+                  placeholder="необязательно"
+                  value={row.role_label}
+                  onChange={(e) => updateRow(index, { role_label: e.target.value })}
+                />
+              </label>{" "}
+              <button type="button" className="secondary" onClick={() => removeRow(index)}>
+                Убрать
+              </button>
+            </div>
+          ))}
+          <p>
+            <button type="button" className="secondary" onClick={addRow}>
+              Добавить роль
+            </button>{" "}
+            <button type="button" disabled={saving} onClick={() => void saveRequirements()}>
+              {saving ? "Сохраняем…" : "Сохранить состав"}
+            </button>
           </p>
-        </article>
+          {editError ? (
+            <p className="timeline" role="alert">
+              {editError}
+            </p>
+          ) : null}
+        </details>
       ) : null}
-      <DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} />
+      {requirements.length === 0 ? (
+        <p className="timeline">Состав пока не указан. Добавьте роли в заявке — цена на этом экране не считается.</p>
+      ) : (
+        <div className="event-team-list">
+          {requirements.map((req, i) => {
+            const code = req.category_code;
+            const label = categoryLabel(code) || req.role_label || code;
+            const roleRequests = requestsForRole(requests, req.id);
+            return (
+              <article className="card event-role-card" key={req.id || `${code}-${i}`}>
+                <div className="event-role-name"><span className="event-role-symbol" aria-hidden="true">{code === "dj" ? "♫" : code === "photo" ? "◎" : code === "host" ? "♧" : "✧"}</span><strong>{label}</strong><span className="event-role-quantity">{roleRequests.filter(isClosedRequest).length} / {qtyOf(req.qty)}</span></div>
+
+                {req.notes ? <p className="timeline">{req.notes}</p> : null}
+                {roleRequests.map((item) => (
+                  <RequestDeal key={item.id} item={item} />
+                ))}
+                <p>
+                  <Link className="event-role-search" href={searchHref(date, code, event.city, event.id, req.id)}>Найти на эту дату <span aria-hidden="true">→</span></Link>
+                </p>
+              </article>
+            );
+          })}
+        </div>
+      )}
+      </section>
       {requirements.length > 0 || looseOpen.length > 0 ? (
-        <section className="reveal">
-          <h2>Следующие шаги</h2>
+        <section className="event-next-steps">
+          <div className="event-section-title"><h2>Следующие шаги</h2><span>К событию</span></div>
           <article className="card tint">
             {nextSteps.length === 0 && looseOpen.length === 0 ? (
-              <p className="timeline">Все роли в составе закрыты — можно сосредоточиться на дне события.</p>
+              <p className="timeline">По ролям есть подтверждённые сделки. Готовность документов и техники показана в проверках выше.</p>
             ) : (
               <>
                 {nextSteps.length > 0 ? (
@@ -537,20 +548,18 @@ export default function EventPage() {
                           <span className="timeline"> — нужно ещё {step.openSlots}</span>
                         ) : null}
                         <p className="timeline">
-                          Блокирует: {BLOCKER_LABEL[step.blocker]}
+                          Следующий шаг: {BLOCKER_LABEL[step.blocker]}
                           {step.filled > 0 ? ` (${step.filled} из ${step.need} закрыто)` : null}
                         </p>
                         {step.openRequests.map((item) => (
                           <RequestDeal key={item.id} item={item} />
                         ))}
                         {needsReplacement(step) ? (
-                          <ReplacementPanel
+                          <EventReplacement
                             eventId={event.id}
                             requirementId={step.requirement.id || ""}
                             label={step.label}
-                            date={date}
-                            city={event.city}
-                            category={step.requirement.category_code}
+                            onUpdated={() => { setPlanningRefresh(value => value + 1); void loadEvent(event.id); }}
                           />
                         ) : (
                           <p>
@@ -586,103 +595,18 @@ export default function EventPage() {
           </article>
         </section>
       ) : null}
-      <p className="timeline">Каждая позиция — своя сделка.</p>
-      <h2>Роли</h2>
-      {canWrite ? (
-        <article className="card">
-          <p className="timeline">Редактирование состава. Цена на этом экране не считается.</p>
-          {draft.length === 0 ? <p className="timeline">Пока нет позиций — добавьте роль.</p> : null}
-          {draft.map((row, index) => (
-            <p key={row.id || `draft-${index}`}>
-              <label>
-                Категория{" "}
-                <select
-                  value={row.category_code}
-                  onChange={(e) => updateRow(index, { category_code: e.target.value })}
-                >
-                  {CATEGORY_CODES.map((code) => (
-                    <option key={code} value={code}>
-                      {categoryLabel(code)}
-                    </option>
-                  ))}
-                </select>
-              </label>{" "}
-              <label>
-                Кол-во{" "}
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={row.qty}
-                  onChange={(e) => updateRow(index, { qty: qtyOf(Number(e.target.value)) })}
-                />
-              </label>{" "}
-              <label>
-                Подпись{" "}
-                <input
-                  type="text"
-                  placeholder="необязательно"
-                  value={row.role_label}
-                  onChange={(e) => updateRow(index, { role_label: e.target.value })}
-                />
-              </label>{" "}
-              <button type="button" className="secondary" onClick={() => removeRow(index)}>
-                Убрать
-              </button>
-            </p>
-          ))}
-          <p>
-            <button type="button" className="secondary" onClick={addRow}>
-              Добавить роль
-            </button>{" "}
-            <button type="button" disabled={saving} onClick={() => void saveRequirements()}>
-              {saving ? "Сохраняем…" : "Сохранить состав"}
-            </button>
-          </p>
-          {editError ? (
-            <p className="timeline" role="alert">
-              {editError}
-            </p>
-          ) : null}
-        </article>
-      ) : null}
-      {requirements.length === 0 ? (
-        <p className="timeline">Состав пока не указан. Добавьте роли в заявке — цена на этом экране не считается.</p>
-      ) : (
-        <div className="grid">
-          {requirements.map((req, i) => {
-            const code = req.category_code;
-            const label = categoryLabel(code) || req.role_label || code;
-            const roleRequests = requestsForRole(requests, req.id);
-            return (
-              <article className="card" key={req.id || `${code}-${i}`}>
-                <strong>{label}</strong>
-                {req.qty && req.qty > 1 ? <p className="timeline">{req.qty} чел.</p> : null}
-                {req.notes ? <p className="timeline">{req.notes}</p> : null}
-                {roleRequests.map((item) => (
-                  <RequestDeal key={item.id} item={item} />
-                ))}
-                <p>
-                  <Link href={searchHref(date, code, event.city, event.id, req.id)}>Найти на эту дату</Link>
-                </p>
-              </article>
-            );
-          })}
-        </div>
-      )}
+      </div>
       {looseRequests.length > 0 ? (
         <>
-          <h2>Заявки без роли в составе</h2>
+          <h2>Приглашённые отдельно</h2>
           <article className="card tint">
             <p className="timeline">
-              {looseRequests.length} заявок не привязаны к позициям состава — их не видно в карточках ролей выше.
-              Привяжите через каталог («Найти на эту дату» у нужной роли) или закройте лишние в Deal Room.
+              Здесь ваши прямые приглашения из профилей. Ответы и договорённости сохраняются в каждой заявке.
             </p>
             <div className="grid">
               {looseRequests.map((item) => (
                 <article className="card" key={item.id}>
-                  <strong>{KIND_LABEL[item.resource_type || ""] || item.resource_type || "Заявка"}</strong>
-                  <p className="timeline mono">id {item.id.slice(0, 8)}…</p>
+                  <strong>{item.resource_name || KIND_LABEL[item.resource_type || ""] || "Заявка"}</strong>
                   <RequestDeal item={item} />
                 </article>
               ))}

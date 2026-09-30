@@ -49,6 +49,7 @@ def _setup_two_hall_package(client):
             "organization_id": cust_org["id"],
             "title": "Два зала обязательны",
             "event_date": "2026-12-01T18:00:00+00:00",
+            "ends_at": "2026-12-01T22:00:00+00:00",
             "guest_count": 150,
             "budget_rub": 400000,
         },

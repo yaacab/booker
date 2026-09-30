@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from booker_api.config import settings
 from booker_api.db import engine
 from booker_api.owner_inputs import missing_owner_inputs, notification_providers
-from booker_api.payments.adapter import payment_live_enabled
+from booker_api.payments.adapter import payment_capabilities, payment_live_enabled
 
 router = APIRouter()
 
@@ -17,6 +17,7 @@ def _feature_flags() -> dict:
         "workspace_switcher": settings.workspace_switcher,
         "payment_provider": settings.payment_provider,
         "payment_live_enabled": payment_live_enabled(),
+        "payment_capabilities": payment_capabilities(),
         "notifications": notification_providers(),
         "owner_inputs_missing": missing_owner_inputs(),
     }

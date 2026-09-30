@@ -1,7 +1,7 @@
 """W3-FAV / E04: избранное без побочных booking/hold/request."""
 
 from booker_api.models import Booking, BookingHold, Request
-from tests.conftest import auth_header, register
+from tests.conftest import activate_venue, auth_header, register
 
 
 def _counts(SessionLocal) -> dict[str, int]:
@@ -46,6 +46,7 @@ def _seed_artist_and_venue(client):
         json={"organization_id": venue_org["id"], "name": "Зал Избранный", "capacity": 100},
         headers=own_h,
     ).json()
+    activate_venue(client, venue["id"])
     return {
         "customer": customer,
         "cust_h": cust_h,

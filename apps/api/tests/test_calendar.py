@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from tests.conftest import auth_header, register
 
 
@@ -106,6 +108,38 @@ def test_search_includes_venues_with_calendar(client):
         json={"organization_id": org["id"], "name": "Клуб Тест", "city": "Москва", "capacity": 100},
         headers=auth_header(owner["token"]),
     ).json()
+    db = client.app.state.SessionLocal()
+    try:
+        from booker_api.models import AvailabilitySlot, Venue, VenuePhoto, VenueTariff
+
+        row = db.get(Venue, venue["id"])
+        row.moderation_status = "published"
+        row.availability_mode = "owner"
+        row.partnership_status = "verified"
+        row.is_claimed = True
+        row.verified = True
+        horizon = datetime.now(timezone.utc) + timedelta(days=31)
+        db.add(
+            AvailabilitySlot(
+                resource_type="hall",
+                resource_id=venue["hall_id"],
+                starts_at=horizon,
+                ends_at=horizon + timedelta(hours=4),
+                status="open",
+            )
+        )
+        db.add(VenueTariff(venue_id=venue["id"], title="Серверный тариф", honorarium_rub=60000))
+        db.add(
+            VenuePhoto(
+                venue_id=venue["id"],
+                photo_url="https://venue.example/calendar.jpg",
+                photo_source_url="https://venue.example/gallery",
+                photo_rights_status="official_permission",
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
     hidden = client.get("/catalog/search", params={"city": "Москва", "category": "venue"})
     assert hidden.json()["venues"] == []
     client.post(

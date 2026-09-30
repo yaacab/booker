@@ -1,4 +1,5 @@
 "use client";
+import { AddToAssembly } from "./AddToAssembly";
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
@@ -9,10 +10,15 @@ import { formatWhen, money, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
+import { observeDiscovery } from "@/lib/discovery";
+import type { ArtistPresentation } from "@/lib/presentation";
+import { ArtistCover, ArtistShowcase, ArtistTechnicalFacts, ArtistReviews, ArtistCompareButton } from "@/components/presentation/ArtistShowcase";
 import { SlotList } from "@/components/SlotList";
+import { ProfileMedia } from "@/components/ProfileMedia";
 
 type Slot = { id: string; starts_at: string; ends_at: string; status: string };
 type Artist = {
+  presentation?: ArtistPresentation;
   id: string;
   name: string;
   city: string;
@@ -21,7 +27,7 @@ type Artist = {
   media_url?: string | null;
   rider?: Record<string, string>;
   facts: { note: string; deals?: number; response?: string };
-  tariffs: { id: string; title: string; honorarium_rub: number }[];
+  tariffs: { id: string; title: string; honorarium_rub: number; hours?: number }[];
   slots: Slot[];
 };
 type EventItem = { id: string; title: string; status: string; event_date: string; city?: string };
@@ -46,6 +52,7 @@ export function ArtistProfileClient() {
   const router = useRouter();
   const [data, setData] = useState<Artist | null>(null);
   const [error, setError] = useState("");
+  const [profileRevision, setProfileRevision] = useState(0);
   const [slotId, setSlotId] = useState("");
   const [busy, setBusy] = useState(false);
   const [wantedDay, setWantedDay] = useState<string | null>(null);
@@ -54,9 +61,14 @@ export function ArtistProfileClient() {
   const [eventId, setEventId] = useState("");
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [requirementId, setRequirementId] = useState("");
+  const [catalogHref, setCatalogHref] = useState("/search");
 
   useEffect(() => {
+    const controller = new AbortController();
     const q = new URLSearchParams(window.location.search);
+    const backQuery = new URLSearchParams(q);
+    backQuery.delete("slot");
+    setCatalogHref(`/search${backQuery.size ? `?${backQuery.toString()}` : ""}`);
     const wanted = q.get("slot");
     const day = q.get("date");
     const fromEvent = q.get("event");
@@ -64,10 +76,13 @@ export function ArtistProfileClient() {
     setWantedDay(day);
     if (fromEvent) setEventId(fromEvent);
     if (fromReq) setRequirementId(fromReq);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/artists/${params.id}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найден"))))
+    setData(null);
+    setError("");
+    api<Artist>(`/artists/${params.id}`, { signal: controller.signal })
       .then((json: Artist) => {
+        if (controller.signal.aborted) return;
         setData(json);
+        observeDiscovery("artist", json.id, "profile_view");
         const day = q.get("date");
         const live = json.slots.filter(
           (s) => !s.ends_at || new Date(s.ends_at).getTime() >= Date.now()
@@ -79,8 +94,13 @@ export function ArtistProfileClient() {
         const open = fromUrl || fromDay || live.find((s) => s.status === "open");
         if (open) setSlotId(open.id);
       })
-      .catch((err: Error) => setError(err.message));
-  }, [params.id]);
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setError("Не удалось загрузить профиль. Попробуйте ещё раз.");
+        }
+      });
+    return () => controller.abort();
+  }, [params.id, profileRevision]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -139,7 +159,8 @@ export function ArtistProfileClient() {
       setError("Нет свободного слота");
       return;
     }
-    const body: { artist_id: string; slot_id: string; event_id?: string; requirement_id?: string } = {
+    const body: { artist_id: string; slot_id: string; event_id?: string; requirement_id?: string; promotion_touch_id?: string } = {
+      promotion_touch_id: new URLSearchParams(window.location.search).get("promotion_touch_id") || undefined,
       artist_id: params.id,
       slot_id: slotId,
     };
@@ -164,16 +185,20 @@ export function ArtistProfileClient() {
 
   if (!data) {
     return (
-      <main>
+      <main className="public-profile-reference">
         <h1>Профиль</h1>
-        <p>{error || ""}</p>
-        {!error ? (
+        {error ? (
+          <div className="card" role="alert">
+            <p>{error}</p>
+            <button className="btn secondary" type="button" onClick={() => setProfileRevision((value) => value + 1)}>Повторить загрузку</button>
+          </div>
+        ) : (
           <div className="grid">
             <div className="skeleton" />
             <div className="skeleton" />
             <div className="skeleton" />
           </div>
-        ) : null}
+        )}
       </main>
     );
   }
@@ -181,105 +206,79 @@ export function ArtistProfileClient() {
   const rider = data.rider || {};
   const selectableRequirements = requirements.filter((req): req is Requirement & { id: string } => Boolean(req.id));
 
+  const liveOpenSlots = data.slots.filter((slot) => slot.status === "open" && (!slot.ends_at || new Date(slot.ends_at).getTime() >= Date.now()));
+  const selectedSlot = data.slots.find((slot) => slot.id === slotId);
+
   return (
-    <main>
+    <main className="public-profile-reference artist-profile-reference page-enter">
       <Suspense fallback={null}>
         <PromoAttributionBeacon kind="artist" profileId={data.id} />
       </Suspense>
-      <p className="kicker">Профиль артиста</p>
-      <h1>{data.name}</h1>
-      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <span>
-          {data.city} · {CAT[data.category] || data.category}{" "}
-          {data.verified ? <span className="chip ok">{CHIP.verified}</span> : <span className="chip wait">{CHIP.pending}</span>}
-        </span>
-        <FavoriteToggle targetType="artist" targetId={data.id} />
-        <Link className="btn secondary" href={`/artists/${data.id}/share`}>
-          Поделиться
-        </Link>
-      </p>
-      <p>{data.facts.note}</p>
-      <p className="timeline">
-        Ответ обычно: {data.facts.response || "данных пока мало"}. Завершённых сделок: {data.facts.deals ?? 0}.
-      </p>
-      <div className="grid" style={{ marginTop: 20 }}>
-        <article className="card">
-          <h2>Формат и состав</h2>
-          <p>{rider.format || CAT[data.category] || "формат уточняется в Deal Room"}</p>
-          <p>{rider.lineup || "состав: уточняется"}</p>
-        </article>
-        <article className="card tint">
-          <h2>Райдер</h2>
-          <p>{rider.tech || "Технический райдер согласуется после заявки. Это не цена."}</p>
-        </article>
-        <article className="card">
-          <h2>Тарифы</h2>
-          <ul>
-            {data.tariffs.map((t) => (
-              <li key={t.id}>
-                {t.title}: {money(t.honorarium_rub)}
-              </li>
-            ))}
-          </ul>
-          <p className="timeline">Это ориентир. Итоговые условия поступят с сервера и будут связаны с quote_id.</p>
-        </article>
-      </div>
-      <h2>Календарь</h2>
-      <SlotList slots={data.slots} value={slotId} onChange={setSlotId} selectable highlightDay={wantedDay} />
-      {!data.slots.some(
-        (s) => s.status === "open" && (!s.ends_at || new Date(s.ends_at).getTime() >= Date.now())
-      ) ? (
-        <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-          <a className="btn secondary" href="mailto:hello@bukergo.ru?subject=Нет%20слота">
-            Связаться с оператором
-          </a>
-        </p>
-      ) : null}
-      {signedIn ? (
-        <div className="grid" style={{ marginTop: 20 }}>
-          <label>
-            Событие
-            <select value={eventId} onChange={(e) => setEventId(e.target.value)} aria-label="Событие">
-              <option value="">Новая заявка без события</option>
-              {events.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  {ev.title}
-                  {ev.event_date ? ` · ${formatWhen(ev.event_date)}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-          {eventId ? (
-            <label>
-              Роль
-              <select
-                value={requirementId}
-                onChange={(e) => setRequirementId(e.target.value)}
-                aria-label="Роль в событии"
-              >
-                <option value="">Без привязки к роли</option>
-                {selectableRequirements.map((req) => (
-                  <option key={req.id} value={req.id}>
-                    {requirementLabel(req)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
+      <ArtistCover data={data.presentation} />
+      <Link className="profile-back" href={catalogHref}><span aria-hidden="true">←</span> К поиску артистов</Link>
+      <div className="public-profile-layout">
+        <aside className="public-profile-rail">
+          <ProfileMedia src={data.media_url} name={data.name} />
+          <section className="profile-calendar-panel" aria-labelledby="artist-calendar-heading">
+            <div className="profile-section-heading"><h2 id="artist-calendar-heading">Ближайшие даты</h2><span>МСК</span></div>
+            <SlotList slots={data.slots} value={slotId} onChange={setSlotId} selectable highlightDay={wantedDay} />
+            {!liveOpenSlots.length ? <a className="btn secondary" href="mailto:hello@bukergo.ru?subject=Нет%20слота">Связаться с оператором</a> : <p className="profile-small-note">Выберите свободное время для заявки.</p>}
+          </section>
+        </aside>
+        <div className="public-profile-content">
+          <header className="public-profile-heading">
+            <div>
+              <p className="profile-eyebrow">{categoryLabel(data.category) || CAT[data.category] || "Артист"}</p>
+              <h1>{data.name}{data.verified ? <span className="profile-verified-mark" role="img" aria-label={CHIP.verified} title={CHIP.verified}>✓</span> : null}</h1>
+              <p className="profile-location"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" /><circle cx="12" cy="10" r="2" /></svg>{data.city}</p>
+              {!data.verified ? <span className="chip wait">{CHIP.pending}</span> : null}
+            </div>
+            <div className="public-profile-actions">
+              <a className="btn profile-primary-action" href="#profile-booking">Добавить в событие <span aria-hidden="true">→</span></a>
+              <div className="profile-secondary-actions"><AddToAssembly id={data.id} kind="artist" /><FavoriteToggle targetType="artist" targetId={data.id} /><ArtistCompareButton artistId={data.id} /><Link className="btn secondary" href={`/compatibility?artist=${data.id}${wantedDay ? `&date=${wantedDay}` : ""}`}>Проверить совместимость</Link><Link className="btn secondary" href={`/artists/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
+            </div>
+          </header>
+
+          <dl className="profile-facts-strip">
+            <div><dt>Завершённых сделок</dt><dd>{data.facts.deals ?? 0}</dd></div>
+            <div><dt>Свободных слотов</dt><dd>{liveOpenSlots.length}</dd></div>
+            <div className="profile-fact-response"><dt>Обычно отвечает</dt><dd>{data.facts.response || "Пока нет данных"}</dd></div>
+          </dl>
+
+          <section className="public-profile-section">
+            <h2>Об артисте</h2>
+            <p>{rider.about || data.facts.note}</p>
+            <div className="profile-fact-chips"><span>{rider.format || CAT[data.category] || categoryLabel(data.category)}</span>{rider.lineup ? <span>{rider.lineup}</span> : null}</div>
+          </section>
+          <ArtistShowcase data={data.presentation} />
+
+          <section className="public-profile-section">
+            <div className="profile-section-heading"><h2>Формат и стоимость</h2><span>Предварительные условия</span></div>
+            {data.tariffs.length ? <ul className="profile-tariff-list">{data.tariffs.map((tariff) => <li key={tariff.id}><span>{tariff.title}{tariff.hours ? ` · ${tariff.hours} ч.` : ""}</span><strong>{money(tariff.honorarium_rub)}</strong></li>)}</ul> : <p className="timeline">Стоимость уточняется по запросу.</p>}
+            <p className="profile-small-note">Окончательная стоимость и условия — в предложении после заявки.</p>
+          </section>
+
+          <section className="public-profile-section profile-rider-section">
+            <h2>Технический райдер</h2>
+            <div className="profile-rider-card"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M8 8v8M12 8v8M16 8v8M6 11h4M10 14h4M14 10h4" /></svg><p>{rider.tech || "Технические требования и состав согласуем после заявки."}</p></div>
+            <ArtistTechnicalFacts data={data.presentation} />
+          </section>
+
+          <section className="profile-booking-panel" id="profile-booking" aria-labelledby="artist-booking-heading">
+            <div className="profile-section-heading"><h2 id="artist-booking-heading">Пригласить на событие</h2><span aria-hidden="true">↗</span></div>
+            <p className="profile-booking-date">{selectedSlot ? formatWhen(selectedSlot.starts_at) : "Выберите свободную дату в календаре"}</p>
+            {signedIn ? <div className="profile-booking-fields">
+              <label>Событие<select value={eventId} onChange={(e) => setEventId(e.target.value)} aria-label="Событие"><option value="">Новая заявка без события</option>{events.map((ev) => <option key={ev.id} value={ev.id}>{ev.title}{ev.event_date ? ` · ${formatWhen(ev.event_date)}` : ""}</option>)}</select></label>
+              {eventId ? <label>Роль<select value={requirementId} onChange={(e) => setRequirementId(e.target.value)} aria-label="Роль в событии"><option value="">Без привязки к роли</option>{selectableRequirements.map((req) => <option key={req.id} value={req.id}>{requirementLabel(req)}</option>)}</select></label> : null}
+            </div> : null}
+            {error ? <p className="profile-error" role="alert">{error}</p> : null}
+            <button className="btn profile-primary-action" type="button" onClick={() => void request()} disabled={!slotId || busy}>{busy ? "Отправляем заявку…" : "Запросить предложение"}<span aria-hidden="true">→</span></button>
+            <p className="profile-small-note">Отправьте заявку, чтобы согласовать детали и получить предложение.</p>
+          </section>
         </div>
-      ) : null}
-      {signedIn ? <p className="timeline">Цена на этом шаге не считается. Предложение придёт с сервера.</p> : null}
-      {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
-      <p className="artist-desk-cta">
-        <button type="button" onClick={() => void request()} disabled={!slotId || busy}>
-          {busy ? "Отправляем заявку…" : "Запросить предложение"}
-        </button>
-      </p>
-      <div className="sticky-cta">
-        <button type="button" onClick={() => void request()} disabled={!slotId || busy}>
-          {busy ? "Отправляем заявку…" : "Запросить предложение"}
-        </button>
       </div>
+      <ArtistReviews artistId={data.id} />
+      <div className="sticky-cta"><button type="button" onClick={() => void request()} disabled={!slotId || busy}>{busy ? "Отправляем заявку…" : "Запросить предложение"}</button></div>
     </main>
   );
 }

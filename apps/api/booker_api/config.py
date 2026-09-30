@@ -9,7 +9,11 @@ class Settings(BaseSettings):
     # Dev/test only: allow the well-known default webhook secret.
     # Prod must set BOOKER_ALLOW_DEFAULT_WEBHOOK_SECRET=false + BOOKER_WEBHOOK_SECRET.
     allow_default_webhook_secret: bool = True
-    payment_provider: str = "stub"
+    payment_provider: str = "disabled"
+    payment_allow_stub: bool = False
+    payment_live_opt_in: bool = False
+    commerce_live_opt_in: bool = False
+    payment_sandbox_accepted: bool = False
     payment_merchant_id: str = ""
     payment_public_key: str = ""
     payment_secret_key: str = ""
@@ -39,6 +43,7 @@ class Settings(BaseSettings):
     require_admin_2fa_enforced: bool = False
     admin_2fa_step_up_minutes: int = 15
     rate_limit_max_keys: int = 10_000
+    test_auth_rate_limit: int = 20
     upload_dir: str = "./data/uploads"
     max_upload_bytes: int = 5_242_880  # 5 MiB
     email_provider: str = "disabled"
@@ -46,6 +51,23 @@ class Settings(BaseSettings):
     push_provider: str = "disabled"
     in_app_provider: str = "dev"
     password_reset_ttl_hours: int = 2
+    # Fail closed until the legal pack and public personal-data flow are approved.
+    # Local and test environments must opt in explicitly as well.
+    public_registration_enabled: bool = False
+    # Commerce is fail-closed; test checkout needs both environment and opt-in.
+    environment: str = "production"
+    commerce_provider: str = "disabled"
+    commerce_allow_stub: bool = False
+    commerce_webhook_secret: str = ""
+    commercial_plans: bool = True
+    paid_promotion: bool = True
+    artist_growth: bool = True
+    opportunities: bool = True
+    smart_matching: bool = True
+    compatibility: bool = True
+    collaborative_events: bool = True
+    repeat_events: bool = True
+    customer_business: bool = True
 
 
 settings = Settings()

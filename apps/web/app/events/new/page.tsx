@@ -9,6 +9,7 @@ import EventStudioShell from "@/components/event-studio/EventStudioShell";
 import { isEventStudioMapV1 } from "@/lib/features";
 import { moscowToday } from "@/lib/format";
 import { loginHref } from "@/lib/next";
+import { eventCommandError, eventCommandKey, eventCommandSeed } from "@/lib/eventCommands";
 
 const STEPS = [
   { id: "what", q: "Формат события", hint: "Выберите базовый сценарий — детали можно изменить позже.", unknown: false },
@@ -25,6 +26,7 @@ type Draft = {
   what: string;
   city: string;
   date: string;
+  endsAt: string;
   guests: string;
   artist: string;
   roles: string[];
@@ -38,6 +40,7 @@ const EMPTY: Draft = {
   what: "Свадьба",
   city: "Москва",
   date: "",
+  endsAt: "",
   guests: "80",
   artist: "dj",
   roles: ["dj"],
@@ -78,7 +81,7 @@ export default function NewEventPage() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(DRAFT_KEY);
+      const raw = (sessionStorage.getItem("booker.demo.token") ? sessionStorage : localStorage).getItem(DRAFT_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as {
           draft?: Draft;
@@ -142,7 +145,7 @@ export default function NewEventPage() {
     setSaveStatus(navigator.onLine ? "saving" : "offline");
     const timer = window.setTimeout(() => {
       try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, unknown, step, roofName, savedAt: new Date().toISOString() }));
+        (sessionStorage.getItem("booker.demo.token") ? sessionStorage : localStorage).setItem(DRAFT_KEY, JSON.stringify({ draft, unknown, step, roofName, savedAt: new Date().toISOString() }));
         setSaveStatus(navigator.onLine ? "saved" : "offline");
       } catch {
         setSaveStatus("error");
@@ -189,13 +192,14 @@ export default function NewEventPage() {
       router.push(loginHref("/events/new"));
       return;
     }
+    if (saving) return;
+    if (!draft.date) { setError("Укажите дату и начало события."); return; }
     setSaving(true);
     try {
       const me = await api<{ organizations: { id: string; kind: string }[]; active_organization_id?: string }>("/me");
       const org =
         me.organizations.find((o) => o.id === me.active_organization_id && o.kind === "customer") ||
-        me.organizations.find((o) => o.kind === "customer") ||
-        me.organizations[0];
+        me.organizations.find((o) => o.kind === "customer");
       if (!org) throw new Error("Сначала войдите как заказчик");
       const roleCodes = unknown.artist
         ? []
@@ -207,17 +211,15 @@ export default function NewEventPage() {
       if (!unknown.venue && draft.venue !== "unknown") {
         requirements.push({ category_code: "venue", qty: 1 });
       }
-      await api("/events", {
-        method: "POST",
-        body: JSON.stringify({
+      const payload = {
           organization_id: org.id,
           title: draft.what.trim() || "Событие",
           city: draft.city || "Москва",
-          event_date: draft.date
-            ? new Date(draft.date.includes("+") || draft.date.endsWith("Z") ? draft.date : `${draft.date}:00+03:00`).toISOString()
-            : new Date().toISOString(),
+          event_date: new Date(draft.date.includes("+") || draft.date.endsWith("Z") ? draft.date : `${draft.date}:00+03:00`).toISOString(),
+          ends_at: draft.endsAt ? new Date(`${draft.endsAt}:00+03:00`).toISOString() : null,
+          event_type: draft.what,
           guest_count: Number(draft.guests || 50),
-          budget_rub: draft.budget ? Number(draft.budget) : null,
+          budget_rub: !unknown.budget && draft.budget ? Number(draft.budget) : null,
           requirements,
           notes: [
             unknown.artist ? "артист:пока не знаю" : `артист:${roleCodes[0] || draft.artist}`,
@@ -231,13 +233,14 @@ export default function NewEventPage() {
           ]
             .filter(Boolean)
             .join("; "),
-        }),
-      });
+      };
+      const created = await api<{ id: string }>("/events", { method: "POST", body: JSON.stringify({ ...payload, idempotency_key: await eventCommandKey(eventCommandSeed("booker.classicEventSubmitKey"), payload) }) });
       trackClientEvent("event.studio.completed", { guest_count: Number(draft.guests || 50) });
-      router.push("/cabinet");
-      localStorage.removeItem(DRAFT_KEY);
+      router.push(`/events/${created.id}`);
+      sessionStorage.removeItem("booker.classicEventSubmitKey");
+      (sessionStorage.getItem("booker.demo.token") ? sessionStorage : localStorage).removeItem(DRAFT_KEY);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось сохранить");
+      setError(eventCommandError(err));
     } finally {
       setSaving(false);
     }
@@ -349,6 +352,7 @@ export default function NewEventPage() {
                   onChange={(e) => set("date", e.target.value)}
                 />
               </label>
+              <label>Окончание, по Москве (если известно)<input type="datetime-local" value={draft.endsAt} min={draft.date || undefined} onChange={(e) => set("endsAt", e.target.value)} /></label>
               <p className="timeline">Время указывается по Москве. Пилотный каталог сейчас работает по Москве.</p>
             </>
           )}

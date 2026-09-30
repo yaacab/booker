@@ -1,6 +1,4 @@
 from tests.conftest import auth_header, register
-from tests.test_payments import _awaiting_payment, _sign
-from tests.totp_helpers import TEST_TOTP_SECRET, totp_code
 
 
 def _promote_admin(client, email: str, totp: str | None = None) -> dict:
@@ -27,42 +25,16 @@ def test_audit_cannot_be_deleted(client):
 
 
 def test_refund_requires_second_admin(client):
-    ctx = _awaiting_payment(client)
-    client.post(
-        "/payments/webhook",
-        json={
-            "event_id": "evt-ref",
-            "payment_id": ctx["payment_id"],
-            "status": "succeeded",
-            "signature": _sign("evt-ref", ctx["payment_id"], "succeeded"),
-        },
-    )
-    admin = _promote_admin(client, "adm2@booker.test", totp=TEST_TOTP_SECRET)
-    same = client.post(
-        "/admin/refunds",
-        json={
-            "payment_id": ctx["payment_id"],
-            "approver_user_id": admin["user_id"],
-            "totp": totp_code(),
-        },
-        headers=auth_header(admin["token"]),
-    )
-    assert same.status_code == 403
-    other = _promote_admin(client, "adm3@booker.test")
-    ok = client.post(
-        "/admin/refunds",
-        json={
-            "payment_id": ctx["payment_id"],
-            "approver_user_id": other["user_id"],
-            "totp": totp_code(),
-        },
-        headers=auth_header(admin["token"]),
-    )
-    assert ok.status_code == 200
-    assert ok.json()["status"] == "refunded"
-    logs = client.get("/admin/audit", headers=auth_header(admin["token"]))
-    assert logs.status_code == 200
-    assert len(logs.json()["items"]) > 0
+    from tests.test_refunds import approve, request_refund, setup
+    ctx, first, second = setup(client)
+    row = request_refund(client, ctx, first)
+    assert row.status_code == 200
+    assert row.json()['status'] == 'awaiting_approval'
+    assert approve(client, row.json()['id'], first).status_code == 403
+    result = approve(client, row.json()['id'], second)
+    assert result.status_code == 200
+    assert result.json()['status'] == 'succeeded'
+    assert result.json()['payment_status'] == 'refunded'
 
 
 def test_list_verifications_includes_pending_venues(client):

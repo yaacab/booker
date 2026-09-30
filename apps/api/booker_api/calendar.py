@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from booker_api.models import AvailabilitySlot
+from booker_api.models import Artist, AvailabilitySlot, VenueHall
 from booker_api.security import aware
 
 MSK = ZoneInfo("Europe/Moscow")
@@ -80,3 +81,18 @@ def overlapping_slots(
         if ranges_overlap(incoming_start, incoming_end, slot_start, slot_end):
             found.append(slot)
     return found
+
+
+def lock_calendar_resources(db: Session, resources: list[tuple[str, str]]) -> None:
+    """Serialize calendar writers per resource until commit, in a stable order.
+
+    A no-op UPDATE takes a PostgreSQL row lock and a SQLite write lock. Lock
+    the parent even when no slots exist; locking only slot rows misses inserts.
+    """
+    for kind, resource_id in sorted(set(resources)):
+        model = Artist if kind == "artist" else VenueHall if kind == "hall" else None
+        if model is None:
+            raise ValueError("Неизвестный тип ресурса календаря")
+        result = db.execute(update(model).where(model.id == resource_id).values(name=model.name))
+        if not result.rowcount:
+            raise ValueError("Ресурс календаря не найден")

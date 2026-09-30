@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import secrets
+import json
 
 from booker_api.config import settings
 from booker_api.payments.adapter import (
@@ -10,6 +10,8 @@ from booker_api.payments.adapter import (
     PaymentAdapterError,
     PaymentSession,
     RefundOutcome,
+    VerifiedPaymentEvent,
+    VerifiedRefundEvent,
     WebhookEvent,
 )
 
@@ -57,6 +59,41 @@ class StubPaymentAdapter(PaymentAdapter):
             raise PaymentAdapterError("Неверная подпись webhook")
         return WebhookEvent(event_id=event_id, payment_id=payment_id, status=status)
 
+    @property
+    def merchant_id(self) -> str:
+        return "stub-merchant"
+
+    def verify_raw_webhook(self, *, payload: bytes, headers: dict[str, str]) -> VerifiedPaymentEvent:
+        try:
+            return VerifiedPaymentEvent(**self._verify_raw_body(payload, headers))
+        except TypeError:
+            raise PaymentAdapterError("Некорректное уведомление") from None
+
+    def verify_raw_refund_webhook(self, *, payload: bytes, headers: dict[str, str]) -> VerifiedRefundEvent:
+        try:
+            return VerifiedRefundEvent(**self._verify_raw_body(payload, headers))
+        except TypeError:
+            raise PaymentAdapterError("Некорректное уведомление") from None
+
+    def _verify_raw_body(self, payload, headers):
+        # Local acceptance protocol only, not a signature format for a real PSP.
+        expected = hmac.new(settings.webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
+        signature = headers.get('x-booker-signature', '')
+        if not hmac.compare_digest(expected.encode(), signature.encode()):
+            raise PaymentAdapterError("Неверная подпись уведомления")
+        def unique_fields(pairs):
+            result = dict(pairs)
+            if len(result) != len(pairs):
+                raise ValueError('duplicate fields')
+            return result
+        try:
+            body = json.loads(payload, object_pairs_hook=unique_fields)
+            if not isinstance(body, dict):
+                raise TypeError('object required')
+            return body
+        except (ValueError, TypeError, UnicodeError):
+            raise PaymentAdapterError("Некорректное уведомление") from None
+
     def normalize_idempotency_key(self, key: str) -> str:
         normalized = key.strip()
         if not normalized:
@@ -78,7 +115,7 @@ class StubPaymentAdapter(PaymentAdapter):
         if amount_rub <= 0 or amount_rub > total_rub:
             raise PaymentAdapterError("Некорректная сумма возврата")
         kind = "full" if amount_rub == total_rub else "partial"
-        refund_id = f"stub-refund-{payment_id}-{secrets.token_hex(4)}"
+        refund_id = "stub-refund-" + hashlib.sha256(f"{payment_id}:{idempotency_key}:{amount_rub}".encode()).hexdigest()[:40]
         self.ledger.on_refund(payment_id, amount_rub, kind)
         return RefundOutcome(
             refund_id=refund_id,

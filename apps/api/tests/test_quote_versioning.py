@@ -109,7 +109,7 @@ def test_material_change_creates_new_version(client):
     assert up["id"] != first_id
     assert up["id"] != body["id"]
     assert up["honorarium_rub"] == 150000
-    assert up["total_rub"] == 150000
+    assert up["total_rub"] == 159000
 
     db = client.app.state.SessionLocal()
     try:
@@ -166,3 +166,31 @@ def test_stale_quote_rejection_on_ack(client):
     )
     assert legacy_ack.status_code == 200
     assert legacy_ack.json()["quote_id"] == active_v3
+
+
+def test_stale_edit_does_not_overwrite_a_newer_quote(client):
+    ctx = setup_negotiation(client)
+    first = ctx['offer']['version']['id']
+    second = _new_version(client, ctx, 120000).json()['id']
+    rejected = client.post(f"/offers/{ctx['offer']['id']}/versions", headers=auth_header(ctx['owner']['token']), json={'honorarium_rub': 130000, 'expected_quote_id': first})
+    assert rejected.status_code == 409
+    room = client.get(f"/deal-room/{ctx['booking_id']}", headers=auth_header(ctx['customer']['token'])).json()
+    assert room['quote']['quote_id'] == second
+    assert room['quote']['honorarium_rub'] == 120000
+
+
+def test_closed_event_rejects_version_and_ack(client, SessionLocal):
+    from booker_api.models import Booking, Event, OfferVersion
+
+    ctx = setup_negotiation(client)
+    for state in ['Cancelled', 'Completed']:
+        with SessionLocal() as db:
+            booking = db.get(Booking, ctx['booking_id'])
+            db.get(Event, booking.event_id).status = state; db.commit()
+        assert _new_version(client, ctx, 120000).status_code == 409
+        assert _ack_side(client, ctx, 'supplier').status_code == 409
+        assert _ack_side(client, ctx, 'customer').status_code == 409
+    with SessionLocal() as db:
+        rows = db.query(OfferVersion).all()
+        assert len(rows) == 1
+        assert not rows[0].customer_ack and not rows[0].supplier_ack

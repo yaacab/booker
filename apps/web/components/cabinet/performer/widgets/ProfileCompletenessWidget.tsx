@@ -7,13 +7,12 @@ export function ProfileCompletenessWidget({ completeness }: { completeness: Prof
     <DashboardWidget
       title="Профиль"
       hint={incomplete.length ? `${incomplete.length} пункта к заполнению` : "Готово к выдаче"}
-      isEmpty={incomplete.length === 0}
-      empty="Профиль заполнен полностью."
     >
+      <div className="workspace-profile-score"><span>Профиль заполнен на</span><strong>{completeness.score}%</strong><progress max={100} value={completeness.score} aria-label="Полнота профиля" /></div>
       <ul className="timeline">
-        {incomplete.map((item) => (
+        {completeness.items.map((item) => (
           <li key={item.id}>
-            ○ {item.label}
+            <span className={item.done ? "workspace-check done" : "workspace-check"}>{item.done ? "✓" : "○"}</span> {item.label}
           </li>
         ))}
       </ul>
