@@ -54,6 +54,7 @@ for (const width of [1440, 390]) {
       await workspace.getByRole("button", { name: "Создать черновик", exact: true }).click();
       await expect(workspace.getByRole("alert")).toBeVisible();
       await workspace.getByRole("button", { name: "Создать черновик", exact: true }).click();
+      await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}$/, { timeout: 20_000 });
       await expect(page.getByRole("heading", { name: "Новый корпоратив", exact: true })).toBeVisible();
       const newId = page.url().split("/").pop(); expect(newId).not.toBe(event.id);
       const draft = await getJson<{ status: string; requests: object[]; requirements: object[]; budget_rub: number | null }>(request, `/events/${newId}`, user.token);
@@ -69,6 +70,7 @@ for (const width of [1440, 390]) {
       await workspace.getByLabel("Новое начало, по Москве", { exact: true }).fill(`${later}T18:00`);
       await workspace.getByLabel("Новое окончание, по Москве", { exact: true }).fill(`${later}T21:00`);
       await workspace.getByRole("button", { name: "Создать черновик", exact: true }).click();
+      await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}$/, { timeout: 20_000 });
       await expect(page.getByRole("heading", { name: "Копия события", exact: true })).toBeVisible();
       expect((await getJson<{ items: object[] }>(request, `/events?organization_id=${org.id}`, user.token)).items).toHaveLength(3);
       await page.goto("/cabinet/customer/business");

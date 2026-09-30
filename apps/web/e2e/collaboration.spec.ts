@@ -69,7 +69,7 @@ for (const width of [1440, 390]) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({ path: testInfo.outputPath("organizer-viewport.png") });
       await manager.getByRole("button", { name: "Отозвать ссылку" }).click();
-      await expect(manager.getByRole("status")).toContainText("Ссылка отозвана");
+      await expect(manager.getByText(/Ссылка отозвана\. Гостевое чтение/)).toBeVisible();
       await candidate.getByRole("button", { name: "Голосую за", exact: true }).click();
       await expect(guest.locator("main").getByRole("alert")).toContainText("Ссылка недоступна");
       await expect(guest.getByRole("button", { name: "Сохранить комментарий" })).toHaveCount(0);
