@@ -47,6 +47,114 @@ def _make_venue_publication_ready(client, venue_id: str) -> None:
         db.close()
 
 
+def test_seeded_club_signal_is_publicly_visible(client):
+    from booker_api.models import (
+        AvailabilitySlot,
+        Organization,
+        TeamMember,
+        Venue,
+        VenueHall,
+        VenuePhoto,
+        VenueTariff,
+    )
+    from booker_api.seed import seed
+    from booker_api.venue_catalog import publication_gate_blockers
+
+    SessionLocal = client.app.state.SessionLocal
+    db = SessionLocal()
+    try:
+        research_org = Organization(name="Research import", kind="venue", city="Москва")
+        db.add(research_org)
+        db.flush()
+        research_venue = Venue(
+            organization_id=research_org.id,
+            name="Клуб Сигнал",
+            city="Москва",
+            listing_origin="open_data",
+            availability_mode="research",
+            source_type="automated_import",
+            partnership_status="unverified_listing",
+            is_claimed=False,
+            is_partner=False,
+            verified=False,
+            moderation_status="needs_review",
+        )
+        db.add(research_venue)
+        db.commit()
+
+        seed(db)
+        seed(db)
+
+        venue = (
+            db.query(Venue)
+            .join(Organization, Organization.id == Venue.organization_id)
+            .filter(Venue.name == "Клуб Сигнал", Organization.name == "Сигнал")
+            .one()
+        )
+        assert venue.listing_origin == "owner"
+        assert venue.source_type == "owner_submission"
+        assert venue.availability_mode == "owner"
+        assert venue.partnership_status == "verified"
+        assert venue.is_claimed is True
+        assert venue.is_partner is True
+        assert publication_gate_blockers(db, venue) == []
+        db.refresh(research_venue)
+        assert research_venue.source_type == "automated_import"
+        assert research_venue.availability_mode == "research"
+        assert research_venue.partnership_status == "unverified_listing"
+        assert research_venue.moderation_status == "needs_review"
+        hall_ids = [
+            hall_id
+            for (hall_id,) in db.query(VenueHall.id).filter(VenueHall.venue_id == venue.id)
+        ]
+        assert (
+            db.query(TeamMember)
+            .filter(TeamMember.organization_id == venue.organization_id)
+            .count()
+            == 1
+        )
+        assert (
+            db.query(VenueTariff)
+            .filter(VenueTariff.venue_id == venue.id, VenueTariff.honorarium_rub > 0)
+            .count()
+            == 1
+        )
+        assert (
+            db.query(VenuePhoto)
+            .filter(
+                VenuePhoto.venue_id == venue.id,
+                VenuePhoto.photo_rights_status == "official_permission",
+            )
+            .count()
+            == 1
+        )
+        assert (
+            db.query(AvailabilitySlot)
+            .filter(
+                AvailabilitySlot.resource_type == "hall",
+                AvailabilitySlot.resource_id.in_(hall_ids),
+                AvailabilitySlot.status == "open",
+                AvailabilitySlot.ends_at >= datetime.now(timezone.utc) + timedelta(days=30),
+            )
+            .count()
+            >= 1
+        )
+    finally:
+        db.close()
+
+    response = client.get("/catalog/search", params={"city": "Москва", "kind": "venue"})
+    assert response.status_code == 200
+    signal = next(item for item in response.json()["venues"] if item["name"] == "Клуб Сигнал")
+    assert signal["availability_mode"] == "owner"
+    assert signal["partnership_status"] == "verified"
+    assert signal["honorarium_from_rub"] == 220000
+    assert signal["cover_photo"] == {
+        "url": "/design/puzzle-venue.png",
+        "source_url": "https://bukergo.ru/design/puzzle-venue.png",
+        "rights_status": "official_permission",
+    }
+
+
 def test_search_artist_format_travel_budget(client):
     owner = register(client, "w1-art@booker.test", "W1 Art")
     org = client.post(
