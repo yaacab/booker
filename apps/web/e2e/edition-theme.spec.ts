@@ -4,6 +4,23 @@ import { DEMO_ACCOUNTS, fetchMe, injectSession, login } from "./helpers";
 const routes = ["/", "/search", "/login"];
 
 for (const width of [1440, 390]) {
+  test(`button styles stay intact across editions at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+
+    const primaryCta = page.getByRole("link", { name: "Узнать об участии ↗", exact: true });
+    await expect(primaryCta).toHaveCSS("background-color", "rgb(217, 250, 121)");
+    await expect(primaryCta).toHaveCSS("color", "rgb(35, 53, 27)");
+    await expect(page.getByRole("button", { name: "Собрать ещё раз" })).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(page.locator(".artist-first-piece").first()).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+
+    await page.getByRole("button", { name: "Включить Light Edition" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-edition", "light");
+    await expect(primaryCta).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(page.getByRole("button", { name: "Собрать ещё раз" })).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  });
+
   test(`dark by default and Light Edition persists on public pages at ${width}px`, async ({ page, request }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: "reduce" });

@@ -82,6 +82,14 @@
   --glass-blur: 18px;
   --glass-shadow: 0 10px 32px rgba(21, 24, 23, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.65);
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --button-bg: color-mix(in srgb, var(--brand) 95%, transparent);
+  --button-text: #fff;
+  --button-border: color-mix(in srgb, var(--glass-border) 45%, var(--brand));
+  --button-hover-bg: color-mix(in srgb, var(--brand-hover, var(--brand-dark)) 88%, transparent);
+  --button-secondary-bg: var(--glass-bg);
+  --button-secondary-text: var(--ink);
+  --button-secondary-border: var(--glass-border-dim);
+  --button-secondary-hover-bg: var(--glass-bg-strong);
   /* Chrome puzzle */
   --chrome-hi: #f2f4f7;
   --chrome-mid: #b8bec8;
@@ -239,8 +247,8 @@ input:focus, select:focus, textarea:focus, button:focus-visible, .btn:focus-visi
   outline: 3px solid color-mix(in srgb, var(--gold) 74%, transparent); outline-offset: 2px;
 }
 button, .btn, a.btn {
-  background: color-mix(in srgb, var(--brand) 95%, transparent); color: #fff;
-  border: 1px solid color-mix(in srgb, var(--glass-border) 45%, var(--brand));
+  background: var(--button-bg); color: var(--button-text);
+  border: 1px solid var(--button-border);
   font-weight: 600;
   cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
   min-height: 48px; padding: 0 20px; border-radius: var(--radius-sm);
@@ -250,20 +258,20 @@ button, .btn, a.btn {
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
 }
 button:hover, .btn:hover, a.btn:hover {
-  background: color-mix(in srgb, var(--brand-hover, var(--brand-dark)) 88%, transparent);
+  background: var(--button-hover-bg);
   box-shadow: 0 10px 26px rgba(45, 106, 102, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 button:active, .btn:active, a.btn:active { transform: translateY(1px); }
 button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; transform: none; }
 .btn.secondary, button.secondary, a.btn.secondary {
-  background: var(--glass-bg); color: var(--ink);
-  border: 1px solid var(--glass-border-dim);
+  background: var(--button-secondary-bg); color: var(--button-secondary-text);
+  border: 1px solid var(--button-secondary-border);
   box-shadow: var(--glass-shadow);
   backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
 }
 .btn.secondary:hover, button.secondary:hover, a.btn.secondary:hover {
-  background: var(--glass-bg-strong);
+  background: var(--button-secondary-hover-bg);
   border-color: color-mix(in srgb, var(--glass-border) 35%, var(--border));
 }
 .linkish {
