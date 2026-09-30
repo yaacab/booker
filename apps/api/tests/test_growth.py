@@ -13,7 +13,9 @@ from booker_api.models import (
     Organization,
     Request,
     Subscription,
+    TeamMember,
     Venue,
+    VenueHall,
     VenuePhoto,
     VenueTariff,
 )
@@ -271,6 +273,60 @@ def test_benchmark_requires_ten_independent_profiles_and_never_discloses_names(
             assert benchmark["median_requests"] == 0
             assert "private-" not in result.text
             assert all(peer_id not in result.text for peer_id in peer_ids)
+
+
+@pytest.mark.parametrize("revocation", ["media", "calendar", "price", "partnership"])
+def test_venue_benchmark_excludes_hidden_peers_but_keeps_owner_history(
+    client, SessionLocal, revocation
+):
+    owner, headers, org = org_user(client, kind="venue", suffix=f"peer-owner-{revocation}")
+    response = client.post(
+        "/venues", headers=headers,
+        json={"organization_id": org, "name": "Моя площадка", "capacity": 100},
+    )
+    assert response.status_code == 200, response.text
+    own_id = response.json()["id"]
+    activate_venue(client, own_id)
+    grant(SessionLocal, org, "venue_premium")
+    peer_ids = []
+    with SessionLocal() as db:
+        for index in range(10):
+            peer_org = Organization(name=f"Private venue peer {index}", kind="venue")
+            db.add(peer_org)
+            db.flush()
+            db.add(TeamMember(user_id=owner["user_id"], organization_id=peer_org.id, role="owner"))
+            peer = Venue(organization_id=peer_org.id, name=f"Private peer {index}")
+            db.add(peer)
+            db.flush()
+            db.add(VenueHall(venue_id=peer.id, name="Зал"))
+            peer_ids.append(peer.id)
+        db.commit()
+    for peer_id in peer_ids:
+        activate_venue(client, peer_id)
+
+    route = f"/organizations/{org}/growth?target_id={own_id}"
+    before = client.get(route, headers=headers)
+    assert before.status_code == 200, before.text
+    assert before.json()["benchmark"]["status"] == "available"
+
+    with SessionLocal() as db:
+        peer = db.get(Venue, peer_ids[0])
+        if revocation == "media":
+            db.query(VenuePhoto).filter_by(venue_id=peer.id).delete()
+        elif revocation == "calendar":
+            hall = db.query(VenueHall).filter_by(venue_id=peer.id).one()
+            db.query(AvailabilitySlot).filter_by(resource_type="hall", resource_id=hall.id).delete()
+        elif revocation == "price":
+            db.query(VenueTariff).filter_by(venue_id=peer.id).delete()
+        else:
+            peer.partnership_status = "claimed"
+        db.commit()
+
+    after = client.get(route, headers=headers)
+    assert after.status_code == 200, after.text
+    assert after.json()["benchmark"]["status"] == "insufficient"
+    assert after.json()["profiles"][0]["id"] == own_id
+    assert all(peer_id not in after.text for peer_id in peer_ids)
 
 
 def test_busy_overlay_does_not_hide_another_profiles_free_dates(client):

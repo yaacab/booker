@@ -27,7 +27,7 @@ from booker_api.models import (
     VenueHall,
 )
 from booker_api.security import audit, aware, membership, now
-from booker_api.venue_catalog import is_publicly_listed
+from booker_api.venue_catalog import is_publicly_listed, publicly_listed_venue_query
 
 LOSS_LABELS = {
     "customer_selected_another": "Заказчик выбрал другого",
@@ -299,12 +299,16 @@ def benchmark(db: Session, org: Organization, selected: list, days: int):
     if len(selected) != 1:
         return {"status": "choose_profile", "message": "Выберите один профиль для сравнения."}
     profile = selected[0]
-    model = Artist if org.kind == "artist" else Venue
-    query = db.query(model).filter(model.city == profile.city, model.organization_id != org.id)
     if org.kind == "artist":
-        query = query.filter(Artist.category == profile.category)
+        query = db.query(Artist).filter(
+            Artist.city == profile.city,
+            Artist.organization_id != org.id,
+            Artist.category == profile.category,
+        )
     else:
-        query = query.filter(Venue.moderation_status == "published", Venue.is_claimed.is_(True))
+        query = publicly_listed_venue_query(db).filter(
+            Venue.city == profile.city, Venue.organization_id != org.id
+        )
     peers = query.all()
     # Separate organizations prevent one team's profiles from exposing another supplier.
     if len(peers) < 10 or len({p.organization_id for p in peers}) < 10:

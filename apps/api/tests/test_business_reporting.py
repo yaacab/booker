@@ -3,7 +3,10 @@ import json
 import zipfile
 from datetime import timedelta
 
+import pytest
+
 from booker_api.models import (
+    AvailabilitySlot,
     Booking,
     Contract,
     Event,
@@ -14,6 +17,9 @@ from booker_api.models import (
     Request,
     Subscription,
     TeamMember,
+    Venue,
+    VenuePhoto,
+    VenueTariff,
 )
 from booker_api.security import now
 from tests.conftest import auth_header, register
@@ -51,6 +57,35 @@ def test_actual_cohort_totals_and_hall_history(client, SessionLocal):
     venue = next(s for s in data['suppliers'] if s['resource_type'] == 'venue')
     assert venue['resource_id'] == ctx['venue']['id'] and venue['hall_id'] == ctx['venue']['hall_id']
     assert venue['event_count'] == 1 and venue['events'][0]['id'] == ctx['event']['id']
+
+
+@pytest.mark.parametrize('revocation', ['media', 'calendar', 'price', 'partnership'])
+def test_hidden_venue_keeps_private_history_without_public_href(
+    client, SessionLocal, revocation
+):
+    ctx = prepared(client, SessionLocal)
+    before = client.get(ctx['report'], headers=ctx['headers'])
+    assert before.status_code == 200, before.text
+    venue_before = next(s for s in before.json()['suppliers'] if s['resource_type'] == 'venue')
+    assert venue_before['href'] == f"/venues/{ctx['venue']['id']}"
+    with SessionLocal() as db:
+        venue = db.get(Venue, ctx['venue']['id'])
+        if revocation == 'media':
+            db.query(VenuePhoto).filter_by(venue_id=venue.id).delete()
+        elif revocation == 'calendar':
+            db.query(AvailabilitySlot).filter_by(resource_type='hall', resource_id=ctx['venue']['hall_id']).delete()
+        elif revocation == 'price':
+            db.query(VenueTariff).filter_by(venue_id=venue.id).delete()
+        else:
+            venue.partnership_status = 'claimed'
+        db.commit()
+    after = client.get(ctx['report'], headers=ctx['headers'])
+    assert after.status_code == 200, after.text
+    venue_after = next(s for s in after.json()['suppliers'] if s['resource_type'] == 'venue')
+    assert venue_after['href'] is None
+    assert venue_after['name'] == venue_before['name']
+    assert venue_after['confirmed_rub'] == venue_before['confirmed_rub']
+    assert after.json()['totals'] == before.json()['totals']
 
 
 def test_moscow_event_dates_and_unknown_quotes(client, SessionLocal):

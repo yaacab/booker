@@ -19,6 +19,7 @@ from booker_api.models import (
     VenueHall,
 )
 from booker_api.security import aware, now
+from booker_api.venue_catalog import is_publicly_listed
 
 MOSCOW = ZoneInfo('Europe/Moscow')
 
@@ -58,7 +59,7 @@ def resource(db, req, slot):
     return {'key': f'venue:{venue.id if venue else req.resource_id}:{hall.id if hall else ""}', 'resource_type': 'venue',
         'resource_id': venue.id if venue else req.resource_id, 'hall_id': hall.id if hall else None,
         'name': f'{venue.name} · {hall.name}' if venue and hall else venue.name if venue else 'Профиль площадки недоступен',
-        'href': f'/venues/{venue.id}' if venue and venue.moderation_status == 'published' else None}
+        'href': f'/venues/{venue.id}' if venue and is_publicly_listed(db, venue) else None}
 
 
 def report(db, org_id, date_from=None, date_to=None):
