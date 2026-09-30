@@ -18,7 +18,16 @@ def readiness(client, ctx):
 def venue_offer(client, SessionLocal, ctx):
     req = client.post(f"/events/{ctx['event']['id']}/requests", headers=ctx['headers'], json={'resource_type': 'hall', 'resource_id': ctx['venue']['hall_id'], 'requirement_id': ctx['event']['requirements'][1]['id']}).json()
     with SessionLocal() as db:
-        slot = db.query(AvailabilitySlot).filter_by(resource_id=ctx['venue']['hall_id']).one().id
+        slot = (
+            db.query(AvailabilitySlot)
+            .filter(
+                AvailabilitySlot.resource_id == ctx['venue']['hall_id'],
+                AvailabilitySlot.starts_at <= ctx['start'],
+                AvailabilitySlot.ends_at >= ctx['end'],
+            )
+            .one()
+            .id
+        )
     response = client.post(f"/requests/{req['id']}/offers", headers=ctx['headers'], json={'slot_id': slot, 'honorarium_rub': 100000})
     assert response.status_code == 200, response.text
     return response.json()

@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from booker_api.models import ArtistTariff, AuditLog, Booking, Offer, Venue, VenueTariff
-from tests.conftest import auth_header, register
+from tests.conftest import activate_venue, auth_header, register
 
 
 def fixtures(client):
@@ -23,6 +23,7 @@ def test_estimate_uses_exact_public_ranges_without_fees_or_invented_markup(clien
     with SessionLocal() as db:
         db.add_all([ArtistTariff(artist_id=artist, title="2 часа", hours=2, honorarium_rub=60000), ArtistTariff(artist_id=artist, title="4 часа", hours=4, honorarium_rub=90000), VenueTariff(venue_id=venue, title="Аренда", honorarium_rub=100000)])
         db.commit()
+    activate_venue(client, venue)
     body = query(artist, venue)
     body["selections"].append(body["selections"][0])  # same supplier selected twice is not charged twice
     response = client.post("/event-studio/estimate", json=body)

@@ -11,7 +11,7 @@ from booker_api.models import (
     TeamMember,
 )
 from booker_api.security import now
-from tests.conftest import auth_header, register
+from tests.conftest import activate_venue, auth_header, register
 
 
 def setup_matching(client):
@@ -41,6 +41,7 @@ def setup_matching(client):
     assert client.post(f"/venues/{venue['id']}/tariffs", headers=headers, json={"title": "Аренда", "honorarium_rub": 100000}).status_code == 200
     assert client.post("/slots", headers=headers, json={"resource_type": "hall", "resource_id": venue["hall_id"], "starts_at": (start-timedelta(hours=1)).isoformat(), "ends_at": (end+timedelta(hours=1)).isoformat()}).status_code == 200
     assert client.put(f"/halls/{venue['hall_id']}/technical", headers=headers, json={"expected_version": 0, "capacity": 150, "stage_area_m2": 20, "power_kw": 5, "basic_sound": True, "microphones": 3, "equipment": ["CDJ"], "restrictions": ""}).status_code == 200
+    activate_venue(client, venue["id"])
     return {"headers": headers, "owner": owner, "customer": customer, "supply": supply, "venue": venue, "artists": artists, "event": event, "start": start, "end": end, "path": f"/events/{event['id']}/matching"}
 
 

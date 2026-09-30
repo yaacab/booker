@@ -10,7 +10,7 @@ from booker_api.models import (
     Venue,
 )
 from booker_api.security import now
-from tests.conftest import auth_header, register
+from tests.conftest import activate_venue, auth_header, register
 from tests.test_event_readiness import hold, venue_offer
 from tests.test_matching import setup_matching
 
@@ -56,6 +56,7 @@ def test_venue_visibility_synthetic_calendars_and_per_hall_facts(client, Session
     ctx = setup_matching(client)
     second = client.post('/orgs', headers=ctx['headers'], json={'name': 'Вторая площадка', 'kind': 'venue', 'confirm_another_workspace': True}).json()
     venue = client.post('/venues', headers=ctx['headers'], json={'organization_id': second['id'], 'name': 'Второй зал', 'capacity': 70}).json()
+    activate_venue(client, venue['id'])
     query = path(ctx, 'venue', [ctx['venue']['id'], venue['id']]) + f"&event_id={ctx['event']['id']}&artist_id={ctx['artists'][1]['id']}"
     result = client.get(query, headers=ctx['headers']).json()
     assert result['columns'][0]['availability']['status'] == 'open'
@@ -94,6 +95,7 @@ def test_hall_deals_count_as_facts_of_their_venue(client, SessionLocal):
     offer = venue_offer(client, SessionLocal, ctx)
     other_org = client.post('/orgs', headers=ctx['headers'], json={'name': 'Другая', 'kind': 'venue', 'confirm_another_workspace': True}).json()
     other = client.post('/venues', headers=ctx['headers'], json={'organization_id': other_org['id'], 'name': 'Другая', 'capacity': 100}).json()
+    activate_venue(client, other['id'])
     with SessionLocal() as db:
         db.get(Booking, offer['booking_id']).status = 'Completed'; db.commit()
     result = client.get(path(ctx, 'venue', [ctx['venue']['id'], other['id']])).json()

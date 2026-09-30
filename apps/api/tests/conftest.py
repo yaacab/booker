@@ -113,6 +113,85 @@ def register(client: TestClient, email: str, name: str = "User") -> dict:
     return res.json()
 
 
+def activate_venue(client: TestClient, venue_id: str, *, tariff_rub: int = 100_000) -> None:
+    """Make an owner-created venue satisfy the contractual publication gate.
+
+    Tests that exercise public discovery, matching, comparison or compatibility
+    must opt into a complete active profile instead of relying on the old
+    implicit ``published`` default.
+    """
+    from datetime import timedelta
+
+    from booker_api.models import (
+        AvailabilitySlot,
+        Venue,
+        VenueHall,
+        VenuePhoto,
+        VenueTariff,
+    )
+    from booker_api.security import now
+
+    db = client.app.state.SessionLocal()
+    try:
+        venue = db.get(Venue, venue_id)
+        assert venue is not None
+        venue.moderation_status = "published"
+        venue.is_claimed = True
+        venue.verified = True
+        venue.partnership_status = "verified"
+        venue.availability_mode = "owner"
+        venue.listing_origin = "owner"
+        venue.source_type = "owner_submission"
+        venue.verified_at = venue.verified_at or now()
+        venue.last_verified_at = venue.last_verified_at or now()
+
+        if db.query(VenueTariff).filter(VenueTariff.venue_id == venue_id).first() is None:
+            db.add(
+                VenueTariff(
+                    venue_id=venue_id,
+                    title="Тестовый тариф",
+                    honorarium_rub=tariff_rub,
+                )
+            )
+
+        if db.query(VenuePhoto).filter(VenuePhoto.venue_id == venue_id).first() is None:
+            photo_url = f"/test-fixtures/venues/{venue_id}.jpg"
+            db.add(
+                VenuePhoto(
+                    venue_id=venue_id,
+                    photo_url=photo_url,
+                    photo_source_url=f"https://bukergo.ru{photo_url}",
+                    photo_rights_status="official_permission",
+                )
+            )
+
+        hall = db.query(VenueHall).filter(VenueHall.venue_id == venue_id).first()
+        assert hall is not None
+        coverage_end = now() + timedelta(days=35)
+        latest = (
+            db.query(AvailabilitySlot)
+            .filter(
+                AvailabilitySlot.resource_type == "hall",
+                AvailabilitySlot.resource_id == hall.id,
+            )
+            .order_by(AvailabilitySlot.ends_at.desc())
+            .first()
+        )
+        if latest is None or latest.ends_at < coverage_end:
+            db.add(
+                AvailabilitySlot(
+                    resource_type="hall",
+                    resource_id=hall.id,
+                    starts_at=coverage_end - timedelta(hours=4),
+                    ends_at=coverage_end,
+                    status="open",
+                )
+            )
+        db.commit()
+    finally:
+        db.close()
+
+
 def grant_team_plan(client, org_id):
     """Existing team/RBAC scenarios run on the paid tier that permits their team.
 

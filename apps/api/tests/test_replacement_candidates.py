@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from booker_api.models import AvailabilitySlot, Booking, Event, Offer, Request, TeamMember, Venue
-from tests.conftest import auth_header, register
+from tests.conftest import activate_venue, auth_header, register
 from tests.test_event_budget import offer_for
 from tests.test_event_readiness import hold, venue_offer
 from tests.test_matching import setup_matching
@@ -123,6 +123,7 @@ def test_venue_replacement_uses_hall_calendar_and_actual_artist_rider(client, Se
         venues.append(venue)
         assert client.post('/slots', headers=ctx['headers'], json={'resource_type': 'hall', 'resource_id': venue['hall_id'], 'starts_at': (ctx['start']-timedelta(hours=1)).isoformat(), 'ends_at': (ctx['end']+timedelta(hours=1)).isoformat()}).status_code == 200
         assert client.put(f"/halls/{venue['hall_id']}/technical", headers=ctx['headers'], json={'expected_version': 0, 'capacity': capacity, 'stage_area_m2': 20, 'power_kw': 5, 'basic_sound': True, 'microphones': 3, 'equipment': equipment, 'restrictions': ''}).status_code == 200
+        activate_venue(client, venue['id'])
     data = plan(client, ctx)
     assert data['cancelled_requests'][0]['resource_name'].startswith('Зал ·')
     assert {i['resource_id'] for i in data['candidates']} == {venues[0]['id'], venues[3]['id']}
@@ -140,7 +141,16 @@ def test_venue_replacement_uses_hall_calendar_and_actual_artist_rider(client, Se
         assert db.get(Event, ctx['event']['id']).status == 'InProgress'
         req = db.get(Request, result.json()['id'])
         assert req.resource_type == 'hall' and req.resource_id == venues[0]['hall_id']
-        slot = db.query(AvailabilitySlot).filter_by(resource_id=venues[0]['hall_id']).one().id
+        slot = (
+            db.query(AvailabilitySlot)
+            .filter(
+                AvailabilitySlot.resource_id == venues[0]['hall_id'],
+                AvailabilitySlot.starts_at <= ctx['start'],
+                AvailabilitySlot.ends_at >= ctx['end'],
+            )
+            .one()
+            .id
+        )
     offered = client.post(f"/requests/{result.json()['id']}/offers", headers=ctx['headers'], json={'slot_id': slot, 'honorarium_rub': 100000})
     assert offered.status_code == 200, offered.text
     with SessionLocal() as db:

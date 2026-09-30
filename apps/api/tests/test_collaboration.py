@@ -12,7 +12,7 @@ from booker_api.models import (
     Venue,
 )
 from booker_api.security import now
-from tests.conftest import auth_header, register
+from tests.conftest import activate_venue, auth_header, register
 from tests.test_shortlists import _seed
 
 SECRET = 'a' * 64
@@ -157,6 +157,7 @@ def test_hidden_venue_snapshot_and_feedback_are_not_disclosed(client, SessionLoc
     venues, favorites = [], []
     for name in ('Зал первый', 'Зал второй'):
         venue = client.post('/venues', headers=ctx['cust_h'], json={'organization_id': org['id'], 'name': name, 'capacity': 100}).json(); venues.append(venue)
+        activate_venue(client, venue['id'])
         favorites.append(client.post('/favorites', headers=ctx['cust_h'], json={'organization_id': ctx['cust_org']['id'], 'target_type': 'venue', 'target_id': venue['id']}).json()['id'])
     body = {'organization_id': ctx['cust_org']['id'], 'target_type': 'venue', 'favorite_ids': favorites, 'collaborative': True}
     share = client.post('/shortlists', headers=ctx['cust_h'], json=body).json()

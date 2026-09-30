@@ -11,7 +11,7 @@ from booker_api.models import (
     Venue,
 )
 from booker_api.security import now
-from tests.conftest import auth_header, register
+from tests.conftest import activate_venue, auth_header, register
 
 
 def setup_pair(client):
@@ -25,6 +25,7 @@ def setup_pair(client):
     for kind, resource in [("artist", artist["id"]), ("hall", venue["hall_id"])]:
         res = client.post("/slots", json={"resource_type": kind, "resource_id": resource, "starts_at": (start-timedelta(hours=1)).isoformat(), "ends_at": (end+timedelta(hours=1)).isoformat()}, headers=auth_header(owner["token"]))
         assert res.status_code == 200, res.text
+    activate_venue(client, venue["id"])
     return {"owner": owner, "artist_org": artist_org, "venue_org": venue_org, "artist": artist, "venue": venue,
             "query": {"artist_id": artist["id"], "venue_id": venue["id"], "hall_id": venue["hall_id"], "starts_at": start.isoformat(), "ends_at": end.isoformat(), "guest_count": 100}}
 
