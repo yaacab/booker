@@ -39,11 +39,10 @@ test.describe("Deal path E07–E09", () => {
       slotEndsAt: "2026-12-01T22:00:00+00:00",
     });
 
-    await test.step("supplier: Deal Room показывает quote_id и гонорар", async () => {
+    await test.step("supplier: Deal Room показывает актуальный гонорар", async () => {
       await injectSession(page, negotiation.owner.token, negotiation.owner.orgId);
       await page.goto(`/deals/${negotiation.bookingId}`);
       await expect(page.getByTestId("deal-room-accents")).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByText(`quote_id: ${negotiation.quoteId}`).first()).toBeVisible();
       await expect(
         page.getByText(negotiation.honorariumRub.toLocaleString("ru-RU"), { exact: false }).first(),
       ).toBeVisible();
@@ -76,8 +75,10 @@ test.describe("Deal path E07–E09", () => {
       await injectSession(page, negotiation.customer.token, negotiation.customer.orgId);
       await page.goto(`/deals/${negotiation.bookingId}`);
       await expect(page.getByTestId("deal-room-accents")).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByText(`quote_id: ${negotiation.quoteId}`).first()).toBeVisible();
       await expect(page.getByRole("heading", { name: "Итог" })).toBeVisible();
+      await expect(
+        page.getByText(negotiation.honorariumRub.toLocaleString("ru-RU"), { exact: false }).first(),
+      ).toBeVisible();
     });
 
     // UI-path из awaiting-offer (как flow.spec) — общий booking после кнопки
@@ -91,7 +92,7 @@ test.describe("Deal path E07–E09", () => {
       const bookingId = page.url().split("/deals/")[1]?.split(/[?#]/)[0] ?? "";
       expect(bookingId).toBeTruthy();
       await expect(page.getByTestId("deal-room-accents")).toBeVisible();
-      await expect(page.getByText("quote_id:").first()).toBeVisible();
+      await expect(page.getByText("ожидает подтверждений").first()).toBeVisible();
     });
   });
 
@@ -189,12 +190,12 @@ test.describe("Deal path E07–E09", () => {
     await test.step("customer re-ack → hold 200; UI показывает удержание", async () => {
       await injectSession(page, ctx.customer.token, ctx.customer.orgId);
       await page.goto(`/deals/${ctx.bookingId}`);
-      await expect(page.getByText(`quote_id: ${v2.quote_id}`).first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText(v2.honorarium_rub.toLocaleString("ru-RU"), { exact: false }).first()).toBeVisible({ timeout: 15_000 });
       await page.getByRole("button", { name: "Подтвердить условия" }).click();
       await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
 
       const held = page.waitForResponse(response => response.request().method() === "POST" && response.url().endsWith(`/bookings/${ctx.bookingId}/hold`));
-      await page.locator(".deal-toolbar").getByRole("button", { name: "Удержать дату", exact: true }).click();
+      await page.locator(".deal-aside").getByRole("button", { name: "Удержать дату", exact: true }).click();
       expect((await held).status()).toBe(200);
       await expect(page.getByText("Дата удерживается").first()).toBeVisible({ timeout: 10_000 });
 
@@ -280,8 +281,8 @@ for (const width of [1440, 390]) {
     await holdButton.click();
     await expect.poll(async () => (await getJson<{ status: string }>(request, `/deal-room/${ctx.bookingId}`, ctx.owner.token)).status).toBe('DateHeld');
     await page.reload();
-    if (width === 390) await expect(page.getByRole('button', { name: 'Удержать дату', exact: true })).toHaveCount(0);
-    else await expect(page.getByRole('button', { name: 'Удержать дату', exact: true }).first()).toBeDisabled();
+    await expect(page.getByText('Дата удерживается', { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Удержать дату', exact: true })).toHaveCount(0);
   });
 }
 
@@ -291,11 +292,13 @@ for (const width of [1440, 390]) {
     const ctx = await seedNegotiation(request);
     await injectSession(page, ctx.customer.token, ctx.customer.orgId);
     await page.goto(`/deals/${ctx.bookingId}`);
-    const button = () => width === 390 ? page.getByRole('button', { name: 'Кивнуть условиям', exact: true }) : page.locator('.deal-toolbar').getByRole('button', { name: 'Подтвердить условия', exact: true });
-    await expect(button()).toBeVisible();
+    const primaryAction = () => width === 390
+      ? page.locator('.sticky-cta').getByRole('button', { name: 'Подтвердить условия', exact: true })
+      : page.locator('.deal-aside').getByRole('button', { name: 'Подтвердить условия', exact: true });
+    await expect(primaryAction()).toBeVisible();
     const updated = await postJson<{ quote_id: string }>(request, `/offers/${ctx.offerId}/versions`, ctx.owner.token, { honorarium_rub: 137000, expected_quote_id: ctx.quoteId });
     const denied = page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith(`/offers/${ctx.offerId}/ack`));
-    await button().click();
+    await primaryAction().click();
     expect((await denied).status()).toBe(409);
     await expect(page.getByRole('alert').filter({ hasText: 'Предложение изменилось' })).toBeVisible();
     await page.getByRole('alert').filter({ hasText: 'Предложение изменилось' }).scrollIntoViewIfNeeded();
@@ -303,9 +306,17 @@ for (const width of [1440, 390]) {
     const before = await getJson<{ quote: { customer_ack: boolean } }>(request, `/deal-room/${ctx.bookingId}`, ctx.customer.token);
     expect(before.quote.customer_ack).toBe(false);
     await page.getByRole('button', { name: 'Обновить условия', exact: true }).click();
-    await expect(page.getByText(updated.quote_id, { exact: false }).first()).toBeVisible();
+    let refreshedAction = primaryAction();
+    if (width === 390) {
+      await page.locator('.sticky-cta').getByRole('button', { name: 'Предложение', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: 'Предложение' });
+      await expect(dialog.getByText(/137[\s\u00a0]000/, { exact: false }).first()).toBeVisible();
+      refreshedAction = dialog.getByRole('button', { name: 'Подтвердить условия', exact: true });
+    } else {
+      await expect(page.locator('.deal-aside').getByText(/137[\s\u00a0]000/, { exact: false }).first()).toBeVisible();
+    }
     const accepted = page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith(`/offers/${ctx.offerId}/ack`));
-    await button().click();
+    await refreshedAction.click();
     expect((await accepted).status()).toBe(200);
     const after = await getJson<{ quote: { quote_id: string; customer_ack: boolean; honorarium_rub: number } }>(request, `/deal-room/${ctx.bookingId}`, ctx.customer.token);
     expect(after.quote.quote_id).toBe(updated.quote_id);
@@ -338,7 +349,10 @@ for (const width of [1440, 390]) {
     expect(viewerInbox.items.some(n => n.template === 'contract.otp')).toBe(false);
     await injectSession(page, viewer.token, ctx.owner.orgId);
     await page.goto(`/deals/${ctx.bookingId}`);
-    await expect(page.getByRole('button', { name: 'Подписать договор', exact: true }).first()).toBeDisabled();
+    const signingAction = () => width === 390
+      ? page.locator('.sticky-cta').getByRole('button', { name: 'Подписать договор', exact: true })
+      : page.locator('.deal-aside').getByRole('button', { name: 'Подписать договор', exact: true });
+    await expect(signingAction()).toBeDisabled();
     const denied = await request.post(`${API_BASE}/contracts/${contract.id}/sign`, { headers: { Authorization: `Bearer ${viewer.token}` }, data: { side: 'supplier', otp: code } });
     expect(denied.status()).toBe(403);
     await injectSession(page, ctx.owner.token, ctx.owner.orgId);
@@ -347,8 +361,8 @@ for (const width of [1440, 390]) {
     await expect(field).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('contract-signing.png') });
     await field.fill(code!);
-    await page.getByRole('button', { name: 'Подписать договор', exact: true }).first().click();
+    await signingAction().click();
     await expect.poll(async () => (await getJson<{ contract: { supplier_signed: boolean } }>(request, `/deal-room/${ctx.bookingId}`, ctx.owner.token)).contract.supplier_signed).toBe(true);
-    await expect(page.getByRole('button', { name: 'Подписать договор', exact: true }).first()).toBeDisabled();
+    await expect(signingAction()).toBeDisabled();
   });
 }

@@ -625,7 +625,7 @@ export default function DealPage() {
           <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
             Предложение
           </button>
-          <button type="button" aria-busy={busy} disabled={busy || ackBlocked || paymentBlocked || holdBlocked || contractBlocked} onClick={() => { if (room.contract && action.kind === "contract") setQuoteOpen(true); else void runNext(); }}>
+          <button type="button" aria-busy={busy} disabled={busy || ackBlocked || paymentBlocked || holdBlocked || contractBlocked} onClick={() => void runNext()}>
             {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : actionLabel}
           </button>
         </div>

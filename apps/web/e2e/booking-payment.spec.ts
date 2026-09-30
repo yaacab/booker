@@ -47,10 +47,18 @@ test("disabled capabilities leave the deal readable and hide test capture", asyn
   });
   await page.goto(`/deals/${seed.bookingId}`);
   await expect(page.getByText("Оплата пока недоступна: платёжный партнёр не подключён", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Сводка сделки" })).toBeVisible();
   await page.getByRole("tab", { name: "Платежи", exact: true }).click();
   await expect(page.getByRole("button", { name: "Счёт", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Тест: подтвердить оплату" })).toHaveCount(0);
-  await expect(page.getByText(`quote_id: ${seed.quoteId}`).first()).toBeVisible();
+  const room = await getJson<{ status: string; quote: { quote_id: string } }>(
+    request,
+    `/deal-room/${seed.bookingId}`,
+    seed.customer.token,
+    seed.customer.orgId,
+  );
+  expect(room.status).toBe("Negotiation");
+  expect(room.quote.quote_id).toBe(seed.quoteId);
 });
 
 for (const width of [1440, 390]) {
