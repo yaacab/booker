@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
 from booker_api.models import Artist, Booking, Event, Offer, Request, Review, User, Venue, VenueHall
+from booker_api.routers.catalog import _optional_user
 from booker_api.security import audit, current_user, membership
+from booker_api.venue_catalog import is_publicly_listed
 
 router = APIRouter(tags=["reviews"])
 
@@ -46,14 +48,27 @@ def _review_out(row: Review) -> dict:
     }
 
 
-def _list_for_org(db: Session, org_id: str) -> dict:
+def _list_for_org(db: Session, org_id: str, *, include_private: bool = False) -> dict:
     rows = (
-        db.query(Review)
+        db.query(Review, Request.resource_type, Request.resource_id)
+        .join(Booking, Booking.id == Review.booking_id)
+        .join(Offer, Offer.id == Booking.offer_id)
+        .join(Request, Request.id == Offer.request_id)
         .filter(Review.org_id == org_id)
         .order_by(Review.created_at.desc())
         .all()
     )
-    return {"items": [_review_out(r) for r in rows]}
+    visible = []
+    for review, resource_type, resource_id in rows:
+        if resource_type in {"venue", "hall"} and not include_private:
+            if resource_type == "hall":
+                hall = db.get(VenueHall, resource_id)
+                resource_id = hall.venue_id if hall else None
+            venue = db.get(Venue, resource_id) if resource_id else None
+            if not venue or not is_publicly_listed(db, venue):
+                continue
+        visible.append(_review_out(review))
+    return {"items": visible}
 
 
 @router.post("/bookings/{booking_id}/reviews")
@@ -125,8 +140,13 @@ def create_review(
 
 
 @router.get("/organizations/{org_id}/reviews")
-def list_org_reviews(org_id: str, db: Session = Depends(get_db)):
-    return _list_for_org(db, org_id)
+def list_org_reviews(
+    org_id: str,
+    user: User | None = Depends(_optional_user),
+    db: Session = Depends(get_db),
+):
+    include_private = bool(user and _membership_ok(db, user, org_id))
+    return _list_for_org(db, org_id, include_private=include_private)
 
 
 def profile_reviews(db: Session, target_type: str, target_id: str, org_id: str) -> dict:
@@ -156,8 +176,15 @@ def list_artist_reviews(artist_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/venues/{venue_id}/reviews")
-def list_venue_reviews(venue_id: str, db: Session = Depends(get_db)):
+def list_venue_reviews(
+    venue_id: str,
+    user: User | None = Depends(_optional_user),
+    db: Session = Depends(get_db),
+):
     venue = db.get(Venue, venue_id)
-    if not venue:
+    if not venue or (
+        not is_publicly_listed(db, venue)
+        and not (user and _membership_ok(db, user, venue.organization_id))
+    ):
         raise HTTPException(404, "Площадка не найдена")
     return profile_reviews(db, "venue", venue.id, venue.organization_id)

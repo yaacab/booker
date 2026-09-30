@@ -1,4 +1,6 @@
-from tests.conftest import auth_header, register
+import pytest
+
+from tests.conftest import activate_venue, auth_header, register
 from tests.test_event_day_checkin import _confirmed_booking
 
 
@@ -99,3 +101,69 @@ def test_empty_org_reviews_is_empty_list(client):
     res = client.get(f"/organizations/{org['id']}/reviews")
     assert res.status_code == 200
     assert res.json()["items"] == []
+
+
+def _completed_venue_review(client, *, resource_type="venue"):
+    """Retarget a completed fixture deal to an active venue in the same supplier org."""
+    from booker_api.models import Booking, Offer, Request
+
+    ctx = _completed_booking(client)
+    venue = client.post(
+        "/venues",
+        json={"organization_id": ctx["artist_org"]["id"], "name": "Отзывная площадка", "capacity": 100},
+        headers=auth_header(ctx["owner"]["token"]),
+    )
+    assert venue.status_code == 200, venue.text
+    venue = venue.json()
+    activate_venue(client, venue["id"])
+
+    db = client.app.state.SessionLocal()
+    try:
+        offer = db.get(Offer, db.get(Booking, ctx["booking_id"]).offer_id)
+        request = db.get(Request, offer.request_id)
+        request.resource_type = resource_type
+        request.resource_id = venue["hall_id"] if resource_type == "hall" else venue["id"]
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/bookings/{ctx['booking_id']}/reviews",
+        json={"rating": 5, "text": "Отзыв о скрываемой площадке"},
+        headers=ctx["ch"],
+    )
+    assert response.status_code == 200, response.text
+    return ctx, venue, response.json()
+
+
+@pytest.mark.parametrize("resource_type", ["venue", "hall"])
+@pytest.mark.parametrize("revocation", ["media", "calendar", "price", "partnership"])
+def test_revoked_venue_reviews_hidden_from_guest_and_org_aggregate(client, resource_type, revocation):
+    from booker_api.models import AvailabilitySlot, Venue, VenuePhoto, VenueTariff
+
+    ctx, venue, review = _completed_venue_review(client, resource_type=resource_type)
+    venue_url = f"/venues/{venue['id']}/reviews"
+    org_url = f"/organizations/{ctx['artist_org']['id']}/reviews"
+    assert client.get(venue_url).json()["count"] == 1
+    assert [item["id"] for item in client.get(org_url).json()["items"]] == [review["id"]]
+
+    db = client.app.state.SessionLocal()
+    try:
+        row = db.get(Venue, venue["id"])
+        if revocation == "media":
+            db.query(VenuePhoto).filter_by(venue_id=row.id).delete()
+        elif revocation == "calendar":
+            db.query(AvailabilitySlot).filter_by(resource_type="hall", resource_id=venue["hall_id"]).delete()
+        elif revocation == "price":
+            db.query(VenueTariff).filter_by(venue_id=row.id).delete()
+        else:
+            row.partnership_status = "claimed"
+        db.commit()
+    finally:
+        db.close()
+
+    assert client.get(venue_url).status_code == 404
+    assert client.get(org_url).json()["items"] == []
+    owner_headers = auth_header(ctx["owner"]["token"])
+    assert client.get(venue_url, headers=owner_headers).json()["count"] == 1
+    assert [item["id"] for item in client.get(org_url, headers=owner_headers).json()["items"]] == [review["id"]]
