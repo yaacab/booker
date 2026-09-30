@@ -1,16 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { InvestorVenueCatalog, type InvestorVenue } from "@/components/InvestorVenueCatalog";
+import { isInvestorDemoEnabled } from "@/lib/investorDemo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "300 площадок для выступлений — демо Букера",
-  description: "Исследовательская витрина реальных площадок Москвы для инвесторского показа.",
-  robots: { index: false, follow: false },
-};
+export function generateMetadata(): Metadata {
+  if (!isInvestorDemoEnabled()) {
+    return {
+      title: "Страница не найдена",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  return {
+    title: "300 площадок для выступлений — демо Букера",
+    description: "Исследовательская витрина реальных площадок Москвы для инвесторского показа.",
+    robots: { index: false, follow: false },
+  };
+}
 
 const API =
   process.env.BOOKER_INTERNAL_API_URL ||
@@ -73,6 +84,10 @@ async function loadVenues(): Promise<{ items: InvestorVenue[]; error?: string }>
 }
 
 export default async function InvestorVenuesPage() {
+  if (!isInvestorDemoEnabled()) {
+    notFound();
+  }
+
   const { items, error } = await loadVenues();
   return (
     <main className="page-enter investor-venues-page">
