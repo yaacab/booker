@@ -27,6 +27,7 @@ from booker_api.models import (
     VenueHall,
 )
 from booker_api.security import audit, aware, membership, now
+from booker_api.venue_catalog import is_publicly_listed
 
 LOSS_LABELS = {
     "customer_selected_another": "Заказчик выбрал другого",
@@ -41,7 +42,7 @@ LOSS_LABELS = {
 
 def target(db: Session, kind: str, target_id: str):
     row = db.get(Artist if kind == "artist" else Venue, target_id)
-    if not row or (kind == "venue" and row.moderation_status != "published"):
+    if not row or (kind == "venue" and not is_publicly_listed(db, row)):
         raise HTTPException(404, "Профиль не найден")
     return row
 

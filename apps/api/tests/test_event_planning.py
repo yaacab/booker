@@ -1,6 +1,17 @@
 from uuid import uuid4
 
-from booker_api.models import ArtistTariff, AuditLog, Booking, Offer, Venue, VenueTariff
+import pytest
+
+from booker_api.models import (
+    ArtistTariff,
+    AuditLog,
+    AvailabilitySlot,
+    Booking,
+    Offer,
+    Venue,
+    VenuePhoto,
+    VenueTariff,
+)
 from tests.conftest import activate_venue, auth_header, register
 
 
@@ -70,6 +81,46 @@ def test_hidden_venue_prices_are_not_exposed_even_to_its_owner(client, SessionLo
     assert result["min_rub"] is None and result["max_rub"] is None
     assert all(item["sources"] == [] for item in result["items"])
     assert "Private package" not in str(result)
+
+
+@pytest.mark.parametrize("revocation", ["media", "calendar", "price", "partnership"])
+def test_estimate_hides_published_venue_after_publication_gate_revocation(
+    client, SessionLocal, revocation
+):
+    headers, artist, venue = fixtures(client)
+    with SessionLocal() as db:
+        db.add(VenueTariff(venue_id=venue, title="Скрытый тариф", honorarium_rub=77777))
+        db.commit()
+    activate_venue(client, venue)
+    body = query(artist, venue)
+    visible = client.post("/event-studio/estimate", json=body).json()["items"][1]
+    assert visible["state"] == "known" and visible["name"] == "Зал"
+    assert visible["min_rub"] == 77777
+
+    with SessionLocal() as db:
+        profile = db.get(Venue, venue)
+        assert profile.moderation_status == "published"
+        if revocation == "media":
+            db.query(VenuePhoto).filter_by(venue_id=venue).delete()
+        elif revocation == "calendar":
+            db.query(AvailabilitySlot).filter_by(resource_type="hall").delete()
+        elif revocation == "price":
+            db.query(VenueTariff).filter_by(venue_id=venue).delete()
+        else:
+            profile.partnership_status = "claimed"
+        db.commit()
+
+    for request_headers in (None, headers):
+        response = client.post("/event-studio/estimate", json=body, headers=request_headers)
+        assert response.status_code == 200, response.text
+        result = response.json()
+        hidden = result["items"][1]
+        assert hidden == {
+            "resource_type": "venue", "resource_id": venue, "name": None,
+            "state": "unavailable", "min_rub": None, "max_rub": None, "sources": [],
+        }
+        assert result["priced_count"] == 0 and result["min_rub"] is None
+        assert "Скрытый тариф" not in response.text
 
 
 def test_no_price_injection_bounded_input_and_feature_gate(client, monkeypatch):

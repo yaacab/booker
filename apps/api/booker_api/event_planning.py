@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 
 from booker_api.models import Artist, ArtistTariff, Venue, VenueTariff
+from booker_api.venue_catalog import is_publicly_listed
 
 ORIENTATION_NOTE = "Ориентировочная стоимость. Итоговые условия формируются только после предложений участников."
 
@@ -24,7 +25,7 @@ def selection_orientation(db: Session, selections: list[dict]) -> dict:
             continue
         seen.add((kind, target_id))
         profile = db.get(Artist if kind == "artist" else Venue, target_id)
-        if not profile or (kind == "venue" and profile.moderation_status != "published"):
+        if not profile or (kind == "venue" and not is_publicly_listed(db, profile)):
             # Same public shape for a missing or hidden profile; do not expose hidden tariffs/name.
             items.append({"resource_type": kind, "resource_id": target_id, "name": None, "state": "unavailable",
                           "min_rub": None, "max_rub": None, "sources": []})

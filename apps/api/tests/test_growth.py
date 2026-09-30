@@ -1,11 +1,24 @@
 from datetime import timedelta
 from uuid import uuid4
 
+import pytest
+
 from booker_api.calendar import MSK
 from booker_api.config import settings
-from booker_api.models import Artist, AuditLog, Organization, Request, Subscription
+from booker_api.models import (
+    Artist,
+    AuditLog,
+    AvailabilitySlot,
+    DiscoverySignal,
+    Organization,
+    Request,
+    Subscription,
+    Venue,
+    VenuePhoto,
+    VenueTariff,
+)
 from booker_api.security import now
-from tests.conftest import auth_header
+from tests.conftest import activate_venue, auth_header, register
 from tests.test_commerce import org_user
 from tests.test_payments import _awaiting_payment
 
@@ -110,6 +123,64 @@ def test_discovery_is_deduplicated_excludes_owner_and_favorite_is_server_only(cl
         client.post("/discovery/signals", json={**body, "target_id": str(uuid4())}).status_code
         == 404
     )
+
+
+@pytest.mark.parametrize("revocation", ["media", "calendar", "price", "partnership"])
+def test_hidden_venue_signal_matches_missing_and_does_not_record(
+    client, SessionLocal, revocation
+):
+    owner = register(client, f"growth-venue-{revocation}@booker.test")
+    headers = auth_header(owner["token"])
+    org_response = client.post(
+        "/orgs", headers=headers, json={"name": "Площадка", "kind": "venue"}
+    )
+    assert org_response.status_code == 200, org_response.text
+    org_id = org_response.json()["id"]
+    venue_response = client.post(
+        "/venues", headers=headers,
+        json={"organization_id": org_id, "name": "Приватный зал", "capacity": 100},
+    )
+    assert venue_response.status_code == 200, venue_response.text
+    venue_id = venue_response.json()["id"]
+    activate_venue(client, venue_id)
+    body = {
+        "target_type": "venue", "target_id": venue_id,
+        "kind": "profile_view", "visitor_id": str(uuid4()),
+    }
+    active = client.post("/discovery/signals", json=body)
+    assert active.status_code == 200, active.text
+    # A profile owner can still read their own historical analytics.
+    own_growth = client.get(f"/organizations/{org_id}/growth", headers=headers)
+    assert own_growth.status_code == 200, own_growth.text
+    assert own_growth.json()["funnel"]["profile_views"] == 1
+
+    with SessionLocal() as db:
+        profile = db.get(Venue, venue_id)
+        assert profile.moderation_status == "published"
+        if revocation == "media":
+            db.query(VenuePhoto).filter_by(venue_id=venue_id).delete()
+        elif revocation == "calendar":
+            db.query(AvailabilitySlot).filter_by(resource_type="hall").delete()
+        elif revocation == "price":
+            db.query(VenueTariff).filter_by(venue_id=venue_id).delete()
+        else:
+            profile.partnership_status = "claimed"
+        db.commit()
+
+    hidden = client.post("/discovery/signals", json={**body, "visitor_id": str(uuid4())})
+    missing = client.post(
+        "/discovery/signals",
+        json={**body, "target_id": str(uuid4()), "visitor_id": str(uuid4())},
+    )
+    assert hidden.status_code == missing.status_code == 404
+    assert hidden.json() == missing.json()
+    assert client.post("/discovery/signals", headers=headers, json=body).status_code == 404
+    with SessionLocal() as db:
+        assert db.query(DiscoverySignal).filter_by(target_id=venue_id).count() == 1
+        assert db.query(AuditLog).filter_by(action="discovery.profile_view").count() == 1
+    own_growth = client.get(f"/organizations/{org_id}/growth", headers=headers)
+    assert own_growth.status_code == 200
+    assert own_growth.json()["funnel"]["profile_views"] == 1
 
 
 def test_funnel_follows_actual_deal_and_public_response_is_measured(client):
