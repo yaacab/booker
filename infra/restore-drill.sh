@@ -3,7 +3,16 @@
 # PostgreSQL restore additionally requires an explicitly confirmed empty target DB.
 set -euo pipefail
 
+# A caller may invoke this script with `bash -x`; never trace credential
+# handling into logs. Capture the restore URL in a non-exported shell variable
+# before starting any child process, then remove the inherited environment key.
+set +x
+
 umask 077
+
+RESTORE_DATABASE_URL="${BOOKER_RESTORE_DATABASE_URL-}"
+export -n RESTORE_DATABASE_URL
+unset BOOKER_RESTORE_DATABASE_URL
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
   echo "usage: $0 <backup.tar.gz> [new_restore_dir]" >&2
@@ -20,6 +29,9 @@ ENGINE=""
 PAYLOAD=""
 PAYLOAD_FORMAT=""
 PYTHON_BIN=""
+POSTGRES_SAFE_URL=""
+POSTGRES_SAFE_URL_FILE=""
+PGPASS_FILE=""
 
 fail() {
   echo "restore drill FAILED: $*" >&2
@@ -27,11 +39,20 @@ fail() {
 }
 
 cleanup() {
+  local status=$?
+  trap - EXIT HUP INT TERM
   if [[ -n "${WORK_ROOT}" && -d "${WORK_ROOT}" ]]; then
-    rm -rf -- "${WORK_ROOT}"
+    if ! rm -rf -- "${WORK_ROOT}"; then
+      echo "restore drill FAILED: could not remove private work directory: ${WORK_ROOT}" >&2
+      [[ "${status}" -ne 0 ]] || status=1
+    fi
   fi
+  exit "${status}"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "required command is unavailable: $1"
@@ -53,13 +74,190 @@ select_python() {
   [[ -n "${PYTHON_BIN}" ]] || fail "required command is unavailable: python3"
 }
 
-pg_url_for_libpq() {
-  local url="$1"
-  url="${url/postgresql+psycopg2/postgresql}"
-  url="${url/postgres+psycopg2/postgresql}"
-  url="${url/postgresql+psycopg/postgresql}"
-  url="${url/postgres+psycopg/postgresql}"
-  printf '%s\n' "${url}"
+prepare_postgres_connection() {
+  local secret_url_path="${WORK_ROOT}/.restore-database-url"
+  local credential_mode_path="${WORK_ROOT}/.restore-credential-mode"
+  local credential_mode=""
+
+  [[ -n "${RESTORE_DATABASE_URL}" ]] \
+    || fail "PostgreSQL drill requires BOOKER_RESTORE_DATABASE_URL; BOOKER_DATABASE_URL is deliberately ignored"
+  [[ "${RESTORE_DATABASE_URL}" == postgres:* \
+      || "${RESTORE_DATABASE_URL}" == postgresql:* \
+      || "${RESTORE_DATABASE_URL}" == postgres+*:* \
+      || "${RESTORE_DATABASE_URL}" == postgresql+*:* ]] \
+    || fail "BOOKER_RESTORE_DATABASE_URL must use a PostgreSQL scheme"
+
+  POSTGRES_SAFE_URL_FILE="${WORK_ROOT}/.restore-connection-url"
+  PGPASS_FILE="${WORK_ROOT}/.pgpass"
+
+  # `printf` is a Bash builtin, so the password is never placed in a child
+  # argv. The URL file lives in mktemp's private directory under umask 077.
+  if ! printf '%s' "${RESTORE_DATABASE_URL}" >"${secret_url_path}"; then
+    fail "could not stage PostgreSQL restore credentials"
+  fi
+  RESTORE_DATABASE_URL=""
+  chmod 600 -- "${secret_url_path}"
+
+  "${PYTHON_BIN}" - "${secret_url_path}" "${POSTGRES_SAFE_URL_FILE}" \
+    "${PGPASS_FILE}" "${credential_mode_path}" <<'PY'
+import os
+import sys
+from pathlib import Path
+from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
+
+secret_path = Path(sys.argv[1])
+safe_url_path = Path(sys.argv[2])
+pgpass_path = Path(sys.argv[3])
+mode_path = Path(sys.argv[4])
+
+
+def write_private(path: Path, value: str) -> None:
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+        stream.write(value)
+    path.chmod(0o600)
+
+
+try:
+    raw_url = secret_path.read_text(encoding="utf-8")
+finally:
+    secret_path.unlink(missing_ok=True)
+
+if not raw_url or any(character in raw_url for character in ("\x00", "\r", "\n")):
+    raise SystemExit("BOOKER_RESTORE_DATABASE_URL is empty or contains a forbidden control character")
+
+parts = urlsplit(raw_url)
+scheme_aliases = {
+    "postgres": "postgresql",
+    "postgresql": "postgresql",
+    "postgres+psycopg": "postgresql",
+    "postgresql+psycopg": "postgresql",
+    "postgres+psycopg2": "postgresql",
+    "postgresql+psycopg2": "postgresql",
+}
+scheme = scheme_aliases.get(parts.scheme.lower())
+if scheme is None:
+    raise SystemExit("BOOKER_RESTORE_DATABASE_URL must use a supported PostgreSQL scheme")
+if parts.fragment:
+    raise SystemExit("BOOKER_RESTORE_DATABASE_URL must not contain a URL fragment")
+
+# Keep the authority byte-for-byte except for its password. Using rsplit('@')
+# safely handles percent-encoded '@' in credentials and IPv6 host colons.
+safe_netloc = parts.netloc
+authority_password = None
+if "@" in parts.netloc:
+    userinfo, hostinfo = parts.netloc.rsplit("@", 1)
+    if ":" in userinfo:
+        encoded_user, encoded_password = userinfo.split(":", 1)
+        authority_password = unquote(encoded_password)
+        safe_netloc = f"{encoded_user}@{hostinfo}"
+
+query_items = parse_qsl(parts.query, keep_blank_values=True)
+query_passwords = [value for key, value in query_items if key.lower() == "password"]
+if any(key.lower() == "sslpassword" for key, _ in query_items):
+    raise SystemExit(
+        "sslpassword must not be embedded in BOOKER_RESTORE_DATABASE_URL; "
+        "supply it out of band with libpq configuration"
+    )
+
+password_values = ([] if authority_password is None else [authority_password]) + query_passwords
+if password_values and any(value != password_values[0] for value in password_values[1:]):
+    raise SystemExit("BOOKER_RESTORE_DATABASE_URL contains conflicting passwords")
+password = password_values[0] if password_values else None
+
+safe_query_items = []
+effective_parameters = {}
+for key, value in query_items:
+    lowered = key.lower()
+    if lowered == "password":
+        continue
+    if lowered == "passfile" and password is not None:
+        # The temporary PGPASSFILE must be the only password source when the
+        # URL itself supplied a password.
+        continue
+    safe_query_items.append((key, value))
+    if lowered in {"host", "port", "dbname", "user"}:
+        effective_parameters[lowered] = value
+
+safe_url = urlunsplit(
+    (
+        scheme,
+        safe_netloc,
+        parts.path,
+        urlencode(safe_query_items, doseq=True),
+        "",
+    )
+)
+write_private(safe_url_path, safe_url + "\n")
+
+if password is None:
+    write_private(mode_path, "external\n")
+    raise SystemExit(0)
+
+try:
+    authority_port = parts.port
+except ValueError as exc:
+    raise SystemExit(f"invalid PostgreSQL port: {exc}") from exc
+
+host = effective_parameters.get("host")
+if host is None:
+    host = unquote(parts.hostname) if parts.hostname else "*"
+port = effective_parameters.get("port") or (
+    str(authority_port) if authority_port is not None else "*"
+)
+database = effective_parameters.get("dbname")
+if database is None:
+    database = unquote(parts.path[1:] if parts.path.startswith("/") else parts.path) or "*"
+user = effective_parameters.get("user")
+if user is None:
+    user = unquote(parts.username) if parts.username is not None else "*"
+
+# Multi-host libpq URLs select one host at runtime. Wildcards keep the private,
+# process-scoped password file valid for that failover without exposing it.
+if "," in host:
+    host = "*"
+if "," in port:
+    port = "*"
+
+
+def pgpass_escape(value: str) -> str:
+    if any(character in value for character in ("\x00", "\r", "\n")):
+        raise SystemExit("PostgreSQL credentials contain a forbidden control character")
+    return value.replace("\\", "\\\\").replace(":", "\\:")
+
+
+pgpass_line = ":".join(
+    pgpass_escape(value) for value in (host, port, database, user, password)
+)
+write_private(pgpass_path, pgpass_line + "\n")
+write_private(mode_path, "pgpass\n")
+PY
+
+  [[ -f "${POSTGRES_SAFE_URL_FILE}" ]] \
+    || fail "could not create a password-free PostgreSQL connection URL"
+  IFS= read -r POSTGRES_SAFE_URL <"${POSTGRES_SAFE_URL_FILE}" \
+    || fail "could not read the password-free PostgreSQL connection URL"
+  IFS= read -r credential_mode <"${credential_mode_path}" \
+    || fail "could not read PostgreSQL credential mode"
+  [[ -n "${POSTGRES_SAFE_URL}" ]] || fail "password-free PostgreSQL connection URL is empty"
+
+  case "${credential_mode}" in
+    pgpass)
+      [[ -f "${PGPASS_FILE}" ]] || fail "temporary PostgreSQL password file is missing"
+      [[ "$(stat -c '%a' -- "${PGPASS_FILE}")" == "600" ]] \
+        || fail "temporary PostgreSQL password file must have mode 0600"
+      export PGPASSFILE="${PGPASS_FILE}"
+      # An inherited PGPASSWORD would take precedence over PGPASSFILE and
+      # silently change the credentials used for this destructive operation.
+      unset PGPASSWORD
+      ;;
+    external)
+      PGPASS_FILE=""
+      ;;
+    *)
+      fail "unsupported PostgreSQL credential mode"
+      ;;
+  esac
 }
 
 publish_restore_dir() {
@@ -335,11 +533,11 @@ PY
 }
 
 postgres_probe() {
-  local target_url="$1"
+  local connection_url_path="$1"
   local mode="$2"
   local manifest_path="$3"
   local status_path="$4"
-  "${PYTHON_BIN}" - "${target_url}" "${mode}" "${manifest_path}" "${status_path}" <<'PY'
+  "${PYTHON_BIN}" - "${connection_url_path}" "${mode}" "${manifest_path}" "${status_path}" <<'PY'
 import hashlib
 import json
 import re
@@ -353,7 +551,10 @@ except ImportError as exc:
         "PostgreSQL restore requires psycopg; set BOOKER_PYTHON to the Booker venv Python"
     ) from exc
 
-database_url, mode, manifest_name, status_name = sys.argv[1:5]
+connection_url_path, mode, manifest_name, status_name = sys.argv[1:5]
+database_url = Path(connection_url_path).read_text(encoding="utf-8").rstrip("\n")
+if not database_url:
+    raise SystemExit("password-free PostgreSQL connection URL is empty")
 status_path = Path(status_name)
 
 def fetch_rows(connection, query: str):
@@ -500,19 +701,14 @@ PY
 }
 
 verify_postgres() {
-  local target_url="${BOOKER_RESTORE_DATABASE_URL:-}"
-  local target_libpq_url
   local dump_format="plain-sql"
   local status_path="${WORK_ROOT}/database-status"
 
-  [[ "${target_url}" == postgres:* || "${target_url}" == postgresql:* \
-      || "${target_url}" == postgres+*:* || "${target_url}" == postgresql+*:* ]] \
-    || fail "PostgreSQL drill requires BOOKER_RESTORE_DATABASE_URL; BOOKER_DATABASE_URL is deliberately ignored"
   [[ "${BOOKER_RESTORE_CONFIRM:-}" == "empty-non-production-database" ]] \
     || fail "set BOOKER_RESTORE_CONFIRM=empty-non-production-database after verifying the target is isolated"
 
-  target_libpq_url="$(pg_url_for_libpq "${target_url}")"
-  postgres_probe "${target_libpq_url}" "empty" "" "${status_path}"
+  prepare_postgres_connection
+  postgres_probe "${POSTGRES_SAFE_URL_FILE}" "empty" "" "${status_path}"
 
   if command -v pg_restore >/dev/null 2>&1 \
       && pg_restore --list "${EXTRACT_DIR}/booker.dump" >/dev/null 2>&1; then
@@ -525,7 +721,7 @@ verify_postgres() {
   if [[ "${dump_format}" == "postgres-custom" ]]; then
     require_command pg_restore
     pg_restore --exit-on-error --no-owner --no-privileges \
-      --dbname="${target_libpq_url}" "${EXTRACT_DIR}/booker.dump"
+      --dbname="${POSTGRES_SAFE_URL}" "${EXTRACT_DIR}/booker.dump"
   else
     [[ "${BOOKER_RESTORE_ALLOW_LEGACY_PLAIN_SQL:-}" == "trusted-archive" ]] \
       || fail "legacy plain SQL restore requires BOOKER_RESTORE_ALLOW_LEGACY_PLAIN_SQL=trusted-archive"
@@ -535,13 +731,13 @@ verify_postgres() {
         "${EXTRACT_DIR}/booker.dump"; then
       fail "legacy plain SQL dump contains database-switching or OS command execution"
     fi
-    psql "${target_libpq_url}" -X -v ON_ERROR_STOP=1 -f "${EXTRACT_DIR}/booker.dump"
+    psql "${POSTGRES_SAFE_URL}" -X -v ON_ERROR_STOP=1 -f "${EXTRACT_DIR}/booker.dump"
   fi
 
   if [[ "${MANIFEST_MODE}" == "v2" ]]; then
-    postgres_probe "${target_libpq_url}" "v2" "${EXTRACT_DIR}/manifest.json" "${status_path}"
+    postgres_probe "${POSTGRES_SAFE_URL_FILE}" "v2" "${EXTRACT_DIR}/manifest.json" "${status_path}"
   else
-    postgres_probe "${target_libpq_url}" "legacy" "" "${status_path}"
+    postgres_probe "${POSTGRES_SAFE_URL_FILE}" "legacy" "" "${status_path}"
   fi
 
   publish_restore_dir
@@ -552,6 +748,7 @@ verify_postgres() {
 
 case "${ENGINE}" in
   sqlite)
+    RESTORE_DATABASE_URL=""
     [[ "${PAYLOAD}" == "booker.db" ]] || fail "unexpected SQLite payload"
     verify_sqlite
     ;;
