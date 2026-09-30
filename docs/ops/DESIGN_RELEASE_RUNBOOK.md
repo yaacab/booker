@@ -118,6 +118,10 @@ Before stopping anything, capture the current source/configuration, previous BUI
 cp -a /opt/booker/apps/web/.next/BUILD_ID "$BACKUP/previous-BUILD_ID"
 sqlite3 -init /dev/null -batch -noheader -readonly /opt/booker/data/booker.db ".timeout 10000" ".backup '$BACKUP/preliminary.db'"
 test "$(sqlite3 -init /dev/null -batch -noheader -readonly "$BACKUP/preliminary.db" 'PRAGMA integrity_check;')" = ok
+tar --exclude='./data' --exclude='./.venv' --exclude='./.git' \
+  --exclude='./apps/web/node_modules' --exclude='./apps/web/.next/cache' \
+  -cpf "$BACKUP/live-code-and-build.tar" -C /opt/booker .
+tar -tf "$BACKUP/live-code-and-build.tar" >/dev/null
 ```
 
 Prepare and privately review the entire switch block before executing it. Set `SWITCH_API=1` only for the companion API change that passed the explicit gate; otherwise keep `0`. This example stops both services briefly to obtain a DB/uploads snapshot from the same quiesced interval. Confirm all other DB/upload writers are stopped too. Backup failure is fatal and must restart the existing services; never continue without the snapshot. The final snapshot contains sensitive production data: retain mode `0700` and do not upload it to ChatGPT or a public location.
@@ -145,10 +149,6 @@ if ! (
   else
     mkdir "$BACKUP/uploads"
   fi
-  tar --exclude='./data' --exclude='./.venv' --exclude='./.git' \
-    --exclude='./apps/web/node_modules' --exclude='./apps/web/.next/cache' \
-    -cpf "$BACKUP/live-code-and-build.tar" -C /opt/booker .
-  tar -tf "$BACKUP/live-code-and-build.tar" >/dev/null
   sha256sum "$BACKUP/booker.db" "$BACKUP/live-code-and-build.tar" > "$BACKUP/SHA256SUMS"
 ); then
   systemctl start booker-api booker-web
@@ -164,8 +164,12 @@ if [[ "$SWITCH_API" == 1 ]]; then
   mv "$STAGE/apps/api" /opt/booker/apps/api
 fi
 systemctl start booker-api
-curl --fail --silent --show-error --retry 10 --retry-connrefused \
-  --retry-delay 1 --max-time 15 http://127.0.0.1:8030/health
+# A rehearsed additive SQLite schema expansion can make the first startup
+# materially slower than steady state. Keep the old services stopped and wait
+# for the real health endpoint instead of treating a normal migration as a
+# failed release.
+curl --fail --silent --show-error --retry 90 --retry-connrefused \
+  --retry-delay 1 --connect-timeout 2 --max-time 120 http://127.0.0.1:8030/health
 systemctl start booker-web
 curl --fail --silent --show-error --retry 10 --retry-connrefused \
   --retry-delay 1 --max-time 15 --output /dev/null http://127.0.0.1:3030/
