@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { API_BASE, postJson, register } from "./helpers";
 
+const SAFE_SERVICE_ERROR = "Сервис временно недоступен. Попробуйте ещё раз позже.";
 for (const width of [1440, 390]) {
   test.describe(`Server studio estimate ${width}px`, () => {
     test.use({ viewport: { width, height: 900 } });
@@ -13,14 +14,15 @@ for (const width of [1440, 390]) {
       await page.addInitScript(({ ids }) => {
         localStorage.setItem("booker.eventStudioMapDraft", JSON.stringify({ draft: { title: "Серверный ориентир", kind: "Корпоратив", city: "Москва", date: "", startsAt: "17:00", endsAt: "23:30", guests: 100, talentIds: ids, requirements: [], version: 1 }, savedAt: new Date().toISOString() }));
       }, { ids: [artist.id, missing.id] });
-      let fail = true;
+      let outage = true;
       await page.route(`${API_BASE}/event-studio/estimate`, async (route) => {
-        if (fail) { fail = false; await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Расчёт временно недоступен" }) }); }
+        if (outage) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Расчёт временно недоступен" }) }); }
         else await route.continue();
       });
       await page.goto("/events/new?event_studio_map_v1=1");
       const estimate = page.getByRole("region", { name: "Ориентир бюджета" });
-      await expect(estimate.getByRole("alert")).toContainText("Расчёт временно недоступен");
+      await expect(estimate.getByRole("alert")).toHaveText(SAFE_SERVICE_ERROR);
+      outage = false;
       await estimate.getByRole("button", { name: "Повторить расчёт" }).click();
       await expect(estimate).toContainText(/60\s?000 ₽ — 90\s?000 ₽/);
       await expect(estimate).toContainText("Только известная часть состава.");

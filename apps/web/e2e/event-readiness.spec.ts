@@ -1,6 +1,21 @@
+import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { API_BASE, getJson, injectSession, postJson, register } from "./helpers";
 
+const SAFE_SERVICE_ERROR = "Сервис временно недоступен. Попробуйте ещё раз позже.";
+function publishVenueFixture(id: string) {
+  if (!process.env.BOOKER_DATABASE_URL?.startsWith("sqlite:////tmp/")) throw new Error("Venue fixture requires disposable SQLite in /tmp");
+  execFileSync(process.env.BOOKER_PYTHON_BIN || "python3", ["-c", `
+import sys
+from types import SimpleNamespace
+from sqlalchemy.orm import sessionmaker
+from booker_api.db import make_engine
+from tests.conftest import activate_venue
+SessionLocal = sessionmaker(bind=make_engine(sys.argv[1]), autoflush=False, autocommit=False, future=True)
+client = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(SessionLocal=SessionLocal)))
+activate_venue(client, sys.argv[2])
+`, process.env.BOOKER_DATABASE_URL, id], { cwd: "../api", env: process.env });
+}
 for (const width of [1440, 390]) {
   test.describe(`Event readiness ${width}px`, () => {
     test.use({ viewport: { width, height: 900 } });
@@ -22,15 +37,17 @@ for (const width of [1440, 390]) {
       const venue = await postJson<{ id: string; hall_id: string }>(request, "/venues", supplier.token, { organization_id: venueOrg.id, name: "Зал события", city, capacity: 150 });
       const hallFacts = { capacity: 150, stage_area_m2: 20, power_kw: 5, basic_sound: true, microphones: 3, equipment: ["CDJ"], restrictions: "" };
       expect((await request.put(`${API_BASE}/halls/${venue.hall_id}/technical`, { headers: { Authorization: `Bearer ${supplier.token}` }, data: { ...hallFacts, expected_version: 0 } })).ok()).toBe(true);
+      publishVenueFixture(venue.id);
       await injectSession(page, customer.token, org.id);
-      let fail = true;
+      let outage = true;
       await page.route(`${API_BASE}/events/${event.id}/readiness`, async (route) => {
-        if (fail) { fail = false; await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Проверки временно недоступны" }) }); }
+        if (outage) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Проверки временно недоступны" }) }); }
         else await route.continue();
       });
       await page.goto(`/events/${event.id}`);
       const panel = page.getByRole("region", { name: "Готовность события", exact: true });
-      await expect(panel.getByRole("alert")).toContainText("Проверки временно недоступны");
+      await expect(panel.getByRole("alert")).toHaveText(SAFE_SERVICE_ERROR);
+      outage = false;
       await panel.getByRole("button", { name: "Обновить готовность" }).click();
       await expect(panel).toContainText("0 из 2 обязательных позиций подтверждено сделками");
       await expect(panel.getByRole("heading", { name: "Уточнить окно события", exact: true })).toBeVisible();

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { API_BASE, getJson, injectSession, postJson, register } from "./helpers";
 
+const SAFE_SERVICE_ERROR = "Сервис временно недоступен. Попробуйте ещё раз позже.";
 for (const width of [1440, 390]) {
   test.describe(`Event budget ${width}px`, () => {
     test.use({ viewport: { width, height: 900 } });
@@ -24,14 +25,15 @@ for (const width of [1440, 390]) {
         offers.push({ ...offer, artist: artist.id });
       }
       await injectSession(page, customer.token, org.id);
-      let fail = true;
+      let outage = true;
       await page.route(`${API_BASE}/events/${event.id}/budget-summary`, async (route) => {
-        if (fail) { fail = false; await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Сводка временно недоступна" }) }); }
+        if (outage) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Сводка временно недоступна" }) }); }
         else await route.continue();
       });
       await page.goto(`/events/${event.id}`);
       const budget = page.getByRole("region", { name: "Бюджет события", exact: true });
-      await expect(budget.getByRole("alert")).toContainText("Сводка временно недоступна");
+      await expect(budget.getByRole("alert")).toHaveText(SAFE_SERVICE_ERROR);
+      outage = false;
       await budget.getByRole("button", { name: "Обновить бюджет", exact: true }).click();
       const metric = (title: string) => budget.locator("dl > div").filter({ has: page.locator("dt", { hasText: title }) }).locator("dd");
       await expect(metric("Учтённые предложения")).toHaveText("0 ₽");

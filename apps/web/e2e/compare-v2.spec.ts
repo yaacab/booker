@@ -1,7 +1,23 @@
+import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { API_BASE, getJson, injectSession, postJson, register } from "./helpers";
 
 type Plan = { revision: number; context_token: string; saved_selections: { resource_id: string; hall_id: string | null }[]; requirements: { id: string; category_code: string }[] };
+const SAFE_SERVICE_ERROR = "Сервис временно недоступен. Попробуйте ещё раз позже.";
+function publishVenueFixtures(ids: string[]) {
+  if (!process.env.BOOKER_DATABASE_URL?.startsWith("sqlite:////tmp/")) throw new Error("Venue fixtures require disposable SQLite in /tmp");
+  execFileSync(process.env.BOOKER_PYTHON_BIN || "python3", ["-c", `
+import sys
+from types import SimpleNamespace
+from sqlalchemy.orm import sessionmaker
+from booker_api.db import make_engine
+from tests.conftest import activate_venue
+SessionLocal = sessionmaker(bind=make_engine(sys.argv[1]), autoflush=False, autocommit=False, future=True)
+client = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(SessionLocal=SessionLocal)))
+for venue_id in sys.argv[2:]:
+    activate_venue(client, venue_id)
+`, process.env.BOOKER_DATABASE_URL, ...ids], { cwd: "../api", env: process.env });
+}
 for (const width of [1440, 390]) {
   test.describe(`Compare V2 ${width}px`, () => {
     test.use({ viewport: { width, height: 900 } });
@@ -31,11 +47,13 @@ for (const width of [1440, 390]) {
         await postJson(request, "/slots", actor.token, { resource_type: "hall", resource_id: venue.hall_id, starts_at: `${day}T14:00:00Z`, ends_at: `${day}T19:00:00Z` });
         const result = await request.put(`${API_BASE}/halls/${venue.hall_id}/technical`, { headers, data: { expected_version: 0, capacity, stage_area_m2: 20, power_kw: 5, basic_sound: true, microphones: 3, equipment: ["CDJ"], restrictions: "" } }); expect(result.ok()).toBe(true);
       }
+      publishVenueFixtures(venues.map((venue) => venue.id));
       await injectSession(page, actor.token, customer.id);
-      let fail = true;
-      await page.route(`${API_BASE}/compare?*`, async (route) => { if (fail) { fail = false; await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Сравнение временно недоступно" }) }); } else await route.continue(); });
+      let outage = true;
+      await page.route(`${API_BASE}/compare?*`, async (route) => { if (outage) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Сравнение временно недоступно" }) }); } else await route.continue(); });
       await page.goto(`/compare?type=artist&ids=${artists.join(",")}`);
-      await expect(page.locator("main").getByRole("alert")).toContainText("Сравнение временно недоступно");
+      await expect(page.locator("main").getByRole("alert")).toHaveText(SAFE_SERVICE_ERROR);
+      outage = false;
       await page.getByRole("button", { name: "Обновить сравнение", exact: true }).click();
       const basic = page.getByRole("article", { name: "Сравнение: DJ Базовый", exact: true });
       const detailed = page.getByRole("article", { name: "Сравнение: DJ С программой", exact: true });
