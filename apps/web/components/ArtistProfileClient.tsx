@@ -4,7 +4,7 @@ import { AddToAssembly } from "./AddToAssembly";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { apiBase, api, getToken } from "@/lib/api";
+import { api, getToken } from "@/lib/api";
 import { CHIP, categoryLabel } from "@/lib/copy";
 import { formatWhen, money, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -52,6 +52,7 @@ export function ArtistProfileClient() {
   const router = useRouter();
   const [data, setData] = useState<Artist | null>(null);
   const [error, setError] = useState("");
+  const [profileRevision, setProfileRevision] = useState(0);
   const [slotId, setSlotId] = useState("");
   const [busy, setBusy] = useState(false);
   const [wantedDay, setWantedDay] = useState<string | null>(null);
@@ -63,6 +64,7 @@ export function ArtistProfileClient() {
   const [catalogHref, setCatalogHref] = useState("/search");
 
   useEffect(() => {
+    const controller = new AbortController();
     const q = new URLSearchParams(window.location.search);
     const backQuery = new URLSearchParams(q);
     backQuery.delete("slot");
@@ -74,9 +76,11 @@ export function ArtistProfileClient() {
     setWantedDay(day);
     if (fromEvent) setEventId(fromEvent);
     if (fromReq) setRequirementId(fromReq);
-    fetch(`${apiBase()}/artists/${params.id}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найден"))))
+    setData(null);
+    setError("");
+    api<Artist>(`/artists/${params.id}`, { signal: controller.signal })
       .then((json: Artist) => {
+        if (controller.signal.aborted) return;
         setData(json);
         observeDiscovery("artist", json.id, "profile_view");
         const day = q.get("date");
@@ -90,8 +94,13 @@ export function ArtistProfileClient() {
         const open = fromUrl || fromDay || live.find((s) => s.status === "open");
         if (open) setSlotId(open.id);
       })
-      .catch((err: Error) => setError(err.message));
-  }, [params.id]);
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setError("Не удалось загрузить профиль. Попробуйте ещё раз.");
+        }
+      });
+    return () => controller.abort();
+  }, [params.id, profileRevision]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -178,14 +187,18 @@ export function ArtistProfileClient() {
     return (
       <main className="public-profile-reference">
         <h1>Профиль</h1>
-        <p>{error || ""}</p>
-        {!error ? (
+        {error ? (
+          <div className="card" role="alert">
+            <p>{error}</p>
+            <button className="btn secondary" type="button" onClick={() => setProfileRevision((value) => value + 1)}>Повторить загрузку</button>
+          </div>
+        ) : (
           <div className="grid">
             <div className="skeleton" />
             <div className="skeleton" />
             <div className="skeleton" />
           </div>
-        ) : null}
+        )}
       </main>
     );
   }

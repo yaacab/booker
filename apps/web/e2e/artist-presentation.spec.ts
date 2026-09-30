@@ -35,9 +35,12 @@ for (const width of [1440, 390]) {
       await expect(page.getByText("Продолжительность: 90 мин.")).toBeVisible();
       await expect(page.getByText("Нужен сухой доступ к сцене.")).toBeVisible();
       await expect(page.getByRole("link", { name: "Посмотреть выступление ↗" })).toHaveAttribute("href", "https://video.example.org/performance");
-      await expect(page.getByText(/Завершённых сделок: 0/)).toBeVisible();
+      const completedDeals = page.locator(".profile-facts-strip > div").filter({ hasText: "Завершённых сделок" });
+      await expect(completedDeals.locator("dt")).toHaveText("Завершённых сделок");
+      await expect(completedDeals.locator("dd")).toHaveText("0");
       await expect(page.getByText("Завершённых сделок с отзывами пока нет.")).toBeVisible();
-      await expect(page.getByText(/Ориентировочная стоимость. Окончательная цена/)).toBeVisible();
+      await expect(page.getByText("88 000 ₽", { exact: true })).toBeVisible();
+      await expect(page.getByText("Окончательная стоимость и условия — в предложении после заявки.", { exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Сравнить", exact: true }).click();
       await expect(page.getByRole("button", { name: "Убрать из сравнения" })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -52,10 +55,23 @@ test("public profile recovers after a failed request", async ({ page, request })
   const actor = await register(request, `epk-error-${Date.now()}@booker.test`, "Артист");
   const org = await postJson<{ id: string }>(request, "/orgs", actor.token, { name: "Витрина", kind: "artist" });
   const artist = await postJson<{ id: string }>(request, "/artists", actor.token, { organization_id: org.id, name: "Восстановленная витрина", category: "dj" });
-  await page.route(`${API_BASE}/artists/${artist.id}`, (route) => route.abort());
+  let profileRequests = 0;
+  await page.route(`${API_BASE}/artists/${artist.id}`, async (route) => {
+    profileRequests += 1;
+    if (profileRequests === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "private upstream failure" }),
+      });
+      return;
+    }
+    await route.continue();
+  });
   await page.goto(`/artists/${artist.id}`);
   await expect(page.getByRole("alert").filter({ hasText: "Не удалось загрузить профиль" })).toBeVisible();
-  await page.unroute(`${API_BASE}/artists/${artist.id}`);
+  await expect(page.getByText("private upstream failure")).toHaveCount(0);
   await page.getByRole("button", { name: "Повторить загрузку" }).click();
   await expect(page.getByRole("heading", { name: "Восстановленная витрина", exact: true })).toBeVisible();
+  expect(profileRequests).toBe(2);
 });
