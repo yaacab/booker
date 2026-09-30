@@ -1,5 +1,7 @@
 # Artist-first readiness — 11 September 2026
 
+> Historical release evidence. The catalog routing described below records the 11 September state and is superseded. Public `/search?kind=venue` now reads `/catalog/search` and returns only publication-ready venues. The 300 research cards are available only at `/investor/venues` when `BOOKER_ENABLE_INVESTOR_DEMO=1` on a private gateway; `/catalog/demo/venues` remains admin-only. The research JSON files are not runtime requirements for the public web application.
+
 Working branch: `codex/artist-first-readiness`. This checkpoint is not a production deployment or a statement of full readiness.
 
 ## Integrated source

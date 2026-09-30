@@ -1,6 +1,6 @@
 # Moscow district discovery map
 
-The `/search?kind=venue` page is a noindex research selection separate from booking. It uses the 300 source-attributed records in `moscow_performance_venues_research.json`. No calendar or ownership status is invented, and no production records are deleted. The artist catalog defaults to artists; venue research is an explicit alternate entry.
+This map belongs to the private investor research demo. Public `/search?kind=venue` reads `/catalog/search` and returns only publication-ready venues; it does not read the research or district JSON files. The 300 source-attributed records in `moscow_performance_venues_research.json` are available at `/investor/venues` only when `BOOKER_ENABLE_INVESTOR_DEMO=1` on a web instance protected by a private gateway. The supporting `/catalog/demo/venues` API is admin-only. These data files are not runtime requirements for the public web application.
 
 ## Geographic sources
 
@@ -13,6 +13,6 @@ The `/search?kind=venue` page is a noindex research selection separate from book
 
 Save the Overpass JSON and source-coordinate list, then run `python scripts/build_moscow_district_map.py OSM_JSON COORDINATES_JSON`. The builder joins ways into closed outer/inner rings and rejects incomplete boundaries or ambiguous multiple district matches. Point-in-polygon uses full precision geometry, including holes. Only display rings are simplified, with tolerance 0.00016 degrees. Do not classify addresses against simplified display paths.
 
-The browser check verifies real photos, all 132 paths, district dropdown and polygon pointer selection, gallery selection, budget empty state, noindex metadata, and no horizontal overflow on desktop/tablet/mobile in both editions. A district dropdown provides the equivalent keyboard/touch selection; hover previews the name and count without changing the chosen filter.
+The private-demo browser check verifies real photos, all 132 paths, district dropdown and polygon pointer selection, gallery selection, budget empty state, noindex metadata, and no horizontal overflow on desktop/tablet/mobile in both editions. A district dropdown provides the equivalent keyboard/touch selection; hover previews the name and count without changing the chosen filter.
 
-Cards show 24 items initially, with more loaded on request. Galleries render their thumbnails only when expanded. External photos remain with attribution and direct source links; no copies are made or associated with unrelated existing venue profiles.
+Private-demo cards show 24 items initially, with more loaded on request. Galleries render their thumbnails only when expanded. External photos remain with attribution and direct source links; no copies are made or associated with unrelated existing venue profiles.
