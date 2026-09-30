@@ -1,5 +1,6 @@
 """Public discovery for crawlers: no paid ranking, calendar inference or tracking."""
 import json
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 from booker_api.db import get_db
 from booker_api.models import Artist, ArtistPresentation, ArtistTariff, Venue, VenueTariff
 from booker_api.rate_limit import analytics_limiter, client_key
+from booker_api.venue_catalog import publicly_listed_venue_query
 
 router = APIRouter(prefix='/seo', tags=['catalog'])
 PAGE_SIZE = 1000
@@ -26,15 +28,15 @@ CATEGORIES = {
 }
 
 
-def public_query(db, kind):
-    return db.query(Artist) if kind == 'artists' else db.query(Venue).filter(Venue.moderation_status == 'published')
+def public_query(db, kind, *, at=None):
+    return db.query(Artist) if kind == 'artists' else publicly_listed_venue_query(db, at=at)
 
 
-def collections(db):
+def collections(db, *, at=None):
     result = []
     for slug, (city, suffix) in CITIES.items():
         groups = dict(db.query(Artist.category, func.count(Artist.id)).filter(Artist.city == city).group_by(Artist.category).all())
-        groups['venues'] = public_query(db, 'venues').filter(Venue.city == city).count()
+        groups['venues'] = public_query(db, 'venues', at=at).filter(Venue.city == city).count()
         for category, (label, description) in CATEGORIES.items():
             count = groups.get(category, 0)
             if count >= 3:
@@ -46,29 +48,31 @@ def collections(db):
 @router.get('/index')
 def index(request: Request, db: Session = Depends(get_db)):
     analytics_limiter.check(client_key(request, 'seo-index'))
-    return {'page_size': PAGE_SIZE, 'counts': {kind: public_query(db, kind).count() for kind in ('artists', 'venues')},
-        'collections': collections(db)}
+    at = datetime.now(timezone.utc)
+    return {'page_size': PAGE_SIZE, 'counts': {kind: public_query(db, kind, at=at).count() for kind in ('artists', 'venues')},
+        'collections': collections(db, at=at)}
 
 
 @router.get('/profiles')
 def profiles(request: Request, kind: Literal['artists', 'venues'], page: int = Query(0, ge=0, le=50000), db: Session = Depends(get_db)):
     analytics_limiter.check(client_key(request, 'seo-profiles'))
     model = Artist if kind == 'artists' else Venue
-    rows = public_query(db, kind).with_entities(model.id).order_by(model.id).offset(page * PAGE_SIZE).limit(PAGE_SIZE).all()
+    rows = public_query(db, kind, at=datetime.now(timezone.utc)).with_entities(model.id).order_by(model.id).offset(page * PAGE_SIZE).limit(PAGE_SIZE).all()
     return {'items': [{'path': f'/{kind}/{row.id}'} for row in rows]}
 
 
 @router.get('/collections/{city_slug}/{category}')
 def collection(city_slug: str, category: str, request: Request, page: int = Query(0, ge=0, le=10000), db: Session = Depends(get_db)):
     analytics_limiter.check(client_key(request, 'seo-collection'))
-    info = next((item for item in collections(db) if item['city_slug'] == city_slug and item['category'] == category), None)
+    at = datetime.now(timezone.utc)
+    info = next((item for item in collections(db, at=at) if item['city_slug'] == city_slug and item['category'] == category), None)
     if not info:
         raise HTTPException(404, 'Подборка пока недоступна')
     kind = 'venues' if category == 'venues' else 'artists'
     model, tariff = (Venue, VenueTariff) if kind == 'venues' else (Artist, ArtistTariff)
     foreign_id = tariff.venue_id if kind == 'venues' else tariff.artist_id
     minimum = db.query(foreign_id.label('profile_id'), func.min(tariff.honorarium_rub).label('amount')).group_by(foreign_id).subquery()
-    query = public_query(db, kind).filter(model.city == info['city'])
+    query = public_query(db, kind, at=at).filter(model.city == info['city'])
     if kind == 'artists':
         query = query.filter(Artist.category == category)
     rows = query.outerjoin(minimum, minimum.c.profile_id == model.id).add_columns(minimum.c.amount).order_by(model.name, model.id).offset(page * 24).limit(25).all()

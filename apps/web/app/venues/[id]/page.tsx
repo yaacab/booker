@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { VenueProfileClient } from "@/components/VenueProfileClient";
+import { fetchPublicVenueMetadataFacts } from "@/lib/public-seo";
 
-const API =
-  process.env.BOOKER_INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://127.0.0.1:8000";
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -13,9 +11,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   try {
-    const res = await fetch(`${API}/venues/${id}`, { next: { revalidate: 300 } });
-    if (!res.ok) return { title: "Площадка", robots: { index: false } };
-    const data = (await res.json()) as { name?: string; city?: string; address?: string };
+    const data = await fetchPublicVenueMetadataFacts(id);
+    if (!data) return { title: "Площадка", robots: { index: false } };
     const title = data.name ? `${data.name} — площадка` : "Площадка";
     const description = [data.name, data.city, data.address].filter(Boolean).join(" · ");
     return {

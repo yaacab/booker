@@ -241,6 +241,59 @@ def is_publicly_listed(db: Session, venue: Venue, *, at: datetime | None = None)
     )
 
 
+def publicly_listed_venue_query(db: Session, *, at: datetime | None = None):
+    """Return venues that satisfy the full publication gate in one DB query.
+
+    Public inventory callers must apply this query before count, ordering, or
+    pagination.  The predicates intentionally mirror ``is_publicly_listed`` so
+    research/import rows do not become public merely because their moderation
+    status says ``published``.
+    """
+
+    current = at or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    calendar_horizon = current + timedelta(days=PUBLICATION_CALENDAR_DAYS)
+
+    has_representative = db.query(TeamMember.id).filter(
+        TeamMember.organization_id == Venue.organization_id
+    ).exists()
+    has_calendar_coverage = (
+        db.query(AvailabilitySlot.id)
+        .join(VenueHall, VenueHall.id == AvailabilitySlot.resource_id)
+        .filter(
+            VenueHall.venue_id == Venue.id,
+            AvailabilitySlot.resource_type == "hall",
+            AvailabilitySlot.status.in_(("open", "held", "confirmed", "busy")),
+            AvailabilitySlot.ends_at >= calendar_horizon,
+        )
+        .exists()
+    )
+    has_price = db.query(VenueTariff.id).filter(
+        VenueTariff.venue_id == Venue.id,
+        VenueTariff.honorarium_rub > 0,
+    ).exists()
+    has_media = db.query(VenuePhoto.id).filter(
+        VenuePhoto.venue_id == Venue.id,
+        VenuePhoto.photo_rights_status.in_(tuple(PUBLISHABLE_PHOTO_RIGHTS)),
+        VenuePhoto.photo_url != "",
+        VenuePhoto.photo_source_url != "",
+    ).exists()
+
+    return db.query(Venue).filter(
+        Venue.moderation_status == "published",
+        Venue.is_claimed.is_(True),
+        Venue.partnership_status.in_(tuple(OWNER_MANAGED_PARTNERSHIP_STATUSES)),
+        has_representative,
+        Venue.verified.is_(True),
+        Venue.partnership_status.in_(tuple(VERIFIED_PARTNERSHIP_STATUSES)),
+        Venue.availability_mode == "owner",
+        has_calendar_coverage,
+        has_price,
+        has_media,
+    )
+
+
 def apply_automated_metadata(
     venue: Venue,
     row: dict,
