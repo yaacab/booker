@@ -13,7 +13,7 @@ test.describe("Event Studio Map v1", () => {
     await expect(page.locator(".event-studio-shell")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Соберите событие", exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Основное" })).toHaveCount(0);
-    await expect(page.getByRole("status")).toContainText(/Сохран/i);
+    await expect(page.locator(".studio-heading").getByRole("status")).toContainText(/Сохран/i);
     await expect(page.getByLabel("Этапы создания события")).toBeVisible();
     await expect(page.getByLabel("Карта события")).toBeVisible();
   });
