@@ -1,11 +1,22 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { API_BASE, getJson, injectSession, postJson, register, seedNegotiation } from './helpers';
 
-const PYTHON = existsSync('../../.venv/bin/python') ? '../../.venv/bin/python' : 'python3';
+const API_DIR = path.resolve(__dirname, '../../api');
+const REPO_PYTHON = path.resolve(__dirname, '../../../.venv/bin/python');
+const configuredPython = process.env.BOOKER_PYTHON_BIN?.trim();
+const PYTHON = configuredPython
+  ? (configuredPython.includes('/') ? path.resolve(process.cwd(), configuredPython) : configuredPython)
+  : (existsSync(REPO_PYTHON) ? REPO_PYTHON : 'python3');
+
+function runPython(args: string[]) {
+  return execFileSync(PYTHON, args, { cwd: API_DIR, env: process.env });
+}
+
 function code() {
-  return execFileSync(PYTHON, ['-c', "import pyotp; print(pyotp.TOTP('JBSWY3DPEHPK3PXP').now())"], { env: process.env }).toString().trim();
+  return runPython(['-c', "import pyotp; print(pyotp.TOTP('JBSWY3DPEHPK3PXP').now())"]).toString().trim();
 }
 for (const width of [1440, 390]) {
   test(`Two operators refund a test payment at ${width}px`, async ({ page, request }, testInfo) => {
@@ -24,7 +35,7 @@ for (const width of [1440, 390]) {
     await postJson(request, `/payments/${payment.id}/stub-complete`, ctx.customer.token, {});
     const first = await register(request, `refund-first-${width}-${Date.now()}@booker.test`, 'Первый оператор');
     const second = await register(request, `refund-second-${width}-${Date.now()}@booker.test`, 'Второй оператор');
-    execFileSync(PYTHON, ['-c', `
+    runPython(['-c', `
 import sys
 from booker_api.db import SessionLocal
 from booker_api.models import User
@@ -35,7 +46,7 @@ with SessionLocal() as db:
         user.totp_enabled = True
         user.totp_secret = 'JBSWY3DPEHPK3PXP'
     db.commit()
-`, first.user_id, second.user_id], { env: process.env });
+`, first.user_id, second.user_id]);
     await page.setViewportSize({ width, height: 900 });
     await injectSession(page, first.token, ctx.customer.orgId);
     let fail = true;
@@ -44,7 +55,7 @@ with SessionLocal() as db:
       else await route.continue();
     });
     await page.goto('/admin/refunds');
-    await expect(page.getByRole('alert').filter({ hasText: 'Очередь временно недоступна' })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: 'Сервис временно недоступен. Попробуйте ещё раз позже.' })).toBeVisible();
     await page.getByRole('button', { name: 'Повторить загрузку' }).click();
     const form = page.getByRole('form', { name: 'Новый возврат' });
     await form.getByLabel('Идентификатор платежа').fill(payment.id);

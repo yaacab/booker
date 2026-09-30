@@ -4,8 +4,9 @@ import { API_BASE, getJson, injectSession, postJson, register } from './helpers'
 type Plan = { code: string; version: number; monthly_price_rub: number; annual_price_rub: number; supplier_fee_bps: number; customer_fee_bps: number; features: Record<string, boolean | number> };
 for (const width of [1440, 390]) {
   test(`Admin manages commercial access at ${width}px`, async ({ page, request }, testInfo) => {
+    const orgName = `Пульт ${width} ${Date.now()}`;
     const user = await register(request, `commercial-console-${width}-${Date.now()}@booker.test`, 'Тест коммерческого пульта');
-    const org = await postJson<{ id: string }>(request, '/orgs', user.token, { name: `Пульт ${width} ${Date.now()}`, kind: 'artist' });
+    const org = await postJson<{ id: string }>(request, '/orgs', user.token, { name: orgName, kind: 'artist' });
     await page.setViewportSize({ width, height: 900 });
     await injectSession(page, user.token, org.id);
     await page.goto('/admin/commerce');
@@ -27,7 +28,9 @@ for (const width of [1440, 390]) {
     await expect(campaigns.getByText(`Найдено: ${campaignData.total}`, { exact: true })).toBeVisible();
     await page.getByLabel('Организация: название или ID').fill(org.id);
     await page.getByRole('button', { name: 'Найти организацию', exact: true }).click();
-    await page.getByRole('button', { name: /^Управлять Пульт/ }).click();
+    const organization = page.getByRole('listitem').filter({ hasText: org.id });
+    await expect(organization).toHaveCount(1);
+    await organization.getByRole('button', { name: `Управлять ${orgName}`, exact: true }).click();
     const form = page.getByRole('form', { name: 'Управление доступом', exact: true });
     await form.getByRole('combobox', { name: 'Тариф', exact: true }).selectOption('artist_pro');
     await form.getByLabel('Причина изменения доступа').fill('Проверка обращения поддержки');

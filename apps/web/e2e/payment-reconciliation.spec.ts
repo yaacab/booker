@@ -14,12 +14,15 @@ for (const width of [1440, 390]) {
       else await route.fulfill({ json: { payment_id: 'fixture-payment', booking_id: 'fixture-booking', payment_status: 'succeeded', provider_status: 'succeeded', amount_rub: 106000, requires_operator: true, test_mode: true } });
     });
     await page.goto('/admin');
+    const paymentSection = page.getByRole('button', { name: 'Внешняя оплата', exact: true });
+    await paymentSection.click();
+    await expect(paymentSection).toHaveAttribute('aria-pressed', 'true');
     const panel = page.getByRole('region', { name: 'Сверка платежа', exact: true });
     await expect(panel.getByText('Результат сверки появится здесь.', { exact: false })).toBeVisible();
     await panel.getByLabel('Идентификатор платежа для сверки').fill('fixture-payment');
     await panel.getByLabel('Код второго фактора для сверки').fill('123456');
     await panel.getByRole('button', { name: 'Сверить существующий платёж' }).click();
-    await expect(panel.getByRole('alert')).toContainText('пока недоступна');
+    await expect(panel.getByRole('alert')).toContainText('Сервис временно недоступен. Попробуйте ещё раз позже.');
     await expect(panel.getByLabel('Код второго фактора для сверки')).toHaveValue('');
     result = 'success';
     await panel.getByLabel('Код второго фактора для сверки').fill('654321');
