@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+import pytest
+
 from booker_api.models import (
     AvailabilitySlot,
     Booking,
@@ -12,7 +14,7 @@ from booker_api.models import (
 )
 from booker_api.security import now
 from tests.conftest import auth_header, register
-from tests.test_event_budget import offer_for, save_choice
+from tests.test_event_budget import offer_for, revoke_venue, save_choice
 from tests.test_event_readiness import venue_offer
 from tests.test_matching import setup_matching
 
@@ -75,6 +77,46 @@ def test_clean_draft_preserves_source_and_checks_new_calendar(client, SessionLoc
     assert all(p['can_add'] for p in prefs['items'])
     assert client.put(f'/events/{new_id}/plan', headers=ctx['headers'], json={'expected_revision': prefs['revision'], 'expected_context': prefs['context_token'], 'selections': [p['selection'] for p in prefs['items']]}).status_code == 200
     assert client.get(f'/events/{new_id}', headers=ctx['headers']).json()['requests'] == []
+
+
+@pytest.mark.parametrize('missing', ['media', 'calendar', 'price', 'partnership'])
+def test_repeat_keeps_completed_deal_but_disables_hidden_venue_suggestion(
+    client, SessionLocal, missing,
+):
+    ctx = source(client, SessionLocal)
+    before = client.get(ctx['url']+'-options', headers=ctx['headers']).json()
+    venue_before = next(p for p in before['participants'] if p['resource_type'] == 'venue')
+    assert venue_before['can_prefer']
+    assert venue_before['name'] == 'Зал · Основной зал'
+    chosen_request = venue_before['source_request_id']
+    draft = repeat(client, ctx, payload(ctx, [chosen_request]))
+    assert draft.status_code == 201, draft.text
+
+    revoke_venue(SessionLocal, ctx['venue']['id'], missing)
+    after = client.get(ctx['url']+'-options', headers=ctx['headers']).json()
+    venue_after = next(p for p in after['participants'] if p['resource_type'] == 'venue')
+    assert venue_after['source_request_id'] == venue_before['source_request_id']
+    assert venue_after['name'] == 'Профиль недоступен'
+    assert venue_after['category'] is None
+    assert not venue_after['can_prefer']
+    rejected = client.post(
+        ctx['url'], headers={**ctx['headers'], 'Idempotency-Key': 'repeat-hidden'},
+        json=payload(ctx, [chosen_request]),
+    )
+    assert rejected.status_code == 409
+    preferences = client.get(
+        f"/events/{draft.json()['id']}/repeat-preferences", headers=ctx['headers'],
+    ).json()['items']
+    assert len(preferences) == 1
+    assert preferences[0]['name'] == 'Профиль недоступен'
+    assert not preferences[0]['can_add']
+
+    historical = client.get(
+        f"/events/{ctx['event']['id']}/budget-summary", headers=ctx['headers'],
+    ).json()
+    assert historical['confirmed_total'] > 0
+    assert any(line['resource_id'] == ctx['venue']['id'] and line['group'] == 'confirmed'
+               for line in historical['lines'])
 
 
 def test_no_preferences_replay_and_body_conflict(client, SessionLocal):

@@ -34,6 +34,7 @@ from booker_api.security import (
     require_org_member,
     require_org_writer,
 )
+from booker_api.venue_catalog import is_publicly_listed
 
 router = APIRouter(tags=["repeat event"])
 
@@ -64,7 +65,7 @@ def profile(db, kind, resource_id, hall_id):
         return (row.name, row.category) if row else None
     venue = db.get(Venue, resource_id)
     hall = db.get(VenueHall, hall_id) if hall_id else None
-    if venue and venue.moderation_status == 'published' and (not hall_id or hall and hall.venue_id == venue.id):
+    if venue and is_publicly_listed(db, venue) and (not hall_id or hall and hall.venue_id == venue.id):
         return (f'{venue.name} · {hall.name}' if hall else venue.name, 'venue')
     return None
 

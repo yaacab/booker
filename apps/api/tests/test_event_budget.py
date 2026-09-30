@@ -1,6 +1,8 @@
 import json
 from datetime import timedelta
 
+import pytest
+
 from booker_api.models import (
     AuditLog,
     AvailabilitySlot,
@@ -10,6 +12,9 @@ from booker_api.models import (
     EventPlan,
     OfferVersion,
     TeamMember,
+    Venue,
+    VenuePhoto,
+    VenueTariff,
 )
 from booker_api.security import now
 from tests.conftest import auth_header, register
@@ -33,6 +38,46 @@ def budget(client, ctx):
     result = client.get(f"/events/{ctx['event']['id']}/budget-summary", headers=ctx['headers'])
     assert result.status_code == 200, result.text
     return result.json()
+
+
+def revoke_venue(SessionLocal, venue_id, missing):
+    with SessionLocal() as db:
+        if missing == 'media':
+            db.query(VenuePhoto).filter_by(venue_id=venue_id).delete()
+        elif missing == 'calendar':
+            db.query(AvailabilitySlot).filter(
+                AvailabilitySlot.resource_type == 'hall',
+                AvailabilitySlot.starts_at > now() + timedelta(days=30),
+            ).delete()
+        elif missing == 'price':
+            db.query(VenueTariff).filter_by(venue_id=venue_id).delete()
+        elif missing == 'partnership':
+            db.get(Venue, venue_id).partnership_status = 'claimed'
+        db.commit()
+
+
+@pytest.mark.parametrize('missing', ['media', 'calendar', 'price', 'partnership'])
+def test_budget_hint_revalidates_full_venue_publication_gate(client, SessionLocal, missing):
+    ctx = setup_matching(client)
+    role = ctx['event']['requirements'][1]['id']
+    venue = ctx['venue']
+    with SessionLocal() as db:
+        db.add(EventPlan(event_id=ctx['event']['id'], selections_json=json.dumps([{
+            'requirement_id': role, 'position': 0, 'resource_type': 'venue',
+            'resource_id': venue['id'], 'hall_id': venue['hall_id'],
+        }])))
+        db.commit()
+    before = budget(client, ctx)['orientation']
+    assert before['items'][0]['name'] == 'Зал · Основной зал'
+    assert before['items'][0]['min_rub'] == 100000
+
+    revoke_venue(SessionLocal, venue['id'], missing)
+    after = budget(client, ctx)['orientation']
+    assert after['selected_count'] == 1
+    assert after['priced_count'] == 0
+    assert after['items'][0]['name'] == 'Ранее выбранный участник'
+    assert after['items'][0]['min_rub'] is None
+    assert after['items'][0]['max_rub'] is None
 
 
 def save_choice(SessionLocal, ctx, index=0, position=0):

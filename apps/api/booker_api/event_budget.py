@@ -23,6 +23,7 @@ from booker_api.models import (
     VenueTariff,
 )
 from booker_api.security import aware, now
+from booker_api.venue_catalog import is_publicly_listed
 
 CONFIRMED = {"Confirmed", "InProgress", "Completed", "Dispute"}
 RESERVED = {"DateHeld", "AwaitingContract", "AwaitingPayment"}
@@ -134,7 +135,7 @@ def event_budget(db: Session, event: Event) -> dict:
         elif identity not in used and choice["resource_type"] == "venue":
             venue = db.get(Venue, choice["resource_id"])
             hall = db.get(VenueHall, choice.get("hall_id")) if choice.get("hall_id") else None
-            if req.category_code == "venue" and venue and venue.moderation_status == "published" and hall and hall.venue_id == venue.id:
+            if req.category_code == "venue" and venue and is_publicly_listed(db, venue) and hall and hall.venue_id == venue.id:
                 name, prices = f"{venue.name} · {hall.name}", tariff_range(db.query(VenueTariff).filter_by(venue_id=venue.id).all())
         hints.append({**units[key], **choice, "name": name, "min_rub": prices["min_rub"] if prices else None, "max_rub": prices["max_rub"] if prices else None})
         used.add(identity)
