@@ -29,7 +29,8 @@ for (const width of [1440, 390]) {
       await page.goto("/events/new?event_studio_map_v1=1");
       await page.getByRole("button", { name: "Проверка", exact: false }).click();
       await page.getByRole("button", { name: "Продолжить", exact: false }).click();
-      await expect(page.getByRole("alert").filter({ hasText: "Ответ потерян" })).toBeVisible();
+      await expect(page.getByRole("alert").filter({ hasText: "Сервис временно недоступен" })).toBeVisible();
+      await expect(page.getByText("Ответ потерян после сохранения заявки")).toHaveCount(0);
       await page.getByRole("button", { name: "Продолжить", exact: false }).click();
       await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}$/);
       await expect(page.getByText(/Ваш бюджет: 400\s?000 ₽/)).toBeVisible();
