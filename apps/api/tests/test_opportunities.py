@@ -12,9 +12,13 @@ from booker_api.models import (
     OpportunityDelivery,
     PublicBrief,
     Subscription,
+    Venue,
+    VenuePhoto,
+    VenueTariff,
 )
 from booker_api.opportunities import on_brief_published
 from booker_api.security import now
+from tests.conftest import activate_venue
 from tests.test_commerce import org_user
 from tests.test_growth import create_profile, grant
 
@@ -257,20 +261,12 @@ def test_saved_filter_consent_idempotency_alerts_expiry_and_removal(client, Sess
 
 
 def test_venue_capacity_band_and_owner_calendar_are_mandatory(client, SessionLocal):
-    from booker_api.models import Venue
-
     _, headers, org = org_user(client, kind="venue", suffix="hall")
     venue = client.post(
         "/venues",
         headers=headers,
         json={"organization_id": org, "name": "Камерный зал", "city": "Москва", "capacity": 80},
     ).json()
-    with SessionLocal() as db:
-        row = db.get(Venue, venue["id"])
-        row.moderation_status = "published"
-        row.is_claimed = True
-        row.availability_mode = "owner"
-        db.commit()
     hall = client.get(f"/venues/{venue['id']}/halls", headers=headers).json()["items"][0]
     start = now() + timedelta(days=20)
     end = start + timedelta(hours=3)
@@ -287,6 +283,7 @@ def test_venue_capacity_band_and_owner_calendar_are_mandatory(client, SessionLoc
         ).status_code
         == 200
     )
+    activate_venue(client, venue["id"])
     _, customer, customer_org = org_user(client, kind="customer", suffix="venue-buyer")
     parties = {
         "headers": headers,
@@ -305,3 +302,71 @@ def test_venue_capacity_band_and_owner_calendar_are_mandatory(client, SessionLoc
         db.get(Venue, venue["id"]).availability_mode = "synthetic"
         db.commit()
     assert get_feed(client, parties)["items"] == []
+
+
+@pytest.mark.parametrize("revoke", ["media", "calendar", "price", "verification", "partnership"])
+def test_revoked_venue_cannot_match_or_respond_to_brief(client, SessionLocal, revoke):
+    from booker_api.models import AvailabilitySlot, VenueHall
+
+    _, headers, org = org_user(client, kind="venue", suffix="opportunity-venue")
+    venue = client.post(
+        "/venues",
+        headers=headers,
+        json={"organization_id": org, "name": "Зал", "city": "Москва", "capacity": 80},
+    ).json()
+    activate_venue(client, venue["id"])
+    start = now() + timedelta(days=20)
+    end = start + timedelta(hours=3)
+    hall = client.get(f"/venues/{venue['id']}/halls", headers=headers).json()["items"][0]
+    slot = client.post(
+        "/slots",
+        headers=headers,
+        json={
+            "resource_type": "hall", "resource_id": hall["id"],
+            "starts_at": start.isoformat(), "ends_at": end.isoformat(),
+        },
+    )
+    assert slot.status_code == 200, slot.text
+    _, customer, customer_org = org_user(client, kind="customer", suffix="opportunity-buyer")
+    parties = {
+        "headers": headers, "org": org, "customer": customer,
+        "customer_org": customer_org, "start": start, "end": end,
+    }
+    brief = publish(client, parties, role_needed="venue", guest_count_band="1-50")
+    assert brief.status_code == 200, brief.text
+    assert get_feed(client, parties)["total"] == 1
+
+    with SessionLocal() as db:
+        row = db.get(Venue, venue["id"])
+        if revoke == "media":
+            db.query(VenuePhoto).filter_by(venue_id=row.id).delete()
+        elif revoke == "calendar":
+            hall_id = db.query(VenueHall.id).filter_by(venue_id=row.id).scalar()
+            db.query(AvailabilitySlot).filter(
+                AvailabilitySlot.resource_type == "hall",
+                AvailabilitySlot.resource_id == hall_id,
+                AvailabilitySlot.ends_at > now() + timedelta(days=30),
+            ).delete()
+        elif revoke == "price":
+            db.query(VenueTariff).filter_by(venue_id=row.id).delete()
+        elif revoke == "verification":
+            row.verified = False
+        else:
+            row.partnership_status = "claimed"
+        db.commit()
+
+    feed = get_feed(client, parties)
+    assert feed["items"] == [] and feed["profiles"] == [] and feed["total"] == 0
+    response = client.post(
+        f"/briefs/{brief.json()['id']}/responses",
+        headers=headers,
+        json={
+            "supplier_org_id": org, "target_type": "venue",
+            "target_id": venue["id"], "message": "Готовы обсудить",
+        },
+    )
+    assert response.status_code == 409, response.text
+    assert client.get(f"/venues/{venue['id']}").status_code == 404
+    assert client.get(f"/venues/{venue['id']}/halls", headers=headers).status_code == 200
+    _, outsider, _ = org_user(client, suffix="opportunity-outsider")
+    assert client.get(f"/organizations/{org}/opportunities", headers=outsider).status_code == 403

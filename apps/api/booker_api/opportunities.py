@@ -25,6 +25,7 @@ from booker_api.models import (
 from booker_api.notifications.service import notify
 from booker_api.notifications.types import Channel, Notification
 from booker_api.security import audit, aware, membership, now
+from booker_api.venue_catalog import is_publicly_listed
 
 EVENT_TYPE_LABELS = {
     "corporate": "Корпоратив",
@@ -49,11 +50,7 @@ def profiles_for(db: Session, org: Organization):
     model = Artist if org.kind == "artist" else Venue
     query = db.query(model).filter_by(organization_id=org.id)
     if org.kind == "venue":
-        query = query.filter(
-            Venue.moderation_status == "published",
-            Venue.availability_mode == "owner",
-            Venue.is_claimed.is_(True),
-        )
+        return [venue for venue in query.all() if is_publicly_listed(db, venue)]
     return query.all()
 
 
@@ -79,11 +76,7 @@ def public_data(brief: PublicBrief):
 
 def match_profile(db: Session, profile, brief: PublicBrief):
     kind = "artist" if isinstance(profile, Artist) else "venue"
-    if kind == "venue" and (
-        profile.moderation_status != "published"
-        or not profile.is_claimed
-        or profile.availability_mode != "owner"
-    ):
+    if kind == "venue" and not is_publicly_listed(db, profile):
         return None
     category = profile.category if kind == "artist" else "venue"
     if brief.role_needed != category:

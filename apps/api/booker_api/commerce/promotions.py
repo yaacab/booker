@@ -28,17 +28,14 @@ from booker_api.models import (
     VenueHall,
 )
 from booker_api.security import audit, aware, now
+from booker_api.venue_catalog import is_publicly_listed
 
 
 def promotion_target(db: Session, org_id: str, target_type: str, target_id: str):
     target = db.get(Artist if target_type == "artist" else Venue, target_id)
     if not target or target.organization_id != org_id:
         raise HTTPException(403, "Можно продвигать только профиль своей организации")
-    if target_type == "venue" and (
-        target.moderation_status != "published"
-        or target.availability_mode != "owner"
-        or not target.is_claimed
-    ):
+    if target_type == "venue" and not is_publicly_listed(db, target):
         raise HTTPException(422, "Для продвижения подтвердите профиль и календарь площадки")
     return target
 

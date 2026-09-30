@@ -3,9 +3,18 @@ from itertools import pairwise
 
 import pytest
 
-from booker_api.models import AuditLog, AvailabilitySlot, PromotionCampaign, Subscription
+from booker_api.models import (
+    AuditLog,
+    AvailabilitySlot,
+    PromotionCampaign,
+    Subscription,
+    Venue,
+    VenueHall,
+    VenuePhoto,
+    VenueTariff,
+)
 from booker_api.security import now
-from tests.conftest import contract_otps
+from tests.conftest import activate_venue, contract_otps
 from tests.test_commerce import complete, org_user
 from tests.test_commerce import stub as _commerce_stub
 
@@ -340,8 +349,6 @@ def test_admin_prices_apply_only_to_new_promotion_orders(client, SessionLocal, s
 
 
 def test_unclaimed_and_unpublished_venues_cannot_buy_placement(client, SessionLocal):
-    from booker_api.models import Venue
-
     _, headers, org = org_user(client, kind="venue", suffix="promovenue")
     venue = client.post(
         "/venues",
@@ -368,6 +375,59 @@ def test_unclaimed_and_unpublished_venues_cannot_buy_placement(client, SessionLo
         row.moderation_status = "needs_review"
         db.commit()
     assert client.post(route, headers=headers, json=body).status_code == 422
+
+
+@pytest.mark.parametrize("revoke", ["media", "calendar", "price", "verification", "partnership"])
+def test_revoked_venue_cannot_start_or_settle_promotion(client, SessionLocal, stub, revoke):
+    _, headers, org = org_user(client, kind="venue", suffix="promotion-venue")
+    venue = client.post(
+        "/venues",
+        headers=headers,
+        json={"organization_id": org, "name": "Зал", "city": "Москва", "capacity": 100},
+    ).json()
+    activate_venue(client, venue["id"])
+    route = f"/commerce/organizations/{org}/promotions"
+    body = {
+        "target_type": "venue", "target_id": venue["id"],
+        "product_code": "BOOST_24H", "idempotency_key": "venue-before-revoke",
+    }
+    created = client.post(route, headers=headers, json=body)
+    assert created.status_code == 200, created.text
+    campaign = created.json()
+    assert campaign["status"] == "pending_payment"
+
+    with SessionLocal() as db:
+        row = db.get(Venue, venue["id"])
+        if revoke == "media":
+            db.query(VenuePhoto).filter_by(venue_id=row.id).delete()
+        elif revoke == "calendar":
+            hall_id = db.query(VenueHall.id).filter_by(venue_id=row.id).scalar()
+            db.query(AvailabilitySlot).filter(
+                AvailabilitySlot.resource_type == "hall",
+                AvailabilitySlot.resource_id == hall_id,
+            ).delete()
+        elif revoke == "price":
+            db.query(VenueTariff).filter_by(venue_id=row.id).delete()
+        elif revoke == "verification":
+            row.verified = False
+        else:
+            row.partnership_status = "claimed"
+        db.commit()
+
+    rejected = client.post(
+        route, headers=headers,
+        json={**body, "idempotency_key": "venue-after-revoke"},
+    )
+    assert rejected.status_code == 422, rejected.text
+    complete(client, headers, campaign["order"])
+    with SessionLocal() as db:
+        assert db.get(PromotionCampaign, campaign["id"]).status == "rejected"
+    own = client.get(route, headers=headers)
+    assert own.status_code == 200, own.text
+    assert any(item["id"] == campaign["id"] for item in own.json()["items"])
+    assert any(item["id"] == venue["id"] for item in own.json()["targets"])
+    _, outsider, _ = org_user(client, suffix="promotion-outsider")
+    assert client.get(route, headers=outsider).status_code == 403
 
 
 def test_promotion_checkout_timeout_preserves_campaign_and_retries(client, SessionLocal, stub, supply, monkeypatch):
