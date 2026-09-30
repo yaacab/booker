@@ -26,12 +26,15 @@ test.describe("Venue cabinet §13 scenarios", () => {
 
     await page.goto("/cabinet/venue/stats");
     await expect(page.getByRole("heading", { name: "Пульт площадки" })).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page
-        .getByRole("heading", { name: "Статистика появится позже" })
-        .or(page.getByRole("heading", { name: "Бронирования" }))
-        .or(page.getByRole("heading", { name: "Статистика" })),
-    ).toBeVisible({ timeout: 15_000 });
+    const statsHeading = page
+      .getByRole("heading", { name: "Статистика появится позже", exact: true })
+      .or(
+        page
+          .getByRole("region", { name: "Статистика", exact: true })
+          .getByRole("heading", { name: "Статистика", exact: true }),
+      );
+    await expect(statsHeading).toHaveCount(1, { timeout: 15_000 });
+    await expect(statsHeading).toBeVisible();
     await expect(page.getByText("Сводка по бронированиям площадки", { exact: false })).toBeVisible();
 
     await page.goto("/cabinet/venue/calendar");
