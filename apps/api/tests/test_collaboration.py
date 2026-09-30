@@ -1,7 +1,10 @@
 from datetime import timedelta
 
+import pytest
+
 from booker_api.models import (
     AuditLog,
+    AvailabilitySlot,
     Booking,
     EventPlan,
     Request,
@@ -10,6 +13,9 @@ from booker_api.models import (
     ShortlistGuest,
     TeamMember,
     Venue,
+    VenueHall,
+    VenuePhoto,
+    VenueTariff,
 )
 from booker_api.security import now
 from tests.conftest import activate_venue, auth_header, register
@@ -165,6 +171,65 @@ def test_hidden_venue_snapshot_and_feedback_are_not_disclosed(client, SessionLoc
         db.get(Venue, venues[0]['id']).moderation_status = 'needs_review'; db.commit()
     result = client.get(f"/shared/{share['token']}")
     assert len(result.json()['items']) == 1 and venues[0]['id'] not in result.text and 'Зал первый' not in result.text
+    assert client.post('/shortlists', headers=ctx['cust_h'], json=body).status_code == 404
+
+
+@pytest.mark.parametrize('revocation', ('media', 'calendar', 'price', 'partnership'))
+def test_venue_publication_revocation_closes_share_and_new_snapshot(client, SessionLocal, revocation):
+    ctx = _seed(client)
+    org = client.post('/orgs', headers=ctx['cust_h'], json={'name': 'Площадки', 'kind': 'venue'}).json()
+    venues, favorites = [], []
+    for name in ('Действующий зал', 'Отозванный зал'):
+        venue = client.post('/venues', headers=ctx['cust_h'], json={
+            'organization_id': org['id'], 'name': name, 'capacity': 100,
+        }).json()
+        activate_venue(client, venue['id'])
+        venues.append(venue)
+        favorite = client.post('/favorites', headers=ctx['cust_h'], json={
+            'organization_id': ctx['cust_org']['id'], 'target_type': 'venue', 'target_id': venue['id'],
+        })
+        assert favorite.status_code == 201, favorite.text
+        favorites.append(favorite.json()['id'])
+    body = {'organization_id': ctx['cust_org']['id'], 'target_type': 'venue',
+            'favorite_ids': favorites, 'collaborative': True}
+    created = client.post('/shortlists', headers=ctx['cust_h'], json=body)
+    assert created.status_code == 201, created.text
+    share = created.json()
+    path = f"/shared/{share['token']}"
+    assert [item['target_id'] for item in client.get(path).json()['items']] == [v['id'] for v in venues]
+    join(client, {'path': path})
+
+    revoked_id = venues[1]['id']
+    with SessionLocal() as db:
+        venue = db.get(Venue, revoked_id)
+        if revocation == 'media':
+            db.query(VenuePhoto).filter_by(venue_id=revoked_id).delete()
+        elif revocation == 'calendar':
+            hall_ids = [row.id for row in db.query(VenueHall).filter_by(venue_id=revoked_id)]
+            db.query(AvailabilitySlot).filter(AvailabilitySlot.resource_id.in_(hall_ids)).delete()
+        elif revocation == 'price':
+            db.query(VenueTariff).filter_by(venue_id=revoked_id).delete()
+        else:
+            venue.partnership_status = 'unverified_listing'
+        assert venue.moderation_status == 'published'
+        db.commit()
+
+    for response in (
+        client.get(path),
+        client.get(path, headers={'X-Shortlist-Guest': SECRET}),
+        client.get('/shortlists', headers=ctx['cust_h'], params={'organization_id': ctx['cust_org']['id']}),
+    ):
+        assert response.status_code == 200, response.text
+        assert revoked_id not in response.text
+        assert 'Отозванный зал' not in response.text
+        assert [item['target_id'] for item in (
+            response.json()['items'][0]['items'] if response.request.url.path == '/shortlists'
+            else response.json()['items']
+        )] == [venues[0]['id']]
+    feedback_response = client.put(path + f'/items/{revoked_id}/feedback',
+        headers={'X-Shortlist-Guest': SECRET},
+        json={'reaction': 'vote', 'comment': '', 'expected_revision': 0})
+    assert feedback_response.status_code == 404
     assert client.post('/shortlists', headers=ctx['cust_h'], json=body).status_code == 404
 
 

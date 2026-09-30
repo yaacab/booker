@@ -45,6 +45,7 @@ from booker_api.security import (
     require_org_member,
     require_org_writer,
 )
+from booker_api.venue_catalog import is_publicly_listed
 
 router = APIRouter(tags=["shortlists"])
 ALLOWED_TYPES = frozenset({"artist", "venue"})
@@ -107,7 +108,7 @@ def _snapshot(db, kind, target_id):
             raise HTTPException(404, "Профиль недоступен")
         return row.name, row.city or "", ROLE_LABEL.get(row.category, "Исполнитель")
     row = db.get(Venue, target_id)
-    if not row or row.moderation_status != "published":
+    if not row or not is_publicly_listed(db, row):
         raise HTTPException(404, "Профиль недоступен")
     halls = db.query(VenueHall).filter_by(venue_id=row.id).all()
     return row.name, row.city or "", f"Вместимость одного зала до {max([h.capacity for h in halls], default=row.capacity)}"

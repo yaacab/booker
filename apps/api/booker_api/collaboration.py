@@ -9,6 +9,7 @@ from booker_api.config import settings
 from booker_api.models import Artist, SharedShortlist, ShortlistFeedback, ShortlistGuest, Venue
 from booker_api.rate_limit import analytics_limiter, messaging_limiter
 from booker_api.security import aware, now
+from booker_api.venue_catalog import is_publicly_listed
 
 
 def digest(value):
@@ -54,7 +55,7 @@ def guest_for(db, row, secret, *, required=False):
 
 def visible_item(db, kind, item):
     profile = db.get(Artist if kind == "artist" else Venue, item.target_id)
-    return profile and (kind == "artist" or profile.moderation_status == "published")
+    return bool(profile and (kind == "artist" or is_publicly_listed(db, profile)))
 
 
 def shared_payload(db, row, guest=None):
