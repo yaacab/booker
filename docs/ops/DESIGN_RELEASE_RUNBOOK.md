@@ -116,8 +116,8 @@ Before stopping anything, capture the current source/configuration, previous BUI
 
 ```bash
 cp -a /opt/booker/apps/web/.next/BUILD_ID "$BACKUP/previous-BUILD_ID"
-sqlite3 -readonly /opt/booker/data/booker.db ".timeout 10000" ".backup '$BACKUP/preliminary.db'"
-test "$(sqlite3 -readonly "$BACKUP/preliminary.db" 'PRAGMA integrity_check;')" = ok
+sqlite3 -batch -noheader -readonly /opt/booker/data/booker.db ".timeout 10000" ".backup '$BACKUP/preliminary.db'"
+test "$(sqlite3 -batch -noheader -readonly "$BACKUP/preliminary.db" 'PRAGMA integrity_check;')" = ok
 ```
 
 Prepare and privately review the entire switch block before executing it. Set `SWITCH_API=1` only for the companion API change that passed the explicit gate; otherwise keep `0`. This example stops both services briefly to obtain a DB/uploads snapshot from the same quiesced interval. Confirm all other DB/upload writers are stopped too. Backup failure is fatal and must restart the existing services; never continue without the snapshot. The final snapshot contains sensitive production data: retain mode `0700` and do not upload it to ChatGPT or a public location.
@@ -137,9 +137,9 @@ if ! (
   set -euo pipefail
   [[ "$(systemctl show booker-web -p MainPID --value)" == 0 ]]
   [[ "$(systemctl show booker-api -p MainPID --value)" == 0 ]]
-  sqlite3 -readonly /opt/booker/data/booker.db ".timeout 10000" ".backup '$BACKUP/booker.db'"
-  test "$(sqlite3 -readonly "$BACKUP/booker.db" 'PRAGMA integrity_check;')" = ok
-  sqlite3 -readonly "$BACKUP/booker.db" 'SELECT 1 FROM users LIMIT 1;' >/dev/null
+  sqlite3 -batch -noheader -readonly /opt/booker/data/booker.db ".timeout 10000" ".backup '$BACKUP/booker.db'"
+  test "$(sqlite3 -batch -noheader -readonly "$BACKUP/booker.db" 'PRAGMA integrity_check;')" = ok
+  sqlite3 -batch -noheader -readonly "$BACKUP/booker.db" 'SELECT 1 FROM users LIMIT 1;' >/dev/null
   if [[ -d /opt/booker/data/uploads ]]; then
     cp -a /opt/booker/data/uploads "$BACKUP/uploads"
   else
