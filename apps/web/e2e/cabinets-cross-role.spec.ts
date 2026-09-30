@@ -39,7 +39,7 @@ test.describe("Cross-role E2E §7.5.11", () => {
       expect(artistBookingId).toBeTruthy();
       await expect(page.getByTestId("deal-room-accents")).toBeVisible();
       await expect(page.getByRole("heading", { name: "Райдер" })).toBeVisible();
-      await expect(page.getByText("quote_id:").first()).toBeVisible();
+      await expect(page.getByText("Текущее предложение", { exact: true }).first()).toBeVisible();
       await page.getByRole("button", { name: "Подтвердить условия" }).click();
       await expect(page.getByText("подтвердил только исполнитель").first()).toBeVisible({ timeout: 10_000 });
       const room = await getJson<{ offer_id: string }>(
@@ -142,15 +142,15 @@ test.describe("Cross-role E2E §7.5.11", () => {
     await test.step("holds и статусы во всех кабинетах", async () => {
       await injectSession(page, ctx.customer.token, ctx.customer.orgId);
       await page.goto("/cabinet/customer");
-      await expect(page.getByRole("heading", { name: "Истекающие hold" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Срок удержания заканчивается" })).toBeVisible();
 
       await injectSession(page, ctx.artist.token, ctx.artist.orgId);
       await page.goto("/cabinet/performer");
-      await expect(page.getByRole("heading", { name: "Hold" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Даты удерживаются" })).toBeVisible();
 
       await injectSession(page, ctx.venue.token, ctx.venue.orgId);
       await page.goto("/cabinet/venue");
-      await expect(page.getByRole("heading", { name: "Hold" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Даты удерживаются" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Залы" })).toBeVisible();
     });
 
@@ -189,7 +189,7 @@ test.describe("Cross-role E2E §7.5.11", () => {
 
       await injectSession(page, ctx.venue.token, ctx.venue.orgId);
       await page.goto("/cabinet/venue");
-      await expect(page.getByRole("heading", { name: "Hold" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Даты удерживаются" })).toBeVisible();
       await expect(page.getByText(ctx.eventTitle).first()).toBeVisible();
 
       await injectSession(page, ctx.artist.token, ctx.artist.orgId);
