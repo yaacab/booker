@@ -47,7 +47,7 @@ test.describe("E15 org/role workspace switch", () => {
     }, seed.customer.orgId);
 
     await test.step("customer: свой title есть, чужие нет", async () => {
-      await expect(page.getByRole("heading", { name: "Студия событий" })).toBeVisible({
+      await expect(page.getByRole("heading", { level: 1, name: "Привет, E15!" })).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByLabel("Рабочее пространство")).toHaveValue(seed.customer.orgId);
@@ -58,7 +58,7 @@ test.describe("E15 org/role workspace switch", () => {
 
     await test.step("switch → performer: кабинет и inbound title, без предыдущего", async () => {
       await switchWorkspace(page, seed.artist.orgId, /\/cabinet\/performer/);
-      await expect(page.getByRole("heading", { name: "Календарь исполнителя" })).toBeVisible({
+      await expect(page.getByRole("heading", { level: 1, name: "Кабинет артиста" })).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByLabel("Рабочее пространство")).toHaveValue(seed.artist.orgId);
@@ -82,7 +82,7 @@ test.describe("E15 org/role workspace switch", () => {
 
     await test.step("switch обратно → customer: снова свой title, без supply titles", async () => {
       await switchWorkspace(page, seed.customer.orgId, /\/cabinet\/customer/);
-      await expect(page.getByRole("heading", { name: "Студия событий" })).toBeVisible({
+      await expect(page.getByRole("heading", { level: 1, name: "Привет, E15!" })).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByRole("region", { name: "Продолжить организацию событий", exact: true }).getByRole("link", { name: seed.customer.eventTitle, exact: true })).toBeVisible();
