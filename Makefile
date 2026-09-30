@@ -1,4 +1,4 @@
-.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow e2e-smoke
+.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy deploy-legacy-emergency wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow e2e-smoke
 
 PYTHON ?= $(CURDIR)/.venv/bin/python
 
@@ -57,6 +57,15 @@ migrate-docker:
 	./infra/migrate-postgres-docker.sh
 
 deploy:
+	@printf '%s\n' \
+		'BLOCKED: make deploy is disabled because the old path writes directly into production.' \
+		'Use docs/ops/DESIGN_RELEASE_RUNBOOK.md with a reviewed full release commit.' \
+		'For an authorized incident-only exception, use deploy-legacy-emergency and satisfy every guard printed by infra/deploy-vps.sh.' >&2
+	@exit 2
+
+# Incident-only compatibility path. The script independently requires a clean
+# checkout, an exact full SHA matching HEAD, and an explicit emergency opt-in.
+deploy-legacy-emergency:
 	bash infra/deploy-vps.sh
 
 wait-dns:

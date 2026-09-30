@@ -1,10 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Повторный деплой Букера на VPS (тот же хост, что Белый Путь).
+
+# Legacy incident-only deployment path. Normal releases must follow
+# docs/ops/DESIGN_RELEASE_RUNBOOK.md.
+readonly REQUIRED_LEGACY_ACK="I_UNDERSTAND_THIS_IS_AN_EMERGENCY_PRODUCTION_DEPLOY"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+fail() {
+  echo "legacy production deploy BLOCKED: $*" >&2
+  exit 64
+}
+
+if [[ "${BOOKER_LEGACY_DEPLOY_ACK:-}" != "${REQUIRED_LEGACY_ACK}" ]]; then
+  fail "set BOOKER_LEGACY_DEPLOY_ACK=${REQUIRED_LEGACY_ACK} only for an authorized incident; use docs/ops/DESIGN_RELEASE_RUNBOOK.md for normal releases"
+fi
+
+RELEASE_SHA="${BOOKER_RELEASE_SHA:-}"
+[[ "${RELEASE_SHA}" =~ ^[0-9a-f]{40}$ ]] || \
+  fail "BOOKER_RELEASE_SHA must be the full 40-character lowercase commit SHA"
+git -C "${ROOT}" cat-file -e "${RELEASE_SHA}^{commit}" 2>/dev/null || \
+  fail "BOOKER_RELEASE_SHA is not a commit in this checkout"
+CURRENT_SHA="$(git -C "${ROOT}" rev-parse HEAD)"
+[[ "${CURRENT_SHA}" == "${RELEASE_SHA}" ]] || \
+  fail "BOOKER_RELEASE_SHA must match the checked-out HEAD (${CURRENT_SHA})"
+[[ -z "$(git -C "${ROOT}" status --porcelain=v1 --untracked-files=all)" ]] || \
+  fail "the checkout must be clean, including untracked files"
+
+# Повторный аварийный деплой Букера на VPS.
 REMOTE="${BOOKER_REMOTE:-root@5.45.112.180}"
 PORT="${BOOKER_SSH_PORT:-2222}"
 KEY="${BOOKER_SSH_KEY:-$HOME/.ssh/booker_deploy_key}"
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# The existing production backup tool must succeed before rsync changes any
+# live source. Missing tooling, unsupported database configuration, corrupt
+# data, or an archive validation failure blocks the emergency deployment.
+if ! ssh -i "${KEY}" -p "${PORT}" -o ForwardX11=no "${REMOTE}" \
+  'BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db /opt/booker/infra/backup-booker.sh'; then
+  echo "backup failed; deployment aborted before live source was changed" >&2
+  exit 1
+fi
 
 rsync -az --delete \
   --exclude '.git/' \
@@ -19,12 +53,6 @@ rsync -az --delete \
   -e "ssh -i ${KEY} -p ${PORT} -o ForwardX11=no -o StrictHostKeyChecking=accept-new" \
   "${ROOT}/" "${REMOTE}:/opt/booker/"
 
-# Open-venues seed JSON (parent data/ is excluded above — sync explicitly)
-ssh -i "${KEY}" -p "${PORT}" -o ForwardX11=no "${REMOTE}" 'mkdir -p /opt/booker/data'
-rsync -az \
-  -e "ssh -i ${KEY} -p ${PORT} -o ForwardX11=no -o StrictHostKeyChecking=accept-new" \
-  "${ROOT}/data/moscow_venues_open.json" "${REMOTE}:/opt/booker/data/moscow_venues_open.json"
-
 ssh -i "${KEY}" -p "${PORT}" -o ForwardX11=no "${REMOTE}" 'bash -s' << 'REMOTE_SCRIPT'
 set -euo pipefail
 mkdir -p /opt/booker/data /var/www/letsencrypt /var/backups/booker
@@ -33,8 +61,6 @@ if [[ ! -f /etc/cron.d/booker-backup ]]; then
   cp /opt/booker/infra/cron-booker-backup.example /etc/cron.d/booker-backup
   chmod 644 /etc/cron.d/booker-backup
 fi
-BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
-  /opt/booker/infra/backup-booker.sh || echo "backup skipped (non-fatal)"
 /opt/booker/.venv/bin/pip install -e "/opt/booker/apps/api" -q
 cd /opt/booker/apps/web
 npm ci --silent
@@ -78,14 +104,7 @@ systemctl restart booker-api booker-web
 sleep 2
 nginx -s reload
 systemctl is-active booker-api booker-web
-curl -sS --retry 5 --retry-delay 1 --retry-connrefused http://127.0.0.1:8030/health
+curl --fail --silent --show-error --retry 5 --retry-delay 1 --retry-connrefused \
+  http://127.0.0.1:8030/health
 echo
-cd /opt/booker/apps/api
-BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
-  /opt/booker/.venv/bin/python -m booker_api.seed_venues_moscow
-# Founding artists: idempotent enrich only (no demo-user wipe)
-BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
-  /opt/booker/.venv/bin/python -c "from booker_api.db import SessionLocal; from booker_api.seed import enrich_catalog; db=SessionLocal(); print(enrich_catalog(db)); db.commit()"
-# Seed runs as root; re-assert booker ownership of data afterwards
-chown -R booker:booker /opt/booker/data
 REMOTE_SCRIPT
