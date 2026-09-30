@@ -1,7 +1,12 @@
-from tests.conftest import auth_header, register
+from datetime import timedelta
+
+from booker_api.security import now
+from tests.conftest import auth_header, grant_team_plan, register
 
 
 def setup_negotiation(client):
+    start = now() + timedelta(days=30)
+    end = start + timedelta(hours=4)
     customer = register(client, "c-off@booker.test", "Клиент")
     owner = register(client, "o-off@booker.test", "Артист")
     cust_org = client.post(
@@ -24,8 +29,8 @@ def setup_negotiation(client):
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-09-01T18:00:00+00:00",
-            "ends_at": "2026-09-01T22:00:00+00:00",
+            "starts_at": start.isoformat(),
+            "ends_at": end.isoformat(),
         },
         headers=auth_header(owner["token"]),
     ).json()
@@ -34,7 +39,8 @@ def setup_negotiation(client):
         json={
             "organization_id": cust_org["id"],
             "title": "Корпоратив",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": start.isoformat(),
+            "ends_at": end.isoformat(),
             "guest_count": 80,
             "budget_rub": 200000,
         },
@@ -56,6 +62,8 @@ def setup_negotiation(client):
         "customer": customer,
         "owner": owner,
         "slot": slot,
+        "starts_at": start.isoformat(),
+        "ends_at": end.isoformat(),
         "offer": data,
         "booking_id": data["booking_id"],
         "artist": artist,
@@ -84,9 +92,9 @@ def test_price_only_from_server(client):
     ctx = setup_negotiation(client)
     version = ctx["offer"]["version"]
     assert version["honorarium_rub"] == 100000
-    assert version["commission_rate"] == 0.0
-    assert version["commission_rub"] == 0
-    assert version["total_rub"] == 100000
+    assert version["commission_rate"] == 0.06
+    assert version["commission_rub"] == 6000
+    assert version["total_rub"] == 106000
     assert version["quote_id"] == version["id"]
 
 
@@ -97,7 +105,7 @@ def test_shared_deal_summary_and_action_owner(client):
     supplier = client.get(path, headers=auth_header(ctx["owner"]["token"])).json()
     for field in ("booking_id", "event_title", "event_date", "participants", "status", "next_step", "action_required_from", "messages"):
         assert customer[field] == supplier[field]
-    assert customer["event_date"].startswith("2026-09-01T18:00:00")
+    assert customer["event_date"].startswith(ctx["starts_at"][:19])
     assert customer["action_required_from"] == ["customer", "supplier"]
     ack = client.post(f"/offers/{ctx['offer']['id']}/ack", json={"side": "supplier"}, headers=auth_header(ctx["owner"]["token"]))
     assert ack.status_code == 200
@@ -105,7 +113,7 @@ def test_shared_deal_summary_and_action_owner(client):
     assert room["action_required_from"] == ["customer"]
     ack_both(client, ctx)
     room = client.get(path, headers=auth_header(ctx["customer"]["token"])).json()
-    assert room["next_step"] == "Удержать согласованную дату"
+    assert room["next_step"] == "Проверить доступность и удержать дату"
     held = client.post(f"/bookings/{ctx['booking_id']}/hold", headers=auth_header(ctx["customer"]["token"]))
     assert held.status_code == 200
     customer = client.get(path, headers=auth_header(ctx["customer"]["token"])).json()
@@ -135,18 +143,24 @@ def test_new_version_not_active_until_ack(client):
     assert room["quote"]["honorarium_rub"] == 120000
     assert room["quote"]["customer_ack"] is False
     assert room["quote"]["supplier_ack"] is False
-    assert room["quote"]["commission_rub"] == 0
+    assert room["quote"]["commission_rub"] == 7200
 
 
 def test_second_booking_gets_commission(client):
+    from datetime import timedelta
+
+    from booker_api.security import now
+
+    start = now() + timedelta(days=40)
+    end = start + timedelta(hours=4)
     ctx = setup_negotiation(client)
     slot2 = client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": ctx["artist"]["id"],
-            "starts_at": "2026-09-08T18:00:00+00:00",
-            "ends_at": "2026-09-08T22:00:00+00:00",
+            "starts_at": start.isoformat(),
+            "ends_at": end.isoformat(),
         },
         headers=auth_header(ctx["owner"]["token"]),
     ).json()
@@ -155,7 +169,8 @@ def test_second_booking_gets_commission(client):
         json={
             "organization_id": ctx["cust_org"]["id"],
             "title": "Ещё вечер",
-            "event_date": "2026-09-08T18:00:00+00:00",
+            "event_date": start.isoformat(),
+            "ends_at": end.isoformat(),
             "guest_count": 40,
         },
         headers=auth_header(ctx["customer"]["token"]),
@@ -172,20 +187,22 @@ def test_second_booking_gets_commission(client):
     )
     assert offer2.status_code == 200, offer2.text
     version = offer2.json()["version"]
-    assert version["commission_rate"] == 0.10
-    assert version["commission_rub"] == 10000
-    assert version["total_rub"] == 110000
+    assert version["commission_rate"] == 0.06
+    assert version["commission_rub"] == 6000
+    assert version["total_rub"] == 106000
 
 
 def test_viewer_cannot_post_offer_or_ack(client):
     ctx = setup_negotiation(client)
     viewer = register(client, "view-off@booker.test", "View")
+    grant_team_plan(client, ctx['artist_org']['id'])
     client.post(
         f"/orgs/{ctx['artist_org']['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer"},
         headers=auth_header(ctx["owner"]["token"]),
     )
     cust_viewer = register(client, "view-cust@booker.test", "CustView")
+    grant_team_plan(client, ctx['cust_org']['id'])
     client.post(
         f"/orgs/{ctx['cust_org']['id']}/members",
         json={"user_id": cust_viewer["user_id"], "role": "viewer"},
@@ -250,6 +267,7 @@ def test_venue_offer_accepts_hall_slot_of_same_venue(client):
             "organization_id": cust_org["id"],
             "title": "Вечер на площадке",
             "event_date": "2026-10-01T18:00:00+00:00",
+            "ends_at": "2026-10-01T23:00:00+00:00",
             "guest_count": 60,
             "budget_rub": 300000,
         },

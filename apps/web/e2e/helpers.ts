@@ -86,8 +86,10 @@ export type RequestOfferSeed = {
 const EVENT_TITLE = "E2E Корпоратив";
 
 /** Customer org + artist org, event, request — без оффера (для UI path). */
-export async function seedRequestAwaitingOffer(request: APIRequestContext): Promise<RequestOfferSeed> {
+export async function seedRequestAwaitingOffer(request: APIRequestContext, options: { withoutTariff?: boolean } = {}): Promise<RequestOfferSeed> {
   const suffix = Date.now();
+  const start = new Date(Date.now() + 30 * 86400000).toISOString();
+  const end = new Date(Date.now() + 30 * 86400000 + 4 * 3600000).toISOString();
   const customer = await register(request, `e2e-c-${suffix}@booker.test`, "E2E Клиент");
   const owner = await register(request, `e2e-a-${suffix}@booker.test`, "E2E Артист");
 
@@ -104,20 +106,21 @@ export async function seedRequestAwaitingOffer(request: APIRequestContext): Prom
     name: "E2E DJ",
     category: "dj",
   });
-  await postJson(request, `/artists/${artist.id}/tariffs`, owner.token, {
+  if (!options.withoutTariff) await postJson(request, `/artists/${artist.id}/tariffs`, owner.token, {
     title: "Сет",
     honorarium_rub: 80000,
   });
   await postJson(request, "/slots", owner.token, {
     resource_type: "artist",
     resource_id: artist.id,
-    starts_at: "2026-09-15T18:00:00+00:00",
-    ends_at: "2026-09-15T22:00:00+00:00",
+    starts_at: start,
+    ends_at: end,
   });
   const event = await postJson<{ id: string }>(request, "/events", customer.token, {
     organization_id: custOrg.id,
     title: EVENT_TITLE,
-    event_date: "2026-09-15T18:00:00+00:00",
+    event_date: start,
+    ends_at: end,
     guest_count: 50,
     budget_rub: 150000,
   });
@@ -191,6 +194,7 @@ export async function seedNegotiation(
     organization_id: custOrg.id,
     title: eventTitle,
     event_date: startsAt,
+    ends_at: endsAt,
     guest_count: 80,
     budget_rub: 200_000,
   });
@@ -246,6 +250,10 @@ export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<
   await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: "supplier" }, ctx.owner.orgId);
   await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.customer.token, { side: "customer" }, ctx.customer.orgId);
 
+  const order = await postJson<{ id: string }>(request,
+    `/commerce/organizations/${ctx.customer.orgId}/orders`, ctx.customer.token,
+    { plan_code: "customer_business", billing_period: "monthly", idempotency_key: `race-seats-${suffix}` });
+  await postJson(request, `/commerce/orders/${order.id}/test-complete`, ctx.customer.token, { status: "paid" });
   const customer2 = await register(request, `e2e-deal-c2-${suffix}@booker.test`, "E2E Deal Клиент2");
   await postJson(
     request,
@@ -258,6 +266,7 @@ export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<
     organization_id: ctx.customer.orgId,
     title: `E2E Deal Race B ${suffix}`,
     event_date: startsAt,
+    ends_at: endsAt,
     guest_count: 60,
     budget_rub: 150_000,
   }, ctx.customer.orgId);
@@ -356,15 +365,14 @@ export type CrossRoleSeed = {
 
 /** Demo seed: событие с заявками на DJ Nova и Клуб Сигнал (без офферов). */
 export async function seedCrossRoleEvent(request: APIRequestContext): Promise<CrossRoleSeed> {
-  const customer = await login(request, DEMO_ACCOUNTS.customer);
+  const customer = await register(request, `cross-customer-${Date.now()}-${Math.random().toString(36).slice(2)}@booker.test`, "Организатор тестового события");
   const artist = await login(request, DEMO_ACCOUNTS.artist);
   const venueUser = await login(request, DEMO_ACCOUNTS.venue);
 
-  const customerMe = await fetchMe(request, customer.token);
   const artistMe = await fetchMe(request, artist.token);
   const venueMe = await fetchMe(request, venueUser.token);
 
-  const custOrg = customerMe.organizations.find((o) => o.kind === "customer");
+  const custOrg = await postJson<{ id: string }>(request, "/orgs", customer.token, { name: "Организатор тестового события", kind: "customer" });
   const artistOrg = artistMe.organizations.find((o) => o.kind === "artist");
   const venueOrg = venueMe.organizations.find((o) => o.kind === "venue");
   if (!custOrg || !artistOrg || !venueOrg) {
@@ -444,6 +452,7 @@ export async function seedCrossRoleEvent(request: APIRequestContext): Promise<Cr
       organization_id: custOrg.id,
       title: eventTitle,
       event_date: startsAt,
+    ends_at: endsAt,
       guest_count: 80,
       budget_rub: 500_000,
       requirements: [
@@ -617,6 +626,7 @@ export async function seedOrgSwitchWorkspace(request: APIRequestContext): Promis
       organization_id: peerOrg.id,
       title: artistEventTitle,
       event_date: "2026-12-21T18:00:00+00:00",
+      ends_at: "2026-12-21T22:00:00+00:00",
       guest_count: 60,
       budget_rub: 150_000,
       city: "Москва",
@@ -639,6 +649,7 @@ export async function seedOrgSwitchWorkspace(request: APIRequestContext): Promis
       organization_id: peerOrg.id,
       title: venueEventTitle,
       event_date: "2026-12-22T18:00:00+00:00",
+      ends_at: "2026-12-22T22:00:00+00:00",
       guest_count: 80,
       budget_rub: 200_000,
       city: "Москва",

@@ -2,7 +2,7 @@
 
 import time
 
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 from tests.test_offers import ack_both, setup_negotiation
 
 
@@ -11,6 +11,7 @@ def setup_same_slot_negotiations(client, suffix: str):
     ack_both(client, ctx)
 
     customer2 = register(client, f"c-race2-{suffix}@booker.test", "Клиент2")
+    grant_team_plan(client, ctx['cust_org']['id'])
     client.post(
         f"/orgs/{ctx['cust_org']['id']}/members",
         json={"user_id": customer2["user_id"], "role": "manager"},
@@ -21,7 +22,8 @@ def setup_same_slot_negotiations(client, suffix: str):
         json={
             "organization_id": ctx["cust_org"]["id"],
             "title": "Другой корпоратив",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": ctx["starts_at"],
+            "ends_at": ctx["ends_at"],
             "guest_count": 60,
             "budget_rub": 150000,
         },

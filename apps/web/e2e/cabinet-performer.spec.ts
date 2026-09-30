@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { API_BASE, DEMO_ACCOUNTS, apiHealth, fetchMe, injectSession, login } from "./helpers";
+import { API_BASE, DEMO_ACCOUNTS, apiHealth, fetchMe, injectSession, login, seedRequestAwaitingOffer } from "./helpers";
 
 test.describe("Performer cabinet §12 scenarios", () => {
   test.setTimeout(90_000);
@@ -73,3 +73,25 @@ test.describe("Performer cabinet §12 scenarios", () => {
     await expect(page.locator(".cabinet-zone-title", { hasText: "Входящие" })).toHaveCount(0);
   });
 });
+
+for (const width of [1440, 390]) {
+  test(`Offer requires an explicit honorarium without a tariff at ${width}px`, async ({ page, request }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const seed = await seedRequestAwaitingOffer(request, { withoutTariff: true });
+    await injectSession(page, seed.ownerToken, seed.artistOrgId);
+    await page.goto('/cabinet/performer/requests');
+    const card = page.getByTestId('performer-requests-inbox').getByRole('article').filter({ hasText: seed.eventTitle });
+    await expect(card).toContainText('тариф не указан');
+    const price = card.getByRole('spinbutton', { name: 'Гонорар предложения, ₽' });
+    await expect(price).toHaveValue('');
+    await card.getByRole('button', { name: 'Отправить предложение' }).click();
+    await expect(price).toBeFocused();
+    await price.fill('73500');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('explicit-offer-price.png'), fullPage: true });
+    const sent = page.waitForRequest(r => r.method() === 'POST' && r.url().endsWith('/offers'));
+    await card.getByRole('button', { name: 'Отправить предложение' }).click();
+    expect((await sent).postDataJSON().honorarium_rub).toBe(73500);
+    await expect(page).toHaveURL(/\/deals\//);
+  });
+}

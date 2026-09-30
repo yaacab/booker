@@ -20,7 +20,7 @@ import "./home-refinement.css";
 import "./venue-discovery.css";
 import "./artist-welcome.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
+const siteUrl = "https://bukergo.ru";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

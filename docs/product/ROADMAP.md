@@ -1,5 +1,12 @@
 # Дорожная карта
 
+Актуальный коммерческий этап OWNER DIRECTIVE 2026-09-12:
+[сводная приёмка](PRELAUNCH_ACCEPTANCE.md), [журнал проверок](PRELAUNCH_V1.md).
+Коммерция, Growth и Business из разделов 1–33 реализованы в отдельной ветке;
+техническая приёмка завершена, включая activation gate и 604 API-теста. Исторические планы ниже
+сохранены как история и не отменяют Contract v3. Live PSP, юрист и production —
+отдельные внешние шаги.
+
 Пилот (код сейчас): identity, каталог+календарь, заявка, Deal Room, hold, оффер с `quote_id`, админ+audit, UI Backstage, Service+залы, буферы слотов, Event Studio, `request.requirement_id` + GET event.requests, связь Deal Room ↔ событие, факты профиля (сделки).
 
 Очередь блупринта v1.0:
@@ -33,3 +40,24 @@
 Деплой P1 supply console: **сделано** (af2bf06 — C1–C5; d1bdbe3 — C6).
 
 Отложено: 3D, Turbo, AI в спорах, Protect, эквайринг до юриста, смена SQLite→Postgres в этом спринте.
+
+## Коммерческий этап — уточнение по текущей ветке
+
+OWNER DIRECTIVE 2026-09-12 заменяет прежнюю отсрочку коммерческих инструментов.
+В `feat/prelaunch-commercial-v1` реализованы versioned commerce/fees, продвижение,
+Growth, Opportunities, EPK и серверная совместимость с редактором техники залов.
+Проверки и ограничения каждого инкремента: `PRELAUNCH_V1.md`.
+Smart Matching с тремя вариантами и сохраняемым предварительным составом также
+реализован и проверен на desktop/390. Добавлен серверный budget-summary с
+раздельными quote-суммами и ориентирами, EventReadiness/checklist/next action на
+странице события и в кабинете заказчика. Compare V2 показывает фактические окна,
+пакеты, отзывы и технику выбранных профилей, сохраняет участников в EventPlan.
+Совместные подборки с гостевыми реакциями/комментариями, сроком действия и отзывом
+ссылки реализованы; результаты доступны из события. Повтор Completed создаёт
+чистый Draft с заново проверяемыми предпочтениями. Replacement UX/Business,
+полный commercial admin и общая приёмка остаются в работе. Эта ветка не merged
+и не выпущена в production; прежние отметки пилота не доказывают новый launch gate.
+
+- 2026-09-15: implemented provider-neutral recurring cycle mapping, immutable period orders, paid-at/calendar boundaries, future/gap/late/failure handling, cancellation and previous-agreement shutdown on new checkout. Evidence: PRELAUNCH_V1.md. Live PSP acceptance and final commercial launch audit remain open.
+
+- 2026-09-15: public SEO inventory across cities, paged sitemap index, published-venue visibility and server-rendered Moscow category pages with minimum content threshold implemented; JS-disabled, metadata, keyboard and mobile browser evidence in PRELAUNCH_V1.md.

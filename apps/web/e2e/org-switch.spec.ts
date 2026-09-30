@@ -51,7 +51,7 @@ test.describe("E15 org/role workspace switch", () => {
         timeout: 15_000,
       });
       await expect(page.getByLabel("Рабочее пространство")).toHaveValue(seed.customer.orgId);
-      await expect(page.getByText(seed.customer.eventTitle)).toBeVisible();
+      await expect(page.getByRole("region", { name: "Продолжить организацию событий", exact: true }).getByRole("link", { name: seed.customer.eventTitle, exact: true })).toBeVisible();
       await expect(page.getByText(seed.artist.eventTitle)).toHaveCount(0);
       await expect(page.getByText(seed.venue.eventTitle)).toHaveCount(0);
     });
@@ -85,7 +85,7 @@ test.describe("E15 org/role workspace switch", () => {
       await expect(page.getByRole("heading", { name: "Студия событий" })).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByText(seed.customer.eventTitle)).toBeVisible();
+      await expect(page.getByRole("region", { name: "Продолжить организацию событий", exact: true }).getByRole("link", { name: seed.customer.eventTitle, exact: true })).toBeVisible();
       await expect(page.getByText(seed.artist.eventTitle)).toHaveCount(0);
       await expect(page.getByText(seed.venue.eventTitle)).toHaveCount(0);
     });

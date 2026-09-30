@@ -2,6 +2,7 @@ import { SharedShortlistClient } from "@/components/SharedShortlistClient";
 
 export const metadata = {
   title: "Подборка",
+  referrer: "no-referrer" as const,
   robots: { index: false, follow: false },
 };
 

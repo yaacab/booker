@@ -3,12 +3,12 @@ import { expect, test } from "@playwright/test";
 test.describe("Wave 1 search / home", () => {
   test("home dual search: venue guests → catalog", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Площадка" }).click();
+    await page.getByLabel("Тип поиска").getByRole("button", { name: "Площадка", exact: true }).click();
     await expect(page.getByLabel("Гостей от")).toBeVisible();
     await page.getByRole("button", { name: "Показать свободных" }).click();
     await expect(page).toHaveURL(/kind=venue/);
     await expect(page).toHaveURL(/guests=80/);
-    await expect(page.getByRole("heading", { name: "Свободные артисты и площадки" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Найдите свою команду" })).toBeVisible();
   });
 
   test("catalog filters expose format and budget fields", async ({ page }) => {

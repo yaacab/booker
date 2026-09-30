@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PaymentReconciliation } from "@/components/admin/PaymentReconciliation";
 import { api, getToken } from "@/lib/api";
 import { formatWhen } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -249,7 +250,7 @@ export default function AdminPage() {
 
   return (
     <main className="operator-reference">
-      <header className="operator-heading"><div><p className="eyebrow">Рабочее пространство</p><h1>Панель оператора</h1><p>Проверки профилей, статистика и история действий в Букере.</p></div><button type="button" className="btn secondary" onClick={() => void load()}>Обновить данные</button></header>
+      <header className="operator-heading"><div><p className="eyebrow">Рабочее пространство</p><h1>Панель оператора</h1><p>Проверки профилей, статистика и история действий в Букере.</p><div className="commerce-actions"><Link className="btn secondary" href="/admin/refunds">Возвраты</Link><Link className="btn secondary" href="/admin/commerce">Тарифы и подписки</Link></div></div><button type="button" className="btn secondary" onClick={() => void load()}>Обновить данные</button></header>
       {error && <p className="operator-error" role="alert">{error}. <Link href={loginHref("/admin")}>Войти в аккаунт оператора</Link></p>}
       <dl className="operator-summary">
         <div><dt>В очереди</dt><dd>{queue ? queue.queue.length : "—"}</dd><span>На рассмотрении</span></div>
@@ -407,6 +408,7 @@ export default function AdminPage() {
 
           </section>
           <section id="operator-payment" hidden={section !== "payment"} aria-label="Внешняя оплата" className="operator-panel">
+        <PaymentReconciliation />
         <article className="card">
           <h2>Внешняя оплата</h2>
           <form onSubmit={confirmExternalPayment} style={{ display: "grid", gap: 8, maxWidth: 320 }}>

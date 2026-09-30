@@ -17,6 +17,8 @@ def test_disabled_calendar_never_touches_database(monkeypatch):
 
 def test_calendar_rejects_non_demo_database(monkeypatch):
     monkeypatch.setenv("BOOKER_DEMO_OPEN_CALENDAR", "1")
-    with Session(create_engine("sqlite://")) as db:
-        with pytest.raises(RuntimeError, match="isolated"):
-            ensure_demo_day(db, datetime.now(timezone.utc))
+    with (
+        Session(create_engine("sqlite://")) as db,
+        pytest.raises(RuntimeError, match="isolated"),
+    ):
+        ensure_demo_day(db, datetime.now(timezone.utc))

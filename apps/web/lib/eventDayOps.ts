@@ -3,6 +3,7 @@ export type EventRequestLite = {
   status: string;
   requirement_id?: string | null;
   booking_id?: string | null;
+  booking_status?: string | null;
   quote_id?: string | null;
 };
 
@@ -33,11 +34,11 @@ export function requestsForRole(requests: EventRequestLite[], requirementId?: st
 
 export function isClosedRequest(item: EventRequestLite): boolean {
   if (isCancelledRequest(item)) return false;
-  return Boolean(item.booking_id) || item.status === "Confirmed";
+  return ["Confirmed", "InProgress", "Completed"].includes(item.booking_status || item.status);
 }
 
 export function isCancelledRequest(item: EventRequestLite): boolean {
-  return item.status === "Cancelled" || item.status === "Declined" || item.status === "Expired";
+  return item.booking_status ? item.booking_status === "Cancelled" : ["Cancelled", "Declined", "Expired"].includes(item.status);
 }
 
 export function cancelledRequestsForRole(
@@ -52,7 +53,7 @@ export function needsReplacement(step: NextStepRole): boolean {
 }
 
 export function roleBlocker(requests: EventRequestLite[], need: number): RoleBlocker {
-  requests = requests.filter(item=>!isCancelledRequest(item));
+  requests = requests.filter((item) => !isCancelledRequest(item));
   const closed = requests.filter(isClosedRequest).length;
   const openSlots = Math.max(0, need - closed);
   const openRequests = requests.filter((item) => !isClosedRequest(item));

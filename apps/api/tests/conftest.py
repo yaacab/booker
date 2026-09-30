@@ -18,6 +18,15 @@ from booker_api.rate_limit import (
 )
 
 
+@pytest.fixture(autouse=True)
+def explicit_test_payment_provider(monkeypatch):
+    from booker_api.config import settings
+
+    monkeypatch.setattr(settings, "environment", "test")
+    monkeypatch.setattr(settings, "payment_provider", "stub")
+    monkeypatch.setattr(settings, "payment_allow_stub", True)
+
+
 @pytest.fixture()
 def engine():
     eng = create_engine(
@@ -102,3 +111,30 @@ def register(client: TestClient, email: str, name: str = "User") -> dict:
     )
     assert res.status_code == 200, res.text
     return res.json()
+
+
+def grant_team_plan(client, org_id):
+    """Existing team/RBAC scenarios run on the paid tier that permits their team.
+
+    Use only in scenarios whose subject is access control rather than plan capacity.
+    Capacity tests must exercise the real default plan without this fixture helper.
+    """
+    from datetime import timedelta
+
+    from booker_api.models import Organization, Subscription
+    from booker_api.security import now
+
+    session = client.app.dependency_overrides[get_db]()
+    db = next(session)
+    try:
+        org = db.get(Organization, org_id)
+        row = db.query(Subscription).filter_by(organization_id=org_id).one_or_none()
+        if row is None:
+            row = Subscription(organization_id=org_id)
+            db.add(row)
+        row.plan_code = 'customer_business' if org.kind == 'customer' else f'{org.kind}_premium'
+        row.billing_period = 'monthly'; row.status = 'active'; row.starts_at = now()-timedelta(days=1)
+        row.current_period_end = now()+timedelta(days=30)
+        db.commit()
+    finally:
+        session.close()

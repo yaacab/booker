@@ -1,5 +1,11 @@
 # Spec v3 — Delivery Gap Analysis
 
+Актуальная приёмка ветки `feat/prelaunch-commercial-v1` на 2026-09-15:
+[PRELAUNCH_ACCEPTANCE.md](product/PRELAUNCH_ACCEPTANCE.md).
+Ниже сохранён исторический аудит 2026-09-06 и журнал уточнений. Его значения
+Exists/Tested/Deployed **не описывают текущую рабочую ветку** и не подтверждают
+актуальный production. Статус запуска определяется внешними gates в OWNER_INPUTS.
+
 Источник: [Buker_Cursor_Complete_Spec_v3_2026-09-06.md](specs/Buker_Cursor_Complete_Spec_v3_2026-09-06.md)
 
 SHA аудита: `c90d091` · ветка `feat/master-plan-execution` · PR #14 OPEN
@@ -53,3 +59,86 @@ SHA аудита: `c90d091` · ветка `feat/master-plan-execution` · PR #14
 - Query `?event_studio_map_v1=0` = только URL, не глобальный откат.
 - Stub-тесты ≠ работоспособность провайдера; external — отдельная приёмка; provider webhook/refund — ждут live+sandbox.
 - CI доказательство только для checks на SHA кандидата / PR.
+
+
+### Уточнение текущей ветки: совместимость
+
+В `feat/prelaunch-commercial-v1` появился server Compatibility Engine, versioned
+HallTechnicalProfile, owner/editor RBAC и UI `/compatibility` + техника залов.
+Проверены unknown, оснащение, буферы, фактическая доступность, свои живые holds и
+чужой event access. Полный API: 283 passed/2 skipped; E-CUST-04 входит в 8 passed
+Playwright с EPK/payment регрессией. Детали в `product/PRELAUNCH_V1.md`.
+Историческая матрица выше не заменяет проверку текущей ветки. Decision Engine и
+остальные разделы master task остаются незавершёнными.
+
+
+### Уточнение текущей ветки: Smart Matching
+
+Серверный подбор трёх составов, EventPlan с защитой revision/context, ручные замены,
+ориентиры из опубликованных тарифов и отдельная идемпотентная отправка заявок
+реализованы. Проверены фактические окна/буферы/совместимость, свои holds, RBAC и
+сохранение старых quote. API 306 passed/2 skipped; E-CUST-01 desktop/390 вместе
+с Event command retry/compatibility — 7 passed. Подробная приёмка — в
+`product/PRELAUNCH_V1.md`. Compare V2, EventReadiness, budget-summary и остальные
+открытые разделы master task не закрываются этой отметкой.
+
+
+### Уточнение текущей ветки: бюджет
+
+Budget Control реализован как server summary и UI события. Он использует
+неизменяемые quote-суммы, не складывает конкурентов на роль, учитывает все
+подтверждённые обязательства/живые удержания, показывает unknown/partial/перерасход
+и отдельные тарифные ориентиры. E-CUST-03 проверен на desktop/390 с настоящим
+API lifecycle через тестовый provider; подробности в `product/PRELAUNCH_V1.md`.
+Readiness/next_best_action остаётся открытым, включая ошибку старого клиентского
+счётчика закрытых ролей. Общий launch gate не закрыт.
+
+
+### Уточнение текущей ветки: EventReadiness
+
+Серверный checklist/score/blockers/next_best_action реализован в API события и
+сводке организации, подключён к странице события и customer cabinet. Negotiation
+больше не закрывает роль; проверяются настоящие slot/hold/ack/contract/payment и
+техника. Unknown/expired/dispute/late capture и противоречивые статусы не дают
+ложной готовности. Историческое отсутствие окончания можно дополнить внутри
+существующих слотов, сохранив quote и hold. Точные команды и ограничения — в
+`product/PRELAUNCH_V1.md`. Общий launch gate остаётся открытым.
+
+
+### Уточнение текущей ветки: Compare V2
+
+Сравнение артистов и площадок использует server facts, полный интервал, техническую
+совместимость и реальные пакеты. UI сохраняет выбор в существующий EventPlan с
+проверкой прав/версии; подтверждённая бронь из сравнения не создаётся. У площадок
+учитываются фактические сделки/ответы по залам. API: 333 passed/2 skipped;
+Playwright Compare/EPK/Matching/Compatibility: 9 passed. Подробная приёмка — `product/PRELAUNCH_V1.md`. Эта отметка не
+закрывает collaboration/repeat/Business или общую готовность коммерческого запуска.
+
+### Уточнение текущей ветки: совместный выбор
+
+Избранное → scoped shortlist → гостевой голос/нравится/отклонение/комментарий →
+результаты в событии → отзыв ссылки реализованы. Гостевая capability отделена от
+аккаунта, не изменяет EventPlan или сделки. Старые ссылки сохраняют read-only
+режим. Проверены миграция SQLite и browser desktop/390; точные результаты
+команд — `product/PRELAUNCH_V1.md`. Repeat, Business и остальные открытые пункты
+общего master task не закрываются этой отметкой.
+
+### Уточнение текущей ветки: повтор события
+
+Completed → отдельный Draft с новыми ролями и optional preferred participants
+реализован. Предпочтения проверяются на новом окне и включаются в EventPlan только
+явной командой; старые сделки/quotes/оплата/holds не переносятся. Закрытые события
+защищены от повторного открытия через новую заявку/quick-request/первичный оффер.
+Подробности и приёмка — `product/PRELAUNCH_V1.md`. Replacement UX, Business и
+остальные общие launch-гейты остаются в работе.
+
+2026-09-15 update: the product-side recurring cycle gap is implemented in
+commerce/renewals.py and paid-period projection, with API/PG/390px browser evidence
+in PRELAUNCH_V1.md. This does not certify live merchant/consent/signature mapping,
+PSP acceptance or all section-34 requirements; final audit remains open.
+
+2026-09-15 SEO update: profile metadata existed before this unit. Replaced the
+Moscow calendar-search sitemap with public paged inventory, added content-gated
+SSR category pages, fixed canonical/robots/title handling. Browser tests cover
+JS-disabled HTML and 390px; evidence in PRELAUNCH_V1.md. Search-engine submission
+is not claimed; notification coverage and final full-master acceptance remain open.

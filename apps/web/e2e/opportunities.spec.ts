@@ -1,0 +1,61 @@
+import { expect, test } from "@playwright/test";
+import { API_BASE, injectSession, postJson, register } from "./helpers";
+
+for (const width of [1440, 390]) {
+  test.describe(`Opportunities ${width}px`, () => {
+    test.use({ viewport: { width, height: 900 } });
+    test("E-OPP-01/E-OPP-02 publish a brief, explain Free match and respond", async ({ page, browser, request }, testInfo) => {
+      const suffix = `${width}-${Date.now()}`;
+      const city = `Город заказа ${suffix}`;
+      const day = new Date(Date.now() + 20 * 86400_000).toISOString().slice(0,10);
+      const owner = await register(request, `opportunity-owner-${suffix}@booker.test`, "Артист");
+      const org = await postJson<{ id: string }>(request, "/orgs", owner.token, { name: "Студия заказов", kind: "artist" });
+      const artist = await postJson<{ id: string }>(request, "/artists", owner.token, { organization_id: org.id, name: "Сцена заказов", category: "dj", city });
+      await postJson(request, "/slots", owner.token, { resource_type: "artist", resource_id: artist.id, starts_at: `${day}T18:00:00+03:00`, ends_at: `${day}T21:00:00+03:00` });
+      await postJson(request, `/artists/${artist.id}/tariffs`, owner.token, { title: "Сет", honorarium_rub: 30000 });
+      const customer = await register(request, `opportunity-customer-${suffix}@booker.test`, "Организатор");
+      const customerOrg = await postJson<{ id: string }>(request, "/orgs", customer.token, { name: "Мой корпоратив", kind: "customer" });
+      const customerContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL, viewport: { width, height: 900 } });
+      const customerPage = await customerContext.newPage();
+      await injectSession(customerPage, customer.token, customerOrg.id);
+      await customerPage.goto("/briefs");
+      const form = customerPage.getByRole("form", { name: "Публикация брифа" });
+      const title = `Корпоратив ${suffix}`;
+      await form.getByLabel("Заголовок", { exact: true }).fill(title);
+      await form.getByLabel("Город", { exact: true }).fill(city);
+      await form.getByLabel("Начало", { exact: true }).fill(`${day}T18:00`);
+      await form.getByLabel("Окончание", { exact: true }).fill(`${day}T21:00`);
+      await form.getByRole("checkbox", { name: "Разрешаю опубликовать диапазон бюджета этого брифа" }).check();
+      await form.getByLabel("От, ₽", { exact: true }).fill("20000");
+      await form.getByLabel("До, ₽", { exact: true }).fill("40000");
+      await form.getByRole("button", { name: "Опубликовать бриф" }).click();
+      await expect(customerPage.getByRole("status").filter({ hasText: "Бриф опубликован" })).toBeVisible();
+      await expect(customerPage.getByRole("article", { name: title, exact: true })).toContainText("20 000 ₽");
+      await injectSession(page, owner.token, org.id);
+      await page.goto("/cabinet/performer/opportunities");
+      const opportunity = page.getByRole("article", { name: title, exact: true });
+      await expect(opportunity).toBeVisible();
+      await expect(opportunity).toContainText("90/100");
+      await expect(opportunity).toContainText("Технические требования нужно уточнить");
+      await expect(page.getByText("Фильтры и сохранение поиска доступны в Pro и Premium.", { exact: false })).toBeVisible();
+      await opportunity.getByLabel("Ваше предложение", { exact: true }).fill("Готов обсудить программу и длительность сета.");
+      await opportunity.getByRole("button", { name: "Отправить предложение", exact: true }).click();
+      await expect(opportunity.getByText("Отклик отправлен", { exact: true })).toBeVisible();
+      const feed = await request.get(`${API_BASE}/organizations/${org.id}/opportunities`, { headers: { Authorization: `Bearer ${owner.token}` } });
+      const brief = (await feed.json()).items.find((item: { title: string }) => item.title === title);
+      const responses = await request.get(`${API_BASE}/briefs/${brief.id}/responses`, { headers: { Authorization: `Bearer ${customer.token}` } });
+      const received = (await responses.json()).items;
+      expect(received).toHaveLength(1);
+      expect(received[0].target_id).toBe(artist.id);
+      await customerPage.reload();
+      const published = customerPage.getByRole("article", { name: title, exact: true });
+      await published.getByRole("button", { name: "Посмотреть отклики" }).click();
+      await expect(published.getByRole("heading", { name: "Сцена заказов", exact: true })).toBeVisible();
+      await expect(published.getByRole("link", { name: "Открыть профиль и обсудить заявку" })).toHaveAttribute("href", new RegExp(artist.id));
+      await customerContext.close();
+      await page.evaluate(() => window.scrollTo(0,0));
+      await page.screenshot({ path: testInfo.outputPath("opportunities.png"), fullPage: true });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+  });
+}

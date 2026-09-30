@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from booker_api.commerce.catalog import seed_catalog
 from booker_api.composition import seed_categories
 from booker_api.config import settings
 from booker_api.db import SessionLocal, engine, init_schema
@@ -10,17 +11,30 @@ from booker_api.routers import (
     admin,
     analytics,
     briefs,
+    business,
     catalog,
+    commerce,
+    comparison,
+    compatibility,
     deals,
+    event_planning,
+    event_repeat,
     favorites,
+    growth,
     health,
     identity,
+    inbox,
+    opportunities,
     payments,
+    presentation,
     promo,
+    refunds,
     reviews,
     saved_searches,
+    seo,
     services,
     shortlists,
+    team,
     trust,
     venue_admin,
 )
@@ -32,6 +46,7 @@ async def lifespan(_app: FastAPI):
     db = SessionLocal()
     try:
         seed_categories(db)
+        seed_catalog(db)
         db.commit()
     finally:
         db.close()
@@ -47,9 +62,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(health.router)
+
+app.include_router(inbox.router)
 app.include_router(identity.router)
 app.include_router(analytics.router)
+app.include_router(growth.router)
+app.include_router(opportunities.router)
 app.include_router(catalog.router)
+app.include_router(seo.router)
+app.include_router(presentation.router)
+app.include_router(compatibility.router)
+app.include_router(event_planning.router)
+app.include_router(event_repeat.router)
+app.include_router(business.router)
+app.include_router(team.router)
+app.include_router(comparison.router)
 app.include_router(favorites.router)
 app.include_router(services.router)
 app.include_router(deals.router)
@@ -61,4 +88,8 @@ app.include_router(trust.router)
 app.include_router(saved_searches.router)
 app.include_router(promo.router)
 app.include_router(admin.router)
+app.include_router(refunds.router)
 app.include_router(venue_admin.router)
+
+app.include_router(commerce.router)
+app.include_router(commerce.admin_router)

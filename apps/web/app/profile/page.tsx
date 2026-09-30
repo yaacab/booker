@@ -96,7 +96,7 @@ export default function ProfilePage() {
   return (
     <main className="account-reference">
       <header className="account-heading"><p className="kicker">Ваш аккаунт</p><h1>Мой профиль</h1><p>Личные данные и рабочие пространства.</p></header>
-      <section className="card account-identity"><span className="account-monogram" aria-hidden="true">{me.full_name.trim().slice(0,1).toLocaleUpperCase("ru") || "Б"}</span><div><h2>{me.full_name}</h2><p>{me.email}</p></div><Link href="/support">Помощь с аккаунтом →</Link></section>
+      <section className="card account-identity"><span className="account-monogram" aria-hidden="true">{me.full_name.trim().slice(0,1).toLocaleUpperCase("ru") || "Б"}</span><div><h2>{me.full_name}</h2><p>{me.email}</p></div><div><Link href="/team">Управление командой →</Link><br /><Link href="/support">Помощь с аккаунтом →</Link></div></section>
       <div className="account-columns"><section className="account-organizations"><h2>Мои пространства</h2><p className="timeline">Переключайтесь между своими организациями и ролями.</p>
       {orgs.length > 1 ? (
         <label>

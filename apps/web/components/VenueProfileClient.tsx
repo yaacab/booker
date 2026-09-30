@@ -10,6 +10,8 @@ import { formatWhen, guestsLabel, money } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
+import { ProfileCompareButton } from "@/components/ProfileCompareButton";
+import { observeDiscovery } from "@/lib/discovery";
 import { SlotList } from "@/components/SlotList";
 import { ProfileMedia } from "@/components/ProfileMedia";
 
@@ -85,6 +87,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найдена"))))
         .then((venue: Venue) => {
           setData(venue);
+          observeDiscovery("venue", venue.id, "profile_view");
           setHalls((venue.halls || []) as HallItem[]);
         })
         .catch((e: Error) => setError(e.message));
@@ -200,7 +203,8 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
     try {
       setBusy(true);
       setFormError("");
-      const body: { resource_type: string; resource_id: string; requirement_id?: string } = {
+      const body: { resource_type: string; resource_id: string; requirement_id?: string; promotion_touch_id?: string } = {
+        promotion_touch_id: new URLSearchParams(window.location.search).get("promotion_touch_id") || undefined,
         resource_type: "venue",
         resource_id: id,
       };
@@ -264,7 +268,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
             </div>
             <div className="public-profile-actions">
               <a className="btn profile-primary-action" href="#profile-booking">Добавить в событие <span aria-hidden="true">→</span></a>
-              <div className="profile-secondary-actions"><AddToAssembly id={data.id} kind="venue" /><FavoriteToggle targetType="venue" targetId={data.id} /><Link className="btn secondary" href={`/venues/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
+              <div className="profile-secondary-actions"><AddToAssembly id={data.id} kind="venue" /><FavoriteToggle targetType="venue" targetId={data.id} /><ProfileCompareButton targetType="venue" targetId={data.id} /><Link className="btn secondary" href={`/compatibility?venue=${data.id}`}>Проверить совместимость</Link><Link className="btn secondary" href={`/venues/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
             </div>
           </header>
 

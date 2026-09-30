@@ -33,3 +33,47 @@ def test_alembic_baseline_revision_exists():
     text = files[0].read_text(encoding="utf-8")
     assert "def upgrade()" in text
     assert "users" in text
+
+
+def test_commercial_migration_preserves_historic_offer_and_guards_price(tmp_path):
+    import pytest
+    from alembic.config import Config
+    from sqlalchemy import text
+    from sqlalchemy.exc import IntegrityError
+
+    from alembic import command
+
+    cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    url = f"sqlite:///{tmp_path / 'historic.db'}"
+    cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(cfg, "c8d9e0f1a2b3")
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO offer_versions (id, offer_id, honorarium_rub, "
+                "commission_rate, commission_rub, total_rub, currency, terms, "
+                "customer_ack, supplier_ack, created_at) VALUES "
+                "('old', 'old-offer', 1000, 0.1, 100, 1100, 'RUB', 'historic', "
+                "0, 0, CURRENT_TIMESTAMP)"
+            )
+        )
+    command.upgrade(cfg, "head")
+    with engine.begin() as conn:
+        old = conn.execute(
+            text(
+                "SELECT total_rub, supplier_service_fee_rub, "
+                "commercial_policy_version FROM offer_versions WHERE id='old'"
+            )
+        ).one()
+        assert old == (1100, None, None)
+        conn.execute(text("UPDATE offer_versions SET customer_ack=1 WHERE id='old'"))
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        conn.execute(text("UPDATE offer_versions SET total_rub=1060 WHERE id='old'"))
+    command.downgrade(cfg, "c8d9e0f1a2b3")
+    with engine.connect() as conn:
+        assert (
+            conn.execute(text("SELECT total_rub FROM offer_versions WHERE id='old'")).scalar()
+            == 1100
+        )
+    command.upgrade(cfg, "head")

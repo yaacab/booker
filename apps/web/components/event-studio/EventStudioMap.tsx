@@ -6,7 +6,6 @@ import { CityField } from "@/components/CityField";
 import { categoryLabel } from "@/lib/copy";
 import { formatDay, guestsLabel, money } from "@/lib/format";
 import type {
-  BudgetHint,
   EventStudioDraft,
   SaveStatus,
   StudioStage,
@@ -15,6 +14,7 @@ import type {
 } from "./types";
 import { STUDIO_STAGES } from "./types";
 import PuzzleBoard, { slotsFromDraft } from "./PuzzleBoard";
+import StudioEstimate from "./StudioEstimate";
 import "./event-studio-map.css";
 
 type IconName = "home" | "calendar" | "users" | "place" | "check" | "search" | "plus" | "arrow";
@@ -24,7 +24,6 @@ export type EventStudioMapProps = {
   onDraftChange: (draft: EventStudioDraft) => void;
   talents: TalentItem[];
   venues: VenueItem[];
-  budgetHint: BudgetHint | null;
   loadingTalents: boolean;
   talentsError: string | null;
   saveStatus: SaveStatus;
@@ -100,7 +99,6 @@ export default function EventStudioMap({
   onDraftChange,
   talents,
   venues,
-  budgetHint,
   loadingTalents,
   talentsError,
   saveStatus,
@@ -191,11 +189,6 @@ export default function EventStudioMap({
     update({ ...draft, venueId: id });
   }
 
-  const budgetText = useMemo(() => {
-    if (!budgetHint) return "уточним после предложений";
-    return `${money(budgetHint.minRub).replace(" ₽", "")}–${money(budgetHint.maxRub)}`;
-  }, [budgetHint]);
-
   const puzzleSlots = useMemo(() => {
     const selectedTalents = talents.filter((item) => draft.talentIds.includes(item.id));
     return slotsFromDraft({
@@ -267,6 +260,7 @@ export default function EventStudioMap({
                 <CityField value={draft.city} onChange={(city) => update({ ...draft, city })} />
                 <label>Начало<input type="time" value={draft.startsAt} onChange={(e) => update({ ...draft, startsAt: e.target.value })} /></label>
                 <label>Окончание<input type="time" value={draft.endsAt} onChange={(e) => update({ ...draft, endsAt: e.target.value })} /></label>
+                <label className="row"><input type="checkbox" checked={Boolean(draft.endsNextDay)} onChange={(e) => update({ ...draft, endsNextDay: e.target.checked })} />Окончание на следующий день</label>
                 <label>Формат<input value={draft.kind} placeholder="Свадьба, вечеринка…" onChange={(e) => update({ ...draft, kind: e.target.value })} /></label>
                 <label>Гостей<input type="number" min={1} max={5000} value={draft.guests} onChange={(e) => update({ ...draft, guests: Number(e.target.value) || 0 })} /></label>
               </div>
@@ -322,7 +316,8 @@ export default function EventStudioMap({
 
             <div id="studio-summary" className={`event-summary${stage === "Проверка" ? " map-card-focus" : ""}`}>
               <div className="studio-composition"><small>В вашем событии</small><strong>{selectedCount} {selectedCount === 1 ? "участник" : selectedCount > 1 && selectedCount < 5 ? "участника" : "участников"}</strong><span>Команду можно дополнить позже</span></div>
-              <div className="studio-budget"><small>Ориентир бюджета</small><strong className={!budgetHint ? "budget-pending" : ""}>{budgetText}</strong><span>Точную стоимость предложат участники</span></div>
+              <StudioEstimate artistIds={draft.talentIds} venueId={draft.venueId} />
+              <label className="studio-declared-budget">Ваш бюджет, ₽<input type="number" min={0} max={1000000000} step={1} value={draft.budgetRub ?? ""} onChange={(e) => update({ ...draft, budgetRub: e.target.value === "" ? null : Number(e.target.value) })} placeholder="Можно указать позже" /></label>
               <button type="button" disabled={submitting} onClick={onContinue}>{submitting ? "Отправляем…" : "Продолжить"}<Icon name="arrow" /></button>
               {submitError ? <p className="submit-error" role="alert">{submitError}</p> : null}
             </div>

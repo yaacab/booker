@@ -152,7 +152,7 @@ export default async function SearchPage({
   return (
     <main className="page-enter catalog-page catalog-reference">
       <header className="catalog-heading">
-        <h1>Найдите тех,<br />кто нужен именно вам</h1>
+        <div><h1>Найдите тех,<br />кто нужен именно вам</h1><div className="commerce-actions"><Link href="/catalog">Подборки по задачам</Link><Link className="btn secondary" href="/cabinet/customer/favorites">Избранное</Link></div></div>
         <p className="catalog-heading-note">Больше<br />событий<br />для людей<span aria-hidden="true" /></p>
       </header>
       <form key={JSON.stringify(q)} className="catalog-searchbar" action="/search" method="get" aria-label="Быстрый поиск">

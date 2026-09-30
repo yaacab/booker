@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from booker_api.calendar import ranges_overlap
+from booker_api.calendar import lock_calendar_resources, ranges_overlap
 from booker_api.ical import IcalEvent, fetch_ical, parse_ical_events
 from booker_api.models import Artist, AvailabilitySlot, Venue, VenueHall
 from booker_api.security import audit, aware, now
@@ -119,6 +119,7 @@ def import_busy_events(
     actor_user_id: str,
 ) -> dict:
     _resolve_resource(db, org_id, resource_type, resource_id)
+    lock_calendar_resources(db, [(resource_type, resource_id)])
     replaced = _clear_previous_ical(db, resource_type, resource_id)
     imported = 0
     skipped = 0

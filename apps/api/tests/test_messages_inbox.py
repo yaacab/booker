@@ -37,6 +37,7 @@ def _deal_ctx(client):
             "organization_id": cust_org["id"],
             "title": "Вечер MSG",
             "event_date": starts,
+            "ends_at": ends,
             "requirements": [{"category_code": "dj", "qty": 1}],
         },
         headers=ch,

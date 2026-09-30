@@ -5,12 +5,21 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from starlette.requests import Request as HttpRequest
 
-from booker_api.calendar import MSK, calendar_day_bounds, open_slots_unmasked, overlapping_slots
+from booker_api.calendar import (
+    MSK,
+    calendar_day_bounds,
+    lock_calendar_resources,
+    open_slots_unmasked,
+    overlapping_slots,
+)
+from booker_api.commerce.promotions import insert_sponsored
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
-from booker_api.ical_import import calendar_targets, import_ical_source
 from booker_api.demo_calendar import ensure_demo_day
+from booker_api.growth.service import profile_facts
+from booker_api.ical_import import calendar_targets, import_ical_source
 from booker_api.models import (
     Artist,
     ArtistTariff,
@@ -26,6 +35,8 @@ from booker_api.models import (
     VenuePhoto,
     VenueTariff,
 )
+from booker_api.presentation import presentation_data, presentation_limits
+from booker_api.rate_limit import analytics_limiter, client_key
 from booker_api.schemas import (
     ArtistIn,
     IcalImportIn,
@@ -345,6 +356,7 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
         raise HTTPException(400, "resource_type: artist|hall")
     before = max(0, getattr(body, "buffer_before_min", 0) or 0)
     after = max(0, getattr(body, "buffer_after_min", 0) or 0)
+    lock_calendar_resources(db, [(body.resource_type, body.resource_id)])
     # Local open/held/confirmed conflict; busy is an overlay and may coexist.
     if overlapping_slots(
         db,
@@ -526,12 +538,13 @@ def _format_matches(rider: dict, needle: str) -> bool:
 
 
 def _min_tariff(tariffs: list) -> int | None:
-    amounts = [int(t.honorarium_rub) for t in tariffs if getattr(t, "honorarium_rub", None) is not None]
+    amounts = [t.honorarium_rub for t in tariffs if type(t.honorarium_rub) is int and 0 <= t.honorarium_rub <= 1_000_000_000]
     return min(amounts) if amounts else None
 
 
 @router.get("/catalog/search")
 def search_catalog(
+    request: HttpRequest,
     city: str = Query("Москва"),
     category: str | None = None,
     date: datetime | None = None,
@@ -548,6 +561,7 @@ def search_catalog(
 ):
     """В выдаче только профили с календарём. Занятые слоты не считаются свободными."""
     ensure_demo_day(db, date or now())
+    analytics_limiter.check(client_key(request, "catalog-search"))
     excluded = {item.strip() for item in (exclude or "").split(",") if item.strip()}
     kind_l = (kind or "").strip().lower() or None
     include_artists = kind_l != "venue" and (not category or category != "venue")
@@ -616,6 +630,7 @@ def search_catalog(
                     "search_date": aware(date).date().isoformat() if date else None,
                     "travel_ok": _rider_travel_ok(rider),
                     "formats": _rider_formats(rider),
+                    "honorarium_from_rub": _min_tariff(tariffs),
                     "tariffs": [
                         {"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs
                     ],
@@ -681,9 +696,9 @@ def search_catalog(
             nxt = min(pool, key=lambda s: aware(s.starts_at))
             tariffs = db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).all()
             photos = _public_venue_photos(db, venue.id)
-            if budget_max is not None and kind_l == "venue":
+            if budget_max is not None:
                 floor = _min_tariff(tariffs)
-                if floor is not None and floor > budget_max:
+                if floor is None or floor > budget_max:
                     continue
             venue_results.append(
                 {
@@ -704,10 +719,14 @@ def search_catalog(
                     "matching_halls": [_hall_item(h) for h in matching],
                     "open_slots": len(pool),
                     "next_open_at": _catalog_iso(nxt.starts_at),
+                    "honorarium_from_rub": _min_tariff(tariffs),
                     "tariffs": [{"honorarium_rub": t.honorarium_rub} for t in tariffs],
                     "cover_photo": photos[0] if photos else None,
                 }
             )
+    results = insert_sponsored(db, results, "artist")
+    venue_results = insert_sponsored(db, venue_results, "venue")
+    db.commit()
     return {"items": results, "venues": venue_results}
 
 
@@ -825,6 +844,7 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
                 else "Звёзды повесим после десяти закрытых вечеров. Пока — факты, не магия."
             )
         },
+        "honorarium_from_rub": _min_tariff(tariffs),
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
         "photos": photos,
         "halls": [_hall_item(h) for h in halls],
@@ -853,7 +873,22 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
             rider = {}
     except (json.JSONDecodeError, TypeError):
         rider = {}
+    _, presentation = presentation_data(db, artist)
+    if not presentation_limits(db, artist)["advanced_layout"]:
+        presentation["layout"] = "standard"
+    visible_slots = []
+    for slot in slots:
+        item = _slot_item(slot)
+        if slot.status == "open" and overlapping_slots(
+            db, "artist", artist.id, slot.starts_at, slot.ends_at,
+            statuses=("busy", "held", "confirmed"), exclude_id=slot.id,
+            buffer_before_min=slot.buffer_before_min or 0,
+            buffer_after_min=slot.buffer_after_min or 0,
+        ):
+            item["status"] = "busy"
+        visible_slots.append(item)
     return {
+        "presentation": presentation,
         "id": artist.id,
         "name": artist.name,
         "city": artist.city,
@@ -862,11 +897,8 @@ def get_artist(artist_id: str, db: Session = Depends(get_db)):
         "verified_status": artist.verified_status,
         "media_url": artist.media_url,
         "rider": rider,
-        "facts": {
-            "deals": _supplier_deals_count(db, artist.organization_id),
-            "response": "пока нет данных",
-            "note": "Артист пока не добавил описание программы. Уточните состав, длительность выступления и технические требования перед подтверждением.",
-        },
-        "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
-        "slots": [_slot_item(s) for s in slots],
+        "facts": profile_facts(db, "artist", artist.id),
+        "honorarium_from_rub": _min_tariff(tariffs),
+        "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub, "hours": t.hours} for t in tariffs],
+        "slots": visible_slots,
     }

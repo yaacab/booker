@@ -67,8 +67,15 @@ def client_key(request: Request, prefix: str) -> str:
     return f"{prefix}:{ip}"
 
 
-# Auth: 20 attempts / 5 min per IP; webhooks: 120 / min per IP
-auth_limiter = RateLimiter(max_requests=20, window_seconds=300)
+def auth_request_limit() -> int:
+    # Only an explicitly isolated test environment may accommodate E2E fixtures.
+    if settings.environment.strip().lower() == "test":
+        return min(max(settings.test_auth_rate_limit, 20), 1000)
+    return 20
+
+
+# Auth: 20 attempts / 5 min per IP in production; webhooks: 120 / min per IP.
+auth_limiter = RateLimiter(max_requests=auth_request_limit(), window_seconds=300)
 webhook_limiter = RateLimiter(max_requests=120, window_seconds=60)
 analytics_limiter = RateLimiter(max_requests=120, window_seconds=60)
 upload_limiter = RateLimiter(max_requests=30, window_seconds=300)

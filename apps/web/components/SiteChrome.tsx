@@ -18,6 +18,7 @@ const DEFAULT_TITLE = "Букер — сделки с артистами и пл
 
 function tabTitle(path: string): string {
   if (path === "/") return DEFAULT_TITLE;
+  if (path.startsWith("/pricing")) return "Тарифы · Букер";
   if (path.startsWith("/search")) return "Каталог · Букер";
   if (path.startsWith("/events/new")) return "Новая заявка · Букер";
   if (path.startsWith("/events/")) return "Событие · Букер";
@@ -43,10 +44,14 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [inboxError, setInboxError] = useState(false);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [inboxRefresh, setInboxRefresh] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notificationsRef = useRef<HTMLSpanElement>(null);
   const [notifications, setNotifications] = useState<
-    { id: string; subject?: string | null; body?: string | null }[]
+    { id: string; subject?: string | null; body?: string | null; href?: string | null }[]
   >([]);
   const path = usePathname();
   // Флаг студии зависит от window.location.search — считаем только после маунта,
@@ -98,10 +103,22 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       setNotificationsOpen(false);
       return;
     }
-    void api<{ items: { id: string; subject?: string | null; body?: string | null }[] }>("/notifications")
-      .then((res) => setNotifications(res.items || []))
-      .catch(() => setNotifications([]));
-  }, [path, authed]);
+    const c = new AbortController(); setInboxLoading(true);
+    void api<{ items: { id: string; subject?: string | null; body?: string | null; href?: string | null }[]; unread_count: number }>("/notifications?limit=5", { signal: c.signal })
+      .then(res => { if (!c.signal.aborted) { setNotifications(res.items || []); setUnreadCount(res.unread_count); setInboxError(false); } })
+      .catch(() => { if (!c.signal.aborted) setInboxError(true); })
+      .finally(() => { if (!c.signal.aborted) setInboxLoading(false); });
+    return () => c.abort();
+  }, [path, authed, inboxRefresh]);
+
+  useEffect(() => {
+    if (!authed) return;
+    const refresh = () => setInboxRefresh(v => v + 1);
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener("booker:inbox-changed", refresh);
+    window.addEventListener("focus", refresh);
+    return () => { clearInterval(timer); window.removeEventListener("booker:inbox-changed", refresh); window.removeEventListener("focus", refresh); };
+  }, [authed]);
 
   useEffect(() => {
     setFullScreenStudio(path === "/events/new" && isEventStudioMapV1());
@@ -113,7 +130,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       const city = new URLSearchParams(window.location.search).get("city");
       title = city ? `Каталог — ${city} · Букер` : title;
     }
-    document.title = title;
+    // Public profile/collection metadata owns its descriptive title.
+    if (path !== '/catalog' && !path.startsWith('/catalog/') && !path.startsWith('/artists/') && !path.startsWith('/venues/')) document.title = title;
     if (getToken()) {
       trackClientEvent("page.view", { path });
     }
@@ -229,12 +247,12 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                   className="linkish"
                   aria-expanded={notificationsOpen}
                   aria-controls="notification-list"
-                  onClick={() => setNotificationsOpen((open) => !open)}
+                  onClick={() => { setNotificationsOpen(open => !open); setInboxRefresh(v => v + 1); }}
                 >
                   Уведомления
-                  {notifications.length > 0 ? (
+                  {unreadCount > 0 ? (
                     <span className="chip wait" style={{ marginLeft: 6 }}>
-                      {notifications.length}
+                      {unreadCount}
                     </span>
                   ) : null}
                 </button>
@@ -243,7 +261,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                     className="card surface-glass"
                     id="notification-list"
                     role="region"
-                    aria-label="Уведомления"
+                    aria-label="Последние уведомления"
                     style={{
                       position: "absolute",
                       right: 0,
@@ -257,13 +275,17 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                       padding: 12,
                     }}
                   >
-                    {notifications.length === 0 ? (
+                    <Link href="/notifications" onClick={() => setNotificationsOpen(false)}>Все уведомления</Link>
+                    {inboxLoading && <p role="status">Загрузка…</p>}
+                    {inboxError && <p role="alert">Не удалось обновить уведомления. Откройте список для повтора.</p>}
+                    {!inboxLoading && !inboxError && notifications.length === 0 ? (
                       <p className="timeline">Пока пусто</p>
                     ) : (
                       notifications.map((item) => (
                         <div key={item.id}>
                           <strong>{item.subject || "Уведомление"}</strong>
                           {item.body ? <p className="timeline">{item.body}</p> : null}
+                          {item.href && <Link href={item.href} onClick={() => setNotificationsOpen(false)}>Открыть</Link>}
                         </div>
                       ))
                     )}
@@ -311,10 +333,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </div>
         <footer className="site-footer surface-glass reference-footer">
           <Link href="/" className="footer-brand" aria-label="Букер — главная"><BrandLockup /><span>Люди. Места. События.</span></Link>
-          <nav aria-label="Информация о сервисе"><Link href="/dev/cabinets">Демо-кабинеты</Link><Link href="/legal/privacy">Конфиденциальность</Link><Link href="/legal">Документы</Link><Link href="/faq">Вопросы и ответы</Link><Link href="/support">Поддержка</Link></nav>
+          <nav aria-label="Информация о сервисе"><Link href="/legal/offer">Оферта</Link><Link href="/legal/privacy">Персональные данные</Link><Link href="/legal/disputes">Споры</Link><Link href="/legal/cookies">Cookie</Link><Link href="/pricing">Тарифы</Link><Link href="/faq">Вопросы и ответы</Link><Link href="/support">Поддержка</Link><a href="mailto:hello@bukergo.ru">hello@bukergo.ru</a></nav>
         </footer>
       </div>
-      {path !== "/for-artists" && <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">
+      {path !== "/for-artists" && <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация" style={{ gridTemplateColumns: `repeat(${authed ? 5 : 4}, minmax(0, 1fr))` }}>
         <Link href="/" aria-label="Главная" className={path === "/" ? "on" : ""}>
           Главная
         </Link>
@@ -346,6 +368,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         >
           {isSupply ? "Заявки" : "Сделки"}
         </Link>
+        {authed && <Link href="/notifications" className={path === "/notifications" ? "on" : ""}>Входящие</Link>}
         <Link href={authed ? "/profile" : loginHref("/profile")} className={path.startsWith("/profile") ? "on" : ""}>
           Профиль
         </Link>

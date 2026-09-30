@@ -10,6 +10,8 @@ export type EventStudioDraft = {
   date: string;
   startsAt: string;
   endsAt: string;
+  endsNextDay?: boolean;
+  budgetRub?: number | null;
   guests: number;
   venueId?: string;
   talentIds: string[];
@@ -42,12 +44,6 @@ export type VenueItem = {
   availabilityLabel?: string;
 };
 
-export type BudgetHint = {
-  minRub: number;
-  maxRub: number;
-  isEstimate: true;
-};
-
 export type SaveStatus = "saving" | "saved" | "error" | "offline" | "conflict";
 
 export const STUDIO_STAGES = ["Основа", "Место", "Команда", "Детали", "Проверка"] as const;
@@ -60,6 +56,8 @@ export const EMPTY_DRAFT: EventStudioDraft = {
   date: "",
   startsAt: "17:00",
   endsAt: "23:30",
+  endsNextDay: false,
+  budgetRub: null,
   guests: 80,
   talentIds: [],
   requirements: ["Звук и свет", "Кейтеринг"],

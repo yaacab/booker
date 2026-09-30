@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { ProfileMedia } from "@/components/ProfileMedia";
+import { useEffect, useRef } from "react";
+import { observeDiscovery } from "@/lib/discovery";
+import { api } from "@/lib/api";
 import { FavoriteToggle, type FavoriteTargetType } from "@/components/FavoriteToggle";
 import { CHIP, categoryLabel } from "@/lib/copy";
 import { formatDay, formatWhen, money, guestsLabel } from "@/lib/format";
 
 type CatalogItem = {
+  sponsored?: boolean; sponsored_label?: string; promotion_touch_id?: string;
   id: string;
   name: string;
   city: string;
@@ -49,6 +53,24 @@ function slotState(item: CatalogItem): { label: string; cls: string } {
 }
 
 export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardProps) {
+  const cardRef = useRef<HTMLElement>(null);
+  const touch = item.sponsored ? item.promotion_touch_id : undefined;
+  const targetHref = touch ? `${href}${href.includes("?") ? "&" : "?"}promotion_touch_id=${encodeURIComponent(touch)}` : href;
+  useEffect(() => {
+    if (!cardRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        observeDiscovery(kind, item.id, "impression");
+        if (touch) void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "impression" }), keepalive: true }).catch(() => {});
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [touch, kind, item.id]);
+  function onProfileClick() {
+    if (touch) void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "click" }), keepalive: true }).catch(() => {});
+  }
   const st = slotState(item);
   const synthetic = item.availability_mode === "synthetic";
   const hallHint = item.matching_halls?.[0];
@@ -60,9 +82,10 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
     : item.next_open_at ? `Ближайшая дата: ${formatWhen(item.next_open_at)}` : st.label;
 
   return (
-    <article className={`card catalog-result catalog-result--${kind}`}>
+    <article ref={cardRef} className={`card catalog-result catalog-result--${kind}`}>
+      {item.sponsored ? <span className="chip">{item.sponsored_label || "Продвижение"}</span> : null}
       <div className="catalog-card-media">
-        <Link className="catalog-image-link" href={href} aria-label={`Открыть профиль: ${item.name}`}>
+        <Link className="catalog-image-link" href={targetHref} onClick={onProfileClick} aria-label={`Открыть профиль: ${item.name}`}>
           <ProfileMedia src={kind === "venue" ? item.cover_photo?.url || item.media_url : item.media_url} name={item.name} compact />
         </Link>
         <span className={`catalog-availability chip ${st.cls}`} title={availabilityTitle}>
@@ -73,7 +96,7 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
       </div>
       <div className="catalog-card-content">
         <div className="card-head">
-          <Link href={href}><strong>{item.name}</strong></Link>
+          <Link href={targetHref} onClick={onProfileClick}><strong>{item.name}</strong></Link>
           {item.verified ? <span className="catalog-verified-mark" role="img" aria-label={CHIP.verified} title={CHIP.verified}>✓</span> : null}
         </div>
         <p className="catalog-card-location">{category} <span aria-hidden="true">·</span> {item.city}{item.metro ? ` · м. ${item.metro}` : ""}</p>
@@ -87,7 +110,7 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
         {item.next_open_at && !synthetic ? <p className="catalog-card-date">{date ? `На ${formatDay(`${date}T12:00:00+03:00`)}` : `Ближайшая: ${formatWhen(item.next_open_at)}`}</p> : null}
         <div className="catalog-card-footer">
           <p className="catalog-price">{displayedTariff ? <><span>Ориентир</span>{money(displayedTariff.honorarium_rub)}</> : <span className="catalog-price-request">Цена по запросу</span>}</p>
-          <Link className="btn secondary catalog-open" href={href}>Выбрать дату <span aria-hidden="true">↗</span></Link>
+          <Link className="btn secondary catalog-open" href={targetHref} onClick={onProfileClick}>Выбрать дату <span aria-hidden="true">↗</span></Link>
         </div>
       </div>
     </article>

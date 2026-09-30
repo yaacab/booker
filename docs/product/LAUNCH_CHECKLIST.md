@@ -1,5 +1,8 @@
 # Чеклист публичного запуска
 
+Техническая приёмка коммерческой ветки: [PRELAUNCH_ACCEPTANCE.md](PRELAUNCH_ACCEPTANCE.md).
+Её локальные проверки не являются production release или прохождением внешних P0.
+
 Приоритеты: **P1** — технический пилот и supply console (сделано); **P0** — юридический и операционный гейт до живых платежей и публичного сбора ПДн.
 
 ## P1 — сделано
@@ -24,3 +27,11 @@
 - [ ] Оферта проверена юристом (гейт **U5** в прод). Пакет черновиков: `docs/legal/README.md`, сайт `/legal`. Реквизиты оператора — чеклист в `OPERATOR.md`.
 - [ ] Платёжный партнёр выбран и договорён (stub в коде; `PAYMENTS_SHORTLIST.md`).
 - [ ] 10 заявок пилота и ≥1 оплата до фазы Market fit.
+
+
+Коммерческий этап, совместимость: API/RBAC/versioning, full-window calendar +
+buffers, явный unknown, owner hall editor и E-CUST-04 desktop/390 проверены локально.
+Точное доказательство — `PRELAUNCH_V1.md`; оно не закрывает общий launch gate.
+
+- [x] Provider-neutral subscription periods/renewal mapping: signed cycles, fixed price/calendar, past_due, cancellation, future-access boundaries and duplicate PostgreSQL concurrency tested (2026-09-15; PRELAUNCH_V1.md).
+- [ ] Selected PSP verifies merchant, recurring consent, stable cycle payment identity, exact calendar and cancellation in sandbox; production activation remains separately gated.

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { LossReason } from "@/components/deal-room/LossReason";
 import { DealRoomSummary } from "@/components/deal-room/DealRoomSummary";
 import { HoldCountdown } from "@/components/HoldCountdown";
 import { api, trackClientEvent } from "@/lib/api";
@@ -21,12 +22,19 @@ const TABS = [
 ] as const;
 
 type Room = {
+  request_id?: string;
+  loss_reason?: string | null;
   booking_id: string;
   offer_id: string;
   event_id?: string;
   requirement_id?: string | null;
   status: string;
   role: "customer" | "supplier";
+  can_hold?: boolean;
+  can_ack_quote?: boolean;
+  can_revise_quote?: boolean;
+  can_create_contract?: boolean;
+  can_sign_contract?: boolean;
   workspace_kind?: string;
   next_step: string;
   event_title?: string;
@@ -35,6 +43,9 @@ type Room = {
   hold?: { status: string; expires_at: string } | null;
   quote: {
     quote_id: string;
+    valid_until?: string | null;
+    acceptance_expired?: boolean;
+    terms?: string;
     honorarium_rub: number;
     commission_rub: number;
     total_rub: number;
@@ -44,7 +55,8 @@ type Room = {
   };
   contract: { id: string; customer_signed: boolean; supplier_signed: boolean; body: string } | null;
   documents?: { kind: string; id: string; label: string; quote_id?: string; signed: boolean }[];
-  payment: { id: string; status: string; amount_rub: number; provider?: string } | null;
+  payment_capabilities?: { available: boolean; test_mode: boolean; message: string; can_create: boolean; can_checkout?: boolean; can_test_complete: boolean };
+  payment: { id: string; status: string; amount_rub: number; provider?: string; session_state?: string; checkout_url?: string | null; requires_operator?: boolean } | null;
   messages: { id: string; kind: string; body: string }[];
 };
 
@@ -160,7 +172,15 @@ export default function DealPage() {
     };
   });
   const paymentProvider = current.payment?.provider;
-  const isStubPayment = Boolean(current.payment) && (paymentProvider === "stub" || !paymentProvider);
+  const isStubPayment = Boolean(current.payment) && paymentProvider === "stub";
+  const paymentCapabilities = current.payment_capabilities;
+  const ackBlocked = action.kind === "ack" && !current.can_ack_quote;
+  const holdBlocked = action.kind === "hold" && !current.can_hold;
+  const contractBlocked = action.kind === "contract" && !(current.contract ? current.can_sign_contract : current.can_create_contract);
+  const paymentBlocked = action.kind === "pay" && !paymentCapabilities?.can_create;
+  const paymentStatus = current.payment?.status === "succeeded"
+    ? (isStubPayment ? "Тест подтверждён · деньги не списывались" : "Оплата подтверждена")
+    : ({ pending: "Ожидает оплаты", failed: "Оплата не прошла", refunded: "Возврат подтверждён", partially_refunded: "Часть оплаты возвращена", cancelled: "Отменён" }[current.payment?.status ?? ""] ?? "Статус уточняется");
   const isExternalPayment = paymentProvider === "external";
 
   async function createContract() {
@@ -183,7 +203,7 @@ export default function DealPage() {
 
   async function runNext() {
     if(action.kind==="hold"){
-      await act(()=>api(`/bookings/${current.booking_id}/hold`,{method:"POST"}));
+      if (current.can_hold) await act(()=>api(`/bookings/${current.booking_id}/hold`,{method:"POST"}));
       return;
     }
     if(action.kind==="wait"){
@@ -191,7 +211,7 @@ export default function DealPage() {
       return;
     }
     if (action.kind === "ack") {
-      await act(() => api(`/offers/${current.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) }));
+      await act(() => api(`/offers/${current.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side, quote_id: current.quote.quote_id }) }));
       return;
     }
     if (action.kind === "contract") {
@@ -203,12 +223,14 @@ export default function DealPage() {
       return;
     }
     if (action.kind === "pay") {
+      if (!paymentCapabilities?.can_create) return;
       await act(() =>
         api(`/bookings/${current.booking_id}/payments`, {
           method: "POST",
           body: JSON.stringify({ idempotency_key: `web-${current.booking_id}` }),
         })
       );
+      setTab("payments");
       return;
     }
     if (action.kind === "receive") {
@@ -237,6 +259,8 @@ export default function DealPage() {
         <div className="deal-quote-total"><dt>Итого</dt><dd>{money(current.quote.total_rub)}</dd></div>
       </dl>
       <p className="deal-ack-note"><span aria-hidden="true">{current.quote.customer_ack && current.quote.supplier_ack ? "✓" : "◷"}</span>{ackLabel(current.quote)}</p>
+      {current.status === "Negotiation" && current.quote.valid_until ? <p className="timeline">Подтвердить условия и удержать дату до {formatWhen(current.quote.valid_until)}.</p> : null}
+      {current.quote.acceptance_expired ? <p role="alert" className="timeline">Срок этой версии предложения истёк. Согласуйте новую версию условий.</p> : null}
       {current.hold ? <HoldCountdown expiresAt={current.hold.expires_at} /> : null}
       <details className="deal-quote-source"><summary>Версия предложения</summary><p className="mono">quote_id: {current.quote.quote_id}</p><p>{current.quote.source || "Стоимость зафиксирована в этой версии предложения."}</p></details>
     </div>
@@ -274,12 +298,13 @@ export default function DealPage() {
       <ol className="deal-progress" aria-label="Этапы сделки">
         {journal.map((row, index) => <li key={row.s} className={row.cls} aria-current={row.cls === "now" ? "step" : undefined}><span className="deal-progress-dot" aria-hidden="true">{row.cls === "done" ? "✓" : index + 1}</span><strong>{row.result}</strong><small>{row.state}</small></li>)}
       </ol>
-      {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
+      {error ? <div role="alert"><p style={{ color: "var(--danger)" }}>{error}</p><button type="button" className="secondary" disabled={busy} onClick={() => void load()}>Обновить условия</button></div> : null}
       {notice ? (
         <p className="timeline" role="status">
           {notice}
         </p>
       ) : null}
+      {room.status === "Cancelled" && room.request_id && <LossReason requestId={room.request_id} side={room.role} savedReason={room.loss_reason || null} onSaved={load} />}
       <div className="deal-shell">
         <aside className="deal-rail surface-glass">
           <h2>Участники</h2>
@@ -291,62 +316,30 @@ export default function DealPage() {
           <p className="deal-toolbar" aria-busy={busy} style={busy ? { opacity: 0.55, pointerEvents: "none" } : undefined}>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !room.can_ack_quote}
               onClick={() =>
                 void act(() =>
-                  api(`/offers/${room.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) })
+                  api(`/offers/${room.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side, quote_id: current.quote.quote_id }) })
                 )
               }
             >
               Подтвердить условия
             </button>
-            <button type="button" className="secondary" onClick={() => void act(() => api(`/bookings/${room.booking_id}/hold`, { method: "POST" }))}>
+            <button type="button" className="secondary" disabled={!room.can_hold} onClick={() => void act(() => api(`/bookings/${room.booking_id}/hold`, { method: "POST" }))}>
               Удержать дату
             </button>
-            <button type="button" className="secondary" onClick={() => void act(() => createContract())}>
+            <button type="button" className="secondary" disabled={!room.can_create_contract} onClick={() => void act(() => createContract())}>
               Договор
             </button>
             {room.contract ? (
               <button
                 type="button"
                 className="secondary"
+                disabled={!room.can_sign_contract}
                 onClick={() => { if (window.matchMedia("(max-width: 1023px)").matches) setQuoteOpen(true); else void signContract(); }}
               >
                 Подписать OTP
               </button>
-            ) : null}
-            <button
-              type="button"
-              className="secondary"
-              onClick={() =>
-                void act(() =>
-                  api(`/bookings/${room.booking_id}/payments`, {
-                    method: "POST",
-                    body: JSON.stringify({ idempotency_key: `web-${room.booking_id}` }),
-                  })
-                )
-              }
-            >
-              Счёт
-            </button>
-            {isStubPayment && !isExternalPayment ? (
-              <>
-                {!paymentProvider ? <span className="chip wait">Пилот / без эквайринга</span> : null}
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() =>
-                    void act(() =>
-                      api(`/payments/${room.payment!.id}/stub-complete`, {
-                        method: "POST",
-                        body: JSON.stringify({ status: "succeeded" }),
-                      })
-                    )
-                  }
-                >
-                  Пилот: отметить оплату
-                </button>
-              </>
             ) : null}
             {isExternalPayment ? (
               <span className="chip wait" data-testid="external-pay-chip">
@@ -355,6 +348,8 @@ export default function DealPage() {
             ) : null}
           </p>
           </details>
+          {paymentCapabilities ? <p role="status">{paymentCapabilities.message}</p> : null}
+          {room.payment?.requires_operator ? <p role="alert">Оплата получена после изменения резерва. Дата не подтверждена — обратитесь к оператору для согласования или возврата.</p> : null}
           <div className="tabs" role="tablist" aria-label="Разделы сделки">
             {TABS.map((item) => (
               <button
@@ -435,6 +430,7 @@ export default function DealPage() {
               </p>
             </section>
           )}
+          {room.quote.acceptance_expired ? <div role="alert" className="card"><strong>Срок предложения истёк.</strong><p>Для удержания даты согласуйте новую версию условий.</p><button type="button" className="secondary" onClick={() => setTab("terms")}>Перейти к новым условиям</button></div> : null}
           {tab === "terms" && (
             <section className="card" role="tabpanel" id="deal-panel-terms" aria-labelledby="deal-tab-terms">
               <p>
@@ -442,6 +438,18 @@ export default function DealPage() {
                 {room.quote.supplier_ack ? "подтвердил" : "ожидается подтверждение"}.
               </p>
               <p>{ackLabel(room.quote)}. Сообщение в чате не заменяет подтверждение актуальной версии.</p>
+              {room.can_revise_quote ? <form key={room.quote.quote_id} onSubmit={(event) => {
+                event.preventDefault();
+                const data = new FormData(event.currentTarget);
+                void act(() => api(`/offers/${room.offer_id}/versions`, { method: "POST", body: JSON.stringify({ honorarium_rub: Number(data.get("honorarium")), terms: String(data.get("terms") ?? ""), valid_for_hours: Number(data.get("hours")), expected_quote_id: room.quote.quote_id }) }));
+              }}>
+                <h3>Новая версия предложения</h3>
+                <label>Новый гонорар, ₽<input name="honorarium" type="number" min="1" max="1000000000" step="1" required defaultValue={room.quote.honorarium_rub} disabled={busy} /></label>
+                <label>Дополнительные условия<textarea name="terms" defaultValue={room.quote.terms ?? ""} disabled={busy} /></label>
+                <label>Срок новых условий<select name="hours" defaultValue="72" disabled={busy}><option value="24">24 часа</option><option value="72">72 часа</option><option value="168">7 дней</option></select></label>
+                <p className="timeline">Срок ограничен началом события. Новую версию должны подтвердить обе стороны. Комиссию и итог рассчитает сервер.</p>
+                <button type="submit" disabled={busy}>Предложить новые условия</button>
+              </form> : null}
             </section>
           )}
           {tab === "documents" && (
@@ -463,9 +471,50 @@ export default function DealPage() {
           )}
           {tab === "payments" && (
             <section className="card" role="tabpanel" id="deal-panel-payments" aria-labelledby="deal-tab-payments">
+              <div className="row">
+            <button
+              type="button"
+              className="secondary"
+              disabled={busy || !paymentCapabilities?.can_create}
+              onClick={() =>
+                void act(() =>
+                  api(`/bookings/${room.booking_id}/payments`, {
+                    method: "POST",
+                    body: JSON.stringify({ idempotency_key: `web-${room.booking_id}` }),
+                  })
+                )
+              }
+            >
+              Счёт
+            </button>
+            {isStubPayment && paymentCapabilities?.can_test_complete ? (
+              <>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() =>
+                    void act(() =>
+                      api(`/payments/${room.payment!.id}/stub-complete`, {
+                        method: "POST",
+                        body: JSON.stringify({ status: "succeeded" }),
+                      })
+                    )
+                  }
+                >
+                  Тест: подтвердить оплату
+                </button>
+              </>
+            ) : null}
+              </div>
+              {paymentCapabilities?.can_checkout && room.payment?.checkout_url ? (
+                <a className="btn" href={room.payment.checkout_url} rel="noreferrer">Перейти к оплате</a>
+              ) : null}
+              {room.payment?.status === "pending" && ["creating", "uncertain"].includes(room.payment.session_state || "") ? (
+                <p role="status">Создание счёта ещё не подтверждено партнёром. Нажмите «Счёт», чтобы повторить запрос для сохранённого платежа.</p>
+              ) : null}
               <p>
                 {room.payment
-                  ? `${room.payment.status} · ${money(room.payment.amount_rub)}`
+                  ? `${paymentStatus} · ${money(room.payment.amount_rub)}`
                   : "Счёта нет. Статус платежа передаёт платёжный партнёр."}
               </p>
               {isExternalPayment ? (
@@ -479,7 +528,7 @@ export default function DealPage() {
                   </p>
                   {room.payment ? (
                     <p className="mono">
-                      payment_id: {room.payment.id} · {room.payment.status} · {money(room.payment.amount_rub)}
+                      payment_id: {room.payment.id} · {paymentStatus} · {money(room.payment.amount_rub)}
                     </p>
                   ) : null}
                   <p>
@@ -544,8 +593,8 @@ export default function DealPage() {
         <aside className="deal-aside surface-glass">
           <p className="kicker">Следующий шаг</p>
           <p>{room.next_step}</p>
-          <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
-            {actionLabel}
+          <button type="button" aria-busy={busy} disabled={busy || ackBlocked || paymentBlocked || holdBlocked || contractBlocked} onClick={() => void runNext()}>
+            {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : actionLabel}
           </button>
           {room.contract && action.kind === "contract" ? (
             <label>
@@ -566,12 +615,18 @@ export default function DealPage() {
           <span className="kicker">Следующее действие</span>
           <span className="timeline">{room.next_step}</span>
         </p>
+        {room.contract && action.kind === "contract" && room.can_sign_contract ? (
+          <label>
+            Код подписи договора
+            <input value={otpInput} onChange={(e) => setOtpInput(e.target.value)} inputMode="numeric" autoComplete="one-time-code" />
+          </label>
+        ) : null}
         <div className="sticky-cta-row">
           <button type="button" className="secondary" onClick={() => setQuoteOpen(true)}>
             Предложение
           </button>
-          <button type="button" aria-busy={busy} disabled={busy} onClick={() => { if (room.contract && action.kind === "contract") setQuoteOpen(true); else void runNext(); }}>
-            {actionLabel}
+          <button type="button" aria-busy={busy} disabled={busy || ackBlocked || paymentBlocked || holdBlocked || contractBlocked} onClick={() => { if (room.contract && action.kind === "contract") setQuoteOpen(true); else void runNext(); }}>
+            {paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : actionLabel}
           </button>
         </div>
       </div>
@@ -581,7 +636,7 @@ export default function DealPage() {
         <div className="deal-sheet-head"><h2 id="deal-quote-dialog-title">Предложение</h2><button type="button" aria-label="Закрыть предложение" onClick={() => setQuoteOpen(false)}>×</button></div>
         {quoteBlock}
         {room.contract && action.kind === "contract" ? <label>Код подписи договора<input value={otpInput} onChange={(e) => setOtpInput(e.target.value)} inputMode="numeric" autoComplete="one-time-code" /></label> : null}
-        <button type="button" className="deal-sheet-action" disabled={busy} aria-busy={busy} onClick={() => void runNext()}>{actionLabel}</button>
+        <button type="button" className="deal-sheet-action" disabled={busy || ackBlocked || paymentBlocked || holdBlocked || contractBlocked} aria-busy={busy} onClick={() => void runNext()}>{paymentBlocked ? (current.role === "supplier" ? "Оплата — действие заказчика" : "Оплата сейчас недоступна") : actionLabel}</button>
         {error ? <p role="alert" className="deal-sheet-error">{error}</p> : null}
       </div>
     </main>

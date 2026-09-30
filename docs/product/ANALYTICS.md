@@ -61,3 +61,312 @@
 Клиент: `POST /analytics/events` (auth). Web: `trackClientEvent()` в `apps/web/lib/api.ts`.
 
 Просмотр: `GET /admin/audit` (platform admin). Агрегаты воронки: `GET /admin/metrics` — counts и unique_entities по action за 7/30 дней; блок `dashboards` — воронка (конверсия по шагам), ликвидность (поиск→сделка, заявка→оффер), утечки (брошенный Studio, заявки без оффера, истёкшие hold).
+
+## Commercial v3, первый инкремент (2026-09-12)
+
+- `pricing.viewed` — client.event allowlist; просмотр страницы тарифов.
+- `subscription.checkout_started` — сервер создал BillingOrder, включая disabled
+  checkout. Не означает оплату или активацию.
+- `subscription.activated` — только после проверенного paid notification.
+- `subscription.cancelled` — отмена автопродления/изменение на конец периода;
+  effective_at в payload, текущий доступ сохраняется до этой даты.
+- `subscription.expired` — срок истёк; идемпотентный переход.
+- `subscription.admin_grant` — ручной support grant/revoke с причиной, не revenue.
+- `commercial.plan_changed` — старая и новая ревизии catalog с причиной.
+- `billing.paid`, `billing.failed`, `billing.refunded`, `billing.cancelled` —
+  подтверждённые переходы заказа. Provider=stub исключается из денежных поступлений.
+
+Оставшаяся taxonomy/атрибуция и dashboards принимаются в prelaunch отдельно.
+
+### Paid promotion (commercial v3)
+
+Серверные события: `promotion.created`, `promotion.started`, `promotion.expired`,
+`promotion.impression`, `promotion.click`, `promotion.request`, `promotion.booking`.
+Дополнительно: `promotion.cancelled`, `promotion.rejected`,
+`commercial.promotion_price_changed`. Token выдачи связан с кампанией, затем с
+реальной заявкой и Confirmed booking. CTR = clicks/impressions, null при отсутствии
+показов; повторные сигналы одного token дедуплицируются. Это атрибуция по переходу
+в пределах 7 дней, не доказательство причинного эффекта рекламы.
+
+### Growth Center
+
+`DiscoverySignal` хранит наблюдения `impression`, `profile_view`, `favorite`.
+Показы дедуплицируются по профилю, случайному ключу сессии и дню UTC; уникальные
+просмотры — по ключу сессии за период. В базе только SHA-256 случайного UUID,
+без IP/контактов; browser Do Not Track отключает клиентские наблюдения.
+Просмотры своей команды исключены. Favorite записывает сервер после фактического
+добавления, клиент не может отправить этот вид сигнала напрямую. Наблюдения
+не дают права менять verified, цены, деньги или состояние сделки.
+
+Заявки образуют когорту по `Request.created_at`; предложение, hold, Confirmed,
+Completed считаются по связанным данным этой когорты. Отношения объёмов
+impression/profile/request не заявляются пользовательской когортной конверсией.
+Медиана ответа — время до первого Offer; отсутствие ответа даёт null, а не
+обещание скорости. Confirmed honorarium — сумма активных immutable OfferVersion
+у Confirmed/InProgress/Completed, отдельно от фактических выплат.
+
+`request.loss_reason` — явная отметка стороны уже закрытой заявки. `price` может
+указать только customer writer. Пока отметки нет, причина unknown. Чужая сторона
+не может перезаписать уже зафиксированную причину. Истечение request/offer не
+выводится из молчания; без соответствующего факта остаётся unknown.
+
+7/30 дней доступны Free; 90 — Pro; 365 и export — Premium. Resolver проверяет
+актуальный срок подписки на каждый API вызов. Benchmark доступен Premium только
+для одного своего профиля; минимум 10 похожих профилей из 10 других организаций.
+Возвращаются только агрегат и описание группы, без ID/имён/отдельных показателей.
+Открытые даты рассчитываются по московскому календарю с busy overlays каждого
+ресурса отдельно. `ARTIST_GROWTH=false` отключает API и сбор новых наблюдений.
+
+### Opportunities
+
+`brief.published` фиксирует явную публикацию публичного снимка;
+`brief.response_created` — ручной отклик организации с выбранным профилем,
+без создания оффера/брони. `opportunity.filter_saved` и
+`opportunity.filter_removed` фиксируют личные фильтры и отзыв уведомлений.
+`opportunity.alerted` — однократная in-app доставка подходящего брифа пользователю
+с действующим entitlement и явным согласием. Дедупликация — brief/user.
+Просмотр ленты сам по себе не является откликом или лидом; приватные бюджеты
+событий не входят в публичную выдачу/уведомления. Все уровни подписки используют
+одинаковые правила соответствия; платежи не влияют на score.
+
+### Витрина
+
+`artist.presentation_updated` — сохранение новой версии собственным writer;
+содержит номер версии и факт подтверждения прав на материалы. Повтор идентичного
+PUT не создаёт второй audit. Витрина использует прежние discovery profile-view и
+favorite сигналы; изменение оформления не меняет trust metrics. Media views
+внешнего видеосервиса не выдаются за измеренные просмотры на Букере.
+
+### Совместимость
+
+`compatibility.viewed` — выполненная серверная проверка пары artist/venue/hall;
+содержит статус и optional event_id только во внутреннем audit. Приватный event
+доступен только его организации. Публичный результат не содержит контактов,
+платежей или чужих событий. `hall.technical_updated` хранит версию и имена
+изменённых полей, без копии произвольного текста ограничений. Идентичный PUT
+не создаёт повторное изменение. Просмотр совместимости не равен заявке/сделке.
+
+### Ориентир Event Studio
+
+`event.estimate_viewed` содержит только число выбранных/имеющих публичный тариф
+участников и полноту расчёта. Это не quote, revenue, request или подтверждение
+доступности. Публичный endpoint не раскрывает тарифы скрытых площадок.
+
+### Создание события
+
+`event.created` фиксирует один committed Event: организация, число позиций,
+наличие окончания. Текст заметок, ключ отправки и контакты в payload не входят.
+Повторы через EventCommandReceipt не создают вторую запись event.created или
+request.created. Browser event.studio.completed остаётся UI-сигналом и не
+заменяет число сохранённых сервером событий.
+
+
+### Подбор и предварительный состав
+
+`event.matching_viewed` — авторизованный серверный расчёт, включая ручную
+перепроверку; payload содержит состояние окна/ролей и число обязательных позиций.
+Это не уникальные просмотры, заявка, бронь или EventReadiness.
+`event.plan_updated` — сохранённая новая revision, число выбранных позиций;
+одинаковый повтор не создаёт повторный audit. `event.planning_updated` — имена
+изменённых полей окончания/бюджета без свободного текста. Все три события остаются
+во внутреннем audit организации, не публикуются как discovery-метрики.
+
+
+### Бюджет события
+
+`event.budget_viewed` — авторизованное чтение расчёта бюджета; payload содержит
+только state (no_budget/partial/within_budget/over_budget), без суммы, контактов,
+заметок и состава. Это не платёж, выручка или принятие оффера. Повторное чтение
+может создавать новый view; счётчик не следует трактовать как уникальных клиентов.
+
+
+### Готовность события
+
+`event.readiness_viewed` содержит только state авторизованной сводки события.
+`event.readiness_list_viewed` содержит число событий в сводке организации
+(до 12); не копирует участников, платежи, документы, технические тексты или
+контакты. Повторное чтение — новый просмотр, не уникальная конверсия. Readiness
+не подтверждает выручку/оплату/доступность отдельным audit-событием: источники
+таких фактов остаются доменными событиями сделки и платежа.
+
+
+### Compare V2 и факты площадки
+
+`compare.opened` — успешное серверное чтение сравнения 2–4 публичных профилей.
+Payload: `target_type`, `count`, `with_event`; без списка участников, дат, гостей,
+тарифов, отзывов, контактов или свободного текста. Изменение параметров/повтор
+чтения может создать новое событие; это не уникальный пользователь и не заявка.
+Просмотр с событием требует членства в его организации. Сохранение участника
+через Compare использует существующий `event.plan_updated` и его revision/RBAC.
+
+Количество завершённых сделок и измеренное время первого предложения площадки
+учитывают как прямые заявки на площадку, так и заявки на её конкретные залы.
+Профили одного владельца не делят эти показатели. Деньги за подписку или
+продвижение не влияют на выборку, оценки отзывов или Verified.
+
+### Совместные подборки
+
+- `shortlist.created`: тип кандидатов, число, признак совместного режима и привязки
+  к событию. Идемпотентное повторение создания не даёт второй записи.
+- `shortlist.viewed`: успешное гостевое чтение одной действующей ссылки;
+  повтор/обновление — новый просмотр, не уникальный участник.
+- `shortlist.guest_joined`: создан гостевой участник одной подборки; повтор с тем
+  же ключом не создаёт второго участника.
+- `shortlist.feedback_updated`: реакция, наличие комментария и revision;
+  одинаковое повторение не дублирует событие или голос.
+- `shortlist.results_viewed`: число подборок в авторизованном чтении организации.
+- `shortlist.revoked`: однократный отзыв ссылки.
+
+В payload нет гостевых имён, текстов, токенов приглашения, ключей устройства,
+контактов, бюджета, документов или приватного названия события. Эти события не
+являются отзывами, оценкой исполнителя, конверсией в сделку или изменением состава.
+Счётчики реакций отражают гостевые устройства; уникальность людей не подтверждена.
+
+### Повтор события
+
+`repeat_event.viewed` — авторизованное чтение preview Completed.
+`repeat_event.created` — один новый Draft, payload содержит число ролей и
+предпочитаемых участников. Идемпотентный повтор не создаёт второго события/audit.
+`repeat_event.preferences_viewed` — повторная проверка предпочтений на новом
+событии, payload содержит только их число. Участники, даты, тексты, стоимость,
+документы и подписи в audit payload не копируются. Добавление предпочтения в
+предварительный состав использует `event.plan_updated`; это ещё не новая заявка.
+
+### Replacement UX
+
+- `replacement.viewed`: authorized organization member opened replacement for a role; open slot and cancellation counts only.
+- `replacement.requested`: writer explicitly requested a currently eligible replacement; requirement and resource identifiers. In the same transaction as `request.created` and the durable command receipt. Retries do not emit a second event.
+- Candidate ordering is alphabetical, without paid or opaque preference. Availability is a current calendar check, not a reservation or replacement guarantee.
+
+### Business planning
+
+- `business.template_created`, `business.template_archived`: immutable organization brief snapshots and archive action.
+- `business.draft_created`: clean Draft from template or current event brief; source kind only, no old deals.
+- `business.note_created`, `business.note_edited`, `business.note_deleted`: private team note lifecycle. Audit records identifiers only, never note text.
+- Durable command retries do not duplicate these mutations or audit events. Authorization is checked before receipt lookup.
+
+### Organization teams
+
+- `team.invited`, `team.invitation_revoked`, `team.invitation_accepted`: scoped invitation lifecycle.
+- `team.member_added`, `team.member_updated`, `team.member_removed`: direct addition and permission/removal lifecycle.
+- Audit contains entity identifiers only, no invitation secrets or recipient email.
+- Retried invitation creation/acceptance, unchanged permission updates and repeated revocation do not duplicate mutations/audit.
+
+### Business reporting
+
+- `business.report_viewed`: organization-scoped event cohort report; no personal supplier ranking.
+- `business.documents_exported`: selected event and contract counts only; no document text, signatures or OTPs in audit payload.
+
+### Support queue
+
+- `support.ticket.created`: category, related type and server-derived priority snapshot; no subject/body.
+- `support.queue.viewed`: platform operator viewed a filtered queue; state only.
+- `support.ticket.viewed`: author/operator read the ticket body; identifiers only.
+- `support.ticket.closed`: actual first transition to closed; retries do not duplicate audit.
+
+- `support.message.created`: saved human reply, ticket/message IDs and author role only; no reply text.
+- `support.messages.viewed`: author/operator read a bounded conversation page; ticket ID only.
+
+### Recipient inbox
+
+`notification.read` records the first unread → read transition (notification/user IDs only).
+`notification.in_app` transport audits remain compatible; the UI now reads the indexed
+recipient inbox rather than taking a global slice of the audit log. `support.reply`
+uses a generic message with ticket reference, never the private conversation text.
+
+### Email delivery attempts
+
+- `notification.email` for SMTP records enqueue status/outbox ID, not a send before domain commit.
+- `email.outbox.retry`: claimed delivery result and attempt number only.
+- `email.outbox.uncertain`: expired worker claim; held for human review, never silently resent.
+
+### Operational lifecycle notifications
+
+`subscription.expired`, `promotion.expired`, `hold.expired`, `booking.cancelled`,
+`replacement.required`, `payment.required`, `event.blocker` are in-app templates tied to actual
+state transitions. Notification delivery and domain events remain distinguishable
+in audit. Subscription dedupe includes the ended period, hold dedupe includes the
+hold ID, and payment-required dedupe includes the signed contract ID.
+`event.blocker` notifies both booking organizations when verified capture cannot
+confirm the reservation. It is deduplicated by payment ID, links to Deal Room,
+and explicitly labels stub money. Ordinary incomplete drafts do not emit it.
+
+### Booking checkout receipts
+
+- `payment.created`: committed internal Payment identity before contacting the provider; does not mean a checkout URL or capture exists.
+- `payment.session_uncertain`: provider creation response was unavailable/invalid; stable Payment ID and idempotency key remain for recovery.
+- `payment.session_ready`: validated pending checkout receipt persisted; repeat calls return it without another provider call.
+
+Session audit payloads contain the provider name, never bearer checkout URLs,
+provider error bodies or secrets. Neither session event belongs in captured GMV.
+
+
+### Booking refund workflow
+
+`refund.requested`, `refund.approved`, `refund.submitted`, `refund.pending`,
+`refund.uncertain`, `refund.succeeded`, `refund.failed`, `refund.rejected`,
+`refund.external_pending`, `refund.external_confirmed` record distinct steps.
+`payment.refunded` is emitted only for a confirmed outcome and records the request
+ID, amount, cumulative refunded amount, both approval actors and provider.
+Pending/uncertain events are not cash returned. Stub remains test money; external
+confirmation is an explicit operator assertion, not a bank webhook. Provider
+error bodies, TOTP codes and transfer references are not copied into audit.
+
+
+### Verified payment delivery
+
+Raw provider events use the existing `payment.webhook` audit after binding
+merchant/amount/currency/reference. PaymentWebhookEvent stores a provider-scoped
+receipt ID and normalized financial fingerprint, not the raw payload/signature.
+The receipt is claimed before capture. Rejected mismatches do not emit a successful
+payment audit. Pending delivery does not mean capture; late capture with an
+invalid reservation still records `payment.reservation_conflict` for the operator.
+
+
+### Operator payment status lookup
+
+`payment.reconciliation_requested` records the authenticated operator and provider
+before querying it; it does not mean payment was captured. `payment.reconciled`
+records a new validated financial state receipt with its actor. Repeated same-state
+reads keep one state receipt while retaining each request audit. Provider response
+bodies, TOTP and creation idempotency keys are not copied into audit. Receipt state
+and current Payment/Booking state are returned distinctly by reconciliation UI.
+
+
+### Подписанные результаты возврата
+
+`refund.webhook` — впервые принятый signed callback для сохранённого отправленного
+PaymentRefund; entity=refund, payload: payment_id, provider, provider_status,
+status (текущее локальное), amount_rub. Повторы одного receipt не создают audit
+повторно. `payment.refunded` остаётся однократным денежным переходом; поздний pending
+и подтверждение уже учтённого результата новым event_id не увеличивают сумму.
+Подписи, raw payload и provider references в эти события не записываются.
+
+### Восстановление commerce checkout
+
+`billing.checkout_requested`, `billing.checkout_ready`, `billing.checkout_uncertain`:
+entity=billing_order, actor=авторизованный billing writer; payload без реквизитов
+партнёра и checkout URL. requested фиксируется до внешнего вызова; uncertain
+означает неизвестный результат, не неуспешную оплату. Повтор готового заказа не
+создаёт новый checkout/audit ready. Активация по-прежнему только billing.paid.
+
+
+### Расчётные периоды
+
+`subscription.renewal_received`: entity=billing_order, organization_id,
+cycle_number, period_start/end, status. Один receipt на подписанное событие;
+повтор не создаёт audit. `billing.paid` для продления содержит renewal=true,
+сохранённую amount_rub, provider и requires_operator. Прошлый/будущий период
+учитывается как captured заказ, но не означает доступ прямо сейчас.
+`subscription.cancelled` с reason=replacement_checkout обозначает прекращение
+старого автопродления перед новой сессией. Никаких provider secrets/PII в этих payload.
+
+`billing.paid.requires_operator=true` также означает поздний capture после local
+cancelled/failed checkout. Captured revenue сохраняется, entitlement не выдаётся;
+это не автоматическое решение о возврате. После verified refunded отметка сверки
+в текущем order payload снимается, исторический audit не переписывается.
+
+SEO inventory (/seo/index, /seo/profiles) и server rendering публичных подборок
+не создают sponsored touches или искусственные impressions. Только карточка,
+попавшая в viewport браузера, вызывает существующий observeDiscovery/impression
+с прежней session dedupe и Do Not Track. Paid ranking на этих страницах отсутствует.

@@ -1,4 +1,5 @@
 "use client";
+import { RequestOfferForm } from "@/components/cabinet/RequestOfferForm";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,7 @@ type RequestItem = {
   offer_id: string | null;
   booking_id: string | null;
   slot_id: string | null;
-  honorarium_rub: number;
+  honorarium_rub: number | null;
 };
 type BookingItem = { id: string; status: string; event_title: string; event_date?: string };
 type ServiceItem = {
@@ -473,7 +474,7 @@ export function CabinetDashboard({ cabinetMode }: CabinetDashboardProps) {
                 <div>
                   <span className={`chip ${chipCls(r.status)}`}>{STATUS_LABEL[r.status] || r.status}</span>
                 </div>
-                <p className="timeline">витрина {money(r.honorarium_rub)} — это ещё не счёт</p>
+                <p className="timeline">витрина {r.honorarium_rub === null ? "тариф не указан" : money(r.honorarium_rub)} — это ещё не счёт</p>
                 {r.booking_id ? (
                   <Link className="btn" href={`/deals/${r.booking_id}`}>
                     Открыть Deal Room
@@ -481,9 +482,7 @@ export function CabinetDashboard({ cabinetMode }: CabinetDashboardProps) {
                 ) : role === "viewer" ? (
                   <p className="timeline">Только просмотр: оффер отправляет менеджер</p>
                 ) : (
-                  <button type="button" disabled={offerBusy === r.id} onClick={() => void sendOffer(r)}>
-                    {offerBusy === r.id ? "Отправляем…" : "Отправить предложение"}
-                  </button>
+                  <RequestOfferForm item={r} busy={offerBusy === r.id} onSend={sendOffer} />
                 )}
               </article>
             ))}

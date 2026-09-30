@@ -1,14 +1,22 @@
+import hashlib
+import hmac
 import json
 import secrets
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
+from booker_api.commerce.promotions import attribute_booking
 from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import (
     AvailabilitySlot,
     Booking,
+    BookingHold,
     Contract,
     Conversation,
     Event,
@@ -24,11 +32,38 @@ from booker_api.models import (
 )
 from booker_api.notifications.service import notify, org_member_notifications
 from booker_api.notifications.types import Channel
-from booker_api.payments.adapter import PaymentAdapterError, get_payment_adapter
-from booker_api.rate_limit import client_key, webhook_limiter
-from booker_api.routers.deals import _transition
-from booker_api.schemas import PaymentIn, SignIn, WebhookIn
-from booker_api.security import audit, current_user, require_org_member
+from booker_api.payments.adapter import (
+    PaymentAdapterError,
+    PaymentAdapterUnavailable,
+    VerifiedPaymentEvent,
+    get_payment_adapter,
+    payment_stub_enabled,
+)
+from booker_api.rate_limit import (
+    admin_sensitive_limiter,
+    auth_limiter,
+    client_key,
+    upload_limiter,
+    webhook_limiter,
+)
+from booker_api.routers.deals import (
+    _lock_booking_resources,
+    _lock_event,
+    _lock_open_event,
+    _require_open_event,
+    _transition,
+    _validate_event_slot,
+)
+from booker_api.schemas import PaymentIn, PaymentReconcileIn, SignIn, WebhookIn
+from booker_api.security import (
+    audit,
+    aware,
+    current_user,
+    now,
+    require_admin,
+    require_admin_2fa,
+    require_org_writer,
+)
 
 router = APIRouter(tags=["payments"])
 
@@ -51,6 +86,29 @@ def _new_otp(exclude: str | None = None) -> str:
     return code
 
 
+def _require_contract_reservation(db, booking, event, offer, req):
+    _require_open_event(event)
+    _lock_booking_resources(db, [booking])
+    slot = db.execute(select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id)
+        .with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
+    db.refresh(booking)
+    hold = db.query(BookingHold).filter(BookingHold.booking_id == booking.id,
+        BookingHold.slot_id == booking.slot_id, BookingHold.status == "active", BookingHold.expires_at > now()).first()
+    other = db.query(BookingHold).filter(BookingHold.slot_id == booking.slot_id,
+        BookingHold.booking_id != booking.id, BookingHold.status == "active").first()
+    if not slot or not hold or other or slot.status != "held":
+        raise HTTPException(409, "Резерв даты недействителен. Проверьте сделку перед подписанием")
+    db.refresh(offer)
+    version = db.get(OfferVersion, offer.active_version_id)
+    if not version:
+        raise HTTPException(409, "Условия предложения не найдены")
+    db.refresh(version)
+    if not (version.customer_ack and version.supplier_ack):
+        raise HTTPException(409, "Условия не подтверждены обеими сторонами")
+    _validate_event_slot(db, event, req, slot, own_hold=True)
+    return version
+
+
 @router.post("/bookings/{booking_id}/contract")
 def create_contract(
     booking_id: str,
@@ -63,11 +121,13 @@ def create_contract(
     event = db.get(Event, booking.event_id)
     if not event:
         raise HTTPException(404, "Событие не найдено")
-    require_org_member(db, user, event.organization_id)
+    require_org_writer(db, user, event.organization_id)
+    upload_limiter.check(f"contract-create:{user.id}")
+    _lock_open_event(db, event)
+    db.refresh(booking)
     if booking.status not in {"DateHeld", "AwaitingContract"}:
         raise HTTPException(409, "Сначала удержите дату")
     offer = db.get(Offer, booking.offer_id)
-    version = db.get(OfferVersion, offer.active_version_id)
     existing = db.query(Contract).filter(Contract.booking_id == booking.id).one_or_none()
     if existing:
         return {
@@ -75,6 +135,8 @@ def create_contract(
             "status": booking.status,
             "otp_delivered": True,
         }
+    req = db.get(DealRequest, offer.request_id)
+    version = _require_contract_reservation(db, booking, event, offer, req)
     otp_customer = _new_otp()
     otp_supplier = _new_otp(exclude=otp_customer)
     body = CONTRACT_TEMPLATE.format(
@@ -110,6 +172,7 @@ def create_contract(
         entity_type="contract",
         entity_id=contract.id,
         channels=(Channel.IN_APP, Channel.EMAIL),
+        roles=("owner", "admin", "manager"),
     )
     supplier_notes: list = []
     if offer_req and offer_req.supplier_org_id:
@@ -122,6 +185,7 @@ def create_contract(
             entity_type="contract",
             entity_id=contract.id,
             channels=(Channel.IN_APP, Channel.EMAIL),
+            roles=("owner", "admin", "manager"),
         )
     notify(db, actor_user_id=user.id, notifications=customer_notes + supplier_notes)
     audit(
@@ -141,6 +205,10 @@ def create_contract(
     }
 
 
+def _lock_contract_event(db, event):
+    _lock_event(db, event)
+
+
 @router.post("/contracts/{contract_id}/sign")
 def sign_contract(
     contract_id: str,
@@ -156,20 +224,36 @@ def sign_contract(
     req = db.get(DealRequest, offer.request_id)
     event = db.get(Event, booking.event_id)
     if body.side == "customer":
-        require_org_member(db, user, event.organization_id)
+        require_org_writer(db, user, event.organization_id)
     elif body.side == "supplier":
-        require_org_member(db, user, req.supplier_org_id)
+        require_org_writer(db, user, req.supplier_org_id)
     else:
         raise HTTPException(400, "side: customer|supplier")
+    auth_limiter.check(f"contract-sign:{user.id}:{contract.id}")
+    _lock_contract_event(db, event)
+    db.refresh(booking)
+    db.refresh(contract)
     expected = contract.otp_customer if body.side == "customer" else contract.otp_supplier
-    if body.otp != expected:
+    if not expected or not hmac.compare_digest(body.otp.encode("utf-8"), expected.encode("utf-8")):
         raise HTTPException(403, "Неверный OTP")
+    if (contract.customer_signed if body.side == "customer" else contract.supplier_signed):
+        return {"customer_signed": contract.customer_signed, "supplier_signed": contract.supplier_signed,
+            "booking_status": booking.status}
+    if booking.status != "AwaitingContract":
+        raise HTTPException(409, "Подписание недоступно в текущем состоянии сделки")
+    version = _require_contract_reservation(db, booking, event, offer, req)
+    if f"quote_id={version.id}" not in [line.strip() for line in contract.body.splitlines()]:
+        raise HTTPException(409, "Договор относится к другой версии условий. Обратитесь к оператору")
     if body.side == "customer":
         contract.customer_signed = True
     else:
         contract.supplier_signed = True
     if contract.customer_signed and contract.supplier_signed and booking.status == "AwaitingContract":
         _transition(booking, "AwaitingPayment")
+        from booker_api.notifications.lifecycle import booking_notice
+        booking_notice(db, booking, template='payment.required', subject='Следующий шаг — оплата сделки',
+            body='Обе стороны подписали договор. Откройте сделку, проверьте срок резерва и условия оплаты. Уведомление не подтверждает списание денег.',
+            key=contract.id, customer_only=True, actor_id=user.id)
         conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one()
         db.add(Message(conversation_id=conv.id, kind="system", body="Договор подписан. Ожидается предоплата."))
     audit(
@@ -195,52 +279,132 @@ def create_payment(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    adapter = get_payment_adapter()
-    try:
-        idempotency_key = adapter.normalize_idempotency_key(body.idempotency_key)
-    except PaymentAdapterError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    existing = db.query(Payment).filter(Payment.idempotency_key == idempotency_key).one_or_none()
-    if existing:
-        return {"id": existing.id, "status": existing.status, "idempotent": True}
     booking = db.get(Booking, booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
+    event = db.get(Event, booking.event_id)
+    if not event:
+        raise HTTPException(404, "Событие не найдено")
+    require_org_writer(db, user, event.organization_id)
+    webhook_limiter.check(f"payment-create:{user.id}")
+    adapter = get_payment_adapter()
+    try:
+        raw_key = adapter.normalize_idempotency_key(body.idempotency_key)
+    except PaymentAdapterError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    idempotency_key = hashlib.sha256(f"{booking.id}:{raw_key}".encode()).hexdigest()
+    _lock_contract_event(db, event)
+    # Serialize checkout for this booking, including SQLite where FOR UPDATE is ignored.
+    db.execute(update(Booking).where(Booking.id == booking.id).values(status=Booking.status))
+    db.refresh(booking)
+    pay = db.query(Payment).filter(Payment.booking_id == booking.id).first()
+    replay = pay is not None
+    if pay and (pay.session_state == "ready" or pay.status != "pending"):
+        return _checkout_receipt(db, pay, booking, event, replay=True)
+    if pay and pay.provider != adapter.name:
+        raise HTTPException(409, "Платёж ожидает сверки с исходным партнёром. Обратитесь к оператору")
+    version = _checkout_reservation(db, booking, event)
+    if not pay:
+        pay = Payment(booking_id=booking.id, amount_rub=version.total_rub,
+            status="pending", provider=adapter.name, idempotency_key=idempotency_key,
+            session_state="creating")
+        db.add(pay)
+        db.flush()
+        audit(db, actor_user_id=user.id, action="payment.created", entity_type="payment",
+            entity_id=pay.id, payload={"amount_rub": pay.amount_rub, "provider": pay.provider})
+        # Commit identity BEFORE an external request: a timeout/crash must not change
+        # payment_id, amount or provider idempotency key on the next attempt.
+        db.commit()
+        _lock_contract_event(db, event)
+        db.refresh(booking)
+        db.refresh(pay)
+        if pay.session_state == "ready" or pay.status != "pending":
+            return _checkout_receipt(db, pay, booking, event, replay=True)
+        version = _checkout_reservation(db, booking, event)
+    if pay.amount_rub != version.total_rub:
+        raise HTTPException(409, "Условия платежа требуют сверки. Обратитесь к оператору")
+    try:
+        session = adapter.create_session(payment_id=pay.id, amount_rub=pay.amount_rub,
+            idempotency_key=pay.idempotency_key, booking_id=booking.id)
+        _validate_checkout_session(session, pay)
+        with db.begin_nested():
+            pay.checkout_url = session.checkout_url
+            pay.provider_reference = session.provider_reference
+            db.flush()
+    except (PaymentAdapterError, TimeoutError, ConnectionError, IntegrityError):
+        pay.session_state = "uncertain"
+        audit(db, actor_user_id=user.id, action="payment.session_uncertain", entity_type="payment",
+            entity_id=pay.id, payload={"provider": pay.provider})
+        db.commit()
+        raise HTTPException(502, "Партнёр не подтвердил создание счёта. Повторите запрос: сохранённый платёж будет использован снова") from None
+    pay.session_state = "ready"
+    # Creating checkout is never evidence of capture; only verified events record money.
+    audit(db, actor_user_id=user.id, action="payment.session_ready", entity_type="payment",
+        entity_id=pay.id, payload={"provider": pay.provider})
+    db.commit()
+    return _checkout_receipt(db, pay, booking, event, replay=replay)
+
+
+def _checkout_reservation(db, booking, event):
+    _require_open_event(event)
     if booking.status != "AwaitingPayment":
         raise HTTPException(409, "Оплата доступна после подписания договора")
+    contract = db.query(Contract).filter_by(booking_id=booking.id).one_or_none()
+    if not contract or not (contract.customer_signed and contract.supplier_signed):
+        raise HTTPException(409, "Договор не подписан обеими сторонами")
     offer = db.get(Offer, booking.offer_id)
-    version = db.get(OfferVersion, offer.active_version_id)
-    pay = Payment(
-        booking_id=booking.id,
-        amount_rub=version.total_rub,
-        status="pending",
-        provider=adapter.name,
-        idempotency_key=idempotency_key,
-    )
-    db.add(pay)
-    db.flush()
-    session = adapter.create_session(
-        payment_id=pay.id,
-        amount_rub=pay.amount_rub,
-        idempotency_key=idempotency_key,
-        booking_id=booking.id,
-    )
-    pay.status = session.status
-    audit(
-        db,
-        actor_user_id=user.id,
-        action="payment.created",
-        entity_type="payment",
-        entity_id=pay.id,
-        payload={"amount_rub": pay.amount_rub, "provider": session.provider},
-    )
-    db.commit()
-    db.refresh(pay)
-    return {"id": pay.id, "status": pay.status, "amount_rub": pay.amount_rub}
+    req = db.get(DealRequest, offer.request_id)
+    return _require_contract_reservation(db, booking, event, offer, req)
+
+
+def _validate_checkout_session(session, pay):
+    if session.payment_id != pay.id or session.provider != pay.provider or session.status != "pending":
+        raise PaymentAdapterError("Некорректная сессия партнёра")
+    if session.provider_reference is not None and (not session.provider_reference.strip() or len(session.provider_reference) > 255):
+        raise PaymentAdapterError("Некорректный идентификатор партнёра")
+    if session.checkout_url is not None:
+        try:
+            url = urlsplit(session.checkout_url)
+        except ValueError:
+            raise PaymentAdapterError("Некорректный адрес оплаты") from None
+        if (len(session.checkout_url) > 4096 or url.scheme != "https" or not url.hostname
+                or url.username or url.password or not session.provider_reference
+                or any(ord(c) <= 32 for c in session.checkout_url)):
+            raise PaymentAdapterError("Некорректный адрес оплаты")
+
+
+def _checkout_receipt(db, pay, booking, event, *, replay):
+    allowed = (booking.status == "AwaitingPayment" and event.status not in {"Cancelled", "Completed"}
+        and pay.provider == settings.payment_provider.strip().lower())
+    hold = db.query(BookingHold).filter_by(booking_id=booking.id, slot_id=booking.slot_id, status="active").first()
+    slot = db.get(AvailabilitySlot, booking.slot_id)
+    allowed = (allowed and hold is not None and aware(hold.expires_at) > now()
+        and event.ends_at is not None and aware(event.event_date) > now()
+        and slot is not None and slot.status == "held")
+    return {"id": pay.id, "status": pay.status, "idempotent": replay,
+        "amount_rub": pay.amount_rub, "provider": pay.provider,
+        "session_state": pay.session_state,
+        "checkout_url": pay.checkout_url if allowed and pay.status == "pending" and pay.session_state == "ready" else None}
+
+
+def _lock_payment_context(db: Session, payment: Payment) -> Booking:
+    booking = db.get(Booking, payment.booking_id)
+    event = db.get(Event, booking.event_id) if booking else None
+    if not event:
+        raise HTTPException(404, "Бронь не найдена")
+    _lock_contract_event(db, event)
+    db.refresh(booking)
+    _lock_booking_resources(db, [booking])
+    db.execute(select(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
+    db.execute(update(Payment).where(Payment.id == payment.id).values(status=Payment.status))
+    db.refresh(payment)
+    return booking
 
 
 def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
     adapter = get_payment_adapter()
+    if adapter.name != "stub":
+        raise HTTPException(400, "Используйте endpoint исходных уведомлений партнёра")
     try:
         event = adapter.verify_webhook(
             event_id=body.event_id,
@@ -250,56 +414,178 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         )
     except PaymentAdapterError as exc:
         raise HTTPException(401 if "подпись" in str(exc).lower() else 400, str(exc)) from exc
-    seen = db.get(PaymentWebhookEvent, event.event_id)
-    if seen:
-        return json.loads(seen.response_json)
+    return _apply_payment_event(event, adapter, db)
+
+
+def _apply_payment_event(event, adapter, db, *, receipt_id=None, fingerprint=None, actor_id=None, audit_action="payment.webhook"):
     payment = db.get(Payment, event.payment_id)
     if not payment:
         raise HTTPException(404, "Платёж не найден")
+    if payment.provider != adapter.name:
+        raise HTTPException(409, "Провайдер платежа не совпадает")
+    _lock_payment_context(db, payment)
+    if isinstance(event, VerifiedPaymentEvent):
+        _validate_provider_binding(event, adapter, payment)
+    receipt_id = receipt_id or event.event_id
+    seen = db.get(PaymentWebhookEvent, receipt_id)
+    if seen:
+        if seen.payment_id != payment.id or seen.status != event.status or seen.event_fingerprint != fingerprint:
+            raise HTTPException(409, "Событие уже использовано для другого уведомления")
+        return json.loads(seen.response_json)
+    if isinstance(event, VerifiedPaymentEvent) and not payment.provider_reference:
+        try:
+            with db.begin_nested():
+                payment.provider_reference = event.provider_reference
+                db.flush()
+        except IntegrityError:
+            raise HTTPException(409, "Платёж партнёра уже связан с другой оплатой") from None
+    receipt = PaymentWebhookEvent(event_id=receipt_id, payment_id=payment.id,
+        status=event.status, event_fingerprint=fingerprint, response_json="{}")
+    try:
+        with db.begin_nested():
+            db.add(receipt)
+            db.flush()
+    except IntegrityError:
+        raise HTTPException(409, "Событие партнёра уже связано с другим платежом") from None
     booking = db.get(Booking, payment.booking_id)
     if event.status == "succeeded":
-        payment.status = "succeeded"
-        adapter.ledger.on_capture(payment.id, payment.amount_rub)
-        if booking.status == "AwaitingPayment":
-            _transition(booking, "Confirmed")
-            slot = db.get(AvailabilitySlot, booking.slot_id)
-            slot.status = "confirmed"
-            conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one()
-            db.add(
-                Message(
-                    conversation_id=conv.id,
-                    kind="system",
-                    body="Предоплата получена. Бронирование подтверждено.",
-                )
-            )
-    elif event.status == "failed":
+        if payment.status in {"pending", "failed"}:
+            payment.status = "succeeded"
+            adapter.ledger.on_capture(payment.id, payment.amount_rub)
+            _confirm_captured_booking(db, payment, booking)
+    elif event.status == "failed" and payment.status == "pending":
         payment.status = "failed"
-        if booking.status != "Confirmed":
-            pass
     response = {
         "ok": True,
         "payment_id": payment.id,
         "payment_status": payment.status,
         "booking_status": booking.status,
     }
-    db.add(
-        PaymentWebhookEvent(
-            event_id=event.event_id,
-            payment_id=payment.id,
-            status=event.status,
-            response_json=json.dumps(response),
-        )
-    )
+    receipt.response_json = json.dumps(response)
     audit(
         db,
-        actor_user_id=None,
-        action="payment.webhook",
+        actor_user_id=actor_id,
+        action=audit_action,
         entity_type="payment",
         entity_id=payment.id,
         payload=response,
     )
     db.commit()
     return response
+
+
+def _validate_provider_binding(event, adapter, payment=None):
+    if not isinstance(event, VerifiedPaymentEvent):
+        raise HTTPException(400, "Партнёр не вернул проверенные реквизиты платежа")
+    for value in (event.event_id, event.payment_id, event.merchant_id, event.provider_reference):
+        if not isinstance(value, str) or not value or len(value) > 255 or value != value.strip() or any(ord(c) < 32 for c in value):
+            raise HTTPException(400, "Некорректные реквизиты уведомления")
+    if type(event.amount_rub) is not int or event.amount_rub < 0 or event.currency != 'RUB':
+        raise HTTPException(409, "Сумма или валюта уведомления не поддерживается")
+    if not adapter.merchant_id or event.merchant_id != adapter.merchant_id:
+        raise HTTPException(409, "Получатель платежа не совпадает")
+    if event.status not in ('pending', 'succeeded', 'failed'):
+        raise HTTPException(400, "Состояние уведомления не поддерживается")
+    if payment and (event.amount_rub != payment.amount_rub or
+        (payment.provider_reference and payment.provider_reference != event.provider_reference)):
+        raise HTTPException(409, "Реквизиты партнёра не соответствуют сохранённому платежу")
+
+
+@router.post('/payments/refund-provider-webhook')
+async def refund_provider_webhook(request: Request, db: Session = Depends(get_db)):
+    from booker_api.routers.refunds import apply_verified_refund_event
+
+    webhook_limiter.check(client_key(request, 'refund-provider-webhook'))
+    adapter = get_payment_adapter()
+    if adapter.name == 'stub' and not settings.allow_default_webhook_secret and settings.webhook_secret == 'dev-webhook-secret':
+        raise HTTPException(503, "Webhook-секрет не настроен")
+    payload = bytearray()
+    async for chunk in request.stream():
+        if len(payload) + len(chunk) > 65536:
+            raise HTTPException(413, "Уведомление превышает допустимый размер")
+        payload.extend(chunk)
+    try:
+        event = adapter.verify_raw_refund_webhook(payload=bytes(payload), headers=dict(request.headers))
+    except PaymentAdapterUnavailable:
+        raise HTTPException(503, "Проверка уведомлений партнёра пока недоступна") from None
+    except PaymentAdapterError:
+        raise HTTPException(401, "Уведомление партнёра не прошло проверку") from None
+    return await run_in_threadpool(apply_verified_refund_event, event, adapter, db)
+
+
+@router.post('/payments/provider-webhook')
+async def provider_webhook(request: Request, db: Session = Depends(get_db)):
+    webhook_limiter.check(client_key(request, 'provider-webhook'))
+    adapter = get_payment_adapter()
+    if adapter.name == 'stub' and not settings.allow_default_webhook_secret and settings.webhook_secret == 'dev-webhook-secret':
+        raise HTTPException(503, "Webhook-секрет не настроен")
+    payload = bytearray()
+    async for chunk in request.stream():
+        if len(payload) + len(chunk) > 65536:
+            raise HTTPException(413, "Уведомление превышает допустимый размер")
+        payload.extend(chunk)
+    try:
+        event = adapter.verify_raw_webhook(payload=bytes(payload), headers=dict(request.headers))
+    except PaymentAdapterUnavailable:
+        raise HTTPException(503, "Проверка уведомлений партнёра пока недоступна") from None
+    except PaymentAdapterError:
+        raise HTTPException(401, "Уведомление партнёра не прошло проверку") from None
+    _validate_provider_binding(event, adapter)
+    return await run_in_threadpool(apply_verified_payment_event, event, adapter, db)
+
+
+def apply_verified_payment_event(event, adapter, db, *, source='provider', actor_id=None):
+    _validate_provider_binding(event, adapter)
+    fingerprint = hashlib.sha256(json.dumps({
+        'payment_id': event.payment_id, 'status': event.status, 'amount_rub': event.amount_rub,
+        'currency': event.currency, 'merchant_id': event.merchant_id,
+        'provider_reference': event.provider_reference,
+    }, sort_keys=True).encode()).hexdigest()
+    key = event.event_id if source == 'provider' else f'{event.payment_id}:{fingerprint}'
+    receipt_id = hashlib.sha256(f'{source}:{adapter.name}:{key}'.encode()).hexdigest()
+    return _apply_payment_event(event, adapter, db, receipt_id=receipt_id, fingerprint=fingerprint,
+        actor_id=actor_id, audit_action='payment.webhook' if source == 'provider' else 'payment.reconciled')
+
+
+@router.post('/admin/payments/{payment_id}/reconcile')
+def reconcile_payment(payment_id: str, body: PaymentReconcileIn, request: Request,
+    user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    admin_sensitive_limiter.check(client_key(request, 'payment-reconcile'))
+    if not user.totp_enabled:
+        raise HTTPException(403, 'Для сверки включите второй фактор администратора')
+    require_admin_2fa(user, body.totp, request)
+    payment = db.get(Payment, payment_id)
+    if not payment:
+        raise HTTPException(404, 'Платёж не найден')
+    adapter = get_payment_adapter()
+    if payment.provider != adapter.name or payment.provider == 'external':
+        raise HTTPException(409, 'Сверка требует исходного платёжного партнёра. Перевод вне платформы подтверждается отдельно')
+    lookup = {'payment_id': payment.id, 'provider_reference': payment.provider_reference,
+        'idempotency_key': payment.idempotency_key}
+    audit(db, actor_user_id=user.id, action='payment.reconciliation_requested',
+        entity_type='payment', entity_id=payment.id, payload={'provider': payment.provider})
+    db.commit()  # No event/resource/payment locks held while the partner is queried.
+    try:
+        event = adapter.get_payment_status(**lookup)
+    except PaymentAdapterUnavailable:
+        raise HTTPException(503, 'Сверка статуса у этого партнёра пока недоступна') from None
+    except (PaymentAdapterError, TimeoutError, ConnectionError):
+        raise HTTPException(502, 'Партнёр не подтвердил статус. Повторите сверку позже; новый счёт не создавался') from None
+    _validate_provider_binding(event, adapter)
+    if event.payment_id != payment_id:
+        raise HTTPException(409, 'Партнёр вернул состояние другого платежа')
+    apply_verified_payment_event(event, adapter, db, source='reconcile', actor_id=user.id)
+    # A repeated status receipt retains its original answer, but the operator must
+    # see current domain state if a webhook/refund/cancellation happened since then.
+    db.refresh(payment)
+    booking = db.get(Booking, payment.booking_id)
+    db.refresh(booking)
+    captured = payment.status in ('succeeded', 'partially_refunded', 'refunded')
+    conflict = ((payment.status == 'succeeded' and booking.status in ('AwaitingPayment', 'Cancelled'))
+        or (captured and event.status in ('pending', 'failed')))
+    return {'payment_id': payment.id, 'booking_id': booking.id, 'payment_status': payment.status,
+        'booking_status': booking.status, 'provider_status': event.status, 'amount_rub': payment.amount_rub,
+        'requires_operator': conflict, 'test_mode': payment.provider == 'stub'}
 
 
 @router.post("/payments/webhook")
@@ -320,8 +606,9 @@ def stub_complete(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    if settings.payment_provider.strip().lower() not in {"", "stub"}:
-        raise HTTPException(403, "Только stub-провайдер")
+    webhook_limiter.check(f"payment-test-complete:{user.id}")
+    if not payment_stub_enabled():
+        raise HTTPException(403, "Тестовая оплата отключена")
     payment = db.get(Payment, payment_id)
     if not payment:
         raise HTTPException(404, "Платёж не найден")
@@ -329,7 +616,9 @@ def stub_complete(
     event = db.get(Event, booking.event_id) if booking else None
     if not event:
         raise HTTPException(404, "Событие платежа не найдено")
-    require_org_member(db, user, event.organization_id)
+    require_org_writer(db, user, event.organization_id)
+    if payment.provider != "stub":
+        raise HTTPException(409, "Платёж не является тестовым")
     status = body.get("status") or "succeeded"
     import hashlib
     import hmac
@@ -345,6 +634,44 @@ def stub_complete(
     )
 
 
+def _confirm_captured_booking(db: Session, payment: Payment, booking: Booking | None) -> None:
+    """Capture is a money fact; expired/conflicting reservations need an operator."""
+    if booking and booking.status in {"Confirmed", "InProgress", "Completed"}:
+        return
+    try:
+        if not booking or booking.status != "AwaitingPayment":
+            raise HTTPException(409, "Сделка закрыта или не ожидает оплаты")
+        event = db.get(Event, booking.event_id)
+        offer = db.get(Offer, booking.offer_id)
+        req = db.get(DealRequest, offer.request_id)
+        version = _require_contract_reservation(db, booking, event, offer, req)
+        if version.total_rub != payment.amount_rub:
+            raise HTTPException(409, "Сумма оплаты не соответствует условиям")
+    except HTTPException as exc:
+        audit(db, actor_user_id=None, action="payment.reservation_conflict",
+              entity_type="payment", entity_id=payment.id,
+              payload={"booking_id": booking.id if booking else None, "requires_operator": True, "reason": str(exc.detail)})
+        if booking:
+            from booker_api.notifications.lifecycle import booking_notice
+            booking_notice(db, booking, template="event.blocker",
+                subject="Оплата требует проверки резерва",
+                body=("Тестовое подтверждение оплаты получено; деньги не списывались. "
+                      if payment.provider == "stub" else "Провайдер подтвердил оплату. ")
+                     + "Бронирование не подтверждено: резерв или условия сделки изменились. Откройте сделку и обратитесь в поддержку для сверки оплаты и даты.",
+                key=f"payment-reservation:{payment.id}")
+        return
+    db.execute(update(AvailabilitySlot).where(AvailabilitySlot.id == booking.slot_id).values(status="confirmed"))
+    for hold in db.query(BookingHold).filter_by(booking_id=booking.id, slot_id=booking.slot_id, status="active").all():
+        hold.status = "consumed"
+    _transition(booking, "Confirmed")
+    attribute_booking(db, booking)
+    conv = db.query(Conversation).filter_by(booking_id=booking.id).one_or_none()
+    if conv:
+        note = ("Тестовая оплата подтверждена. Деньги не списывались." if payment.provider == "stub"
+                else "Оплата подтверждена. Бронирование подтверждено.")
+        db.add(Message(conversation_id=conv.id, kind="system", body=note))
+
+
 def capture_payment_as_succeeded(
     db: Session,
     *,
@@ -354,27 +681,20 @@ def capture_payment_as_succeeded(
     note: str,
 ) -> dict:
     """Shared capture path for stub webhook / external admin confirm."""
+    _lock_payment_context(db, payment)
     seen = db.get(PaymentWebhookEvent, event_id)
     if seen:
+        if seen.payment_id != payment.id or seen.status != "succeeded":
+            raise HTTPException(409, "Событие уже использовано")
         return json.loads(seen.response_json)
     booking = db.get(Booking, payment.booking_id)
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
-    payment.status = "succeeded"
-    if booking.status == "AwaitingPayment":
-        _transition(booking, "Confirmed")
-        slot = db.get(AvailabilitySlot, booking.slot_id)
-        if slot:
-            slot.status = "confirmed"
-        conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one_or_none()
-        if conv:
-            db.add(
-                Message(
-                    conversation_id=conv.id,
-                    kind="system",
-                    body=note,
-                )
-            )
+    if payment.status not in {"pending", "failed", "succeeded"}:
+        raise HTTPException(409, "Платёж уже закрыт")
+    if payment.status != "succeeded":
+        payment.status = "succeeded"
+        _confirm_captured_booking(db, payment, booking)
     response = {
         "ok": True,
         "payment_id": payment.id,

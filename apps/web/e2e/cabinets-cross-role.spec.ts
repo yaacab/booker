@@ -71,6 +71,10 @@ test.describe("Cross-role E2E §7.5.11", () => {
     });
 
     await test.step("изоляция прав: viewer не может ack", async () => {
+      const order = await postJson<{ id: string }>(request,
+        `/commerce/organizations/${ctx.customer.orgId}/orders`, ctx.customer.token,
+        { plan_code: "customer_business", billing_period: "monthly", idempotency_key: `viewer-seat-${Date.now()}` });
+      await postJson(request, `/commerce/orders/${order.id}/test-complete`, ctx.customer.token, { status: "paid" });
       const viewer = await postJson<{ token: string; user_id: string }>(
         request,
         "/auth/register",
@@ -130,7 +134,7 @@ test.describe("Cross-role E2E §7.5.11", () => {
         await expect(page.getByRole("heading", { name: "Итог" })).toBeVisible();
         await page.getByRole("button", { name: "Подтвердить условия" }).click();
         await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
-        await page.getByRole("button", { name: "Удержать дату" }).click();
+        await page.getByRole("button", { name: "Удержать дату", exact: true }).first().click();
         await expect(page.getByText("Дата удерживается").first()).toBeVisible({ timeout: 10_000 });
       }
     });

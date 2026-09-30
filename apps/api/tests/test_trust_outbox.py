@@ -96,6 +96,9 @@ def test_support_ticket_create_list(client):
 
 
 def test_email_outbox_retry_idempotent(SessionLocal, monkeypatch):
+    from booker_api.config import settings
+    monkeypatch.setattr(settings, "email_provider", "smtp")
+    monkeypatch.setattr(settings, "email_smtp_host", "smtp.test.invalid")
     db = SessionLocal()
     try:
         row = enqueue_email(

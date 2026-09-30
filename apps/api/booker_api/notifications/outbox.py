@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import secrets
 import smtplib
+from datetime import timedelta
 from email.message import EmailMessage
 
+from sqlalchemy import or_, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from booker_api.config import settings
 from booker_api.models import EmailOutbox, utcnow
-from booker_api.security import audit
+from booker_api.security import audit, now
 
 
 def enqueue_email(
@@ -24,7 +28,7 @@ def enqueue_email(
     entity_id: str = "",
 ) -> EmailOutbox:
     existing = (
-        db.query(EmailOutbox).filter(EmailOutbox.idempotency_key == idempotency_key).one_or_none()
+        db.query(EmailOutbox).filter(EmailOutbox.idempotency_key == idempotency_key).populate_existing().one_or_none()
     )
     if existing:
         return existing
@@ -40,8 +44,17 @@ def enqueue_email(
         attempts=0,
         last_error="",
     )
-    db.add(row)
-    db.flush()
+    connection = db.connection()
+    if connection.dialect.name == 'sqlite' and not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql('BEGIN')
+    try:
+        with db.begin_nested():
+            db.add(row); db.flush()
+    except IntegrityError:
+        existing = db.query(EmailOutbox).filter_by(idempotency_key=idempotency_key).one_or_none()
+        if not existing:
+            raise
+        return existing
     return row
 
 
@@ -54,7 +67,9 @@ def _deliver(row: EmailOutbox) -> tuple[bool, str]:
     msg["Subject"] = row.subject or "Букер"
     msg["From"] = settings.email_from or settings.support_email or "noreply@bukergo.ru"
     msg["To"] = to
+    msg["Message-ID"] = f"<{row.id}@bukergo.ru>"
     msg.set_content(row.body or "")
+    data_started = False
     try:
         with smtplib.SMTP(host, settings.email_smtp_port, timeout=20) as smtp:
             smtp.starttls()
@@ -62,56 +77,65 @@ def _deliver(row: EmailOutbox) -> tuple[bool, str]:
             password = (settings.email_api_key or "").strip()
             if user and password:
                 smtp.login(user, password)
+            data_started = True
             smtp.send_message(msg)
         return True, "sent"
-    except OSError as exc:
-        return False, f"{exc.__class__.__name__}:{exc}"
+    except (smtplib.SMTPRecipientsRefused, smtplib.SMTPSenderRefused, smtplib.SMTPDataError) as exc:
+        return False, f"rejected:{exc.__class__.__name__}"
+    except (OSError, smtplib.SMTPException) as exc:
+        return False, f"{'uncertain' if data_started else 'retryable'}:{exc.__class__.__name__}"
 
 
-def retry_pending_outbox(
-    db: Session,
-    *,
-    actor_user_id: str | None = None,
-    limit: int = 50,
-) -> dict:
-    """Retry pending/failed rows. Already-sent keys are skipped (no duplicate)."""
-    rows = (
-        db.query(EmailOutbox)
-        .filter(EmailOutbox.status.in_(("pending", "failed")))
-        .order_by(EmailOutbox.created_at.asc())
-        .limit(limit)
-        .all()
-    )
-    sent = 0
-    failed = 0
-    skipped = 0
-    for row in rows:
-        if row.status == "sent":
-            skipped += 1
-            continue
-        ok, detail = _deliver(row)
-        row.attempts = int(row.attempts or 0) + 1
-        if ok:
-            row.status = "sent"
-            row.sent_at = utcnow()
-            row.last_error = ""
-            sent += 1
-        else:
-            row.status = "failed"
-            row.last_error = detail[:2000]
-            failed += 1
-        audit(
-            db,
-            actor_user_id=actor_user_id,
-            action="email.outbox.retry",
-            entity_type="email_outbox",
-            entity_id=row.id,
-            payload={
-                "idempotency_key": row.idempotency_key,
-                "status": row.status,
-                "attempts": row.attempts,
-                "detail": detail[:200],
-            },
-        )
-    db.commit()
-    return {"sent": sent, "failed": failed, "skipped": skipped, "processed": len(rows)}
+def retry_pending_outbox(db: Session, *, actor_user_id: str | None = None, limit: int = 50) -> dict:
+    """Process committed rows in a separate session; never commit the caller's work.
+
+    Expired claims are ambiguous (SMTP may have accepted DATA), so they are held
+    for operator review instead of automatically resending.
+    """
+    counts = {"sent": 0, "failed": 0, "skipped": 0, "uncertain": 0, "processed": 0}
+    if settings.email_provider != "smtp":
+        return {**counts, "state": "disabled"}
+    if not (settings.email_smtp_host or "").strip():
+        return {**counts, "state": "unconfigured"}
+    limit = max(1, min(limit, 100))
+    with Session(bind=db.get_bind()) as worker:
+        moment = now()
+        stale = worker.query(EmailOutbox.id).filter(EmailOutbox.status == 'sending', EmailOutbox.claim_expires_at <= moment).limit(limit).all()
+        for (row_id,) in stale:
+            changed = worker.execute(update(EmailOutbox).where(EmailOutbox.id == row_id, EmailOutbox.status == 'sending', EmailOutbox.claim_expires_at <= moment)
+                .values(status='uncertain', last_error='worker_claim_expired', claim_token=None, claim_expires_at=None))
+            if changed.rowcount:
+                counts['uncertain'] += 1
+                audit(worker, actor_user_id=actor_user_id, action='email.outbox.uncertain', entity_type='email_outbox', entity_id=row_id, payload={"reason": "worker_claim_expired"})
+        worker.commit()
+        eligible = (EmailOutbox.status.in_(['pending', 'failed']), EmailOutbox.attempts < 5,
+            or_(EmailOutbox.next_attempt_at.is_(None), EmailOutbox.next_attempt_at <= now()))
+        candidates = worker.query(EmailOutbox.id).filter(*eligible).order_by(EmailOutbox.created_at, EmailOutbox.id).limit(limit).all()
+        worker.commit()
+        for (row_id,) in candidates:
+            token = secrets.token_hex(32)
+            claimed = worker.execute(update(EmailOutbox).where(EmailOutbox.id == row_id, *eligible)
+                .values(status='sending', claim_token=token, claim_expires_at=now()+timedelta(minutes=10), attempts=EmailOutbox.attempts+1))
+            worker.commit()
+            if not claimed.rowcount:
+                counts['skipped'] += 1; continue
+            row = worker.get(EmailOutbox, row_id)
+            # Claim has committed before the first network operation.
+            try:
+                ok, detail = _deliver(row)
+            except Exception as exc:  # noqa: BLE001 — unknown provider outcome must never trigger an automatic resend.
+                ok, detail = False, f'uncertain:{type(exc).__name__}'
+            state = 'sent' if ok else 'uncertain' if detail.startswith('uncertain:') else 'failed'
+            values = {'status': state, 'claim_token': None, 'claim_expires_at': None,
+                'last_error': '' if ok else detail[:120], 'next_attempt_at': None if state != 'failed' else now()+timedelta(seconds=min(3600, 60*2**(row.attempts-1)))}
+            if ok:
+                values['sent_at'] = utcnow()
+            saved = worker.execute(update(EmailOutbox).where(EmailOutbox.id == row_id, EmailOutbox.status == 'sending', EmailOutbox.claim_token == token).values(**values))
+            if saved.rowcount:
+                counts[state] += 1
+                audit(worker, actor_user_id=actor_user_id, action='email.outbox.retry', entity_type='email_outbox', entity_id=row_id,
+                    payload={'status': state, 'attempts': row.attempts})
+            else:
+                counts['uncertain'] += 1
+            worker.commit(); counts['processed'] += 1
+    return {**counts, "state": "processed"}

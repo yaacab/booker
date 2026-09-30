@@ -10,11 +10,15 @@ import { formatWhen, money, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
+import { observeDiscovery } from "@/lib/discovery";
+import type { ArtistPresentation } from "@/lib/presentation";
+import { ArtistCover, ArtistShowcase, ArtistTechnicalFacts, ArtistReviews, ArtistCompareButton } from "@/components/presentation/ArtistShowcase";
 import { SlotList } from "@/components/SlotList";
 import { ProfileMedia } from "@/components/ProfileMedia";
 
 type Slot = { id: string; starts_at: string; ends_at: string; status: string };
 type Artist = {
+  presentation?: ArtistPresentation;
   id: string;
   name: string;
   city: string;
@@ -23,7 +27,7 @@ type Artist = {
   media_url?: string | null;
   rider?: Record<string, string>;
   facts: { note: string; deals?: number; response?: string };
-  tariffs: { id: string; title: string; honorarium_rub: number }[];
+  tariffs: { id: string; title: string; honorarium_rub: number; hours?: number }[];
   slots: Slot[];
 };
 type EventItem = { id: string; title: string; status: string; event_date: string; city?: string };
@@ -74,6 +78,7 @@ export function ArtistProfileClient() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найден"))))
       .then((json: Artist) => {
         setData(json);
+        observeDiscovery("artist", json.id, "profile_view");
         const day = q.get("date");
         const live = json.slots.filter(
           (s) => !s.ends_at || new Date(s.ends_at).getTime() >= Date.now()
@@ -145,7 +150,8 @@ export function ArtistProfileClient() {
       setError("Нет свободного слота");
       return;
     }
-    const body: { artist_id: string; slot_id: string; event_id?: string; requirement_id?: string } = {
+    const body: { artist_id: string; slot_id: string; event_id?: string; requirement_id?: string; promotion_touch_id?: string } = {
+      promotion_touch_id: new URLSearchParams(window.location.search).get("promotion_touch_id") || undefined,
       artist_id: params.id,
       slot_id: slotId,
     };
@@ -195,6 +201,7 @@ export function ArtistProfileClient() {
       <Suspense fallback={null}>
         <PromoAttributionBeacon kind="artist" profileId={data.id} />
       </Suspense>
+      <ArtistCover data={data.presentation} />
       <Link className="profile-back" href={catalogHref}><span aria-hidden="true">←</span> К поиску артистов</Link>
       <div className="public-profile-layout">
         <aside className="public-profile-rail">
@@ -215,7 +222,7 @@ export function ArtistProfileClient() {
             </div>
             <div className="public-profile-actions">
               <a className="btn profile-primary-action" href="#profile-booking">Добавить в событие <span aria-hidden="true">→</span></a>
-              <div className="profile-secondary-actions"><AddToAssembly id={data.id} kind="artist" /><FavoriteToggle targetType="artist" targetId={data.id} /><Link className="btn secondary" href={`/artists/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
+              <div className="profile-secondary-actions"><AddToAssembly id={data.id} kind="artist" /><FavoriteToggle targetType="artist" targetId={data.id} /><ArtistCompareButton artistId={data.id} /><Link className="btn secondary" href={`/compatibility?artist=${data.id}${wantedDay ? `&date=${wantedDay}` : ""}`}>Проверить совместимость</Link><Link className="btn secondary" href={`/artists/${data.id}/share`}>Поделиться <span aria-hidden="true">↗</span></Link></div>
             </div>
           </header>
 
@@ -230,16 +237,18 @@ export function ArtistProfileClient() {
             <p>{rider.about || data.facts.note}</p>
             <div className="profile-fact-chips"><span>{rider.format || CAT[data.category] || categoryLabel(data.category)}</span>{rider.lineup ? <span>{rider.lineup}</span> : null}</div>
           </section>
+          <ArtistShowcase data={data.presentation} />
 
           <section className="public-profile-section">
             <div className="profile-section-heading"><h2>Формат и стоимость</h2><span>Предварительные условия</span></div>
-            {data.tariffs.length ? <ul className="profile-tariff-list">{data.tariffs.map((tariff) => <li key={tariff.id}><span>{tariff.title}</span><strong>{money(tariff.honorarium_rub)}</strong></li>)}</ul> : <p className="timeline">Стоимость уточняется по запросу.</p>}
+            {data.tariffs.length ? <ul className="profile-tariff-list">{data.tariffs.map((tariff) => <li key={tariff.id}><span>{tariff.title}{tariff.hours ? ` · ${tariff.hours} ч.` : ""}</span><strong>{money(tariff.honorarium_rub)}</strong></li>)}</ul> : <p className="timeline">Стоимость уточняется по запросу.</p>}
             <p className="profile-small-note">Окончательная стоимость и условия — в предложении после заявки.</p>
           </section>
 
           <section className="public-profile-section profile-rider-section">
             <h2>Технический райдер</h2>
             <div className="profile-rider-card"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M8 8v8M12 8v8M16 8v8M6 11h4M10 14h4M14 10h4" /></svg><p>{rider.tech || "Технические требования и состав согласуем после заявки."}</p></div>
+            <ArtistTechnicalFacts data={data.presentation} />
           </section>
 
           <section className="profile-booking-panel" id="profile-booking" aria-labelledby="artist-booking-heading">
@@ -255,6 +264,7 @@ export function ArtistProfileClient() {
           </section>
         </div>
       </div>
+      <ArtistReviews artistId={data.id} />
       <div className="sticky-cta"><button type="button" onClick={() => void request()} disabled={!slotId || busy}>{busy ? "Отправляем заявку…" : "Запросить предложение"}</button></div>
     </main>
   );

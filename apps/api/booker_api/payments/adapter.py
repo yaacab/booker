@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -30,6 +31,29 @@ class PaymentSession:
 class WebhookEvent:
     event_id: str
     payment_id: str
+    status: str
+
+
+@dataclass(frozen=True)
+class VerifiedPaymentEvent(WebhookEvent):
+    """Normalized result AFTER verification of original provider bytes/headers."""
+    amount_rub: int
+    currency: str
+    merchant_id: str
+    provider_reference: str
+
+
+@dataclass(frozen=True)
+class VerifiedRefundEvent:
+    """Signed provider facts bound to the original refund idempotency key."""
+    event_id: str
+    payment_id: str
+    request_key: str
+    payment_reference: str
+    refund_reference: str
+    amount_rub: int
+    currency: str
+    merchant_id: str
     status: str
 
 
@@ -78,7 +102,15 @@ class PaymentAdapter(ABC):
         amount_rub: int,
         idempotency_key: str,
         booking_id: str,
-    ) -> PaymentSession: ...
+    ) -> PaymentSession:
+        """Create/retrieve pending checkout using the SAME provider idempotency key.
+
+        The application persists payment identity before calling. Retries after a
+        timeout must return the original session, never charge again. Wrap network
+        uncertainty in PaymentAdapterError. Capture is delivered as a verified event,
+        not as a successful checkout response. Do not log bearer checkout URLs.
+        """
+        ...
 
     @abstractmethod
     def verify_webhook(
@@ -104,26 +136,108 @@ class PaymentAdapter(ABC):
     ) -> RefundOutcome: ...
 
 
+    @property
+    def merchant_id(self) -> str:
+        return settings.payment_merchant_id.strip()
+
+    def verify_raw_webhook(self, *, payload: bytes, headers: dict[str, str]) -> VerifiedPaymentEvent:
+        """Verify provider signature/timestamp before decoding trusted domain fields.
+
+        Normalize amount exactly to integer RUB (reject fractional rubles until
+        domain money supports them), verify provider metadata binds payment_id,
+        and return the actual merchant/reference/currency from the signed event.
+        Never trust a caller-supplied already-normalized JSON signature instead.
+        """
+        raise PaymentAdapterUnavailable("Проверка уведомлений этого партнёра пока недоступна")
+
+    def verify_raw_refund_webhook(self, *, payload: bytes, headers: dict[str, str]) -> VerifiedRefundEvent:
+        """Verify original bytes/signature/timestamp before normalizing refund facts.
+
+        Resolve request_key from authenticated provider metadata or the original
+        idempotency key. Never infer it from amount alone. The payment reference,
+        refund reference, amount, currency and merchant must be provider facts.
+        Unknown/external refunds require operator reconciliation, not a fabricated
+        approved request. This method must never create a refund.
+        """
+        raise PaymentAdapterUnavailable("Проверка уведомлений о возвратах пока недоступна")
+
+    def get_payment_status(self, *, payment_id: str, provider_reference: str | None,
+        idempotency_key: str) -> VerifiedPaymentEvent:
+        """Authenticated read of the original payment, never create_session fallback.
+
+        If checkout response was lost, look up by its original idempotency key /
+        payment metadata. Verify merchant and payment binding in the provider
+        response. Return provider amount/currency/reference, not echoed request
+        values. Status is capture lifecycle only; refunds are reconciled separately.
+        A provider without such a read must fail closed, including the local stub.
+        """
+        raise PaymentAdapterUnavailable("Сверка платежа этим партнёром пока недоступна")
+
+    def get_refund_status(self, *, payment_id: str, refund_id: str, amount_rub: int,
+        total_rub: int, idempotency_key: str) -> RefundOutcome:
+        """Read a refund without creating it; adapters must bind amount and reference.
+
+        Pending is not a payout. A succeeded/failed refund outcome is terminal.
+        Never map a transport error or unknown status to failed.
+        """
+        raise PaymentAdapterUnavailable("Сверка возврата этим партнёром пока недоступна")
+
+
+def payment_stub_enabled() -> bool:
+    return (
+        settings.environment.strip().lower() in {"dev", "development", "test"}
+        and settings.payment_allow_stub
+        and settings.payment_provider.strip().lower() == "stub"
+    )
+
+
+_live_adapters: dict[str, Callable[[], PaymentAdapter]] = {}
+
+
+def register_payment_adapter(name: str, factory: Callable[[], PaymentAdapter]) -> None:
+    """Call from reviewed application bootstrap; never from an HTTP request."""
+    from booker_api.payment_activation import validate_provider_name
+    validate_provider_name(name)
+    if not callable(factory) or (name in _live_adapters and _live_adapters[name] is not factory):
+        raise ValueError("Provider registration must be callable and unique")
+    _live_adapters[name] = factory
+
+
 def payment_live_enabled() -> bool:
-    provider = settings.payment_provider.strip().lower()
-    merchant = (settings.payment_merchant_id or "").strip()
-    return provider not in {"", "stub", "external", "disabled"} and bool(merchant)
+    from booker_api.payment_activation import live_configuration_ready
+    return settings.payment_provider.strip().lower() in _live_adapters and live_configuration_ready()
+
+
+def payment_capabilities() -> dict:
+    stub = payment_stub_enabled()
+    external = settings.payment_provider.strip().lower() == "external"
+    return {
+        "available": stub or external or payment_live_enabled(),
+        "test_mode": stub,
+        "message": (
+            "Тестовая оплата: деньги не списываются" if stub else
+            "Перевод вне платформы подтверждает оператор" if external else
+            "Онлайн-оплата через платёжного партнёра" if payment_live_enabled() else
+            "Оплата пока недоступна: платёжный партнёр не подключён"
+        ),
+    }
 
 
 def get_payment_adapter() -> PaymentAdapter:
     from booker_api.payments.external import ExternalPaymentAdapter
-    from booker_api.payments.live import LivePaymentAdapter
     from booker_api.payments.stub import StubPaymentAdapter
 
     provider = settings.payment_provider.strip().lower()
-    if provider in {"", "stub"}:
+    if payment_stub_enabled():
         return StubPaymentAdapter()
     if provider == "external":
         return ExternalPaymentAdapter()
-    if not payment_live_enabled():
-        raise HTTPException(
-            501,
-            "Боевой платёжный партнёр за фичефлагом: нужны BOOKER_PAYMENT_PROVIDER и "
-            "BOOKER_PAYMENT_MERCHANT_ID",
-        )
-    return LivePaymentAdapter()
+    if payment_live_enabled():
+        try:
+            adapter = _live_adapters[provider]()
+            if not isinstance(adapter, PaymentAdapter) or adapter.name != provider:
+                raise ValueError("Provider identity mismatch")
+            return adapter
+        except Exception:  # noqa: BLE001 - Never expose provider constructor credentials.
+            raise HTTPException(503, "Платёжный партнёр временно недоступен") from None
+    raise HTTPException(503, "Оплата пока недоступна: платёжный партнёр не подключён")

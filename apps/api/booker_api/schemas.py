@@ -1,6 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Literal
+from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class RegisterIn(BaseModel):
@@ -60,9 +62,9 @@ class VenueIn(BaseModel):
 
 
 class TariffIn(BaseModel):
-    title: str
-    honorarium_rub: int
-    hours: int = 2
+    title: str = Field(min_length=1, max_length=255)
+    honorarium_rub: int = Field(strict=True, ge=0, le=1_000_000_000)
+    hours: int = Field(default=2, strict=True, ge=1, le=24)
 
 
 class SlotIn(BaseModel):
@@ -74,14 +76,49 @@ class SlotIn(BaseModel):
     buffer_after_min: int | None = Field(default=0, ge=0)
 
 
+class EventRequirementIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    category_code: str = Field(min_length=1, max_length=32)
+    role_label: str = Field(default="", max_length=128)
+    qty: int = Field(default=1, strict=True, ge=1, le=20)
+    required: bool = True
+    sort_order: int | None = Field(default=None, strict=True, ge=0, le=1000)
+    notes: str = Field(default="", max_length=4000)
+
+
 class EventIn(BaseModel):
-    organization_id: str
-    title: str
-    city: str = "Москва"
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    organization_id: UUID
+    title: str = Field(min_length=1, max_length=255)
+    city: str = Field(default="Москва", min_length=1, max_length=128)
     event_date: datetime
-    guest_count: int = 50
-    budget_rub: int | None = None
-    notes: str = ""
+    ends_at: datetime | None = None
+    event_type: str = Field(default="", max_length=128)
+    guest_count: int = Field(default=50, strict=True, ge=1, le=100000)
+    budget_rub: int | None = Field(default=None, strict=True, ge=0, le=1_000_000_000)
+    notes: str = Field(default="", max_length=16000)
+    requirements: list[EventRequirementIn] | None = Field(default=None, max_length=30)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=64)
+
+    @field_validator("event_date", "ends_at")
+    @classmethod
+    def utc_dates(cls, value):
+        return (value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)) if value else None
+
+    @model_validator(mode="after")
+    def valid_interval(self):
+        if self.ends_at and self.ends_at <= self.event_date:
+            raise ValueError("Окончание должно быть позже начала события")
+        return self
+
+
+class RequestCreateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    resource_type: Literal["artist", "hall", "venue"]
+    resource_id: UUID
+    requirement_id: UUID | None = None
+    promotion_touch_id: UUID | None = None
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class RequestIn(BaseModel):
@@ -111,14 +148,14 @@ class SignIn(BaseModel):
 
 
 class PaymentIn(BaseModel):
-    idempotency_key: str
+    idempotency_key: str = Field(min_length=1, max_length=64)
 
 
 class WebhookIn(BaseModel):
-    event_id: str
-    payment_id: str
-    status: str
-    signature: str
+    event_id: str = Field(min_length=1, max_length=64)
+    payment_id: str = Field(min_length=1, max_length=36)
+    status: str = Field(min_length=1, max_length=32)
+    signature: str = Field(min_length=1, max_length=256)
 
 
 DISPUTE_CATEGORIES = (
@@ -140,13 +177,6 @@ class DisputeIn(BaseModel):
         if value not in DISPUTE_CATEGORIES:
             raise ValueError("Категория спора должна быть из списка")
         return value
-
-
-class RefundIn(BaseModel):
-    payment_id: str
-    approver_user_id: str
-    totp: str | None = None
-    reason: str = ""
 
 
 class VerifyIn(BaseModel):
@@ -265,3 +295,8 @@ class VacationClearIn(BaseModel):
         if self.resource_type not in {"artist", "hall"}:
             raise ValueError("resource_type: artist|hall")
         return self
+
+
+class PaymentReconcileIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    totp: str | None = Field(default=None, max_length=16)

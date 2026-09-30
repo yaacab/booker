@@ -35,6 +35,7 @@ def _setup_event_with_requirement(client):
             "organization_id": cust_org["id"],
             "title": "Свадьба",
             "event_date": starts,
+            "ends_at": ends,
             "requirements": [{"category_code": "dj", "qty": 1}],
         },
         headers=ch,

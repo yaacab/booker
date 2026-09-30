@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { loginHref } from "@/lib/next";
+import { ShortlistManager } from "@/components/ShortlistManager";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { ProfileMedia } from "@/components/ProfileMedia";
 import { categoryLabel } from "@/lib/copy";
@@ -109,6 +110,7 @@ export function FavoritesListClient() {
           {compareIds.length >= 2 ? <Link className="btn secondary" href={compareHref}>{compareMode ? `Сравнить (${selectedIds.length})` : activeType === "artist" ? "Сравнить артистов" : "Сравнить площадки"}</Link> : <button type="button" className="btn secondary" disabled>Сравнить ({compareIds.length})</button>}
         </div>
       </div>
+      <ShortlistManager favorites={items} />
       {compareMode ? <p className="saved-comparison-hint" role="status">Выберите от 2 до 4 {activeType === "artist" ? "артистов" : "площадок"}. Выбрано: {selectedIds.length}.</p> : null}
       {error ? <p className="profile-error" role="alert">{error}</p> : null}
       {!error && visibleItems.length === 0 ? <article className="card saved-empty-state"><span className="saved-empty-icon" aria-hidden="true">♡</span><h2>{items.length ? `В избранном пока нет ${activeType === "artist" ? "артистов" : "площадок"}` : "Здесь будут ваши любимые"}</h2><p>Нажмите на сердце в каталоге, чтобы сохранить подходящие варианты.</p><Link className="btn" href={`/search?kind=${activeType}`}>Открыть каталог <span aria-hidden="true">→</span></Link></article> : null}

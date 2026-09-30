@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, grant_team_plan, register
 
 
 def test_create_and_list_service(client):
@@ -40,6 +40,7 @@ def test_viewer_cannot_post_service(client):
         json={"name": "Сцена", "kind": "artist"},
         headers=auth_header(owner["token"]),
     ).json()
+    grant_team_plan(client, org['id'])
     add = client.post(
         f"/orgs/{org['id']}/members",
         json={"user_id": viewer["user_id"], "role": "viewer", "can_confirm_offer": False},

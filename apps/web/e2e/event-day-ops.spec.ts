@@ -13,8 +13,11 @@ const reqDj = { id: "req-dj", category_code: "dj", qty: 2 };
 const reqHost = { id: "req-host", category_code: "host", qty: 1 };
 
 test.describe("eventDayOps", () => {
-  test("isClosedRequest: booking or Confirmed", () => {
-    expect(isClosedRequest({ id: "1", status: "Negotiation", booking_id: "b1" })).toBe(true);
+  test("isClosedRequest: only actual confirmed booking states", () => {
+    expect(isClosedRequest({ id: "1", status: "Negotiation", booking_id: "b1" })).toBe(false);
+    expect(isClosedRequest({ id: "held", status: "Negotiation", booking_id: "b1", booking_status: "DateHeld" })).toBe(false);
+    expect(isClosedRequest({ id: "cancelled", status: "Confirmed", booking_id: "b1", booking_status: "Cancelled" })).toBe(false);
+    expect(isClosedRequest({ id: "live", status: "Negotiation", booking_id: "b1", booking_status: "InProgress" })).toBe(true);
     expect(isClosedRequest({ id: "2", status: "Confirmed" })).toBe(true);
     expect(isClosedRequest({ id: "3", status: "Negotiation" })).toBe(false);
   });
@@ -48,7 +51,7 @@ test.describe("eventDayOps", () => {
     );
     expect(steps).toHaveLength(2);
     expect(steps[0].blocker).toBe("no_offer");
-    expect(BLOCKER_LABEL[steps[0].blocker]).toBe("нет оффера");
+    expect(BLOCKER_LABEL[steps[0].blocker]).toBe("нет предложения");
     expect(steps[1].openRequests).toHaveLength(1);
     expect(steps[1].blocker).toBe("no_booking");
   });
@@ -61,6 +64,12 @@ test.describe("eventDayOps", () => {
     );
     expect(steps).toHaveLength(1);
     expect(needsReplacement(steps[0])).toBe(true);
+  });
+
+  test("cancelled booking overrides old request status for replacement", () => {
+    const steps = buildNextSteps([reqDj], [{ id: "old", status: "Confirmed", booking_status: "Cancelled", requirement_id: reqDj.id }], req => req.category_code);
+    expect(needsReplacement(steps[0])).toBe(true);
+    expect(steps[0].blocker).toBe("no_request");
   });
 
   test("openLooseRequests: unmatched without booking", () => {

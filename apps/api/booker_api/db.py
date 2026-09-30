@@ -2,8 +2,8 @@ from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.engine import make_url
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from booker_api.config import settings
@@ -40,7 +40,30 @@ def ensure_missing_columns(bind) -> None:
         bind, "availability_slots", "external_uid", "external_uid VARCHAR(255)"
     )
     _add_column_if_missing(bind, "requests", "requirement_id", "requirement_id VARCHAR(36)")
+    for column in (
+        "customer_service_fee_rub", "supplier_service_fee_rub", "customer_total_rub",
+        "supplier_payout_rub", "platform_revenue_rub",
+    ):
+        _add_column_if_missing(bind, "offer_versions", column, f"{column} INTEGER")
+    for column in ("customer_service_fee_rate", "supplier_service_fee_rate"):
+        _add_column_if_missing(bind, "offer_versions", column, f"{column} FLOAT")
+    _add_column_if_missing(bind, "offer_versions", "commercial_policy_version",
+                           "commercial_policy_version VARCHAR(128)")
+    for column, ddl in (
+        ("event_type", "event_type VARCHAR(64) NOT NULL DEFAULT ''"),
+        ("share_budget", "share_budget BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("budget_min_rub", "budget_min_rub INTEGER"),
+        ("budget_max_rub", "budget_max_rub INTEGER"),
+        ("public_requirements_json", "public_requirements_json TEXT NOT NULL DEFAULT '{}'"),
+    ):
+        _add_column_if_missing(bind, "public_briefs", column, ddl)
+    _add_column_if_missing(bind, "brief_responses", "target_type", "target_type VARCHAR(16)")
+    _add_column_if_missing(bind, "brief_responses", "target_id", "target_id VARCHAR(36)")
+    _add_column_if_missing(bind, "shared_shortlists", "event_id", "event_id VARCHAR(36)")
+    _add_column_if_missing(bind, "shared_shortlists", "collaborative", "collaborative BOOLEAN NOT NULL DEFAULT FALSE")
     ts_type = "TIMESTAMPTZ" if dialect == "postgresql" else "DATETIME"
+    _add_column_if_missing(bind, "events", "ends_at", f"ends_at {ts_type}")
+    _add_column_if_missing(bind, "events", "event_type", "event_type VARCHAR(128) NOT NULL DEFAULT ''")
     _add_column_if_missing(
         bind,
         "session_tokens",
@@ -114,6 +137,9 @@ def ensure_missing_columns(bind) -> None:
 
 def ensure_sqlite_columns(bind) -> None:
     ensure_missing_columns(bind)
+    from booker_api.commerce.snapshots import install_sqlite_guard
+
+    install_sqlite_guard(bind)
 
 
 def make_engine(url: str | None = None):
@@ -156,7 +182,7 @@ def init_schema(bind=None) -> None:
         run_migrations(str(target.url))
         return
     Base.metadata.create_all(bind=target)
-    ensure_missing_columns(target)
+    ensure_sqlite_columns(target)
 
 
 def get_db() -> Generator[Session, None, None]:

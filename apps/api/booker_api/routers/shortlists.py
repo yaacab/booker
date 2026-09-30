@@ -1,261 +1,267 @@
-"""Shared shortlists + compare (E22 / W3-SHARE / W3-COMPARE)."""
-
-from __future__ import annotations
-
+"""Share selected public profiles without granting account or event access."""
 import secrets
 from datetime import timedelta
+from typing import Literal
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
+from booker_api.collaboration import (
+    active_share,
+    digest,
+    guest_for,
+    limit,
+    public_text,
+    shared_payload,
+    visible_item,
+)
+from booker_api.composition import ROLE_LABEL
+from booker_api.config import settings
 from booker_api.db import get_db
+from booker_api.event_commands import remember_command, replay_command
 from booker_api.models import (
     Artist,
+    Event,
     Favorite,
+    Organization,
     SharedShortlist,
     SharedShortlistItem,
+    ShortlistFeedback,
+    ShortlistGuest,
     User,
     Venue,
     VenueHall,
-    utcnow,
 )
-from booker_api.security import audit, aware, current_user, require_org_member
+from booker_api.rate_limit import analytics_limiter, messaging_limiter
+from booker_api.security import (
+    audit,
+    aware,
+    current_user,
+    membership,
+    now,
+    require_org_member,
+    require_org_writer,
+)
 
 router = APIRouter(tags=["shortlists"])
-
 ALLOWED_TYPES = frozenset({"artist", "venue"})
 
 
 class ShortlistCreateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     organization_id: str | None = None
-    target_type: str
-    title: str = "Подборка"
-    favorite_ids: list[str] = Field(default_factory=list, min_length=1, max_length=8)
+    event_id: UUID | None = None
+    target_type: Literal["artist", "venue"]
+    title: str = Field(default="Подборка", min_length=1, max_length=120)
+    favorite_ids: list[str] = Field(min_length=2, max_length=4)
     ttl_days: int = Field(default=14, ge=1, le=90)
+    collaborative: bool = False
 
-    @field_validator("target_type")
+    @field_validator("title")
     @classmethod
-    def validate_type(cls, value: str) -> str:
-        normalized = (value or "").strip().lower()
-        if normalized not in ALLOWED_TYPES:
-            raise ValueError("target_type: artist|venue")
-        return normalized
+    def title_text(cls, value):
+        return public_text(value) or "Подборка"
 
 
-def _org_id(db: Session, user: User, organization_id: str | None, x_booker_org: str | None) -> str:
+class GuestIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    display_name: str = Field(min_length=1, max_length=60)
+    guest_secret: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+    @field_validator("display_name")
+    @classmethod
+    def name_text(cls, value):
+        value = public_text(value)
+        if not value:
+            raise ValueError("Укажите имя для обсуждения")
+        return value
+
+
+class FeedbackIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reaction: Literal["vote", "favorite", "reject"] | None = None
+    comment: str = Field(default="", max_length=1000)
+    expected_revision: int = Field(ge=0, strict=True)
+
+    @field_validator("comment")
+    @classmethod
+    def comment_text(cls, value):
+        return public_text(value)
+
+
+def _org_id(db, user, organization_id, x_booker_org):
     org_id = (organization_id or x_booker_org or user.active_organization_id or "").strip()
     if not org_id:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Нужна организация")
+        raise HTTPException(400, "Нужна организация")
     require_org_member(db, user, org_id)
     return org_id
 
 
-def _snapshot(db: Session, target_type: str, target_id: str) -> tuple[str, str, str]:
-    if target_type == "artist":
+def _snapshot(db, kind, target_id):
+    if kind == "artist":
         row = db.get(Artist, target_id)
         if not row:
-            raise HTTPException(404, "Артист не найден")
-        summary = f"категория: {row.category}" if getattr(row, "category", None) else ""
-        return row.name, row.city or "", summary
+            raise HTTPException(404, "Профиль недоступен")
+        return row.name, row.city or "", ROLE_LABEL.get(row.category, "Исполнитель")
     row = db.get(Venue, target_id)
-    if not row:
-        raise HTTPException(404, "Площадка не найдена")
-    halls = db.query(VenueHall).filter(VenueHall.venue_id == row.id).all()
-    cap = max([h.capacity for h in halls], default=row.capacity)
-    summary = f"вместимость до {cap}"
-    return row.name, row.city or "", summary
+    if not row or row.moderation_status != "published":
+        raise HTTPException(404, "Профиль недоступен")
+    halls = db.query(VenueHall).filter_by(venue_id=row.id).all()
+    return row.name, row.city or "", f"Вместимость одного зала до {max([h.capacity for h in halls], default=row.capacity)}"
 
 
-def _shortlist_out(row: SharedShortlist, *, include_token: bool = False) -> dict:
-    items = sorted(row.items, key=lambda i: i.sort_order)
-    data = {
-        "id": row.id,
-        "title": row.title,
-        "target_type": row.target_type,
-        "organization_id": row.organization_id,
-        "expires_at": row.expires_at.isoformat() if row.expires_at else None,
-        "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
-        "created_at": row.created_at.isoformat() if row.created_at else None,
-        "items": [
-            {
-                "target_id": it.target_id,
-                "name": it.name,
-                "city": it.city,
-                "summary": it.summary,
-            }
-            for it in items
-        ],
-        "share_path": f"/s/{row.token}",
-        "active": row.revoked_at is None and aware(row.expires_at) > utcnow(),
-    }
+def _out(db, row, *, can_manage=True, include_token=False):
+    data = {**shared_payload(db, row), "id": row.id, "organization_id": row.organization_id, "event_id": row.event_id,
+        "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None, "created_at": row.created_at.isoformat(),
+        "active": row.revoked_at is None and aware(row.expires_at) > now(), "can_manage": can_manage}
+    if can_manage:
+        data["share_path"] = f"/s/{row.token}"
     if include_token:
         data["token"] = row.token
     return data
 
 
-@router.post("/shortlists", status_code=status.HTTP_201_CREATED)
-def create_shortlist(
-    body: ShortlistCreateIn,
-    user: User = Depends(current_user),
-    db: Session = Depends(get_db),
-    x_booker_org: str | None = Header(default=None, alias="X-Booker-Org"),
-):
-    org_id = _org_id(db, user, body.organization_id, x_booker_org)
-    favs = (
-        db.query(Favorite)
-        .filter(
-            Favorite.id.in_(body.favorite_ids),
-            Favorite.user_id == user.id,
-            Favorite.organization_id == org_id,
-            Favorite.target_type == body.target_type,
-        )
-        .all()
-    )
-    if len(favs) != len(set(body.favorite_ids)):
-        raise HTTPException(400, "Некоторые favorite_ids не найдены в избранном")
-    if not (2 <= len(favs) <= 4):
-        raise HTTPException(400, "В подборку нужно 2–4 кандидата одного типа")
+def _managed(db, user, shortlist_id, *, writer=False):
+    row = db.get(SharedShortlist, str(shortlist_id))
+    if not row or (not user.is_platform_admin and not membership(db, user.id, row.organization_id)):
+        raise HTTPException(404, "Подборка не найдена")
+    (require_org_writer if writer else require_org_member)(db, user, row.organization_id)
+    return row
 
-    token = secrets.token_urlsafe(24)
-    row = SharedShortlist(
-        owner_user_id=user.id,
-        organization_id=org_id,
-        target_type=body.target_type,
-        title=(body.title or "Подборка").strip()[:255] or "Подборка",
-        token=token,
-        expires_at=utcnow() + timedelta(days=body.ttl_days),
-    )
-    db.add(row)
-    db.flush()
-    for idx, fav in enumerate(favs):
+
+@router.post("/shortlists", status_code=201)
+def create_shortlist(body: ShortlistCreateIn, user: User = Depends(current_user), db: Session = Depends(get_db),
+    x_booker_org: str | None = Header(default=None, alias="X-Booker-Org"),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", min_length=8, max_length=160)):
+    org_id = _org_id(db, user, body.organization_id, x_booker_org)
+    require_org_writer(db, user, org_id)
+    messaging_limiter.check(f"shortlist-create:{user.id}")
+    if body.collaborative and not settings.collaborative_events:
+        raise HTTPException(503, "Совместные обсуждения временно отключены")
+    if body.event_id:
+        event = db.get(Event, str(body.event_id))
+        if not event or event.organization_id != org_id:
+            raise HTTPException(404, "Событие не найдено в этой организации")
+    db.execute(update(Organization).where(Organization.id == org_id).values(name=Organization.name))
+    scope = f"shortlist:{org_id}:{user.id}"
+    command = body.model_dump(mode="json")
+    previous = replay_command(db, scope, idempotency_key, command)
+    if previous:
+        return {**_out(db, _managed(db, user, previous['id'], writer=True), include_token=True), "reused": True}
+    if db.query(SharedShortlist).filter(SharedShortlist.organization_id == org_id, SharedShortlist.revoked_at.is_(None), SharedShortlist.expires_at > now()).count() >= 20:
+        raise HTTPException(409, "У организации уже 20 активных подборок. Отзовите ненужные ссылки")
+    if len(set(body.favorite_ids)) != len(body.favorite_ids):
+        raise HTTPException(422, "Выберите разных кандидатов")
+    favs = db.query(Favorite).filter(Favorite.id.in_(body.favorite_ids), Favorite.user_id == user.id, Favorite.organization_id == org_id, Favorite.target_type == body.target_type).all()
+    if len(favs) != len(body.favorite_ids):
+        raise HTTPException(400, "Некоторые кандидаты не найдены в вашем избранном")
+    row = SharedShortlist(owner_user_id=user.id, organization_id=org_id, event_id=str(body.event_id) if body.event_id else None,
+        target_type=body.target_type, title=body.title, token=secrets.token_urlsafe(24), expires_at=now()+timedelta(days=body.ttl_days), collaborative=body.collaborative)
+    db.add(row); db.flush()
+    for index, favorite_id in enumerate(body.favorite_ids):
+        fav = next(f for f in favs if f.id == favorite_id)
         name, city, summary = _snapshot(db, fav.target_type, fav.target_id)
-        db.add(
-            SharedShortlistItem(
-                shortlist_id=row.id,
-                target_id=fav.target_id,
-                name=name,
-                city=city,
-                summary=summary,
-                sort_order=idx,
-            )
-        )
-    audit(
-        db,
-        actor_user_id=user.id,
-        action="shortlist.created",
-        entity_type="shared_shortlist",
-        entity_id=row.id,
-        payload={"target_type": body.target_type, "items": len(favs)},
-    )
+        db.add(SharedShortlistItem(shortlist_id=row.id, target_id=fav.target_id, name=name, city=city, summary=summary, sort_order=index))
+    audit(db, actor_user_id=user.id, action="shortlist.created", entity_type="shared_shortlist", entity_id=row.id,
+        payload={"target_type": body.target_type, "items": len(favs), "collaborative": row.collaborative, "with_event": bool(row.event_id)})
+    remember_command(db, scope, idempotency_key, command, {"id": row.id})
+    db.commit(); db.refresh(row)
+    return _out(db, row, include_token=True)
+
+
+@router.get("/shortlists")
+def list_shortlists(organization_id: str | None = None, event_id: UUID | None = None, user: User = Depends(current_user), db: Session = Depends(get_db),
+    x_booker_org: str | None = Header(default=None, alias="X-Booker-Org")):
+    org_id = _org_id(db, user, organization_id, x_booker_org)
+    member = require_org_member(db, user, org_id)
+    analytics_limiter.check(f"shortlist-list:{user.id}")
+    query = db.query(SharedShortlist).filter_by(organization_id=org_id)
+    if event_id:
+        event = db.get(Event, str(event_id))
+        if not event or event.organization_id != org_id:
+            raise HTTPException(404, "Событие не найдено в этой организации")
+        query = query.filter_by(event_id=str(event_id))
+    can_manage = member.role in {"owner", "admin", "manager"}
+    rows = query.order_by(SharedShortlist.revoked_at.is_(None).desc(), SharedShortlist.expires_at.desc()).limit(100).all()
+    audit(db, actor_user_id=user.id, action="shortlist.results_viewed", entity_type="organization", entity_id=org_id, payload={"count": len(rows)})
+    result = {"items": [_out(db, row, can_manage=can_manage) for row in rows], "can_manage": can_manage, "collaboration_enabled": settings.collaborative_events}
     db.commit()
-    db.refresh(row)
-    return _shortlist_out(row, include_token=True)
+    return result
 
 
 @router.post("/shortlists/{shortlist_id}/revoke")
-def revoke_shortlist(
-    shortlist_id: str,
-    user: User = Depends(current_user),
-    db: Session = Depends(get_db),
-):
-    row = db.get(SharedShortlist, shortlist_id)
-    if not row or row.owner_user_id != user.id:
-        raise HTTPException(404, "Подборка не найдена")
+def revoke_shortlist(shortlist_id: UUID, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    row = _managed(db, user, shortlist_id, writer=True)
+    messaging_limiter.check(f"shortlist-revoke:{user.id}")
+    db.execute(update(SharedShortlist).where(SharedShortlist.id == row.id).values(title=SharedShortlist.title)); db.refresh(row)
     if row.revoked_at is None:
-        row.revoked_at = utcnow()
-        audit(
-            db,
-            actor_user_id=user.id,
-            action="shortlist.revoked",
-            entity_type="shared_shortlist",
-            entity_id=row.id,
-            payload={},
-        )
-        db.commit()
-        db.refresh(row)
-    return _shortlist_out(row, include_token=True)
+        row.revoked_at = now()
+        audit(db, actor_user_id=user.id, action="shortlist.revoked", entity_type="shared_shortlist", entity_id=row.id, payload={})
+    db.commit(); db.refresh(row)
+    return _out(db, row, include_token=True)
+
+
+def _private_headers(response):
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['Referrer-Policy'] = 'no-referrer'
 
 
 @router.get("/shared/{token}")
-def public_shared_shortlist(token: str, db: Session = Depends(get_db)):
-    row = db.query(SharedShortlist).filter(SharedShortlist.token == token).one_or_none()
-    if not row or row.revoked_at is not None or aware(row.expires_at) <= utcnow():
-        raise HTTPException(404, "Ссылка недоступна")
-    # Public payload: no phones, private budget, chat, owner identity
-    return {
-        "title": row.title,
-        "target_type": row.target_type,
-        "expires_at": row.expires_at.isoformat(),
-        "items": [
-            {
-                "target_id": it.target_id,
-                "name": it.name,
-                "city": it.city,
-                "summary": it.summary,
-                "profile_path": f"/{'artists' if row.target_type == 'artist' else 'venues'}/{it.target_id}",
-            }
-            for it in sorted(row.items, key=lambda i: i.sort_order)
-        ],
-        "robots": "noindex",
-    }
+def public_shared_shortlist(token: str, request: Request, response: Response, db: Session = Depends(get_db),
+    guest_secret: str | None = Header(default=None, alias="X-Shortlist-Guest")):
+    limit(request); _private_headers(response)
+    row = active_share(db, token)
+    guest = guest_for(db, row, guest_secret)
+    result = shared_payload(db, row, guest)
+    audit(db, actor_user_id=None, action="shortlist.viewed", entity_type="shared_shortlist", entity_id=row.id, payload={"collaborative": row.collaborative})
+    db.commit()
+    return result
 
 
-@router.get("/compare")
-def compare_candidates(
-    target_type: str = Query(...),
-    ids: str = Query(..., description="Comma-separated 2–4 ids"),
-    db: Session = Depends(get_db),
-):
-    normalized = target_type.strip().lower()
-    if normalized not in ALLOWED_TYPES:
-        raise HTTPException(400, "target_type: artist|venue")
-    id_list = [x.strip() for x in ids.split(",") if x.strip()]
-    if not (2 <= len(id_list) <= 4):
-        raise HTTPException(400, "Нужно 2–4 id")
-    if len(set(id_list)) != len(id_list):
-        raise HTTPException(400, "Дубликаты id")
+@router.post("/shared/{token}/guests")
+def join_shortlist(token: str, body: GuestIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    limit(request, write=True); _private_headers(response)
+    row = active_share(db, token, lock=True, write=True)
+    guest = guest_for(db, row, body.guest_secret)
+    if guest and guest.display_name != body.display_name:
+        raise HTTPException(409, "Это устройство уже участвует под другим именем")
+    if not guest:
+        if db.query(ShortlistGuest).filter_by(shortlist_id=row.id).count() >= 50:
+            raise HTTPException(409, "В подборке уже 50 гостевых участников")
+        guest = ShortlistGuest(shortlist_id=row.id, secret_hash=digest(body.guest_secret), display_name=body.display_name)
+        db.add(guest); db.flush()
+        audit(db, actor_user_id=None, action="shortlist.guest_joined", entity_type="shared_shortlist", entity_id=row.id, payload={})
+    result = shared_payload(db, row, guest)
+    db.commit()
+    return result
 
-    columns: list[dict] = []
-    if normalized == "artist":
-        for aid in id_list:
-            artist = db.get(Artist, aid)
-            if not artist:
-                raise HTTPException(404, f"Артист {aid} не найден")
-            columns.append(
-                {
-                    "id": artist.id,
-                    "name": artist.name,
-                    "city": artist.city or "неизвестно",
-                    "category": getattr(artist, "category", None) or "неизвестно",
-                    "verified": bool(artist.verified),
-                    "capacity": None,
-                    "honorarium_hint": "по запросу",
-                }
-            )
-    else:
-        for vid in id_list:
-            venue = db.get(Venue, vid)
-            if not venue:
-                raise HTTPException(404, f"Площадка {vid} не найдена")
-            halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
-            max_cap = max([h.capacity for h in halls], default=venue.capacity)
-            columns.append(
-                {
-                    "id": venue.id,
-                    "name": venue.name,
-                    "city": venue.city or "неизвестно",
-                    "category": "venue",
-                    "verified": bool(venue.verified),
-                    "capacity": max_cap if max_cap else "неизвестно",
-                    "honorarium_hint": "по запросу",
-                }
-            )
 
-    fields = ["name", "city", "category", "verified", "capacity", "honorarium_hint"]
-    return {
-        "target_type": normalized,
-        "fields": fields,
-        "columns": columns,
-        "note": "Поля без данных помечены как «неизвестно»; цены — только серверный ориентир.",
-    }
+@router.put("/shared/{token}/items/{target_id}/feedback")
+def update_feedback(token: str, target_id: UUID, body: FeedbackIn, request: Request, response: Response, db: Session = Depends(get_db),
+    guest_secret: str | None = Header(default=None, alias="X-Shortlist-Guest")):
+    limit(request, write=True); _private_headers(response)
+    row = active_share(db, token, lock=True, write=True)
+    guest = guest_for(db, row, guest_secret, required=True)
+    item = next((i for i in row.items if i.target_id == str(target_id)), None)
+    if not item or not visible_item(db, row.target_type, item):
+        raise HTTPException(404, "Кандидат недоступен в этой подборке")
+    feedback = db.query(ShortlistFeedback).filter_by(guest_id=guest.id, item_id=item.id).one_or_none()
+    revision = feedback.revision if feedback else 0
+    same = (feedback.reaction if feedback else None) == body.reaction and (feedback.comment if feedback else "") == body.comment
+    if not same:
+        if revision != body.expected_revision:
+            raise HTTPException(409, "Ваше мнение уже изменено в другой вкладке. Обновите обсуждение")
+        if not feedback:
+            feedback = ShortlistFeedback(guest_id=guest.id, item_id=item.id)
+            db.add(feedback)
+        feedback.reaction, feedback.comment = body.reaction, body.comment
+        feedback.revision, feedback.updated_at = revision+1, now()
+        db.flush()
+        audit(db, actor_user_id=None, action="shortlist.feedback_updated", entity_type="shared_shortlist", entity_id=row.id,
+            payload={"reaction": body.reaction, "has_comment": bool(body.comment), "revision": feedback.revision})
+    result = shared_payload(db, row, guest)
+    db.commit()
+    return result

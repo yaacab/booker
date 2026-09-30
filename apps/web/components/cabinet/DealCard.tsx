@@ -11,7 +11,15 @@ export type CabinetDeal = {
   action_required_from?: string[];
   participants?: {role:string;name:string;duty?:string}[];
   messages?: {id:string;kind:string;body:string;created_at?:string}[];
-  quote: {quote_id:string;honorarium_rub:number;total_rub:number;customer_ack:boolean;supplier_ack:boolean};
+  quote: {
+    quote_id: string;
+    valid_until?: string | null;
+    acceptance_expired?: boolean;
+    honorarium_rub: number;
+    total_rub: number;
+    customer_ack: boolean;
+    supplier_ack: boolean;
+  };
   hold?: {status:string;expires_at:string} | null;
 };
 

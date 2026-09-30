@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { formatWhen } from "@/lib/format";
 import { STATUS_LABEL } from "@/lib/status";
+import { EventReadinessOverview } from "@/components/event-planning/EventReadiness";
 import { CabinetPageShell } from "../CabinetPageShell";
 import { CabinetIcon } from "../CabinetIcon";
 import { CustomerStaffingWidget } from "../PlanningPriorities";
@@ -14,7 +15,7 @@ import { NewOffersWidget } from "./widgets/NewOffersWidget";
 import { UpcomingEventsWidget } from "./widgets/UpcomingEventsWidget";
 
 export function CustomerCabinetDashboard() {
-  const { ready, error, email, fullName, orgName, upcomingEvents, drafts, newOffers, expiringHolds, hasEventWithCity, showStartCard, planningEvents, planningError } = useCustomerCabinetData();
+  const { ready, error, email, fullName, orgName, organizationId, upcomingEvents, drafts, newOffers, expiringHolds, hasEventWithCity, showStartCard, planningEvents, planningError } = useCustomerCabinetData();
   const nextEvent = upcomingEvents[0];
   const name = fullName?.trim().split(/\s+/)[0];
 
@@ -34,6 +35,7 @@ export function CustomerCabinetDashboard() {
       { label: "Удержания", value: expiringHolds.length },
     ]}
   >
+    <EventReadinessOverview organizationId={organizationId} />
     <CustomerStaffingWidget events={planningEvents} error={planningError}/>
     <section className="cabinet-zone-grid workspace-customer-grid" aria-label="Подготовка событий">{drafts.length>0&&<DraftsWidget drafts={drafts} />}{upcomingEvents.length > (newOffers.length||expiringHolds.length?0:1) ? <UpcomingEventsWidget events={newOffers.length||expiringHolds.length?upcomingEvents:upcomingEvents.slice(1)} /> : null}</section>
     <details className="workspace-disclosure" open={showStartCard || undefined}><summary>Подготовка к первому событию <span aria-hidden="true">＋</span></summary><CustomerOnboardingWidget hasName={Boolean(fullName)} hasContact={Boolean(email)} hasEventWithCity={hasEventWithCity} hasOffers={newOffers.length > 0} /><div className="workspace-quick-links"><Link href="/search?kind=artist">Найти артиста →</Link><Link href="/cabinet/customer/favorites">Избранное →</Link></div></details>
