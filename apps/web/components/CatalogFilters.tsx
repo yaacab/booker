@@ -148,7 +148,7 @@ export function CatalogFilters(props: CatalogFilterValues) {
               <input aria-label="Бюджет до, ₽" name="budget_max" type="number" min={0} placeholder="Любой бюджет" defaultValue={budget_max || ""} />
             </label>
           </fieldset>
-          <fieldset className="catalog-filter-group">
+          {kind !== "venue" ? <fieldset className="catalog-filter-group">
             <legend>Выезд за город</legend>
             {[{ value: "", label: "Не важно" }, { value: "false", label: "Только по городу" }, { value: "true", label: "Готовы выезжать" }].map((choice) => (
               <label key={choice.value} className="catalog-filter-option">
@@ -156,13 +156,13 @@ export function CatalogFilters(props: CatalogFilterValues) {
                 <span>{choice.label}</span>
               </label>
             ))}
-          </fieldset>
+          </fieldset> : null}
           <fieldset className="catalog-filter-group catalog-additional-filters">
             <legend>Для вашего события</legend>
-            <label>
+            {kind !== "venue" ? <label>
               Формат (исполнитель)
               <input name="format" type="text" placeholder="wedding, club…" defaultValue={format || ""} />
-            </label>
+            </label> : null}
             {kind === "venue" && <><label>
               Гостей от
               <input name="guests" type="number" min={1} placeholder="Любое количество" defaultValue={guests || ""} />

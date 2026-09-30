@@ -7,23 +7,22 @@ type PublicVenue = {
   verified: boolean;
   availability_mode?: string;
   partnership_status?: string;
-  cover_photo?: string | null;
+  cover_photo?: { url: string; rights_status: string } | null;
 };
 
 type ResearchVenue = { id: string; name: string };
 
 test.describe("Wave 1 search / home", () => {
-  test("главная ведёт в явно отделённую подборку площадок", async ({ page }) => {
+  test("главная ведёт в каталог проверенных площадок", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("main").getByRole("link", { name: /Подобрать площадку/ }).click();
     await expect(page).toHaveURL(/kind=venue/);
     await expect(
-      page.getByRole("heading", { level: 1, name: "Найди место для своего события." }),
+      page.getByRole("heading", { level: 1, name: "Найдите площадку для вашего события" }),
     ).toBeVisible();
-    await expect(page.getByRole("complementary", { name: "Фильтры подборки" })).toBeVisible();
-    await expect(
-      page.getByText("Это подборка из открытых источников, отдельно от бронирования в Букере."),
-    ).toBeVisible();
+    await expect(page.locator("aside.catalog-filters")).toBeVisible();
+    await expect(page.getByText("Это подборка из открытых источников", { exact: false })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Клуб Сигнал" }).first()).toBeVisible();
   });
 
   test("каталог артистов показывает только относящиеся к артистам фильтры", async ({ page }) => {
@@ -59,6 +58,8 @@ test.describe("Wave 1 search / home", () => {
     expect(publicResponse.ok()).toBeTruthy();
     const publicVenues = ((await publicResponse.json()) as { venues?: PublicVenue[] }).venues ?? [];
     const publicIds = new Set(publicVenues.map((venue) => venue.id));
+
+    expect(publicVenues.some((venue) => venue.name === "Клуб Сигнал")).toBe(true);
 
     expect(research.items.filter((venue) => publicIds.has(venue.id))).toEqual([]);
     expect(

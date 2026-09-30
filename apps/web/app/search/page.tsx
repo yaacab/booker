@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import VenueDiscovery from "@/components/VenueDiscovery";
-import {loadDiscoveryVenues} from "@/lib/venueDiscovery";
 import Link from "next/link";
 import { MoscowMap } from "@/components/MoscowMap";
 import { CatalogFilters, type CategoryChip } from "@/components/CatalogFilters";
@@ -96,10 +94,6 @@ export default async function SearchPage({
   searchParams: Promise<SearchQuery>;
 }) {
   const raw = await searchParams;
-  if(raw.kind==="venue"){
-    try{return <VenueDiscovery items={await loadDiscoveryVenues()} initialDistrict={raw.district}/>}
-    catch{return <main className="venue-discovery"><h1>Подборка площадок временно недоступна</h1><p>Не удалось загрузить данные. Попробуйте обновить страницу чуть позже.</p><Link href="/search?kind=artist">Найти артиста →</Link></main>}
-  }
   const q = { ...raw, kind:raw.kind||"artist", category: raw.kind === "venue" || (raw.kind === "artist" && raw.category === "venue") ? undefined : raw.category };
   const city = q.city || "Москва";
   const extra = new URLSearchParams();
@@ -152,7 +146,7 @@ export default async function SearchPage({
   return (
     <main className="page-enter catalog-page catalog-reference">
       <header className="catalog-heading">
-        <div><h1>Найдите тех,<br />кто нужен именно вам</h1><div className="commerce-actions"><Link href="/catalog">Подборки по задачам</Link><Link className="btn secondary" href="/cabinet/customer/favorites">Избранное</Link></div></div>
+        <div><h1>{q.kind === "venue" ? <>Найдите площадку<br />для вашего события</> : <>Найдите тех,<br />кто нужен именно вам</>}</h1><div className="commerce-actions"><Link href="/catalog">Подборки по задачам</Link><Link className="btn secondary" href="/cabinet/customer/favorites">Избранное</Link></div></div>
         <p className="catalog-heading-note">Больше<br />событий<br />для людей<span aria-hidden="true" /></p>
       </header>
       <form key={JSON.stringify(q)} className="catalog-searchbar" action="/search" method="get" aria-label="Быстрый поиск">
