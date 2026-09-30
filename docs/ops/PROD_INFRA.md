@@ -2,7 +2,7 @@
 
 Источник: MASTER_PLAN `p0-prod-infra`. Юридический контекст: [HOSTING_152FZ.md](../legal/HOSTING_152FZ.md).
 
-**Инженерная часть закрыта** (скрипты, Alembic, deploy hook, чеклисты ниже). Остаётся **ops/runtime** — выполнение пунктов в разделе «Runtime (только прод)».
+Скрипты и чеклисты подготовлены, но восстановимость считается подтверждённой только после отдельного staging-drill на свежем архиве. Остаётся **ops/runtime** — выполнение пунктов в разделе «Runtime (только прод)».
 
 ## Текущее состояние (пилот 2026-09)
 
@@ -13,7 +13,7 @@
 | БД | SQLite `/opt/booker/data/booker.db` | Managed Postgres 16 в РФ |
 | Redis | нет | Managed Redis (сессии/rate limit при горизонтальном API) |
 | Object storage | нет (файлы не принимаем) | Yandex Object Storage при появлении upload |
-| Backups | скрипт + cron в deploy | daily + retention 30d, **verify на проде** |
+| Backups | versioned tar.gz + manifest/SHA-256 | daily + retention 30d + off-site, **verify на staging** |
 | Restore drill | скрипт + pytest smoke | quarterly на staging, документировать RTO |
 | Alembic | baseline `a44d171` | `alembic upgrade head` на Postgres |
 
@@ -23,10 +23,10 @@
 
 ## Runtime (только прод) — что осталось
 
-Инженерных задач нет. Выполнить на VPS / в облаке РФ:
+Код не заменяет runtime-проверку. Выполнить на VPS / в облаке РФ:
 
 - [ ] **Cron verify** — после `make deploy`: `cat /etc/cron.d/booker-backup`, дождаться 02:15 MSK или запустить вручную `BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db /opt/booker/infra/backup-booker.sh`
-- [ ] **Первый backup + verify** — файл в `/var/backups/booker/booker-*.db.gz`, `gunzip -t`, restore drill на staging (см. ниже)
+- [ ] **Первый backup + verify** — `booker-*.tar.gz` и соседний `.sha256`; проверить sidecar и выполнить restore drill на staging (см. ниже)
 - [ ] **Restore drill (staging)** — пройти чеклист «Restore drill», записать RTO в журнал MASTER_PLAN
 - [ ] **Postgres cutover** — пройти чеклист «Postgres cutover» в окне обслуживания
 - [ ] **RU hosting audit** — пройти чеклист «Аудит хостинга РФ», зафиксировать evidence
@@ -44,7 +44,31 @@ sudo cp /opt/booker/infra/cron-booker-backup.example /etc/cron.d/booker-backup
 sudo chmod 644 /etc/cron.d/booker-backup
 ```
 
-Скрипт: [infra/backup-booker.sh](../../infra/backup-booker.sh) — `sqlite3 .backup` + gzip (SQLite) или `pg_dump` (Postgres), retention 30 дней.
+Скрипт: [infra/backup-booker.sh](../../infra/backup-booker.sh). Он берёт эксклюзивную lock, делает online snapshot SQLite через стандартный Python `sqlite3.backup()` или PostgreSQL custom dump и metadata из одного `pg_export_snapshot`, копирует `uploads/`, пишет manifest и только затем атомарно публикует архив. Retention по умолчанию — 30 дней.
+
+Формат новых архивов (v2):
+
+| БД | Имя архива | Payload внутри | Восстановление |
+|----|-------------|----------------|----------------|
+| SQLite | `booker-YYYYMMDDTHHMMSSZ.tar.gz` | `booker.db`, `uploads/`, `manifest.json` | `restore-drill.sh` в новый каталог |
+| PostgreSQL | `booker-pg-YYYYMMDDTHHMMSSZ.tar.gz` | custom-format `booker.dump`, `uploads/`, `manifest.json` | `restore-drill.sh` в заранее созданную пустую staging-БД |
+
+`manifest.json` содержит SHA-256 БД и каждого файла uploads, состав и отпечаток схемы, состояние Alembic и количества строк ключевых таблиц. Рядом создаётся `<archive>.sha256` для проверки всего tar.gz. Sidecar нужно копировать off-site вместе с архивом: v2 drill без него завершается ошибкой, потому что иначе сам manifest не защищён внешней контрольной суммой. Старые tar.gz с `booker.db` или `booker.dump` остаются читаемыми; drill помечает их как `legacy`. Выполнение старого plain-SQL dump дополнительно требует `BOOKER_RESTORE_ALLOW_LEGACY_PLAIN_SQL=trusted-archive`.
+
+Каталог uploads обязателен. Если в установке заведомо ещё нет файлового хранилища, пустой набор разрешается только явно: `BOOKER_ALLOW_MISSING_UPLOAD_DIR=1`. Символические ссылки и специальные файлы в uploads приводят к ошибке.
+
+```bash
+# ручной SQLite backup
+BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db \
+BOOKER_UPLOAD_DIR=/opt/booker/data/uploads \
+/opt/booker/infra/backup-booker.sh
+
+# проверка архива целиком; выполнять из каталога backup
+cd /var/backups/booker
+sha256sum -c booker-YYYYMMDDTHHMMSSZ.tar.gz.sha256
+```
+
+Snapshot БД консистентен сам по себе; PostgreSQL dump, schema/Alembic metadata и row counts используют один exported snapshot. БД и локальный `uploads/` всё равно снимаются последовательно. Если приложение уже принимает вложения, на время backup нужно остановить запись файлов либо использовать согласованный filesystem/object-storage snapshot. Обычный запуск скрипта не доказывает межресурсную point-in-time консистентность.
 
 Off-site копия (ручной шаг до выбора bucket):
 
@@ -124,7 +148,7 @@ BOOKER_DATABASE_URL="${DST}" alembic -c apps/api/alembic.ini stamp ad7ec0cd0ee2
 BOOKER_DATABASE_URL="${DST}" alembic -c apps/api/alembic.ini upgrade head
 ```
 
-- [ ] Row counts сверены: `users`, `deals`, `events`, `bookings` (±0 или документированный delta)
+- [ ] Row counts сверены: `users`, `organizations`, `events`, `bookings`, `payments` (±0 или документированный delta)
 - [ ] FK / unique constraints без ошибок в логе миграции
 - [ ] `alembic_version` = head (`c7a9f0e1d2b3` или актуальный) **до** старта API
 
@@ -157,7 +181,7 @@ BOOKER_DATABASE_URL="${DST}" alembic -c apps/api/alembic.ini upgrade head
 **Post-cutover (48h)**
 
 - [ ] Cron backup использует Postgres URL (тот же `/etc/cron.d/booker-backup`, env из скрипта или wrapper)
-- [ ] Restore drill на `.dump.gz` (quarterly)
+- [ ] Restore drill на `booker-pg-*.tar.gz` вместе с `.sha256` (quarterly)
 - [ ] SQLite файл архивирован, не удалять 30 дней
 
 ### Alembic (справка)
@@ -180,21 +204,36 @@ make test-api
 
 | Шаг | Действие | Ожидание |
 |-----|----------|----------|
-| 1 | Выбрать backup не старше 24h | файл `.gz` в `/var/backups/booker/` |
-| 2 | Staging VM или `/opt/booker-restore-test` | изолированный путь, **не prod** |
-| 3 | Restore DB | SQLite: [restore-drill.sh](../../infra/restore-drill.sh); Postgres: `gunzip -c booker-pg-*.dump.gz \| pg_restore -d booker_restored` |
-| 4 | `BOOKER_DATABASE_URL` → restored | API стартует на staging |
-| 5 | `curl /health` + smoke API | 200, ключевые endpoints |
-| 6 | Записать RTO, проблемы | строка в журнале MASTER_PLAN |
+| 1 | Выбрать backup не старше 24h | tar.gz и его `.sha256` скопированы в staging |
+| 2 | Выбрать новый restore-каталог | путь ещё не существует; prod-пути не используются |
+| 3 | Запустить [restore-drill.sh](../../infra/restore-drill.sh) | exit 0 и строка `restore drill OK` |
+| 4 | Проверить отчёт | SHA-256, integrity/FK, schema, Alembic, ключевые таблицы и uploads проверены |
+| 5 | Для API smoke указать восстановленную БД | API стартует только на staging; `/health` и ключевые endpoints дают ожидаемый результат |
+| 6 | Записать RTO и ограничения | строка в [RESTORE_DRILL_LOG.md](RESTORE_DRILL_LOG.md) |
 
 Целевой RTO пилота: **< 4 ч** (ручной restore на VPS).
 
 ```bash
-# SQLite pilot
-/opt/booker/infra/restore-drill.sh /var/backups/booker/booker-YYYYMMDD.db.gz /tmp/booker-restore-drill
+# SQLite pilot: второй аргумент обязан быть новым путём
+/opt/booker/infra/restore-drill.sh \
+  /var/backups/booker/booker-YYYYMMDDTHHMMSSZ.tar.gz \
+  /tmp/booker-restore-drill-YYYYMMDDTHHMMSSZ
+
+# PostgreSQL: создать отдельную пустую staging-БД; скрипт не создаёт и не удаляет БД
+createdb --host=RESTORE_HOST --port=5432 --username=RESTORE_USER \
+  booker_restore_YYYYMMDD
+BOOKER_RESTORE_DATABASE_URL='postgresql://RESTORE_USER@RESTORE_HOST:5432/booker_restore_YYYYMMDD' \
+BOOKER_RESTORE_CONFIRM=empty-non-production-database \
+/opt/booker/infra/restore-drill.sh \
+  /var/backups/booker/booker-pg-YYYYMMDDTHHMMSSZ.tar.gz \
+  /tmp/booker-pg-restore-drill-YYYYMMDDTHHMMSSZ
 ```
 
-Pytest smoke: `apps/api/tests/test_restore_drill.py`.
+PostgreSQL drill намеренно игнорирует `BOOKER_DATABASE_URL`, отказывается работать без отдельного `BOOKER_RESTORE_DATABASE_URL` и точного подтверждения, а также проверяет, что target не содержит пользовательских таблиц. Новый dump восстанавливается через `pg_restore --exit-on-error`. Старый plain-SQL dump запускается через `psql -v ON_ERROR_STOP=1` только с `BOOKER_RESTORE_ALLOW_LEGACY_PLAIN_SQL=trusted-archive` и после запрета database-switch/OS-command конструкций. Если проверка после restore упала, результат — **FAIL**, а частично заполненную staging-БД нужно удалить вручную и создать заново.
+
+PASS фиксируется только при exit code 0 и `restore drill OK`. Отсутствующий/повреждённый payload, несовпавший SHA-256, небезопасный tar member, stale restore-каталог, ошибка integrity/FK, schema/Alembic mismatch, пропавшая ключевая таблица или uploads дают ненулевой exit code. Для старого архива без manifest допустим ограниченный legacy-drill; он не равнозначен v2-проверке, поэтому после восстановления нужно сразу создать новый v2 backup.
+
+Pytest smoke: `apps/api/tests/test_backup_restore.py`.
 
 ---
 
