@@ -54,11 +54,12 @@ from booker_api.security import (
     current_user,
     membership,
     now,
+    require_admin,
     require_org_member,
     require_org_writer,
 )
 from booker_api.vacation import clear_vacation, set_vacation, vacation_status
-from booker_api.venue_catalog import public_disclosure
+from booker_api.venue_catalog import is_publicly_listed, public_disclosure
 
 router = APIRouter(tags=["catalog"])
 
@@ -161,7 +162,7 @@ def _research_venue_photos(db: Session, venue_id: str) -> list[dict]:
 
 
 def _venue_in_catalog(db: Session, venue: Venue) -> bool:
-    if venue.moderation_status != "published":
+    if not is_publicly_listed(db, venue):
         return False
     halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
     hall_ids = [hall.id for hall in halls]
@@ -234,6 +235,7 @@ def create_venue(body: VenueIn, user: User = Depends(current_user), db: Session 
         name=body.name,
         city=body.city,
         capacity=body.capacity,
+        moderation_status="needs_review",
     )
     db.add(venue)
     db.flush()
@@ -641,7 +643,7 @@ def search_catalog(
     if include_venues:
         seating_l = (seating or "").strip().lower() or None
         for venue in db.query(Venue).filter(Venue.city == city).all():
-            if venue.moderation_status != "published":
+            if not is_publicly_listed(db, venue):
                 continue
             if district and district.strip().casefold() not in (venue.district or "").casefold():
                 continue
@@ -734,6 +736,7 @@ def search_catalog(
 def list_investor_demo_venues(
     city: str = Query("Москва"),
     limit: int = Query(300, ge=1, le=500),
+    _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """Research cards for the clearly labelled private investor demo.
@@ -802,7 +805,7 @@ def get_venue(venue_id: str, db: Session = Depends(get_db)):
     venue = db.get(Venue, venue_id)
     if not venue:
         raise HTTPException(404, "Площадка не найдена")
-    if venue.moderation_status != "published":
+    if not is_publicly_listed(db, venue):
         raise HTTPException(404, "Площадка не найдена")
     halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
     tariffs = db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).all()

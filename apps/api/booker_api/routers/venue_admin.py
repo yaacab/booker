@@ -20,6 +20,7 @@ from booker_api.security import audit, require_admin
 from booker_api.venue_catalog import (
     MODERATION_STATUSES,
     change_partnership_status,
+    publication_gate_blockers,
     update_freshness,
 )
 
@@ -144,6 +145,16 @@ def set_venue_moderation(
         raise HTTPException(404, "Площадка не найдена")
     if body.moderation_status not in MODERATION_STATUSES:
         raise HTTPException(400, "Недопустимый статус модерации")
+    if body.moderation_status == "published":
+        blockers = publication_gate_blockers(db, venue)
+        if blockers:
+            raise HTTPException(
+                409,
+                detail={
+                    "message": "Карточка не проходит единый гейт публикации",
+                    "blockers": blockers,
+                },
+            )
     old_status = venue.moderation_status
     venue.moderation_status = body.moderation_status
     update_freshness(venue)

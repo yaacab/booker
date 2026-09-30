@@ -11,6 +11,42 @@ def _future_slot(hours=18):
     return start.isoformat(), (start + timedelta(hours=4)).isoformat()
 
 
+def _make_venue_publication_ready(client, venue_id: str) -> None:
+    db = client.app.state.SessionLocal()
+    try:
+        from booker_api.models import AvailabilitySlot, Venue, VenueHall, VenuePhoto, VenueTariff
+
+        venue = db.get(Venue, venue_id)
+        venue.moderation_status = "published"
+        venue.availability_mode = "owner"
+        venue.partnership_status = "verified"
+        venue.is_claimed = True
+        venue.verified = True
+        hall = db.query(VenueHall).filter(VenueHall.venue_id == venue_id).first()
+        horizon = datetime.now(timezone.utc) + timedelta(days=31)
+        db.add(
+            AvailabilitySlot(
+                resource_type="hall",
+                resource_id=hall.id,
+                starts_at=horizon,
+                ends_at=horizon + timedelta(hours=4),
+                status="open",
+            )
+        )
+        db.add(VenueTariff(venue_id=venue_id, title="Серверный тариф", honorarium_rub=50000))
+        db.add(
+            VenuePhoto(
+                venue_id=venue_id,
+                photo_url=f"https://venue.example/{venue_id}.jpg",
+                photo_source_url="https://venue.example/gallery",
+                photo_rights_status="official_permission",
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+
 def test_search_artist_format_travel_budget(client):
     owner = register(client, "w1-art@booker.test", "W1 Art")
     org = client.post(
@@ -94,6 +130,8 @@ def test_search_venue_guests_matching_halls(client):
         json={"organization_id": org["id"], "name": "Банкет 120", "city": "Москва", "capacity": 120},
         headers=auth_header(owner["token"]),
     ).json()
+    _make_venue_publication_ready(client, small["id"])
+    _make_venue_publication_ready(client, large["id"])
     # Extra small hall on large venue should not satisfy guests=80 alone — capacity 120 hall does.
     client.post(
         f"/venues/{large['id']}/halls",
@@ -127,8 +165,8 @@ def test_search_venue_guests_matching_halls(client):
     assert any(h["capacity"] >= 80 for h in banquet["matching_halls"])
 
 
-def test_search_synthetic_venue_flag_present(client):
-    """E03: synthetic availability_mode is returned on search cards."""
+def test_search_hides_synthetic_venue(client):
+    """Research/synthetic availability cannot satisfy the owner-calendar gate."""
     owner = register(client, "w1-syn@booker.test", "W1 Syn")
     org = client.post(
         "/orgs",
@@ -140,6 +178,7 @@ def test_search_synthetic_venue_flag_present(client):
         json={"organization_id": org["id"], "name": "Синтетика Холл", "city": "Москва", "capacity": 90},
         headers=auth_header(owner["token"]),
     ).json()
+    _make_venue_publication_ready(client, venue["id"])
     from booker_api.models import Venue
 
     SessionLocal = client.app.state.SessionLocal
@@ -167,11 +206,9 @@ def test_search_synthetic_venue_flag_present(client):
         headers=auth_header(owner["token"]),
     )
     res = client.get("/catalog/search", params={"city": "Москва", "kind": "venue"}).json()
-    syn = next(v for v in res["venues"] if v["name"] == "Синтетика Холл")
-    assert syn["availability_mode"] == "synthetic"
-    assert syn["district"] == "Хамовники"
+    assert venue["id"] not in {v["id"] for v in res["venues"]}
     matching = client.get("/catalog/search", params={"district":" хамовники ","metro":"КУЛЬТУРЫ"}).json()
-    assert venue["id"] in {v["id"] for v in matching["venues"]}
+    assert venue["id"] not in {v["id"] for v in matching["venues"]}
     other = client.get("/catalog/search", params={"district":"Якиманка"}).json()
     assert venue["id"] not in {v["id"] for v in other["venues"]}
     wrong_metro = client.get("/catalog/search", params={"district":"Хамовники", "metro":"Сокол"}).json()

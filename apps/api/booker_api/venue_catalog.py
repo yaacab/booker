@@ -6,17 +6,30 @@ import json
 import math
 import re
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from booker_api.models import Venue, VenuePhoto, VenueSource, VenueStatusHistory
+from booker_api.models import (
+    AvailabilitySlot,
+    TeamMember,
+    Venue,
+    VenueHall,
+    VenuePhoto,
+    VenueSource,
+    VenueStatusHistory,
+    VenueTariff,
+)
 
 PARTNERSHIP_STATUSES = frozenset({"unverified_listing", "claimed", "verified", "partner"})
 MODERATION_STATUSES = frozenset({"published", "needs_review", "rejected", "archived"})
 PUBLICATION_THRESHOLD = 55
 PUBLISHABLE_PHOTO_RIGHTS = frozenset({"licensed", "official_permission"})
+OWNER_MANAGED_PARTNERSHIP_STATUSES = frozenset({"claimed", "verified", "partner"})
+VERIFIED_PARTNERSHIP_STATUSES = frozenset({"verified", "partner"})
+PUBLICATION_CALENDAR_DAYS = 30
 PRICE_FIELDS = frozenset(
     {"price", "tariff", "tariff_from_rub", "minimum_spend_rub", "price_per_person_rub"}
 )
@@ -121,6 +134,110 @@ def moderation_status(row: dict) -> str:
         "published"
         if essentials and completeness_score(row) >= PUBLICATION_THRESHOLD
         else "needs_review"
+    )
+
+
+def is_owner_managed_venue(venue: Venue) -> bool:
+    """Return whether an imported card has moved under representative control."""
+
+    return bool(
+        venue.is_claimed
+        or venue.partnership_status in OWNER_MANAGED_PARTNERSHIP_STATUSES
+        or venue.listing_origin == "owner"
+        or venue.availability_mode == "owner"
+    )
+
+
+def publication_gate_blockers(
+    db: Session,
+    venue: Venue,
+    *,
+    at: datetime | None = None,
+) -> list[str]:
+    """Validate the CONTRACT.md active-profile publication requirements.
+
+    Prices and media are read from server-side records. Calendar coverage uses
+    the latest owner-managed hall slot as the current schema's conservative
+    proxy for a calendar maintained at least 30 days ahead.
+    """
+
+    blockers: list[str] = []
+    current = at or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+
+    has_representative = bool(
+        venue.is_claimed
+        and venue.partnership_status in OWNER_MANAGED_PARTNERSHIP_STATUSES
+        and db.query(TeamMember)
+        .filter(TeamMember.organization_id == venue.organization_id)
+        .first()
+    )
+    if not has_representative:
+        blockers.append("representative")
+
+    if not (
+        venue.verified and venue.partnership_status in VERIFIED_PARTNERSHIP_STATUSES
+    ):
+        blockers.append("verification")
+
+    if venue.availability_mode != "owner":
+        blockers.append("owner_calendar")
+
+    hall_ids = [
+        row[0]
+        for row in db.query(VenueHall.id).filter(VenueHall.venue_id == venue.id).all()
+    ]
+    latest_calendar_end = None
+    if hall_ids:
+        latest_calendar_end = (
+            db.query(func.max(AvailabilitySlot.ends_at))
+            .filter(
+                AvailabilitySlot.resource_type == "hall",
+                AvailabilitySlot.resource_id.in_(hall_ids),
+                AvailabilitySlot.status.in_(("open", "held", "confirmed", "busy")),
+                AvailabilitySlot.ends_at > current,
+            )
+            .scalar()
+        )
+    if latest_calendar_end is not None and latest_calendar_end.tzinfo is None:
+        latest_calendar_end = latest_calendar_end.replace(tzinfo=timezone.utc)
+    if latest_calendar_end is None or latest_calendar_end < current + timedelta(
+        days=PUBLICATION_CALENDAR_DAYS
+    ):
+        blockers.append("calendar_30_days")
+
+    has_price = (
+        db.query(VenueTariff.id)
+        .filter(VenueTariff.venue_id == venue.id, VenueTariff.honorarium_rub > 0)
+        .first()
+        is not None
+    )
+    if not has_price:
+        blockers.append("price")
+
+    has_media = (
+        db.query(VenuePhoto.id)
+        .filter(
+            VenuePhoto.venue_id == venue.id,
+            VenuePhoto.photo_rights_status.in_(tuple(PUBLISHABLE_PHOTO_RIGHTS)),
+            VenuePhoto.photo_url != "",
+            VenuePhoto.photo_source_url != "",
+        )
+        .first()
+        is not None
+    )
+    if not has_media:
+        blockers.append("media")
+
+    return blockers
+
+
+def is_publicly_listed(db: Session, venue: Venue, *, at: datetime | None = None) -> bool:
+    """Keep every public read behind the same contractual publication gate."""
+
+    return venue.moderation_status == "published" and not publication_gate_blockers(
+        db, venue, at=at
     )
 
 

@@ -11,11 +11,14 @@ import json
 import secrets
 from pathlib import Path
 
+from sqlalchemy import exists
 from sqlalchemy.orm import Session
 
 from booker_api.db import SessionLocal, engine, init_schema
 from booker_api.models import (
     AvailabilitySlot,
+    Booking,
+    BookingHold,
     Organization,
     TeamMember,
     User,
@@ -31,6 +34,9 @@ from booker_api.venue_catalog import (
     duplicate_score,
     has_publishable_photo,
     has_sourced_price,
+    is_owner_managed_venue,
+    moderation_status,
+    publication_gate_blockers,
     record_photos,
     record_source,
 )
@@ -156,6 +162,7 @@ def import_moscow_venues(db: Session) -> dict:
     batch.completed_at = None
     created_venues = 0
     updated_venues = 0
+    preserved_venues = 0
     slots_created = 0
     published_count = 0
     needs_review_count = 0
@@ -171,6 +178,7 @@ def import_moscow_venues(db: Session) -> dict:
         source_url = str(row.get("source_url") or "").strip()
         venue = _find_existing(db, name=name, source_url=source_url, org_id=org.id)
         is_new = venue is None
+        owner_managed = not is_new and is_owner_managed_venue(venue)
         capacity = int(row.get("capacity") or 100)
         fields = {
             "address": str(row.get("address") or ""),
@@ -208,26 +216,37 @@ def import_moscow_venues(db: Session) -> dict:
                 entity_id=venue.id,
                 payload={"name": name, "source_url": source_url},
             )
+        elif owner_managed:
+            # A research refresh may add provenance, but representative-managed
+            # content, pricing, halls, media and availability remain authoritative.
+            venue.last_crawled_at = checked_at
+            preserved_venues += 1
+            updated_venues += 1
         else:
             for key, value in fields.items():
                 setattr(venue, key, value)
             apply_automated_metadata(venue, row, is_new=False, checked_at=checked_at)
             updated_venues += 1
 
-        halls = _upsert_halls(db, venue, row, capacity)
-        hall_ids = [hall.id for hall in halls]
-        if hall_ids:
-            (
-                db.query(AvailabilitySlot)
-                .filter(
-                    AvailabilitySlot.resource_type == "hall",
-                    AvailabilitySlot.resource_id.in_(hall_ids),
-                    AvailabilitySlot.external_uid.like("synthetic:open:%"),
+        if not owner_managed:
+            halls = _upsert_halls(db, venue, row, capacity)
+            hall_ids = [hall.id for hall in halls]
+            if hall_ids:
+                (
+                    db.query(AvailabilitySlot)
+                    .filter(
+                        AvailabilitySlot.resource_type == "hall",
+                        AvailabilitySlot.resource_id.in_(hall_ids),
+                        AvailabilitySlot.external_uid.like("synthetic:open:%"),
+                        AvailabilitySlot.status == "open",
+                        ~exists().where(Booking.slot_id == AvailabilitySlot.id),
+                        ~exists().where(BookingHold.slot_id == AvailabilitySlot.id),
+                    )
+                    .delete(synchronize_session=False)
                 )
-                .delete(synchronize_session=False)
-            )
         record_source(db, venue, row, checked_at)
-        record_photos(db, venue, row)
+        if not owner_managed:
+            record_photos(db, venue, row)
         if row.get("phone") or row.get("email") or row.get("event_contact"):
             with_contacts_count += 1
         if has_sourced_price(row):
@@ -236,14 +255,9 @@ def import_moscow_venues(db: Session) -> dict:
             with_photos_count += 1
         if row.get("official_website"):
             with_official_website_count += 1
-        if venue.moderation_status == "published":
-            published_count += 1
-        else:
-            needs_review_count += 1
-
         sourced_price = has_sourced_price(row)
         tariff_from = row.get("tariff_from_rub") if sourced_price else None
-        if not sourced_price:
+        if not owner_managed and not sourced_price:
             (
                 db.query(VenueTariff)
                 .filter(
@@ -252,7 +266,7 @@ def import_moscow_venues(db: Session) -> dict:
                 )
                 .delete(synchronize_session=False)
             )
-        if tariff_from is not None:
+        if not owner_managed and tariff_from is not None:
             try:
                 amount = int(tariff_from)
             except (TypeError, ValueError):
@@ -277,6 +291,22 @@ def import_moscow_venues(db: Session) -> dict:
                     tariff.honorarium_rub = amount
 
         # Availability is owner-managed. Automated imports never create open slots.
+        if not owner_managed:
+            db.flush()
+            venue.moderation_status = (
+                "published"
+                if moderation_status(row) == "published"
+                and not publication_gate_blockers(db, venue, at=checked_at)
+                else "needs_review"
+            )
+            venue.data_freshness_status = (
+                "fresh" if venue.moderation_status == "published" else "needs_review"
+            )
+
+        if venue.moderation_status == "published":
+            published_count += 1
+        else:
+            needs_review_count += 1
 
     batch.status = "completed"
     batch.found_count = len(venues_in)
@@ -296,6 +326,7 @@ def import_moscow_venues(db: Session) -> dict:
         "org_id": org.id,
         "created_venues": created_venues,
         "updated_venues": updated_venues,
+        "preserved_venues": preserved_venues,
         "slots_created": slots_created,
         "total_in_file": len(venues_in),
         "published": published_count,

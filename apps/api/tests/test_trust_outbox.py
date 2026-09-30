@@ -54,8 +54,14 @@ def test_venue_claim_does_not_grant_ownership(client, SessionLocal):
     assert body["status"] == "pending"
     assert body["grants_ownership"] is False
 
-    after = client.get(f"/venues/{venue_id}").json()
-    assert after.get("organization_id") == owner_before
+    assert client.get(f"/venues/{venue_id}").status_code == 404
+    db = SessionLocal()
+    try:
+        from booker_api.models import Venue
+
+        assert db.get(Venue, venue_id).organization_id == owner_before
+    finally:
+        db.close()
 
     dup = client.post(
         f"/venues/{venue_id}/claims",
