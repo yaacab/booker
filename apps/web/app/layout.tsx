@@ -40,16 +40,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#edf1eb",
+  themeColor: "#101112",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang="ru" data-edition="black" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{__html: `try{document.documentElement.dataset.edition=localStorage.getItem("booker.edition")==="black"?"black":"light"}catch(e){}`}} />
+        <style dangerouslySetInnerHTML={{ __html: 'html{background:#101112;color-scheme:dark}html[data-edition="light"]{background:#edf1eb;color-scheme:light}' }} />
+        <script dangerouslySetInnerHTML={{ __html: 'try{if(localStorage.getItem("booker.edition")==="light")document.documentElement.dataset.edition="light"}catch(e){};var syncBookerThemeColor=function(){var color=document.documentElement.dataset.edition==="light"?"#edf1eb":"#101112";document.querySelectorAll("meta[name=theme-color]").forEach(function(meta){if(meta.content!==color)meta.content=color})};syncBookerThemeColor();new MutationObserver(syncBookerThemeColor).observe(document.head,{childList:true,subtree:true,attributes:true,attributeFilter:["content"]})' }} />
         <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
         <link rel="preload" href="/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
