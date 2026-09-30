@@ -110,6 +110,7 @@ jobs:
         working-directory: apps/web
         env:
           BOOKER_API_URL: http://127.0.0.1:8000
+          BOOKER_PYTHON_BIN: python
           BOOKER_DATABASE_URL: sqlite:////tmp/booker-e2e.db
           BOOKER_ENVIRONMENT: test
           BOOKER_PUBLIC_REGISTRATION_ENABLED: "1"
