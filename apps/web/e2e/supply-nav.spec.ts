@@ -1,51 +1,74 @@
 import { expect, test } from "@playwright/test";
 import { DEMO_ACCOUNTS, fetchMe, injectSession, login } from "./helpers";
 
+const ROLES = [
+  {
+    mode: "performer",
+    account: DEMO_ACCOUNTS.artist,
+    organizationKind: "artist",
+    calendarHeading: "Календарь артиста",
+    requestsHeading: "Заявки артисту",
+  },
+  {
+    mode: "venue",
+    account: DEMO_ACCOUNTS.venue,
+    organizationKind: "venue",
+    calendarHeading: "Календарь площадки",
+    requestsHeading: "Заявки площадке",
+  },
+] as const;
+
+const VIEWPORTS = [
+  { name: "desktop", width: 1280, height: 900, navigation: "Навигация рабочего пространства" },
+  { name: "390px", width: 390, height: 844, navigation: "Мобильная навигация" },
+] as const;
+
 test.describe("E16 supply nav: Calendar ≠ Requests", () => {
-  test("performer: chrome and section URLs differ", async ({ page, request }) => {
-    const session = await login(request, DEMO_ACCOUNTS.artist);
-    const me = await fetchMe(request, session.token);
-    const org = me.organizations.find((o) => o.kind === "artist");
-    expect(org?.id).toBeTruthy();
-    await injectSession(page, session.token, org!.id);
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/cabinet/performer");
+  for (const viewport of VIEWPORTS) {
+    for (const role of ROLES) {
+      test(`${role.mode} on ${viewport.name}: calendar and requests stay distinct`, async ({ page, request }) => {
+        const session = await login(request, role.account);
+        const me = await fetchMe(request, session.token);
+        const org = me.organizations.find((o) => o.kind === role.organizationKind);
+        expect(org?.id).toBeTruthy();
+        await injectSession(page, session.token, org!.id);
+        await page.setViewportSize(viewport);
+        await page.goto(`/cabinet/${role.mode}`);
 
-    const chrome = page.getByRole("navigation", { name: "Мобильная навигация" });
-    const calendarLink = chrome.getByRole("link", { name: "Календарь" });
-    await expect(calendarLink).toBeVisible({ timeout: 15_000 });
-    const requestsLink = chrome.getByRole("link", { name: "Заявки" });
-    await expect(calendarLink).toHaveAttribute("href", "/cabinet/performer/calendar");
-    await expect(requestsLink).toHaveAttribute("href", "/cabinet/performer/requests");
-    expect(await calendarLink.getAttribute("href")).not.toBe(await requestsLink.getAttribute("href"));
+        const navigation = page.getByRole("navigation", { name: viewport.navigation });
+        const calendarLink = navigation.getByRole("link", { name: "Календарь", exact: true });
+        const requestsLink = navigation.getByRole("link", { name: "Заявки", exact: true });
+        const calendarHref = `/cabinet/${role.mode}/calendar`;
+        const requestsHref = `/cabinet/${role.mode}/requests`;
 
-    await calendarLink.click();
-    await expect(page).toHaveURL(/\/cabinet\/performer\/calendar/);
-    await expect(page.getByRole("heading", { name: "Расписание", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Входящие", exact: true })).toHaveCount(0);
+        await expect(calendarLink).toBeVisible({ timeout: 15_000 });
+        await expect(requestsLink).toBeVisible();
+        await expect(calendarLink).toHaveAttribute("href", calendarHref);
+        await expect(requestsLink).toHaveAttribute("href", requestsHref);
+        expect(calendarHref).not.toBe(requestsHref);
 
-    await requestsLink.click();
-    await expect(page).toHaveURL(/\/cabinet\/performer\/requests/);
-    await expect(page.getByRole("heading", { name: "Входящие", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Расписание", exact: true })).toHaveCount(0);
-  });
+        await calendarLink.click();
+        await expect(page).toHaveURL(new RegExp(`${calendarHref}$`));
+        await expect(page.getByRole("heading", { level: 1, name: role.calendarHeading, exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: role.requestsHeading, exact: true })).toHaveCount(0);
+        if (viewport.name === "desktop") {
+          await expect(navigation.getByRole("link", { name: "Календарь", exact: true })).toHaveAttribute(
+            "aria-current",
+            "page",
+          );
+        }
 
-  test("venue: section nav calendar vs requests", async ({ page, request }) => {
-    const session = await login(request, DEMO_ACCOUNTS.venue);
-    const me = await fetchMe(request, session.token);
-    const org = me.organizations.find((o) => o.kind === "venue");
-    expect(org?.id).toBeTruthy();
-    await injectSession(page, session.token, org!.id);
-    await page.goto("/cabinet/venue/calendar");
-    await expect(page.getByRole("navigation", { name: "Разделы кабинета" })).toBeVisible();
-    await expect(
-      page.getByRole("navigation", { name: "Разделы кабинета" }).getByRole("link", { name: "Календарь" }),
-    ).toHaveAttribute("aria-current", "page");
-    await page
-      .getByRole("navigation", { name: "Разделы кабинета" })
-      .getByRole("link", { name: "Заявки" })
-      .click();
-    await expect(page).toHaveURL(/\/cabinet\/venue\/requests/);
-    await expect(page.getByRole("heading", { name: "Заявки и сделки" })).toBeVisible();
-  });
+        await navigation.getByRole("link", { name: "Заявки", exact: true }).click();
+        await expect(page).toHaveURL(new RegExp(`${requestsHref}$`));
+        await expect(page.getByRole("heading", { level: 1, name: role.requestsHeading, exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: role.calendarHeading, exact: true })).toHaveCount(0);
+        if (viewport.name === "desktop") {
+          await expect(navigation.getByRole("link", { name: "Заявки", exact: true })).toHaveAttribute(
+            "aria-current",
+            "page",
+          );
+        }
+      });
+    }
+  }
 });
