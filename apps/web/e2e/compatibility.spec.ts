@@ -1,5 +1,20 @@
+import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { API_BASE, getJson, injectSession, postJson, register } from "./helpers";
+
+function publishVenueFixture(id: string) {
+  if (!process.env.BOOKER_DATABASE_URL?.startsWith("sqlite:////tmp/")) throw new Error("Venue fixture requires disposable SQLite in /tmp");
+  execFileSync(process.env.BOOKER_PYTHON_BIN || "python3", ["-c", `
+import sys
+from types import SimpleNamespace
+from sqlalchemy.orm import sessionmaker
+from booker_api.db import make_engine
+from tests.conftest import activate_venue
+SessionLocal = sessionmaker(bind=make_engine(sys.argv[1]), autoflush=False, autocommit=False, future=True)
+client = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(SessionLocal=SessionLocal)))
+activate_venue(client, sys.argv[2])
+`, process.env.BOOKER_DATABASE_URL, id], { cwd: "../api", env: process.env });
+}
 
 for (const width of [1440, 390]) {
   test.describe(`Compatibility ${width}px`, () => {
@@ -14,6 +29,7 @@ for (const width of [1440, 390]) {
       for (const [resource_type, resource_id] of [["artist", artist.id], ["hall", venue.hall_id]]) {
         await postJson(request, "/slots", actor.token, { resource_type, resource_id, starts_at: `${day}T14:00:00Z`, ends_at: `${day}T19:00:00Z` });
       }
+      publishVenueFixture(venue.id);
       const presentation = await getJson<{ version: number; data: object }>(request, `/artists/${artist.id}/presentation`, actor.token);
       const headers = { Authorization: `Bearer ${actor.token}` };
       const put = await request.put(`${API_BASE}/artists/${artist.id}/presentation`, { headers, data: { ...presentation.data, expected_version: presentation.version, technical: { stage_area_m2: 12, power_kw: 3, basic_sound: true, microphones: 2, setup_minutes: 30, teardown_minutes: 20, required_equipment: ["CDJ-3000"], supplied_equipment: [] } } });
@@ -21,9 +37,13 @@ for (const width of [1440, 390]) {
       await injectSession(page, actor.token, venueOrg.id);
       async function check() {
         await page.goto(`/compatibility?artist=${artist.id}&venue=${venue.id}`);
+        await expect(page.getByRole("combobox", { name: "Артист", exact: true })).toHaveValue(artist.id);
+        await expect(page.getByRole("combobox", { name: "Площадка", exact: true })).toHaveValue(venue.id);
+        await expect(page.getByRole("button", { name: "Проверить совместимость", exact: true })).toBeEnabled();
         await page.getByLabel("Начало, по Москве", { exact: true }).fill(`${day}T18:00`);
         await page.getByLabel("Окончание, по Москве", { exact: true }).fill(`${day}T21:00`);
         await page.getByLabel("Гостей", { exact: true }).fill("100");
+        await expect(page.getByLabel("Начало, по Москве", { exact: true })).toHaveValue(`${day}T18:00`);
         await page.getByRole("button", { name: "Проверить совместимость", exact: true }).click();
       }
       await check();

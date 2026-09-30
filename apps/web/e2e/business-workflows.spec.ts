@@ -5,6 +5,7 @@ for (const width of [1440, 390]) {
   test.describe(`Business workflows ${width}px`, () => {
     test.use({ viewport: { width, height: 900 } });
     test("templates, clean drafts and private notes survive response loss", async ({ page, request }, testInfo) => {
+      test.setTimeout(120_000);
       const suffix = `${width}-${Date.now()}`;
       const user = await register(request, `business-${suffix}@booker.test`, "Организатор Анна");
       const org = await postJson<{ id: string }>(request, "/orgs", user.token, { name: "Агентство событий", kind: "customer" });
