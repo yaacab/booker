@@ -135,7 +135,7 @@ for (const width of [1440, 390]) {
     await expect(retry).toBeVisible();
     await expect(page.getByRole('button', { name: 'Отменить заказ', exact: true })).toHaveCount(0);
     await retry.click();
-    await expect(page.getByRole('alert').filter({ hasText: 'Партнёр временно недоступен' })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: 'Сервис временно недоступен. Попробуйте ещё раз позже.' })).toBeVisible();
     await retry.focus(); await retry.press('Enter');
     await expect(retry).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Завершить тестовую оплату', exact: true })).toBeVisible();
