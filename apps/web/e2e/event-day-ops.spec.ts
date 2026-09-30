@@ -51,7 +51,7 @@ test.describe("eventDayOps", () => {
     );
     expect(steps).toHaveLength(2);
     expect(steps[0].blocker).toBe("no_offer");
-    expect(BLOCKER_LABEL[steps[0].blocker]).toBe("нет предложения");
+    expect(BLOCKER_LABEL[steps[0].blocker]).toBe("дождитесь предложения артиста");
     expect(steps[1].openRequests).toHaveLength(1);
     expect(steps[1].blocker).toBe("no_booking");
   });
