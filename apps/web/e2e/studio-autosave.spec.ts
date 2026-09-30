@@ -144,8 +144,7 @@ test.describe("E06 Event Studio autosave", () => {
     await expect(page.locator(".event-studio-shell")).toBeVisible();
 
     await page.getByLabel("Название события").fill(`E06 Retry ${Date.now()}`);
-    await page.locator(".time-card").getByRole("button", { name: "Изменить", exact: true }).click();
-    await page.getByLabel("Дата", { exact: true }).fill(new Date(Date.now() + 86400000).toISOString().slice(0, 10));
+    await page.getByLabel("Дата события").fill(new Date(Date.now() + 86400000).toISOString().slice(0, 10));
     await page.getByRole("button", { name: "Проверка" }).click();
     const continueBtn = page.getByRole("button", { name: /Продолжить/ });
     await expect(continueBtn).toBeVisible();
@@ -154,7 +153,7 @@ test.describe("E06 Event Studio autosave", () => {
     expect(submitKeyBefore.length).toBeGreaterThan(0);
 
     await continueBtn.click();
-    await expect(page.getByRole("alert")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".event-summary").getByRole("alert")).toContainText("Сервис временно недоступен", { timeout: 10_000 });
     await expect.poll(() => eventPosts, { timeout: 5_000 }).toBe(1);
     expect(successfulCreates).toBe(0);
     await expect
