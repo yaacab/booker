@@ -30,6 +30,7 @@ from booker_api.security import (
     require_org_member,
     require_org_writer,
 )
+from booker_api.venue_catalog import is_publicly_listed
 
 router = APIRouter(tags=["compatibility"])
 
@@ -139,7 +140,14 @@ def compatibility(body: CompatibilityIn, request: Request, user: User | None = D
     venue = db.get(Venue, str(body.venue_id))
     if not artist or not venue:
         raise HTTPException(404, "Профиль не найден")
-    if venue.moderation_status != "published" and not (user and (user.is_platform_admin or membership(db, user.id, venue.organization_id))):
+    can_manage_venue = bool(
+        user
+        and (
+            user.is_platform_admin
+            or membership(db, user.id, venue.organization_id)
+        )
+    )
+    if not is_publicly_listed(db, venue) and not can_manage_venue:
         raise HTTPException(404, "Площадка не найдена")
     halls = db.query(VenueHall).filter_by(venue_id=venue.id).all()
     hall = next((h for h in halls if h.id == str(body.hall_id)), None) if body.hall_id else halls[0] if len(halls) == 1 else None

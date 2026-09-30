@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+import pytest
+
 from booker_api.models import (
     AvailabilitySlot,
     Booking,
@@ -8,6 +10,9 @@ from booker_api.models import (
     Subscription,
     TeamMember,
     Venue,
+    VenueHall,
+    VenuePhoto,
+    VenueTariff,
 )
 from booker_api.security import now
 from tests.conftest import activate_venue, auth_header, register
@@ -64,11 +69,74 @@ def test_venue_visibility_synthetic_calendars_and_per_hall_facts(client, Session
     assert result['columns'][1]['halls'][0]['capacity_status'] == 'too_small'
     with SessionLocal() as db:
         row = db.get(Venue, venue['id']); row.availability_mode = 'synthetic'; row.is_claimed = False; db.commit()
-    assert client.get(query, headers=ctx['headers']).json()['columns'][1]['availability']['status'] == 'unknown'
+    hidden = client.get(query, headers=ctx['headers'])
+    assert hidden.status_code == 404 and 'Второй зал' not in hidden.text
     with SessionLocal() as db:
-        db.get(Venue, venue['id']).moderation_status = 'needs_review'; db.commit()
+        row = db.get(Venue, venue['id'])
+        row.availability_mode = 'owner'
+        row.is_claimed = True
+        row.moderation_status = 'needs_review'
+        db.commit()
     denied = client.get(query, headers=ctx['headers'])
     assert denied.status_code == 404 and 'Второй зал' not in denied.text
+
+
+@pytest.mark.parametrize('blocker', ['media', 'calendar', 'price', 'partnership'])
+def test_compare_revokes_every_venue_publication_gate_blocker(
+    client,
+    SessionLocal,
+    blocker,
+):
+    ctx = setup_matching(client)
+    second_org = client.post(
+        '/orgs',
+        headers=ctx['headers'],
+        json={
+            'name': f'Gate org {blocker}',
+            'kind': 'venue',
+            'confirm_another_workspace': True,
+        },
+    ).json()
+    second = client.post(
+        '/venues',
+        headers=ctx['headers'],
+        json={
+            'organization_id': second_org['id'],
+            'name': f'Gate venue {blocker}',
+            'capacity': 80,
+        },
+    ).json()
+    activate_venue(client, second['id'])
+
+    venue_compare = path(ctx, 'venue', [ctx['venue']['id'], second['id']])
+    reference_compare = path(ctx) + f"&venue_id={second['id']}&hall_id={second['hall_id']}"
+    assert client.get(venue_compare).status_code == 200
+    assert client.get(reference_compare).status_code == 200
+
+    with SessionLocal() as db:
+        venue = db.get(Venue, second['id'])
+        if blocker == 'media':
+            db.query(VenuePhoto).filter(VenuePhoto.venue_id == venue.id).delete()
+        elif blocker == 'calendar':
+            hall_ids = [
+                row[0]
+                for row in db.query(VenueHall.id).filter(VenueHall.venue_id == venue.id)
+            ]
+            db.query(AvailabilitySlot).filter(
+                AvailabilitySlot.resource_type == 'hall',
+                AvailabilitySlot.resource_id.in_(hall_ids),
+            ).delete(synchronize_session=False)
+        elif blocker == 'price':
+            db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).delete()
+        else:
+            venue.partnership_status = 'claimed'
+            venue.verified = False
+        db.commit()
+
+    for route in (venue_compare, reference_compare):
+        denied = client.get(route)
+        assert denied.status_code == 404
+        assert f'Gate venue {blocker}' not in denied.text
 
 
 def test_event_auth_window_authority_and_own_hold_context(client, SessionLocal):

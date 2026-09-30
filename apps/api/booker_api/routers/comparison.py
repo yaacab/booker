@@ -12,6 +12,7 @@ from booker_api.db import get_db
 from booker_api.models import Artist, Event, Venue, VenueHall
 from booker_api.rate_limit import analytics_limiter, client_key
 from booker_api.security import audit, authenticate_token, aware, bearer, require_org_member
+from booker_api.venue_catalog import is_publicly_listed
 
 router = APIRouter(tags=["compare"])
 
@@ -48,7 +49,7 @@ def compare_candidates(request: Request, target_type: Literal["artist", "venue"]
 
     def venue(value):
         row = db.get(Venue, str(value)) if value else None
-        if value and (not row or row.moderation_status != "published"):
+        if value and (not row or not is_publicly_listed(db, row)):
             raise HTTPException(404, "Один из профилей недоступен")
         return row
 

@@ -9,6 +9,9 @@ from booker_api.models import (
     Subscription,
     TeamMember,
     Venue,
+    VenueHall,
+    VenuePhoto,
+    VenueTariff,
 )
 from booker_api.security import now
 from tests.conftest import activate_venue, auth_header, register
@@ -124,13 +127,58 @@ def test_synthetic_calendar_and_unspecified_hall_remain_unknown(client, SessionL
     fill_facts(client, ctx)
     with SessionLocal() as db:
         venue = db.get(Venue, ctx["venue"]["id"]); venue.availability_mode = "synthetic"; venue.is_claimed = False; db.commit()
-    result = client.post("/compatibility", json=ctx["query"]).json()
+    hidden = client.post("/compatibility", json=ctx["query"])
+    assert hidden.status_code == 404
+    result = client.post(
+        "/compatibility",
+        json=ctx["query"],
+        headers=auth_header(ctx["owner"]["token"]),
+    ).json()
     assert result["status"] != "compatible"
     assert next(c for c in result["checks"] if c["code"] == "date")["status"] == "unknown"
     assert client.post("/compatibility", json={**ctx["query"], "hall_id": ctx["artist"]["id"]}).status_code == 404
     from booker_api.config import settings
     monkeypatch.setattr(settings, "compatibility", False)
     assert client.post("/compatibility", json=ctx["query"]).status_code == 503
+
+
+@pytest.mark.parametrize("blocker", ["media", "calendar", "price", "partnership"])
+def test_public_compatibility_revokes_every_publication_gate_blocker(
+    client,
+    SessionLocal,
+    blocker,
+):
+    ctx = setup_pair(client)
+    with SessionLocal() as db:
+        venue = db.get(Venue, ctx["venue"]["id"])
+        if blocker == "media":
+            db.query(VenuePhoto).filter(VenuePhoto.venue_id == venue.id).delete()
+        elif blocker == "calendar":
+            hall_ids = [
+                row[0]
+                for row in db.query(VenueHall.id).filter(VenueHall.venue_id == venue.id)
+            ]
+            db.query(AvailabilitySlot).filter(
+                AvailabilitySlot.resource_type == "hall",
+                AvailabilitySlot.resource_id.in_(hall_ids),
+            ).delete(synchronize_session=False)
+        elif blocker == "price":
+            db.query(VenueTariff).filter(VenueTariff.venue_id == venue.id).delete()
+        else:
+            venue.partnership_status = "claimed"
+            venue.verified = False
+        db.commit()
+
+    denied = client.post("/compatibility", json=ctx["query"])
+    assert denied.status_code == 404
+    assert "Сцена" not in denied.text
+
+    owner = client.post(
+        "/compatibility",
+        json=ctx["query"],
+        headers=auth_header(ctx["owner"]["token"]),
+    )
+    assert owner.status_code == 200, owner.text
 
 
 @pytest.mark.parametrize("guest_count", [-1, True, 1.5])
