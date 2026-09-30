@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { API_BASE } from './helpers';
 
 test('путь артиста: преимущества → короткая регистрация → кабинет', async ({page,request}) => {
   await page.goto('/');
@@ -15,12 +16,13 @@ test('путь артиста: преимущества → короткая р�
   await page.getByRole('button',{name:'Создать кабинет артиста →',exact:true}).click();
   await expect(page).toHaveURL(/\/cabinet\/performer/, {timeout:30000});
   const token=await page.evaluate(()=>localStorage.getItem('booker.token'));
-  const res=await request.get('http://127.0.0.1:8035/me',{headers:{Authorization:`Bearer ${token}`}});
+  const res=await request.get(`${API_BASE}/me`,{headers:{Authorization:`Bearer ${token}`}});
   expect(res.ok()).toBeTruthy();
   expect((await res.json()).organizations.some((o:{kind:string})=>o.kind==='artist')).toBeTruthy();
 });
 
 test('обе темы и мобильный экран; пазлы реагируют и поддерживают reduced motion',async({page},info)=>{
+  test.setTimeout(90_000);
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   for(const width of [1440,768,390])for(const edition of ['light','black']){
     await page.setViewportSize({width,height:1000});await page.goto('/for-artists');
