@@ -24,7 +24,7 @@ const ROLES = [
     email: DEMO_ACCOUNTS.venue,
     orgKind: "venue",
     route: "/cabinet/venue",
-    heading: "Пульт площадки",
+    heading: "Кабинет площадки",
   },
 ] as const;
 

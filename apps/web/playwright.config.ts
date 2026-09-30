@@ -7,7 +7,13 @@ const WEB_URL = process.env.BOOKER_WEB_URL ?? "http://127.0.0.1:3000";
 const API_PORT = Number(new URL(API_URL).port || 8000);
 const WEB_PORT = Number(new URL(WEB_URL).port || 3000);
 const repoPython = path.resolve(__dirname, "../../.venv/bin/python");
-const pythonBin = fs.existsSync(repoPython) ? "../../.venv/bin/python" : "python3";
+const configuredPython = process.env.BOOKER_PYTHON_BIN;
+if (configuredPython && !/^[A-Za-z0-9_./-]+$/.test(configuredPython)) {
+  throw new Error("BOOKER_PYTHON_BIN must be a plain executable path");
+}
+const pythonBin =
+  configuredPython ??
+  (fs.existsSync(repoPython) ? "../../.venv/bin/python" : "python3");
 
 export default defineConfig({
   testDir: "./e2e",

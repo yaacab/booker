@@ -70,7 +70,7 @@ test.describe("E15 org/role workspace switch", () => {
 
     await test.step("switch → venue: кабинет и inbound title, без предыдущих", async () => {
       await switchWorkspace(page, seed.venue.orgId, /\/cabinet\/venue/);
-      await expect(page.getByRole("heading", { name: "Пульт площадки" })).toBeVisible({
+      await expect(page.getByRole("heading", { name: "Кабинет площадки" })).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByLabel("Рабочее пространство")).toHaveValue(seed.venue.orgId);

@@ -34,7 +34,7 @@ const CABINET_ROLES: CabinetRole[] = [
     account: DEMO_ACCOUNTS.venue,
     orgKind: "venue",
     path: "/cabinet/venue",
-    heading: "Пульт площадки",
+    heading: "Кабинет площадки",
     dataCabinet: "venue",
   },
 ];
