@@ -30,13 +30,13 @@ jobs:
       - name: Web install + Playwright
         working-directory: apps/web
         run: |
-          npm install
+          npm ci
           npx playwright install --with-deps chromium
       - name: E2E flow smoke
         working-directory: apps/web
         env:
           BOOKER_API_URL: http://127.0.0.1:8030
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          BOOKER_WEB_URL: http://127.0.0.1:3000
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8030
           BOOKER_INTERNAL_API_URL: http://127.0.0.1:8030
         run: |

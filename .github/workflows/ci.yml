@@ -71,7 +71,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npm install
+      - run: npm ci
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run build
@@ -99,11 +99,12 @@ jobs:
             BOOKER_COMMERCE_PROVIDER=stub BOOKER_COMMERCE_ALLOW_STUB=true \
             BOOKER_COMMERCE_WEBHOOK_SECRET=ci-test-only-commerce-webhook-secret \
             uvicorn booker_api.main:app --host 127.0.0.1 --port 8000 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
+          curl --fail --silent --show-error --retry 29 --retry-delay 1 --retry-connrefused \
+            http://127.0.0.1:8000/health
       - name: Web install + Playwright
         working-directory: apps/web
         run: |
-          npm install
+          npm ci
           npx playwright install --with-deps chromium
       - name: Critical e2e (flag + supply nav)
         working-directory: apps/web
@@ -117,7 +118,8 @@ jobs:
         run: |
           npm run build
           npx next start -H 127.0.0.1 -p 3000 &
-          for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          curl --fail --silent --show-error --retry 39 --retry-delay 1 --retry-connrefused \
+            http://127.0.0.1:3000/ >/dev/null
           npx playwright test \
             e2e/event-studio-map.spec.ts \
             e2e/supply-nav.spec.ts \
