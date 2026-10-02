@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from tests.conftest import auth_header, publish_artist, publish_venue, register
 
 
@@ -47,26 +49,29 @@ def test_search_hides_busy_and_no_calendar(client):
     empty = client.get("/catalog/search", params={"city": "Москва", "category": "cover"})
     assert empty.json()["items"] == []
 
+    day = (datetime.now(timezone.utc) + timedelta(days=7)).date()
+    following_day = day + timedelta(days=1)
+
     client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-10-02T18:00:00+00:00",
-            "ends_at": "2026-10-02T21:00:00+00:00",
+            "starts_at": f"{day.isoformat()}T18:00:00+00:00",
+            "ends_at": f"{day.isoformat()}T21:00:00+00:00",
         },
         headers=auth_header(owner["token"]),
     )
     publish_artist(client, owner, artist["id"])
     found = client.get(
         "/catalog/search",
-        params={"city": "Москва", "category": "cover", "date": "2026-10-02T12:00:00+00:00"},
+        params={"city": "Москва", "category": "cover", "date": f"{day.isoformat()}T12:00:00+00:00"},
     )
     assert len(found.json()["items"]) == 1
 
     missing_day = client.get(
         "/catalog/search",
-        params={"city": "Москва", "category": "cover", "date": "2026-10-03T12:00:00+00:00"},
+        params={"city": "Москва", "category": "cover", "date": f"{following_day.isoformat()}T12:00:00+00:00"},
     )
     assert missing_day.json()["items"] == []
 
