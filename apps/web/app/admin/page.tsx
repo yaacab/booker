@@ -542,7 +542,7 @@ export default function AdminPage() {
           </article>
         ) : null}
         <article className="card" style={{ gridColumn: "1 / -1", minWidth: 0 }}>
-          <AdminSupportQueue operatorId={operatorId} />
+          <AdminSupportQueue operatorId={operatorId} canReassign />
         </article>
         <article className="card" style={{ gridColumn: "1 / -1", minWidth: 0 }}>
           <DataSubjectRequests mode="admin" />

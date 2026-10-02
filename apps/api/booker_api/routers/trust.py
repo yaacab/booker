@@ -80,7 +80,12 @@ class ClaimIn(BaseModel):
 
 
 class SupportAssignIn(BaseModel):
-    action: str = Field(pattern="^(take|release)$")
+    action: str = Field(pattern="^(take|release|transfer|escalate)$")
+    target_user_id: str | None = Field(default=None, max_length=36)
+
+
+class SupportPriorityIn(BaseModel):
+    priority: str = Field(pattern="^(normal|high|urgent)$")
 
 
 class SupportOperatorRoleIn(BaseModel):
@@ -1544,6 +1549,30 @@ def admin_list_support_tickets(
             "overdue_count": int(overdue_count), "limit": limit, "offset": offset}
 
 
+@router.get("/admin/support/staff")
+def support_staff_for_handoff(
+    actor: User = Depends(require_support_step_up),
+    db: Session = Depends(get_db),
+):
+    """Expose only eligible staff identities, not their private contact details."""
+    rows = (
+        db.query(User)
+        .filter(
+            (User.is_support_operator.is_(True) | User.is_platform_admin.is_(True)),
+            User.email_verified_at.is_not(None),
+            User.totp_enabled.is_(True),
+        )
+        .order_by(User.full_name, User.id)
+        .all()
+    )
+    audit(db, actor_user_id=actor.id, action="support.staff.viewed",
+          entity_type="user", entity_id=actor.id, payload={"count": len(rows)})
+    db.commit()
+    return {"items": [{"id": row.id, "name": row.full_name,
+                       "role": "administrator" if row.is_platform_admin else "operator"}
+                      for row in rows]}
+
+
 @router.get("/admin/support/tickets/{ticket_id}")
 def admin_get_support_ticket(
     ticket_id: str,
@@ -1568,6 +1597,8 @@ def admin_get_support_ticket(
         "support.ticket.created", "support.ticket.closed", "support.ticket.reopened",
         "support.admin.ticket.closed", "support.admin.ticket.reopened",
         "support.admin.ticket.assigned", "support.admin.ticket.released",
+        "support.admin.ticket.transferred", "support.admin.ticket.escalated",
+        "support.admin.ticket.priority_changed",
     }
     events = db.query(AuditLog).filter(
         AuditLog.entity_type == "support_ticket", AuditLog.entity_id == row.id,
@@ -1626,10 +1657,35 @@ def admin_assign_support_ticket(
     _check_ticket_client_version(row, expected_version)
     if row.status in {"closed", "resolved"}:
         raise HTTPException(409, "Закрытое обращение нельзя назначить")
-    assignee = admin.id if body.action == "take" else None
+    if body.action in {"take", "release"} and body.target_user_id is not None:
+        raise HTTPException(422, "Цель доступна только для передачи обращения")
+    if body.action in {"transfer", "escalate"}:
+        if not body.target_user_id:
+            raise HTTPException(422, "Выберите сотрудника для передачи")
+        target = (db.query(User).filter(User.id == body.target_user_id)
+                  .with_for_update().one_or_none())
+        if not target or not target.email_verified_at or not target.totp_enabled or not (
+            target.is_support_operator or target.is_platform_admin
+        ):
+            raise HTTPException(409, "Сотрудник больше не может принимать обращения")
+        if body.action == "escalate" and not target.is_platform_admin:
+            raise HTTPException(422, "Эскалацию может принять только администратор")
+        if not admin.is_platform_admin and row.assigned_to_user_id != admin.id:
+            raise HTTPException(403, "Передать можно только своё обращение")
+        assignee = target.id
+    elif body.action == "take":
+        if row.assigned_to_user_id and row.assigned_to_user_id != admin.id:
+            raise HTTPException(409, "Обращение уже назначено другому сотруднику")
+        assignee = admin.id
+    else:
+        if (row.assigned_to_user_id and row.assigned_to_user_id != admin.id
+                and not admin.is_platform_admin):
+            raise HTTPException(403, "Снять можно только своё назначение")
+        assignee = None
     if row.assigned_to_user_id == assignee:
         return {"id": row.id, "assigned_to_user_id": assignee,
                 "state_version": row.state_version, "idempotent": True}
+    previous_assignee = row.assigned_to_user_id
     changed = db.execute(
         update(SupportTicket).where(
             SupportTicket.id == row.id,
@@ -1641,12 +1697,52 @@ def admin_assign_support_ticket(
     if changed != 1:
         db.rollback()
         raise HTTPException(409, "Состояние обращения уже изменилось")
-    audit(db, actor_user_id=admin.id,
-          action="support.admin.ticket.assigned" if assignee else "support.admin.ticket.released",
+    action = {
+        "take": "support.admin.ticket.assigned",
+        "release": "support.admin.ticket.released",
+        "transfer": "support.admin.ticket.transferred",
+        "escalate": "support.admin.ticket.escalated",
+    }[body.action]
+    audit(db, actor_user_id=admin.id, action=action,
           entity_type="support_ticket", entity_id=row.id,
-          payload={"assigned_to_user_id": assignee})
+          payload={"from_user_id": previous_assignee, "assigned_to_user_id": assignee})
     db.commit()
     return {"id": row.id, "assigned_to_user_id": assignee,
+            "state_version": expected_version + 1}
+
+
+@router.post("/admin/support/tickets/{ticket_id}/priority")
+def admin_change_support_priority(
+    ticket_id: str,
+    body: SupportPriorityIn,
+    actor: User = Depends(require_support_step_up),
+    db: Session = Depends(get_db),
+    expected_version: int = Header(alias="If-Match", ge=0),
+):
+    row = _require_admin_ticket(db, ticket_id)
+    _check_ticket_client_version(row, expected_version)
+    if row.status in {"closed", "resolved"}:
+        raise HTTPException(409, "Приоритет закрытого обращения не меняется")
+    if row.priority == body.priority:
+        return {"id": row.id, "priority": row.priority,
+                "state_version": row.state_version, "idempotent": True}
+    previous = row.priority
+    changed = db.execute(
+        update(SupportTicket).where(
+            SupportTicket.id == row.id,
+            SupportTicket.state_version == expected_version,
+            SupportTicket.status.notin_({"closed", "resolved"}),
+        ).values(priority=body.priority, state_version=SupportTicket.state_version + 1)
+    ).rowcount
+    if changed != 1:
+        db.rollback()
+        raise HTTPException(409, "Состояние обращения уже изменилось")
+    audit(db, actor_user_id=actor.id, action="support.admin.ticket.priority_changed",
+          entity_type="support_ticket", entity_id=row.id,
+          payload={"from": previous, "to": body.priority,
+                   "response_deadline_unchanged": True})
+    db.commit()
+    return {"id": row.id, "priority": body.priority,
             "state_version": expected_version + 1}
 
 

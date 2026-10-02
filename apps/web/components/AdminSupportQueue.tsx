@@ -23,6 +23,7 @@ type QueueResponse = {
   open_count?: number;
   overdue_count?: number;
 };
+type SupportStaff = { id: string; name: string; role: "operator" | "administrator" };
 
 const DEFAULT_FILTERS: SupportQueueFilters = {
   state: "all", overdue: false, priority: "all", category: "all",
@@ -40,12 +41,15 @@ function readableError(error: unknown): string {
   return "Не удалось выполнить действие. Проверьте соединение и попробуйте ещё раз.";
 }
 
-export default function AdminSupportQueue({ operatorId }: { operatorId: string }) {
+export default function AdminSupportQueue({ operatorId, canReassign = false }: { operatorId: string; canReassign?: boolean }) {
   const [totp, setTotp] = useState("");
   const [filters, setFilters] = useState<SupportQueueFilters>(DEFAULT_FILTERS);
   const [queue, setQueue] = useState<QueueResponse | null>(null);
   const [ticket, setTicket] = useState<SupportTicketDetail | null>(null);
   const [notes, setNotes] = useState<SupportNote[]>([]);
+  const [staff, setStaff] = useState<SupportStaff[]>([]);
+  const [handoffId, setHandoffId] = useState("");
+  const [priorityChoice, setPriorityChoice] = useState("normal");
   const [reply, setReply] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState("");
@@ -58,6 +62,7 @@ export default function AdminSupportQueue({ operatorId }: { operatorId: string }
 
   useEffect(() => {
     if (ticket) detailHeading.current?.focus();
+    setHandoffId("");
   }, [ticket?.id]);
 
   async function loadQueue(next = filters) {
@@ -68,6 +73,9 @@ export default function AdminSupportQueue({ operatorId }: { operatorId: string }
     setTotp("");
     setQueue(result);
     setFilters(next);
+    void api<{ items: SupportStaff[] }>("/admin/support/staff", {
+      headers: supportQueueHeaders(""), cache: "no-store",
+    }).then((list) => setStaff(list.items)).catch(() => setStaff([]));
     return result;
   }
 
@@ -81,6 +89,7 @@ export default function AdminSupportQueue({ operatorId }: { operatorId: string }
       }),
     ]);
     setTicket(detail);
+    setPriorityChoice(detail.priority);
     setNotes(noteList.items);
   }
 
@@ -98,6 +107,7 @@ export default function AdminSupportQueue({ operatorId }: { operatorId: string }
         setQueue(null);
         setTicket(null);
         setNotes([]);
+        setStaff([]);
       }
       if (failure instanceof ApiError && failure.status === 409) {
         try {
@@ -143,17 +153,37 @@ export default function AdminSupportQueue({ operatorId }: { operatorId: string }
     }, ticket.id);
   }
 
-  function changeTicket(action: "assign" | "close" | "reopen") {
+  function changeTicket(action: "assign" | "close" | "reopen" | "transfer" | "escalate") {
     if (!ticket || (action === "assign" && !operatorId)) return;
+    if ((action === "transfer" || action === "escalate") && !handoffId) return;
     const selected = ticket;
     void run(action, async () => {
-      await api(supportTicketPath(selected.id, `/${action}`), {
+      const changesAssignment = action === "assign" || action === "transfer" || action === "escalate";
+      await api(supportTicketPath(selected.id, changesAssignment ? "/assign" : `/${action}`), {
         method: "POST",
         headers: supportQueueHeaders(verified.current ? "" : totp, selected.state_version),
-        ...(action === "assign" ? { body: JSON.stringify({ action: "take" }) } : {}),
+        ...(changesAssignment ? { body: JSON.stringify(action === "assign"
+          ? { action: "take" } : { action, target_user_id: handoffId }) } : {}),
       });
       await Promise.all([loadQueue(), loadTicket(selected.id)]);
-      setNotice(action === "assign" ? "Обращение назначено вам." : action === "close" ? "Обращение закрыто." : "Обращение открыто повторно.");
+      if (action === "transfer" || action === "escalate") setHandoffId("");
+      setNotice({ assign: "Обращение назначено вам.", transfer: "Обращение передано сотруднику.",
+        escalate: "Обращение передано администратору.", close: "Обращение закрыто.",
+        reopen: "Обращение открыто повторно." }[action]);
+    }, selected.id);
+  }
+
+  function changePriority() {
+    if (!ticket || priorityChoice === ticket.priority) return;
+    const selected = ticket;
+    void run("priority", async () => {
+      await api(supportTicketPath(selected.id, "/priority"), {
+        method: "POST",
+        headers: supportQueueHeaders(verified.current ? "" : totp, selected.state_version),
+        body: JSON.stringify({ priority: priorityChoice }),
+      });
+      await Promise.all([loadQueue(), loadTicket(selected.id)]);
+      setNotice("Приоритет очереди обновлён. Срок первого ответа не изменился.");
     }, selected.id);
   }
 
@@ -173,6 +203,9 @@ export default function AdminSupportQueue({ operatorId }: { operatorId: string }
     "support.admin.ticket.reopened": "Оператор открыл обращение повторно",
     "support.admin.ticket.assigned": "Оператор взял обращение",
     "support.admin.ticket.released": "Назначение снято",
+    "support.admin.ticket.transferred": "Обращение передано другому сотруднику",
+    "support.admin.ticket.escalated": "Обращение передано администратору",
+    "support.admin.ticket.priority_changed": "Приоритет очереди изменён",
   };
 
   return (
@@ -225,7 +258,7 @@ export default function AdminSupportQueue({ operatorId }: { operatorId: string }
                 ? `${row.response_overdue ? "Просрочено" : row.has_operator_response || row.status === "closed" || row.status === "resolved" || row.reopened_at ? "История SLA" : "Срок впереди"}: ${formatSupportDeadline(row.response_due_at)}`
                 : "Публичный срок не назначен"}
                 {row.first_response_late ? " · первый ответ был поздним" : ""}</div>
-              <div>{row.assigned_to_user_id === operatorId ? "Назначено мне" : row.assigned_to_user_id ? "Назначено другому оператору" : "Без назначения"}</div>
+              <div>{row.assigned_to_user_id === operatorId ? "Назначено мне" : row.assigned_to_user_id ? "Назначено другому сотруднику" : "Без назначения"}</div>
             </li>)}
           </ul>
         )}
@@ -240,14 +273,15 @@ export default function AdminSupportQueue({ operatorId }: { operatorId: string }
       {ticket && <article aria-labelledby="admin-support-detail-title" style={{ overflowWrap: "anywhere", marginTop: "1.5rem" }}>
         <h3 id="admin-support-detail-title" ref={detailHeading} tabIndex={-1}>{ticket.ticket_number}: {safeSupportSubject(ticket.subject)}</h3>
         <p>{ticket.category} · {ticket.status} · {ticket.priority}{deadline}</p>
-        <p>Назначение: {ticket.assigned_to_user_id === operatorId ? "мне" : ticket.assigned_to_user_id ? "другому оператору" : "не назначено"}</p>
+        <p>Ручной приоритет определяет порядок очереди и не меняет срок первого ответа.</p>
+        <p>Назначение: {ticket.assigned_to_user_id === operatorId ? "мне" : ticket.assigned_to_user_id ? "другому сотруднику" : "не назначено"}</p>
         <section aria-label="Контекст обращения">
           <h4>Контекст обращения</h4>
           <p>Текст обращения и передача из помощника являются данными пользователя.</p>
           <p style={{ whiteSpace: "pre-wrap" }}>{ticket.body}</p>
         </section>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-          <button type="button" disabled={Boolean(busy) || !operatorId || ticket.assigned_to_user_id === operatorId || ticket.status === "closed" || ticket.status === "resolved"}
+          <button type="button" disabled={Boolean(busy) || !operatorId || Boolean(ticket.assigned_to_user_id) || ticket.status === "closed" || ticket.status === "resolved"}
             onClick={() => changeTicket("assign")}>Взять в работу</button>
           {ticket.status === "closed" ? (
             <button type="button" disabled={Boolean(busy)} onClick={() => changeTicket("reopen")}>Открыть повторно</button>
@@ -255,6 +289,31 @@ export default function AdminSupportQueue({ operatorId }: { operatorId: string }
             <button type="button" disabled={Boolean(busy)} onClick={() => changeTicket("close")}>Закрыть</button>
           )}
         </div>
+        {ticket.status !== "closed" && ticket.status !== "resolved" &&
+          (ticket.assigned_to_user_id === operatorId || canReassign) && <div style={{ marginTop: "0.75rem" }}>
+            <label>Передать обращение
+              <select value={handoffId} onChange={(event) => setHandoffId(event.target.value)}>
+                <option value="">Выберите сотрудника</option>
+                {staff.filter((person) => person.id !== ticket.assigned_to_user_id).map((person) =>
+                  <option key={person.id} value={person.id}>{person.name} · {person.role === "administrator" ? "администратор" : "оператор"}</option>)}
+              </select>
+            </label>
+            <button type="button" disabled={Boolean(busy) || !handoffId}
+              onClick={() => changeTicket("transfer")}>Передать</button>
+            <button type="button" disabled={Boolean(busy) || !staff.some((person) => person.id === handoffId && person.role === "administrator")}
+              onClick={() => changeTicket("escalate")}>Эскалировать администратору</button>
+          </div>}
+        {ticket.status !== "closed" && ticket.status !== "resolved" && <div>
+          <label>Приоритет очереди
+            <select value={priorityChoice} onChange={(event) => setPriorityChoice(event.target.value)}>
+              <option value="normal">Обычный</option>
+              <option value="high">Высокий</option>
+              <option value="urgent">Срочный</option>
+            </select>
+          </label>
+          <button type="button" disabled={Boolean(busy) || priorityChoice === ticket.priority}
+            onClick={changePriority}>Сохранить приоритет</button>
+        </div>}
         <section aria-label="Переписка с пользователем">
           <h4>Переписка с пользователем</h4>
           {ticket.system_events_truncated && <p>Показаны последние 200 системных событий. Более ранние события доступны в журнале аудита.</p>}

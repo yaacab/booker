@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { createHmac } from "node:crypto";
-import { API_BASE, DEMO_ACCOUNTS, fetchMe, injectSession, login } from "./helpers";
+import { execFileSync } from "node:child_process";
+import { API_BASE, DEMO_ACCOUNTS, fetchMe, injectSession, login, register } from "./helpers";
 
 function adminTotp(): string {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -55,6 +56,40 @@ test("ordinary user handoff reaches protected operator queue and returns one rep
   await fillTotp();
   await queue.getByRole("button", { name: "Взять в работу" }).click();
   await expect(queue.getByText("Назначение: мне")).toBeVisible();
+
+  if (process.env.BOOKER_RUNTIME_ENV === "test" &&
+      process.env.BOOKER_DATABASE_URL?.startsWith("sqlite:////tmp/")) {
+    const colleagueEmail = `handoff-e2e-${Date.now()}@booker.test`;
+    const colleague = await register(request, colleagueEmail, "Второй оператор");
+    const databasePath = process.env.BOOKER_DATABASE_URL.slice("sqlite:///".length);
+    execFileSync("../api/.venv/bin/python", ["-c", `
+import sqlite3, sys
+with sqlite3.connect(sys.argv[1]) as db:
+    db.execute("UPDATE users SET email_verified_at = CURRENT_TIMESTAMP, totp_enabled = 1, totp_secret = ? WHERE email = ?", (sys.argv[3], sys.argv[2]))
+    if db.total_changes != 1:
+        raise RuntimeError("isolated handoff fixture missing")
+`, databasePath, colleagueEmail, "JBSWY3DPEHPK3PXP"], { cwd: process.cwd() });
+    const granted = await request.post(`${API_BASE}/admin/support/operators`, {
+      headers: { Authorization: `Bearer ${admin.token}`, "X-Booker-TOTP": adminTotp() },
+      data: { email: colleagueEmail, enabled: true },
+    });
+    expect(granted.status(), await granted.text()).toBe(200);
+    await fillTotp();
+    await queue.getByRole("button", { name: "Показать очередь" }).click();
+    await queue.getByRole("button", { name: new RegExp(ticketNumber) }).click();
+    await queue.getByLabel("Передать обращение").selectOption(colleague.user_id);
+    await fillTotp();
+    await queue.getByRole("button", { name: "Передать", exact: true }).click();
+    await expect(queue.getByText("Назначение: другому сотруднику")).toBeVisible();
+    await queue.getByLabel("Передать обращение").selectOption(admin.user_id);
+    await fillTotp();
+    await queue.getByRole("button", { name: "Передать", exact: true }).click();
+    await expect(queue.getByText("Назначение: мне")).toBeVisible();
+  }
+  await queue.getByLabel("Приоритет очереди").selectOption("high");
+  await fillTotp();
+  await queue.getByRole("button", { name: "Сохранить приоритет" }).click();
+  await expect(queue.getByText("Приоритет очереди обновлён. Срок первого ответа не изменился.")).toBeVisible();
 
   await fillTotp();
   await queue.getByLabel("Заметка для операторов").fill("Только внутренний контекст");

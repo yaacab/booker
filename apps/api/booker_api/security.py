@@ -75,7 +75,8 @@ def _support_operator_route_allowed(request: Request) -> bool:
     method = request.method
     if (path, method) in {("/me", "GET"), ("/auth/logout", "POST"),
                           ("/auth/admin-totp/recovery-codes/count", "GET"),
-                          ("/admin/support/tickets", "GET")}:
+                          ("/admin/support/tickets", "GET"),
+                          ("/admin/support/staff", "GET")}:
         return True
     parts = path.strip("/").split("/")
     if len(parts) < 4 or parts[:3] != ["admin", "support", "tickets"] or not parts[3]:
@@ -86,7 +87,7 @@ def _support_operator_route_allowed(request: Request) -> bool:
         return False
     action = parts[4]
     return (action == "notes" and method == "GET") or (
-        action in {"messages", "assign", "notes", "close", "reopen"} and method == "POST"
+        action in {"messages", "assign", "priority", "notes", "close", "reopen"} and method == "POST"
     )
 
 
