@@ -151,3 +151,58 @@ test("support assistant answers safely and creates a human ticket on explicit ha
   expect(secondSessionId).not.toBe(firstSessionId);
   expect([...(await ticketIds())].sort()).toEqual([...afterHandoff].sort());
 });
+
+
+test("booking help keeps a separate assistant session and sends the linked booking", async ({
+  page, request,
+}) => {
+  expect(await apiHealth(request), `API недоступен (${API_BASE})`).toBe(true);
+  const auth = await login(request, DEMO_ACCOUNTS.customer);
+  const me = await fetchMe(request, auth.token);
+  const org = me.organizations.find((item) => item.kind === "customer");
+  expect(org?.id).toBeTruthy();
+  await injectSession(page, auth.token, org!.id);
+
+  const bookingId = "11111111-2222-4333-8444-555555555555";
+  const linkedSessionId = "66666666-7777-4888-9999-aaaaaaaaaaaa";
+  const ordinaryKey = `booker.support.assistantSession.${auth.user_id}.${org!.id}`;
+  const linkedKey = `${ordinaryKey}.booking.${bookingId}`;
+  await page.evaluate((key) => localStorage.setItem(key, "ordinary-session"), ordinaryKey);
+  let createdWith: Record<string, string> | null = null;
+  let ordinaryRestored = false;
+  await page.route("**/support/assistant/sessions/ordinary-session", async (route) => {
+    ordinaryRestored = true;
+    await route.fulfill({ status: 500, body: "Unexpected ordinary session restore" });
+  });
+  await page.route("**/support/assistant/sessions", async (route) => {
+    createdWith = route.request().postDataJSON() as Record<string, string>;
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({
+      id: linkedSessionId, status: "active", related_type: "booking", related_id: bookingId,
+      messages: [],
+    }) });
+  });
+  await page.route("**/support/assistant/sessions/*/messages", async (route) => {
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({
+      id: "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff", user_message: "Какой статус брони?",
+      assistant_message: "По связанной брони сервер Букера показывает этап.",
+      intent: "booking_flow", outcome: "answered", needs_human: false,
+      source_ids: ["support.booking_status"], created_at: new Date().toISOString(),
+    }) });
+  });
+
+  await page.goto(`/support?booking=${bookingId}`);
+  await expect(page.getByRole("link", { name: "Вернуться в Deal Room" })).toBeVisible();
+  await page.getByLabel("Сообщение помощнику").fill("Какой статус брони?");
+  await page.getByRole("button", { name: "Спросить помощника" }).click();
+  await expect(page.getByText(/По связанной брони сервер Букера/)).toBeVisible();
+  expect(createdWith).toMatchObject({
+    organization_id: org!.id, related_type: "booking", related_id: bookingId,
+  });
+  expect(ordinaryRestored).toBe(false);
+  const stored = await page.evaluate(
+    ({ ordinaryKey, linkedKey }) => ({
+      ordinary: localStorage.getItem(ordinaryKey), linked: localStorage.getItem(linkedKey),
+    }), { ordinaryKey, linkedKey },
+  );
+  expect(stored).toEqual({ ordinary: "ordinary-session", linked: linkedSessionId });
+});

@@ -46,6 +46,8 @@ type AssistantSession = {
   id: string;
   status: string;
   ticket_id?: string;
+  related_type?: string | null;
+  related_id?: string | null;
   messages?: Exchange[];
 };
 
@@ -74,8 +76,9 @@ const CATEGORIES = [
   "other",
 ];
 
-function assistantSessionStorageKey(userId: string): string {
-  return `booker.support.assistantSession.${userId}.${getActiveOrg() || "personal"}`;
+function assistantSessionStorageKey(userId: string, bookingId: string | null): string {
+  const base = `booker.support.assistantSession.${userId}.${getActiveOrg() || "personal"}`;
+  return bookingId ? `${base}.booking.${bookingId}` : base;
 }
 
 function legacyAssistantSessionStorageKey(): string {
@@ -111,6 +114,7 @@ export default function SupportPage() {
   const replyRequestKey = useRef<StableRequestKey | null>(null);
   const feedbackRequestInFlight = useRef<string | null>(null);
   const assistantInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const relatedBookingId = useRef<string | null>(null);
 
   function stableKey(ref: { current: StableRequestKey | null }, signature: string): string {
     if (!ref.current || ref.current.signature !== signature) {
@@ -131,6 +135,9 @@ export default function SupportPage() {
   }
 
   useEffect(() => {
+    const requestedBooking = new URLSearchParams(window.location.search).get("booking");
+    relatedBookingId.current = requestedBooking && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requestedBooking)
+      ? requestedBooking : null;
     const authenticated = Boolean(getToken());
     setHasToken(authenticated);
     setAuthReady(true);
@@ -139,7 +146,7 @@ export default function SupportPage() {
       void (async () => {
         try {
           const me = await api<{ id: string }>("/me");
-          const key = assistantSessionStorageKey(me.id);
+          const key = assistantSessionStorageKey(me.id, relatedBookingId.current);
           setAssistantStorageKey(key);
           await restoreAssistantSession(key);
         } catch (err) {
@@ -154,12 +161,18 @@ export default function SupportPage() {
   async function restoreAssistantSession(storageKey: string) {
     const legacyKey = legacyAssistantSessionStorageKey();
     const ownSessionId = localStorage.getItem(storageKey);
-    const sessionId = ownSessionId || localStorage.getItem(legacyKey);
+    const sessionId = ownSessionId || (relatedBookingId.current ? null : localStorage.getItem(legacyKey));
     if (!sessionId) return;
     try {
       const session = await api<AssistantSession>(
         `/support/assistant/sessions/${sessionId}`,
       );
+      if (relatedBookingId.current && (
+        session.related_type !== "booking" || session.related_id !== relatedBookingId.current
+      )) {
+        localStorage.removeItem(storageKey);
+        return;
+      }
       setAssistantSession(session);
       setAssistantMessages(session.messages || []);
       if (!ownSessionId) {
@@ -303,12 +316,18 @@ export default function SupportPage() {
       let session = assistantSession;
       if (!session) {
         const organizationId = getActiveOrg() || undefined;
-        const createSignature = JSON.stringify({ organization_id: organizationId });
+        const sessionPayload = {
+          organization_id: organizationId,
+          ...(relatedBookingId.current
+            ? { related_type: "booking", related_id: relatedBookingId.current }
+            : {}),
+        };
+        const createSignature = JSON.stringify(sessionPayload);
         const createKey = stableKey(sessionRequestKey, createSignature);
         session = await api<AssistantSession>("/support/assistant/sessions", {
           method: "POST",
           headers: { "Idempotency-Key": createKey },
-          body: JSON.stringify({ organization_id: organizationId }),
+          body: JSON.stringify(sessionPayload),
         });
         sessionRequestKey.current = null;
         setAssistantSession(session);
@@ -475,6 +494,11 @@ export default function SupportPage() {
             Помощник объясняет интерфейс и следующие шаги. Он не меняет бронирование, оплату или
             статусы и не обещает сроки.
           </p>
+          {relatedBookingId.current ? (
+            <p className="timeline">
+              Вопрос связан с открытой вами бронью. <Link href={`/deals/${relatedBookingId.current}`}>Вернуться в Deal Room</Link>
+            </p>
+          ) : null}
         </div>
         {assistantMessages.length === 0 ? (
           <p>Опишите вопрос — сессия создастся при первой отправке.</p>

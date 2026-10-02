@@ -731,6 +731,50 @@ def get_support_agent_session(
     return _agent_session_payload(db, row, include_messages=True)
 
 
+_BOOKING_STAGE_LABELS = {
+    "RequestSent": "запрос отправлен",
+    "Negotiation": "обсуждение условий",
+    "DateHeld": "дата временно удерживается",
+    "AwaitingContract": "ожидается техническое подтверждение черновика условий",
+    "AwaitingPayment": "ожидается действие по предоплате",
+    "Confirmed": "бронирование подтверждено в Букере",
+    "InProgress": "событие в работе",
+    "Completed": "событие завершено в Букере",
+    "Cancelled": "бронирование отменено",
+    "Dispute": "открыт спор",
+    "Resolved": "спор отмечен рассмотренным",
+}
+
+
+def _booking_stage_support_reply(
+    db: Session, row: SupportAgentSession, message: str, reply: SupportAgentReply,
+) -> SupportAgentReply:
+    if (
+        row.related_type != "booking" or not row.related_id
+        or reply.intent != "booking_flow"
+        or not any(word in message.casefold() for word in ("статус", "этап", "что с брон"))
+    ):
+        return reply
+    booking = db.get(Booking, row.related_id)
+    if not booking:
+        raise HTTPException(404, "Связанная бронь не найдена")
+    stage = _BOOKING_STAGE_LABELS.get(booking.status)
+    if not stage:
+        return reply
+    return SupportAgentReply(
+        assistant_message=(
+            f"По связанной брони сервер Букера показывает этап: «{stage}». "
+            "Откройте её Deal Room для доступного вам следующего действия. "
+            "Этот ответ не подтверждает движение денег и не меняет бронь. "
+            "Если этап не соответствует вашей ситуации, нажмите «Передать человеку»."
+        ),
+        intent="booking_flow",
+        outcome="answered",
+        needs_human=False,
+        source_ids=tuple(dict.fromkeys((*reply.source_ids, "support.booking_status"))),
+    )
+
+
 @router.post(
     "/support/assistant/sessions/{session_id}/messages",
     status_code=status.HTTP_201_CREATED,
@@ -779,6 +823,7 @@ def send_support_agent_message(
     if claimed.rowcount != 1:
         db.rollback()
         raise HTTPException(409, "Сессия уже передана специалисту или закрыта")
+    reply = _booking_stage_support_reply(db, row, body.message, reply)
     if reply.outcome == "clarify":
         previous = (
             db.query(SupportAgentExchange.outcome)

@@ -346,6 +346,7 @@ export default function DealPage() {
           {room.booking_id} · {STATUS_LABEL[room.status] || room.status}
         </p>
         <h1>{room.event_title || "Deal Room"}</h1>
+        <p><Link href={`/support?booking=${encodeURIComponent(room.booking_id)}`}>Помощь по этой брони</Link></p>
         <p>
           Вы{" "}
           {accentKind === "customer"
