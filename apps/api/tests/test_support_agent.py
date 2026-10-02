@@ -417,6 +417,45 @@ def test_support_agent_redacts_credentials_before_persistence_and_handoff(client
         assert "secret phrase" not in combined
 
 
+def test_staff_recovery_codes_never_persist_in_assistant_or_manual_ticket(
+    client, SessionLocal,
+):
+    hyphenated = "aaaa-bbbb-cccc-dddd-eeee-ffff"
+    compact = "111122223333444455556666"
+    user = register(client, "agent-recovery-redaction@booker.test")
+    org = _create_org(client, user, "Recovery Redaction")
+    session = _create_session(client, user, org["id"], "recovery-redaction-session")
+    message = f"Потерял Authenticator. Коды {hyphenated} и {compact}"
+    exchange = _send(client, user, session["id"], message, "recovery-redaction-message")
+    assert hyphenated not in str(exchange)
+    assert compact not in str(exchange)
+    assert "[СЕКРЕТ УДАЛЁН]" in exchange["user_message"]
+    escalated = client.post(
+        f"/support/assistant/sessions/{session['id']}/escalate",
+        json={"reason_code": "account_security"},
+        headers={**auth_header(user["token"]),
+                 "Idempotency-Key": "recovery-redaction-escalate"},
+    )
+    assert escalated.status_code == 200, escalated.text
+    manual = client.post(
+        "/support/tickets",
+        json={"organization_id": org["id"], "category": "profile",
+              "subject": "Не могу войти", "body": message},
+        headers={**auth_header(user["token"]),
+                 "Idempotency-Key": "recovery-redaction-manual"},
+    )
+    assert manual.status_code == 201, manual.text
+    assert hyphenated not in manual.text and compact not in manual.text
+    with SessionLocal() as db:
+        stored = "\n".join(
+            [row.user_message for row in db.query(SupportAgentExchange).all()]
+            + [row.body for row in db.query(SupportTicket).all()]
+            + [row.body for row in db.query(SupportMessage).all()]
+        )
+    assert hyphenated not in stored and compact not in stored
+    assert stored.count("[СЕКРЕТ УДАЛЁН]") >= 2
+
+
 def test_access_token_and_unlabelled_jwt_never_reach_support_handoff(client, SessionLocal):
     assert redact_sensitive_support_text("У меня токен доступа истёк") == (
         "У меня токен доступа истёк"

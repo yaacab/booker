@@ -76,6 +76,22 @@ _CODE_DELIVERY = (
     "не пришёл код", "не пришел код", "код не пришёл", "код не пришел",
     "код для входа не приш", "код подтверждения не приш", "не приходит код",
 )
+_LOST_AUTHENTICATOR = re.compile(
+    r"(?:потерял[аи]?|утратил[аи]?|сменил[аи]?|нет\s+доступа\s+к)"
+    r"[^.!?\n]{0,70}(?:authenticator|аутентификатор\w*|2fa|двухфактор\w*|телефон\s+с\s+кодами)",
+    re.IGNORECASE,
+)
+_NO_RECOVERY_CODE = re.compile(
+    r"(?:нет|не\s+осталось|потерял[аи]?|не\s+сохранил[аи]?)"
+    r"\s+(?:ни\s+одного\s+)?(?:резервн\w*\s+код\w*|recovery\s+code\w*)"
+    r"|(?:резервн\w*\s+код\w*|recovery\s+code\w*)\s+(?:нет|не\s+осталось)",
+    re.IGNORECASE,
+)
+_MULTIPLE_ADMINS = re.compile(
+    r"(?:несколько|двое|два|много)\s+администратор\w*|"
+    r"(?:второй|другой|ещ[её]\s+один)\s+администратор\w*",
+    re.IGNORECASE,
+)
 _DOCUMENT_ACCESS = (
     "скачать договор", "не скачивается договор", "не открывается договор",
     "скачать документ", "не скачивается документ", "не открывается документ",
@@ -157,6 +173,10 @@ _STANDALONE_TOKEN = re.compile(
     r"gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{20,}|"
     r"xox[baprs]-[a-z0-9-]{12,})\b"
 )
+_STAFF_RECOVERY_CODE = re.compile(
+    r"(?i)(?<![0-9a-f])(?:[0-9a-f]{4}-){5}[0-9a-f]{4}(?![0-9a-f])"
+    r"|(?<![0-9a-f])[0-9a-f]{24}(?![0-9a-f])"
+)
 _JWT_CANDIDATE = re.compile(
     r"(?<![a-zA-Z0-9_-])[a-zA-Z0-9_-]{8,}\."
     r"[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}(?![a-zA-Z0-9_-])"
@@ -215,6 +235,7 @@ def redact_sensitive_support_text(message: str) -> str:
     redacted = _SECRET_ASSIGNMENT.sub("[СЕКРЕТ УДАЛЁН]", redacted)
     redacted = _BARE_PASSWORD_VALUE.sub("[СЕКРЕТ УДАЛЁН]", redacted)
     redacted = _STANDALONE_TOKEN.sub("[СЕКРЕТ УДАЛЁН]", redacted)
+    redacted = _STAFF_RECOVERY_CODE.sub("[СЕКРЕТ УДАЛЁН]", redacted)
     redacted = _JWE_CANDIDATE.sub(_redact_jwe_candidate, redacted)
     redacted = _JWT_CANDIDATE.sub(_redact_jwt_candidate, redacted)
     redacted = _CARD_SECRET.sub("[ПЛАТЁЖНЫЕ ДАННЫЕ УДАЛЕНЫ]", redacted)
@@ -318,6 +339,24 @@ def _answer_support_question(message: str) -> SupportAgentReply:
             outcome="needs_human",
             needs_human=True,
             source_ids=("support.security", "support.human_handoff"),
+        )
+
+    if _LOST_AUTHENTICATOR.search(text):
+        human_recovery = bool(
+            _NO_RECOVERY_CODE.search(text) or _MULTIPLE_ADMINS.search(text)
+        )
+        return SupportAgentReply(
+            assistant_message=(
+                "Если вы оператор или единственный администратор и сохранили резервный код, "
+                "на странице входа выберите «Потеряли Authenticator?». Потребуются пароль, "
+                "один сохранённый код и новый код приложения. При нескольких администраторах "
+                "или без резервного кода самостоятельный путь недоступен: нажмите «Передать "
+                "человеку». Не отправляйте пароль и коды в чат."
+            ),
+            intent="staff_2fa_recovery",
+            outcome="needs_human" if human_recovery else "answered",
+            needs_human=human_recovery,
+            source_ids=("support.staff_recovery", "support.security", "support.human_handoff"),
         )
 
     if _has_any(text, _CODE_DELIVERY) and not _has_any(text, _MONEY_OR_LEGAL):

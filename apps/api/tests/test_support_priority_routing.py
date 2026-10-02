@@ -17,6 +17,8 @@ from tests.totp_helpers import TEST_TOTP_SECRET
         ("Две подтверждённые брони на один и тот же слот",
          "duplicate_confirmed_booking", "incident"),
         ("Мой аккаунт взломали", "account_security", "profile"),
+        ("Потерял Authenticator, резервных кодов нет",
+         "staff_2fa_recovery", "profile"),
     ],
 )
 def test_sensitive_handoff_is_high_priority_without_unapproved_due_date(
@@ -93,6 +95,26 @@ def test_standalone_human_request_keeps_explicit_handoff():
     reply = answer_support_question("Позовите оператора")
     assert reply.intent == "human_request"
     assert reply.needs_human is True
+
+
+@pytest.mark.parametrize(
+    ("message", "needs_human"),
+    [
+        ("Потерял Authenticator, но сохранил резервный код", False),
+        ("Потерял Authenticator, нет резервного кода", True),
+        ("Потерял Authenticator, резервных кодов нет", True),
+        ("Потерял Authenticator, у нас несколько администраторов", True),
+    ],
+)
+def test_staff_authenticator_recovery_advice_matches_available_path(
+    message, needs_human,
+):
+    reply = answer_support_question(message)
+    assert reply.intent == "staff_2fa_recovery"
+    assert reply.needs_human is needs_human
+    assert "Потеряли Authenticator?" in reply.assistant_message
+    assert "Не отправляйте пароль и коды в чат" in reply.assistant_message
+    assert "почт" not in reply.assistant_message.lower()
 
 
 @pytest.mark.parametrize(

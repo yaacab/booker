@@ -842,6 +842,7 @@ def _agent_escalation_category(intents: set[str]) -> str:
         "code_delivery": "profile",
         "account_access": "profile",
         "account_security": "profile",
+        "staff_2fa_recovery": "profile",
         "organization_invitation": "profile",
         "supply_profile": "profile",
         "deal_documents": "technical",
@@ -851,6 +852,7 @@ def _agent_escalation_category(intents: set[str]) -> str:
     }
     for intent in (
         "account_security",
+        "staff_2fa_recovery",
         "event_day_no_show",
         "performer_cancelled_event",
         "duplicate_confirmed_booking",
@@ -877,7 +879,8 @@ def _support_urgency(intents: set[str]) -> tuple[str, str | None, int | None]:
         return "urgent", "event_day_no_show", 30
     if "paid_not_confirmed" in intents:
         return "high", "paid_not_confirmed", 120
-    if intents.intersection({"account_security", "performer_cancelled_event",
+    if intents.intersection({"account_security", "staff_2fa_recovery",
+                             "performer_cancelled_event",
                              "duplicate_confirmed_booking"}):
         # Route prominently, but do not invent a first-response SLA for these
         # cases until the support calendar/policy explicitly defines one.
