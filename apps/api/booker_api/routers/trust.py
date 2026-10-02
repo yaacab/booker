@@ -1443,6 +1443,7 @@ def admin_set_support_operator(
 def admin_list_support_tickets(
     state: str = Query(default="all", pattern="^(all|active|open|waiting_for_support|waiting_for_user|resolved|closed)$"),
     overdue_only: bool = False,
+    escalated_only: bool = False,
     priority: str | None = Query(default=None, pattern="^(urgent|high|normal)$"),
     category: str | None = Query(default=None, pattern="^[a-z_]{1,64}$"),
     assigned_to_me: bool = False,
@@ -1482,6 +1483,8 @@ def admin_list_support_tickets(
     overdue_count = db.query(func.count(SupportTicket.id)).filter(overdue_condition).scalar() or 0
     if overdue_only:
         query = query.filter(overdue_condition)
+    if escalated_only:
+        query = query.filter(SupportTicket.overdue_escalated_at.is_not(None))
     if priority:
         query = query.filter(SupportTicket.priority == priority)
     if category:
@@ -1542,6 +1545,10 @@ def admin_list_support_tickets(
             and row.status not in {"closed", "resolved"}
             and row.id not in first_response_times
         )
+        item["overdue_escalated_at"] = (
+            aware(row.overdue_escalated_at).isoformat()
+            if row.overdue_escalated_at else None
+        )
         first_response = first_response_times.get(row.id)
         item["first_response_late"] = bool(
             row.response_due_at
@@ -1590,6 +1597,9 @@ def admin_get_support_ticket(
     result["assigned_to_user_id"] = row.assigned_to_user_id
     result["accepted_by_user_id"] = row.accepted_by_user_id
     result["accepted_at"] = aware(row.accepted_at).isoformat() if row.accepted_at else None
+    result["overdue_escalated_at"] = (
+        aware(row.overdue_escalated_at).isoformat() if row.overdue_escalated_at else None
+    )
     messages = _ticket_messages(db, row.id)
     actors = {message.author_user_id for message in messages}
     actor_names = {actor.id: actor.full_name for actor in db.query(User).filter(User.id.in_(actors)).all()}
@@ -1606,6 +1616,7 @@ def admin_get_support_ticket(
         "support.admin.ticket.accepted",
         "support.admin.ticket.transferred", "support.admin.ticket.escalated",
         "support.admin.ticket.priority_changed",
+        "support.ticket.first_response_overdue",
     }
     events = db.query(AuditLog).filter(
         AuditLog.entity_type == "support_ticket", AuditLog.entity_id == row.id,

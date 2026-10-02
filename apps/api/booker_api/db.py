@@ -417,6 +417,9 @@ def ensure_missing_columns(bind) -> None:
         bind, "support_tickets", "accepted_by_user_id", "accepted_by_user_id VARCHAR(36)"
     )
     _add_column_if_missing(bind, "support_tickets", "accepted_at", f"accepted_at {ts_type}")
+    _add_column_if_missing(
+        bind, "support_tickets", "overdue_escalated_at", f"overdue_escalated_at {ts_type}"
+    )
     if dialect == "sqlite" and "support_tickets" in inspect(bind).get_table_names():
         with bind.begin() as conn:
             conn.execute(

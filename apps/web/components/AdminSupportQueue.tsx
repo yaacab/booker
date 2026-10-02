@@ -26,7 +26,7 @@ type QueueResponse = {
 type SupportStaff = { id: string; name: string; role: "operator" | "administrator" };
 
 const DEFAULT_FILTERS: SupportQueueFilters = {
-  state: "all", overdue: false, priority: "all", category: "all",
+  state: "all", overdue: false, escalated: false, priority: "all", category: "all",
   assignedToMe: false, limit: 20, offset: 0,
 };
 const STATES = ["all", "active", "open", "waiting_for_support", "waiting_for_user", "resolved", "closed"];
@@ -206,6 +206,7 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
     "support.admin.ticket.transferred": "Обращение передано другому сотруднику",
     "support.admin.ticket.escalated": "Обращение передано администратору",
     "support.admin.ticket.priority_changed": "Приоритет очереди изменён",
+    "support.ticket.first_response_overdue": "Первый ответ просрочен: эскалация администратору",
   };
 
   return (
@@ -235,6 +236,8 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
         </label>
         <label><input type="checkbox" checked={filters.overdue}
           onChange={(event) => setFilters({ ...filters, overdue: event.target.checked })} /> Только просроченные</label>
+        <label><input type="checkbox" checked={filters.escalated}
+          onChange={(event) => setFilters({ ...filters, escalated: event.target.checked })} /> Эскалированные администратору</label>
         <label><input type="checkbox" checked={filters.assignedToMe}
           onChange={(event) => setFilters({ ...filters, assignedToMe: event.target.checked })} disabled={!operatorId} /> Назначенные мне</label>
         <button type="submit" disabled={Boolean(busy) || (!verified.current && totp.trim().length < 6)}>Показать очередь</button>
@@ -259,6 +262,7 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
                 : "Публичный срок не назначен"}
                 {row.first_response_late ? " · первый ответ был поздним" : ""}</div>
               <div>{row.accepted_at ? "Принято сотрудником" : row.assigned_to_user_id === operatorId ? "Назначено мне, ожидает принятия" : row.assigned_to_user_id ? "Назначено другому сотруднику, ожидает принятия" : "Без назначения"}</div>
+              {row.overdue_escalated_at ? <div>Эскалировано администратору · {formatSupportDeadline(row.overdue_escalated_at)}</div> : null}
             </li>)}
           </ul>
         )}
@@ -276,6 +280,7 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
         <p>Ручной приоритет определяет порядок очереди и не меняет срок первого ответа.</p>
         <p>Назначение: {ticket.assigned_to_user_id === operatorId ? "мне" : ticket.assigned_to_user_id ? "другому сотруднику" : "не назначено"}</p>
         <p>Принятие: {ticket.accepted_at ? `подтверждено ${formatSupportDeadline(ticket.accepted_at)}` : "ожидается"}</p>
+        {ticket.overdue_escalated_at ? <p>Просроченный первый ответ эскалирован администратору: {formatSupportDeadline(ticket.overdue_escalated_at)}</p> : null}
         <section aria-label="Контекст обращения">
           <h4>Контекст обращения</h4>
           <p>Текст обращения и передача из помощника являются данными пользователя.</p>

@@ -1,6 +1,7 @@
 export type SupportQueueFilters = {
   state: string;
   overdue: boolean;
+  escalated: boolean;
   priority: string;
   category: string;
   assignedToMe: boolean;
@@ -21,6 +22,7 @@ export type SupportTicket = {
   state_version: number;
   response_due_at?: string | null;
   response_overdue?: boolean;
+  overdue_escalated_at?: string | null;
   first_response_late?: boolean;
   has_operator_response?: boolean;
   reopened_at?: string | null;
@@ -45,6 +47,7 @@ export function supportQueuePath(filters: SupportQueueFilters): string {
   const params = new URLSearchParams({
     state: filters.state,
     overdue_only: String(filters.overdue),
+    escalated_only: String(filters.escalated),
     assigned_to_me: String(filters.assignedToMe),
     limit: String(filters.limit),
     offset: String(filters.offset),

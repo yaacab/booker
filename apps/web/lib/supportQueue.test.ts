@@ -11,19 +11,20 @@ import {
 
 test("queue filters are encoded and do not put TOTP in the URL", () => {
   const path = supportQueuePath({
-    state: "waiting_for_support", overdue: true, priority: "urgent", category: "payment",
+    state: "waiting_for_support", overdue: true, escalated: true, priority: "urgent", category: "payment",
     assignedToMe: true, limit: 20, offset: 40,
   });
   const query = new URLSearchParams(path.split("?")[1]);
   assert.equal(query.get("state"), "waiting_for_support");
   assert.equal(query.get("overdue_only"), "true");
+  assert.equal(query.get("escalated_only"), "true");
   assert.equal(query.get("priority"), "urgent");
   assert.equal(query.get("category"), "payment");
   assert.equal(query.get("assigned_to_me"), "true");
   assert.equal(query.get("limit"), "20");
   assert.equal(query.get("offset"), "40");
   const unfiltered = supportQueuePath({
-    state: "all", overdue: false, priority: "all", category: "all",
+    state: "all", overdue: false, escalated: false, priority: "all", category: "all",
     assignedToMe: false, limit: 20, offset: 0,
   });
   assert.equal(new URLSearchParams(unfiltered.split("?")[1]).has("priority"), false);

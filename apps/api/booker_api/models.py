@@ -1337,6 +1337,9 @@ class SupportTicket(Base):
     response_due_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
+    overdue_escalated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     state_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     idempotency_key_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)

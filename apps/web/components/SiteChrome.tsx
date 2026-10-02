@@ -44,7 +44,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<
-    { id: string; subject?: string | null; body?: string | null }[]
+    { id: string; template?: string | null; subject?: string | null; body?: string | null }[]
   >([]);
   const path = usePathname();
   // Флаг студии зависит от window.location.search — считаем только после маунта,
@@ -72,12 +72,14 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
     }
     let current = true;
     void api<{
+      is_platform_admin?: boolean;
       is_support_operator?: boolean;
       organizations?: { id: string; kind: string }[];
       active_organization_id?: string;
     }>("/me")
       .then((me) => {
         if (!current || getToken() !== authToken) return;
+        setAdmin(Boolean(me.is_platform_admin));
         setSupportOperator(Boolean(me.is_support_operator));
         if (me.is_support_operator) {
           setCabinetMode(null);
@@ -92,15 +94,17 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   }, [path, authToken]);
 
   useEffect(() => {
-    if (!authed || !getToken() || supportOperator || path.startsWith("/operator")) {
-      setNotifications([]);
+    setNotifications([]);
+    if (!authed || !authToken || getToken() !== authToken) {
       setNotificationsOpen(false);
       return;
     }
-    void api<{ items: { id: string; subject?: string | null; body?: string | null }[] }>("/notifications")
-      .then((res) => setNotifications(res.items || []))
-      .catch(() => setNotifications([]));
-  }, [path, authed, supportOperator]);
+    let current = true;
+    void api<{ items: { id: string; template?: string | null; subject?: string | null; body?: string | null }[] }>("/notifications")
+      .then((res) => { if (current && getToken() === authToken) setNotifications(res.items || []); })
+      .catch(() => { if (current && getToken() === authToken) setNotifications([]); });
+    return () => { current = false; };
+  }, [path, authed, authToken]);
 
   useEffect(() => {
     setFullScreenStudio(path === "/events/new" && isEventStudioMapV1());
@@ -231,7 +235,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 </Link>
               </>
             ) : null}
-            {authed && !operatorNav ? (
+            {authed ? (
               <span style={{ position: "relative" }}>
                 <button
                   type="button"
@@ -270,6 +274,11 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                         <div key={item.id}>
                           <strong>{item.subject || "Уведомление"}</strong>
                           {item.body ? <p className="timeline">{item.body}</p> : null}
+                          {item.template === "support.first_response_overdue" ? (
+                            <Link href={admin ? "/admin" : "/operator"} onClick={() => setNotificationsOpen(false)}>
+                              Открыть очередь
+                            </Link>
+                          ) : null}
                         </div>
                       ))
                     )}

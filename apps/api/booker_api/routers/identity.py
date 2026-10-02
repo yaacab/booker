@@ -815,12 +815,16 @@ def list_notifications(
 ):
     """Return indexed private notices plus bounded legacy/dev compatibility rows."""
     normalized_limit = min(max(limit, 1), 100)
+    stored_query = db.query(UserNotification).filter(
+        UserNotification.recipient_user_id == user.id
+    )
+    if not user.is_platform_admin:
+        stored_query = stored_query.filter(
+            UserNotification.template != "support.first_response_overdue"
+        )
     stored = (
-        db.query(UserNotification)
-        .filter(UserNotification.recipient_user_id == user.id)
-        .order_by(UserNotification.created_at.desc(), UserNotification.id.desc())
-        .limit(normalized_limit)
-        .all()
+        stored_query.order_by(UserNotification.created_at.desc(), UserNotification.id.desc())
+        .limit(normalized_limit).all()
     )
     # Older deployments recorded only audit metadata. Narrow the query by the
     # recipient before LIMIT; still verify the parsed JSON before projecting it.
