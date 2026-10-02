@@ -83,10 +83,18 @@ def test_outbox_and_reconciliation_are_aggregate_only(SessionLocal):
             subject="Private subject", body="Private body", status="failed", attempts=3,
             created_at=now - timedelta(hours=2),
         ))
+        db.add(EmailOutbox(
+            idempotency_key="private-support-key", recipient_email="staff@example.org",
+            subject="Private support subject", body="Private support body",
+            template="support.first_response_overdue", status="uncertain", attempts=1,
+            created_at=now - timedelta(minutes=15),
+        ))
         db.commit()
         snapshot = database_snapshot(db, now)
     assert snapshot["outbox_backlog"] == 1
     assert snapshot["outbox_repeat_failures"] == 1
+    assert snapshot["support_email_uncertain"] == 1
+    assert Signal("support_email_uncertain", "warning", 1) in snapshot_signals(snapshot)
     assert snapshot["reconciliation_open"] == 1
     assert snapshot["reconciliation_failed_runs"] == 1
     serialized = json.dumps(snapshot)

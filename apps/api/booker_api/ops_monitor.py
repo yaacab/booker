@@ -92,6 +92,10 @@ def database_snapshot(db: Session, now: datetime) -> dict[str, int | None]:
         EmailOutbox.status == "failed",
         EmailOutbox.attempts >= settings.ops_outbox_terminal_attempts,
     ).scalar() or 0
+    support_email_uncertain = db.query(func.count(EmailOutbox.id)).filter(
+        EmailOutbox.template == "support.first_response_overdue",
+        EmailOutbox.status == "uncertain",
+    ).scalar() or 0
     open_discrepancies = db.query(func.count(ReconciliationDiscrepancy.id)).filter(
         ReconciliationDiscrepancy.status == "open"
     ).scalar() or 0
@@ -117,6 +121,7 @@ def database_snapshot(db: Session, now: datetime) -> dict[str, int | None]:
         "outbox_backlog": int(pending),
         "outbox_oldest_seconds": _age_seconds(oldest, now),
         "outbox_repeat_failures": int(repeat_failures),
+        "support_email_uncertain": int(support_email_uncertain),
         "reconciliation_open": int(open_discrepancies),
         "reconciliation_failed_runs": int(bool(latest_attempt and latest_attempt[0] == "failed")),
         "reconciliation_last_completed_age_seconds": _age_seconds(latest_run, now),
@@ -259,6 +264,9 @@ def snapshot_signals(snapshot: dict[str, int | str | None]) -> list[Signal]:
     failures = int(snapshot.get("outbox_repeat_failures") or 0)
     if failures:
         signals.append(Signal("outbox_repeat_failure", "critical", failures))
+    uncertain_support_email = int(snapshot.get("support_email_uncertain") or 0)
+    if uncertain_support_email:
+        signals.append(Signal("support_email_uncertain", "warning", uncertain_support_email))
     mismatches = int(snapshot.get("reconciliation_open") or 0)
     if mismatches:
         signals.append(Signal("reconciliation_mismatch", "critical", mismatches))
