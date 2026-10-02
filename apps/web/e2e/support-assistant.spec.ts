@@ -90,6 +90,13 @@ test("support assistant answers safely and creates a human ticket on explicit ha
   });
   expect(customerAdminQueue.status()).toBe(403);
   const admin = await login(request, DEMO_ACCOUNTS.admin);
+  const adminInbox = await request.get(`${API_BASE}/notifications`, {
+    headers: { Authorization: `Bearer ${admin.token}` },
+  });
+  expect(adminInbox.status()).toBe(200);
+  expect(((await adminInbox.json()) as { items: Array<{ template?: string; entity_id?: string }> }).items
+    .some((item) => item.template === "support.ticket.new" && item.entity_id === createdIds[0]))
+    .toBe(true);
   const adminHeaders = () => ({
     Authorization: `Bearer ${admin.token}`,
     "X-Booker-TOTP": demoAdminTotp(),

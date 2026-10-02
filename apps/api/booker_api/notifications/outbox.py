@@ -137,14 +137,18 @@ def deliver_outbox_row(
         return {"sent": False, "status": "cancelled"}
     if row.status in {"sent", "cancelled", "uncertain"}:
         return {"sent": row.status == "sent", "status": row.status}
-    if row.template == "support.first_response_overdue":
+    support_alert_templates = {
+        "support.first_response_overdue", "support.ticket.urgent",
+    }
+    if row.template in support_alert_templates:
         # Delivery is separate from escalation commit. Recheck the staff role,
         # destination, ticket state and approved schedule before external I/O.
         user = db.query(User).filter(User.email == row.recipient_email).one_or_none()
+        level = "administrator" if user and user.is_platform_admin else "primary"
         target = (db.query(SupportNotificationTarget).filter(
             SupportNotificationTarget.recipient_user_id == user.id,
             SupportNotificationTarget.channel == "email",
-            SupportNotificationTarget.escalation_level == "administrator",
+            SupportNotificationTarget.escalation_level == level,
             SupportNotificationTarget.active.is_(True),
         ).one_or_none() if user else None)
         ticket = db.get(SupportTicket, row.entity_id) if row.entity_type == "support_ticket" else None
@@ -152,10 +156,25 @@ def deliver_outbox_row(
             SupportMessage.ticket_id == ticket.id,
             SupportMessage.author_kind == "operator",
         ).first())
-        expected_copy = NOTICE_COPY["support.first_response_overdue"]
-        if (not user or not target or not ticket or not user.is_platform_admin
+        expected_copy = NOTICE_COPY[row.template]
+        eligible_staff = bool(user and (
+            user.is_platform_admin if level == "administrator"
+            else user.is_support_operator and not user.is_platform_admin
+        ))
+        primary_cabinet = bool(user and db.query(SupportNotificationTarget.id).filter(
+            SupportNotificationTarget.recipient_user_id == user.id,
+            SupportNotificationTarget.channel == "cabinet",
+            SupportNotificationTarget.escalation_level == "primary",
+            SupportNotificationTarget.active.is_(True),
+        ).first()) if level == "primary" else True
+        eligible_ticket = bool(ticket and (
+            ticket.overdue_escalated_at is not None
+            if row.template == "support.first_response_overdue"
+            else ticket.priority in {"urgent", "high"}
+        ))
+        if (not user or not target or not ticket or not eligible_staff or not primary_cabinet
                 or not user.email_verified_at or not user.totp_enabled
-                or ticket.overdue_escalated_at is None
+                or not eligible_ticket
                 or ticket.status in {"closed", "resolved"} or has_reply
                 or (row.subject, row.body) != expected_copy):
             row.status = "cancelled"
@@ -229,7 +248,7 @@ def deliver_outbox_row(
     else:
         # SMTP can accept a message before a socket timeout. Support alerts
         # need an operator check before another send to avoid duplicate paging.
-        current.status = "uncertain" if current.template == "support.first_response_overdue" else "failed"
+        current.status = "uncertain" if current.template in support_alert_templates else "failed"
         current.last_error = detail[:2000]
     audit(
         db,

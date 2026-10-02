@@ -73,7 +73,8 @@ def _support_operator_route_allowed(request: Request) -> bool:
     """A staff bearer cannot inherit unrelated marketplace permissions."""
     path = request.url.path
     method = request.method
-    if (path, method) in {("/me", "GET"), ("/auth/logout", "POST"),
+    if (path, method) in {("/me", "GET"), ("/notifications", "GET"),
+                          ("/auth/logout", "POST"),
                           ("/auth/admin-totp/recovery-codes/count", "GET"),
                           ("/admin/support/tickets", "GET"),
                           ("/admin/support/staff", "GET")}:

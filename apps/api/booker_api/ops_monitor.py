@@ -24,7 +24,9 @@ from booker_api.models import (
     ReconciliationDiscrepancy,
     ReconciliationRun,
     SupportMessage,
+    SupportNotificationTarget,
     SupportTicket,
+    User,
 )
 from booker_api.ops_http import PREFIX
 from booker_api.support_sla import support_response_due_at
@@ -113,6 +115,29 @@ def database_snapshot(db: Session, now: datetime) -> dict[str, int | None]:
         SupportTicket.status.notin_(("closed", "resolved")),
         ~operator_responded,
     ).scalar() or 0
+    eligible_primary = bool(db.query(User.id).join(
+        SupportNotificationTarget,
+        SupportNotificationTarget.recipient_user_id == User.id,
+    ).filter(
+        SupportNotificationTarget.channel == "cabinet",
+        SupportNotificationTarget.escalation_level == "primary",
+        SupportNotificationTarget.active.is_(True),
+        User.is_support_operator.is_(True),
+        User.is_platform_admin.is_(False),
+        User.email_verified_at.is_not(None),
+        User.totp_enabled.is_(True),
+    ).first())
+    eligible_admin = bool(db.query(User.id).filter(
+        User.is_platform_admin.is_(True),
+        User.email_verified_at.is_not(None),
+        User.totp_enabled.is_(True),
+    ).first())
+    support_without_staff = 0
+    if not eligible_primary and not eligible_admin:
+        support_without_staff = db.query(func.count(SupportTicket.id)).filter(
+            SupportTicket.status.notin_(("closed", "resolved")),
+            ~operator_responded,
+        ).scalar() or 0
     calendar_ok = all(
         support_response_due_at(code, minutes, started_at=now) is not None
         for code, minutes in (("event_day_no_show", 30), ("paid_not_confirmed", 120))
@@ -126,6 +151,7 @@ def database_snapshot(db: Session, now: datetime) -> dict[str, int | None]:
         "reconciliation_failed_runs": int(bool(latest_attempt and latest_attempt[0] == "failed")),
         "reconciliation_last_completed_age_seconds": _age_seconds(latest_run, now),
         "support_overdue_unanswered": int(support_overdue),
+        "support_without_eligible_staff": int(support_without_staff),
         "support_sla_calendar_unavailable": int(not calendar_ok),
     }
 
@@ -281,6 +307,10 @@ def snapshot_signals(snapshot: dict[str, int | str | None]) -> list[Signal]:
     support_overdue = int(snapshot.get("support_overdue_unanswered") or 0)
     if support_overdue:
         signals.append(Signal("support_overdue_unanswered", "warning", support_overdue))
+    support_without_staff = int(snapshot.get("support_without_eligible_staff") or 0)
+    if support_without_staff:
+        signals.append(Signal("support_without_eligible_staff", "critical",
+                              support_without_staff))
     if int(snapshot.get("support_sla_calendar_unavailable") or 0):
         signals.append(Signal("support_sla_calendar_unavailable", "warning", 1))
     return signals

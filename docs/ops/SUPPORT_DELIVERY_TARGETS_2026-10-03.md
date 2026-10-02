@@ -1,5 +1,8 @@
 # Адресаты поддержки и очередь email — локальный кандидат
 
+Маршрут новых обращений описан отдельно в
+`docs/ops/SUPPORT_NEW_TICKET_ROUTING_2026-10-03.md`.
+
 `support_notification_targets` привязывает уровень `primary|backup|administrator`
 и канал `cabinet|email|telegram` к существующему `users.id`. Активный адресат
 должен иметь подтверждённую почту и TOTP. Основной/резервный адресат —

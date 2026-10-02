@@ -274,7 +274,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                         <div key={item.id}>
                           <strong>{item.subject || "Уведомление"}</strong>
                           {item.body ? <p className="timeline">{item.body}</p> : null}
-                          {item.template === "support.first_response_overdue" ? (
+                          {item.template && ["support.first_response_overdue", "support.ticket.new",
+                            "support.ticket.urgent"].includes(item.template) ? (
                             <Link href={admin ? "/admin" : "/operator"} onClick={() => setNotificationsOpen(false)}>
                               Открыть очередь
                             </Link>

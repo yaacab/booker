@@ -822,6 +822,10 @@ def list_notifications(
         stored_query = stored_query.filter(
             UserNotification.template != "support.first_response_overdue"
         )
+    if not user.is_platform_admin and not user.is_support_operator:
+        stored_query = stored_query.filter(
+            UserNotification.template.notin_(("support.ticket.new", "support.ticket.urgent"))
+        )
     stored = (
         stored_query.order_by(UserNotification.created_at.desc(), UserNotification.id.desc())
         .limit(normalized_limit).all()

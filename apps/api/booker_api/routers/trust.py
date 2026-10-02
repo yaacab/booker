@@ -68,6 +68,7 @@ from booker_api.support_agent import (
     no_show_evidence_offset,
     redact_sensitive_support_text,
 )
+from booker_api.support_escalation import queue_new_ticket_notices
 from booker_api.support_sla import support_response_due_at
 
 router = APIRouter(tags=["trust"])
@@ -1125,6 +1126,7 @@ def escalate_support_agent_session(
             "exchange_count": len(exchanges),
         },
     )
+    queue_new_ticket_notices(db, ticket)
     db.commit()
     db.refresh(row)
     db.refresh(ticket)
@@ -1298,6 +1300,7 @@ def create_support_ticket(
         entity_id=row.id,
         payload={"category": body.category, "related_type": row.related_type},
     )
+    queue_new_ticket_notices(db, row)
     db.commit()
     db.refresh(row)
     return _ticket_payload(row)

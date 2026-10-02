@@ -21,6 +21,63 @@ from booker_api.notifications.outbox import enqueue_email
 from booker_api.security import audit
 
 
+def queue_new_ticket_notices(db: Session, ticket: SupportTicket) -> dict[str, int]:
+    """Route a new ticket inside its creation transaction, without external I/O."""
+
+    primary = (db.query(User).join(
+        SupportNotificationTarget,
+        SupportNotificationTarget.recipient_user_id == User.id,
+    ).filter(
+        SupportNotificationTarget.channel == "cabinet",
+        SupportNotificationTarget.escalation_level == "primary",
+        SupportNotificationTarget.active.is_(True),
+        User.is_support_operator.is_(True),
+        User.is_platform_admin.is_(False),
+        User.email_verified_at.is_not(None),
+        User.totp_enabled.is_(True),
+    ).one_or_none())
+    recipients = [primary] if primary else db.query(User).filter(
+        User.is_platform_admin.is_(True),
+        User.email_verified_at.is_not(None),
+        User.totp_enabled.is_(True),
+    ).order_by(User.id).all()
+    level = "primary" if primary else "administrator"
+    urgent = ticket.priority in {"urgent", "high"}
+    template = "support.ticket.urgent" if urgent else "support.ticket.new"
+    notices = emails = 0
+    for recipient in recipients:
+        notice = persist_safe_notice(
+            db, recipient_user_id=recipient.id, template=template,
+            entity_type="support_ticket", entity_id=ticket.id,
+        )
+        notices += int(notice is not None)
+        if not urgent or settings.email_provider != "smtp" or not settings.email_smtp_host:
+            continue
+        email_target = db.query(SupportNotificationTarget.id).filter(
+            SupportNotificationTarget.recipient_user_id == recipient.id,
+            SupportNotificationTarget.channel == "email",
+            SupportNotificationTarget.escalation_level == level,
+            SupportNotificationTarget.active.is_(True),
+        ).first()
+        if not email_target:
+            continue
+        subject, body = NOTICE_COPY[template]
+        key = hashlib.sha256(
+            f"support-new-urgent:{ticket.id}:{recipient.id}:{email_target[0]}".encode()
+        ).hexdigest()
+        enqueue_email(
+            db, idempotency_key=key, recipient_email=recipient.email,
+            subject=subject, body=body, template=template,
+            entity_type="support_ticket", entity_id=ticket.id,
+        )
+        emails += 1
+    audit(db, actor_user_id=None, action="support.ticket.new_routed",
+          entity_type="support_ticket", entity_id=ticket.id,
+          payload={"level": level, "notices": notices, "email_queued": emails,
+                   "priority": ticket.priority})
+    return {"notices": notices, "email_queued": emails}
+
+
 def escalate_overdue(db: Session, *, at: datetime, limit: int = 100) -> dict[str, int]:
     """CAS each ticket so a simultaneous reply or worker cannot double-escalate."""
     if at.tzinfo is None or limit < 1 or limit > 500:

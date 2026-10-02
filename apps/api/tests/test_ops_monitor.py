@@ -125,9 +125,19 @@ def test_support_overdue_monitor_aggregates_without_ticket_data(SessionLocal, mo
         db.commit()
         snapshot = database_snapshot(db, now)
     assert snapshot["support_overdue_unanswered"] == 1
+    assert snapshot["support_without_eligible_staff"] == 1
     assert snapshot["support_sla_calendar_unavailable"] == 0
     assert Signal("support_overdue_unanswered", "warning", 1) in snapshot_signals(snapshot)
+    assert Signal("support_without_eligible_staff", "critical", 1) in snapshot_signals(snapshot)
     assert "private" not in json.dumps(snapshot).lower()
+
+    with SessionLocal() as db:
+        db.add(User(email="eligible-admin@example.org", full_name="Eligible Admin",
+                    password_hash="test", is_platform_admin=True,
+                    email_verified_at=now, totp_enabled=True))
+        db.commit()
+        staffed_snapshot = database_snapshot(db, now)
+    assert staffed_snapshot["support_without_eligible_staff"] == 0
 
     monkeypatch.setattr(settings, "support_sla_schedule_json", "")
     with SessionLocal() as db:
