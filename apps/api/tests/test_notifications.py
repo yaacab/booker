@@ -42,6 +42,102 @@ def test_notification_inbox_is_private(client, SessionLocal):
     assert "PRIVATE_INBOX_BODY" in allowed.text
 
 
+def test_notification_inbox_is_recipient_indexed_and_does_not_persist_secret_body(
+    client, SessionLocal, monkeypatch,
+):
+    from booker_api.models import AuditLog, UserNotification
+
+    recipient = register(client, "indexed-recipient@booker.test")
+    outsider = register(client, "indexed-outsider@booker.test")
+    monkeypatch.setattr(settings, "in_app_provider", "audit")
+    with SessionLocal() as db:
+        notify(
+            db,
+            actor_user_id=None,
+            notifications=[Notification(
+                channel=Channel.IN_APP,
+                template="offer.created",
+                recipient_user_id=recipient["user_id"],
+                subject="Private offer subject",
+                body="SECRET_BODY_MUST_NOT_PERSIST_654321",
+                entity_type="offer",
+                entity_id="indexed-offer",
+            )],
+        )
+        db.add(AuditLog(
+            action="notification.in_app", entity_type="test",
+            entity_id="legacy-own",
+            payload='{"recipient_user_id": "' + recipient["user_id"] + '", '
+                    '"template": "legacy.notice"}',
+        ))
+        for index in range(40):
+            db.add(AuditLog(
+                action="notification.in_app", entity_type="test",
+                entity_id=f"other-{index}",
+                payload='{"recipient_user_id": "' + outsider["user_id"] + '"}',
+            ))
+        db.commit()
+        notices = db.query(UserNotification).filter_by(
+            recipient_user_id=recipient["user_id"]
+        ).all()
+        assert len(notices) == 1
+        assert notices[0].template == "offer.created"
+        assert "SECRET_BODY_MUST_NOT_PERSIST" not in str(notices[0].__dict__)
+        assert "SECRET_BODY_MUST_NOT_PERSIST" not in " ".join(
+            row.payload for row in db.query(AuditLog).all()
+        )
+
+    response = client.get("/notifications", headers=auth_header(recipient["token"]))
+    assert response.status_code == 200
+    assert any(item["entity_id"] == "indexed-offer" for item in response.json()["items"])
+    assert any(item["entity_id"] == "legacy-own" for item in response.json()["items"])
+    assert "SECRET_BODY_MUST_NOT_PERSIST" not in response.text
+    denied = client.get("/notifications", headers=auth_header(outsider["token"]))
+    assert "indexed-offer" not in denied.text
+
+
+def test_security_notice_outbox_commits_atomically_without_auth_secret(
+    client, SessionLocal, monkeypatch,
+):
+    from booker_api.models import EmailOutbox, User, UserNotification
+    from booker_api.notifications.security import queue_security_notice
+
+    account = register(client, "security-notice@booker.test")
+    monkeypatch.setattr(settings, "email_provider", "smtp")
+    with SessionLocal() as db:
+        user = db.get(User, account["user_id"])
+        queue_security_notice(
+            db, recipient=user, template="security.totp_enabled",
+            actor_user_id=user.id,
+        )
+        db.rollback()
+    with SessionLocal() as db:
+        assert db.query(UserNotification).filter_by(
+            recipient_user_id=account["user_id"]
+        ).count() == 0
+        assert db.query(EmailOutbox).filter_by(
+            template="security.totp_enabled"
+        ).count() == 0
+        user = db.get(User, account["user_id"])
+        notice_id = queue_security_notice(
+            db, recipient=user, template="security.totp_enabled",
+            actor_user_id=user.id,
+        )
+        db.commit()
+    with SessionLocal() as db:
+        notice = db.get(UserNotification, notice_id)
+        outbox = db.query(EmailOutbox).filter_by(
+            template="security.totp_enabled"
+        ).one()
+        assert notice.recipient_user_id == account["user_id"]
+        assert outbox.status == "pending"
+        assert "secret" not in outbox.body.lower()
+        assert "654321" not in outbox.body
+    response = client.get("/notifications", headers=auth_header(account["token"]))
+    assert response.status_code == 200
+    assert any(item["id"] == notice_id for item in response.json()["items"])
+
+
 def test_dev_in_app_body_is_private_and_not_persisted_in_audit(client, SessionLocal):
     from booker_api.models import AuditLog
 

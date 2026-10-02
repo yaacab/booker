@@ -1001,6 +1001,24 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class UserNotification(Base):
+    """Durable, recipient-indexed notice containing no free-form or secret body."""
+
+    __tablename__ = "user_notifications"
+    __table_args__ = (
+        UniqueConstraint("recipient_user_id", "template", "entity_type", "entity_id",
+                         name="uq_user_notification_event"),
+        Index("ix_user_notifications_recipient_created", "recipient_user_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    recipient_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    template: Mapped[str] = mapped_column(String(64), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    entity_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class LegalDocumentVersion(Base):
     __tablename__ = "legal_document_versions"
     __table_args__ = (

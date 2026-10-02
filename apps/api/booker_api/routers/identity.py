@@ -28,13 +28,16 @@ from booker_api.models import (
     StaffRecoveryCode,
     TeamMember,
     User,
+    UserNotification,
 )
+from booker_api.notifications.inbox import notice_payload
 from booker_api.notifications.outbox import (
     deliver_outbox_row,
     enqueue_email,
     scrub_password_reset_outbox,
 )
 from booker_api.notifications.registry import transport_for
+from booker_api.notifications.security import queue_security_notice
 from booker_api.notifications.service import notify
 from booker_api.notifications.transports.dev import dev_inbox_for
 from booker_api.notifications.types import Channel, Notification
@@ -516,6 +519,8 @@ def admin_totp_confirm(
         entity_type="user",
         entity_id=user.id,
     )
+    queue_security_notice(db, recipient=user, template="security.totp_enabled",
+                          actor_user_id=user.id)
     db.commit()
     response.headers["Cache-Control"] = "no-store"
     return {"totp_enabled": True, "recovery_codes": recovery_codes}
@@ -560,6 +565,8 @@ def admin_totp_rotate(
         entity_type="user",
         entity_id=user.id,
     )
+    queue_security_notice(db, recipient=user, template="security.totp_rotated",
+                          actor_user_id=user.id)
     db.commit()
     response.headers["Cache-Control"] = "no-store"
     return {"totp_enabled": True, "recovery_codes": recovery_codes}
@@ -595,6 +602,9 @@ def regenerate_staff_recovery_codes(
     db.execute(delete(SessionToken).where(SessionToken.user_id == user.id))
     audit(db, actor_user_id=user.id, action="auth.staff_recovery_codes_regenerated",
           entity_type="user", entity_id=user.id)
+    queue_security_notice(db, recipient=user,
+                          template="security.recovery_codes_regenerated",
+                          actor_user_id=user.id)
     db.commit()
     response.headers["Cache-Control"] = "no-store"
     return {"recovery_codes": recovery_codes}
@@ -639,6 +649,8 @@ def recover_staff_totp(
           entity_type="user", entity_id=user.id)
     audit(db, actor_user_id=user.id, action="auth.staff_totp_recovered",
           entity_type="user", entity_id=user.id)
+    queue_security_notice(db, recipient=user, template="security.totp_recovered",
+                          actor_user_id=user.id)
     db.commit()
     response.headers["Cache-Control"] = "no-store"
     return {"totp_enabled": True, "recovery_codes": recovery_codes}
@@ -789,6 +801,8 @@ def recover_confirm(body: dict, request: Request, db: Session = Depends(get_db))
         entity_type="user",
         entity_id=user.id,
     )
+    queue_security_notice(db, recipient=user, template="security.password_reset",
+                          actor_user_id=user.id)
     db.commit()
     return {"ok": True}
 
@@ -799,21 +813,35 @@ def list_notifications(
     db: Session = Depends(get_db),
     limit: int = 30,
 ):
-    """In-app inbox from notification.* audit rows addressed to the current user."""
+    """Return indexed private notices plus bounded legacy/dev compatibility rows."""
     normalized_limit = min(max(limit, 1), 100)
-    rows = (
-        db.query(AuditLog)
-        .filter(AuditLog.action.in_(("notification.in_app", "notification.email")))
-        .order_by(AuditLog.created_at.desc())
+    stored = (
+        db.query(UserNotification)
+        .filter(UserNotification.recipient_user_id == user.id)
+        .order_by(UserNotification.created_at.desc(), UserNotification.id.desc())
         .limit(normalized_limit)
         .all()
     )
-    items = (
+    # Older deployments recorded only audit metadata. Narrow the query by the
+    # recipient before LIMIT; still verify the parsed JSON before projecting it.
+    escaped_id = user.id.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    rows = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.action.in_(("notification.in_app", "notification.email")),
+            AuditLog.payload.like(f"%{escaped_id}%", escape="\\"),
+        )
+        .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        .limit(normalized_limit * 2)
+        .all()
+    )
+    items = [notice_payload(row) for row in stored]
+    items.extend(
         dev_inbox_for(user.id, limit=normalized_limit)
         if settings.in_app_provider == "dev"
         else []
     )
-    dev_keys = {
+    known_keys = {
         (item.get("entity_id"), item.get("template"))
         for item in items
         if item.get("channel") == "in_app"
@@ -827,7 +855,7 @@ def list_notifications(
             continue
         if (
             row.action == "notification.in_app"
-            and (row.entity_id, payload.get("template")) in dev_keys
+            and (row.entity_id, payload.get("template")) in known_keys
         ):
             continue
         items.append(

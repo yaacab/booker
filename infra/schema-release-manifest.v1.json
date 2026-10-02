@@ -4,7 +4,7 @@
   "expected_before_states": [
     "c8d9e0f1a2b3"
   ],
-  "target_head": "a04f56b78c90",
+  "target_head": "a05f67c89d01",
   "revisions": [
     {
       "revision": "ad7ec0cd0ee2",
@@ -532,6 +532,21 @@
         "fullmatch",
         "lower",
         "startswith"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a05f67c89d01",
+      "down_revision": "a04f56b78c90",
+      "file": "a05f67c89d01_user_notifications.py",
+      "sha256": "96ad358ba4e2e23f537b8e060cbe60296492875a2ca136335304d1bfde45b95a",
+      "classification": "manual_block",
+      "reasons": [
+        "get_foreign_keys",
+        "get_indexes",
+        "get_pk_constraint",
+        "get_unique_constraints",
+        "inspect"
       ],
       "reversible": false
     }
