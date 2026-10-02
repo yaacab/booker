@@ -82,11 +82,15 @@ test("email verification redirects operator to own cabinet", async ({ page }) =>
   await page.route("**/me", (route) => route.fulfill({ json: {
     id: "pavel", is_support_operator: true, totp_enabled: true, organizations: [],
   } }));
+  const legalPackLoaded = page.waitForResponse("**/legal/pack");
   await page.goto("/login#verify=proof-token");
+  await legalPackLoaded;
   await expect(page).toHaveURL(/\/login$/);
-  await page.getByRole("textbox", { name: "Email" }).fill("pavel@booker.test");
+  const emailInput = page.getByRole("textbox", { name: "Email" });
+  await emailInput.fill("pavel@booker.test");
   await page.getByLabel("Пароль", { exact: true }).fill("password1");
   await page.getByRole("textbox", { name: "Код из приложения, если включён второй фактор" }).fill("123456");
+  await expect(emailInput).toHaveValue("pavel@booker.test");
   await page.getByRole("button", { name: "Подтвердить адрес" }).click();
   await expect(page).toHaveURL(/\/operator$/);
 });
