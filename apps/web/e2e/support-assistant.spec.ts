@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createHmac } from "node:crypto";
-import { API_BASE, DEMO_ACCOUNTS, apiHealth, fetchMe, injectSession, login } from "./helpers";
+import { API_BASE, DEMO_ACCOUNTS, apiHealth, fetchMe, injectSession, login, seedNegotiation } from "./helpers";
 
 function demoAdminTotp(): string {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -205,4 +205,46 @@ test("booking help keeps a separate assistant session and sends the linked booki
     }), { ordinaryKey, linkedKey },
   );
   expect(stored).toEqual({ ordinary: "ordinary-session", linked: linkedSessionId });
+});
+
+
+test("real linked booking reaches support and stays private to its participants", async ({
+  page, request,
+}) => {
+  expect(await apiHealth(request), `API недоступен (${API_BASE})`).toBe(true);
+  const deal = await seedNegotiation(request);
+  await injectSession(page, deal.customer.token, deal.customer.orgId);
+  await page.goto(`/deals/${deal.bookingId}`);
+  const help = page.getByRole("link", { name: "Помощь по этой брони" });
+  await expect(help).toBeVisible();
+  await help.click();
+  await expect(page).toHaveURL(new RegExp(`/support\\?booking=${deal.bookingId}$`));
+  await page.getByLabel("Сообщение помощнику").fill("Какой статус брони?");
+  await page.getByRole("button", { name: "Спросить помощника" }).click();
+  await expect(page.getByText(/обсуждение условий/).first()).toBeVisible();
+
+  const key = `booker.support.assistantSession.${deal.customer.user_id}.${deal.customer.orgId}.booking.${deal.bookingId}`;
+  const sessionId = await page.evaluate((storageKey) => localStorage.getItem(storageKey), key);
+  expect(sessionId).toBeTruthy();
+  const own = await request.get(`${API_BASE}/support/assistant/sessions/${sessionId}`, {
+    headers: { Authorization: `Bearer ${deal.customer.token}` },
+  });
+  expect(own.status()).toBe(200);
+  const ownSession = await own.json() as {
+    related_type: string; related_id: string; messages: Array<{ source_ids: string[] }>;
+  };
+  expect(ownSession.related_type).toBe("booking");
+  expect(ownSession.related_id).toBe(deal.bookingId);
+  expect(ownSession.messages[0].source_ids).toContain("support.booking_status");
+
+  const outsider = await login(request, DEMO_ACCOUNTS.customer);
+  const denied = await request.get(`${API_BASE}/support/assistant/sessions/${sessionId}`, {
+    headers: { Authorization: `Bearer ${outsider.token}` },
+  });
+  expect(denied.status()).toBe(404);
+  const forbiddenLink = await request.post(`${API_BASE}/support/assistant/sessions`, {
+    headers: { Authorization: `Bearer ${outsider.token}`, "Idempotency-Key": crypto.randomUUID() },
+    data: { related_type: "booking", related_id: deal.bookingId },
+  });
+  expect(forbiddenLink.status()).toBe(404);
 });
