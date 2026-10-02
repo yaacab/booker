@@ -64,8 +64,9 @@ test("ordinary user handoff reaches protected operator queue and returns one rep
     const databasePath = process.env.BOOKER_DATABASE_URL.slice("sqlite:///".length);
     execFileSync("../api/.venv/bin/python", ["-c", `
 import sqlite3, sys
+from booker_api.totp_storage import encrypt_totp_secret
 with sqlite3.connect(sys.argv[1]) as db:
-    db.execute("UPDATE users SET email_verified_at = CURRENT_TIMESTAMP, totp_enabled = 1, totp_secret = ? WHERE email = ?", (sys.argv[3], sys.argv[2]))
+    db.execute("UPDATE users SET email_verified_at = CURRENT_TIMESTAMP, totp_enabled = 1, totp_secret = ? WHERE email = ?", (encrypt_totp_secret(sys.argv[3]), sys.argv[2]))
     if db.total_changes != 1:
         raise RuntimeError("isolated handoff fixture missing")
 `, databasePath, colleagueEmail, "JBSWY3DPEHPK3PXP"], { cwd: process.cwd() });
