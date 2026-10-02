@@ -833,6 +833,8 @@ def _agent_escalation_category(intents: set[str]) -> str:
         return "other"
     category_by_intent = {
         "event_day_no_show": "incident",
+        "performer_cancelled_event": "incident",
+        "duplicate_confirmed_booking": "incident",
         "paid_not_confirmed": "payment",
         "money_or_legal": "payment",
         "messages": "message",
@@ -845,6 +847,8 @@ def _agent_escalation_category(intents: set[str]) -> str:
     for intent in (
         "account_security",
         "event_day_no_show",
+        "performer_cancelled_event",
+        "duplicate_confirmed_booking",
         "paid_not_confirmed",
         "money_or_legal",
         "booking_flow",
@@ -863,6 +867,11 @@ def _support_urgency(intents: set[str]) -> tuple[str, str | None, int | None]:
         return "urgent", "event_day_no_show", 30
     if "paid_not_confirmed" in intents:
         return "high", "paid_not_confirmed", 120
+    if intents.intersection({"account_security", "performer_cancelled_event",
+                             "duplicate_confirmed_booking"}):
+        # Route prominently, but do not invent a first-response SLA for these
+        # cases until the support calendar/policy explicitly defines one.
+        return "high", None, None
     return "normal", None, None
 
 
