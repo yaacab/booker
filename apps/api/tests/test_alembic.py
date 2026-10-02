@@ -590,7 +590,7 @@ def test_support_runtime_schema_can_be_adopted_by_later_migrations(tmp_path):
                 "SELECT name FROM sqlite_master WHERE type = 'trigger'"
             ))
         }
-    assert revision == "a07f89e01f23"
+    assert revision == "a08f90e12f34"
     assert {
         "contracts_offer_version_fk_insert",
         "contracts_offer_version_fk_update",
@@ -599,6 +599,17 @@ def test_support_runtime_schema_can_be_adopted_by_later_migrations(tmp_path):
         "support_ticket_acceptance_insert",
         "support_ticket_acceptance_update",
     } <= triggers
+
+
+def test_support_target_migration_rejects_incompatible_existing_table(tmp_path):
+    db_url = f"sqlite:///{tmp_path / 'bad-support-target.db'}"
+    config = _alembic_config(db_url)
+    command.upgrade(config, "a07f89e01f23")
+    engine = create_engine(db_url)
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE support_notification_targets (id VARCHAR(36) PRIMARY KEY)"))
+    with pytest.raises(RuntimeError, match="requires schema review"):
+        command.upgrade(config, "head")
 
 
 def test_support_agent_migration_rejects_missing_feedback_uniqueness(tmp_path):

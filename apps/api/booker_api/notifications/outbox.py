@@ -2,16 +2,27 @@
 
 from __future__ import annotations
 
+import json
 import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import case, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from booker_api.config import settings
-from booker_api.models import EmailOutbox, OrganizationInvitation, utcnow
+from booker_api.models import (
+    EmailOutbox,
+    OrganizationInvitation,
+    SupportMessage,
+    SupportNotificationTarget,
+    SupportTicket,
+    User,
+    utcnow,
+)
+from booker_api.notifications.inbox import NOTICE_COPY
 from booker_api.security import audit, aware
 
 
@@ -124,6 +135,53 @@ def deliver_outbox_row(
         scrub_password_reset_outbox(db)
         db.commit()
         return {"sent": False, "status": "cancelled"}
+    if row.status in {"sent", "cancelled", "uncertain"}:
+        return {"sent": row.status == "sent", "status": row.status}
+    if row.template == "support.first_response_overdue":
+        # Delivery is separate from escalation commit. Recheck the staff role,
+        # destination, ticket state and approved schedule before external I/O.
+        user = db.query(User).filter(User.email == row.recipient_email).one_or_none()
+        target = (db.query(SupportNotificationTarget).filter(
+            SupportNotificationTarget.recipient_user_id == user.id,
+            SupportNotificationTarget.channel == "email",
+            SupportNotificationTarget.escalation_level == "administrator",
+            SupportNotificationTarget.active.is_(True),
+        ).one_or_none() if user else None)
+        ticket = db.get(SupportTicket, row.entity_id) if row.entity_type == "support_ticket" else None
+        has_reply = bool(ticket and db.query(SupportMessage.id).filter(
+            SupportMessage.ticket_id == ticket.id,
+            SupportMessage.author_kind == "operator",
+        ).first())
+        expected_copy = NOTICE_COPY["support.first_response_overdue"]
+        if (not user or not target or not ticket or not user.is_platform_admin
+                or not user.email_verified_at or not user.totp_enabled
+                or ticket.overdue_escalated_at is None
+                or ticket.status in {"closed", "resolved"} or has_reply
+                or (row.subject, row.body) != expected_copy):
+            row.status = "cancelled"
+            row.last_error = "support target or ticket is no longer eligible"
+            audit(db, actor_user_id=actor_user_id,
+                  action="email.outbox.cancelled", entity_type="email_outbox",
+                  entity_id=row.id,
+                  payload={"template": row.template, "reason": row.last_error})
+            db.commit()
+            return {"sent": False, "status": "cancelled"}
+        try:
+            schedule = json.loads(target.schedule_json)
+        except (TypeError, ValueError):
+            schedule = None
+        approved_schedule = {"timezone": "Europe/Moscow", "weekdays": list(range(7)),
+                             "start": "10:00", "end": "22:00"}
+        if schedule != approved_schedule:
+            row.status = "cancelled"
+            row.last_error = "support target schedule is invalid"
+            db.commit()
+            return {"sent": False, "status": "cancelled"}
+        local_time = utcnow().astimezone(ZoneInfo("Europe/Moscow"))
+        if not (10 <= local_time.hour < 22):
+            return {"sent": False, "status": "deferred"}
+        if settings.email_provider != "smtp" or not settings.email_smtp_host:
+            return {"sent": False, "status": "deferred"}
     claimed = (
         db.query(EmailOutbox)
         .filter(
@@ -169,7 +227,9 @@ def deliver_outbox_row(
         current.sent_at = utcnow()
         current.last_error = ""
     else:
-        current.status = "failed"
+        # SMTP can accept a message before a socket timeout. Support alerts
+        # need an operator check before another send to avoid duplicate paging.
+        current.status = "uncertain" if current.template == "support.first_response_overdue" else "failed"
         current.last_error = detail[:2000]
     audit(
         db,

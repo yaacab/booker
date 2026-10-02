@@ -44,6 +44,15 @@ test("ordinary user handoff reaches protected operator queue and returns one rep
   const adminPage = await adminContext.newPage();
   await injectSession(adminPage, admin.token, "");
   await adminPage.goto("/admin");
+  const targets = adminPage.getByRole("region", { name: "Дежурные адресаты поддержки" });
+  await expect(targets).toBeVisible();
+  await targets.getByLabel("Код 2FA для управления адресатами").fill(adminTotp());
+  await targets.getByRole("button", { name: "Загрузить адресатов" }).click();
+  await expect(targets.getByText("Telegram: отключён.", { exact: false })).toBeVisible();
+  await targets.getByLabel("Сотрудник", { exact: true }).selectOption(admin.user_id);
+  await targets.getByLabel("Канал", { exact: true }).selectOption("cabinet");
+  await targets.getByRole("button", { name: "Включить адресата" }).click();
+  await expect(targets.getByText(/Адресат включён/)).toBeVisible();
   const queue = adminPage.getByRole("region", { name: "Очередь поддержки" });
   await expect(queue).toBeVisible();
   const fillTotp = async () => queue.getByLabel("Код 2FA").fill(adminTotp());
@@ -135,5 +144,7 @@ with sqlite3.connect(sys.argv[1]) as db:
   await adminPage.setViewportSize({ width: 390, height: 844 });
   const widths = await queue.evaluate((element) => ({ scroll: element.scrollWidth, client: element.clientWidth }));
   expect(widths.scroll).toBeLessThanOrEqual(widths.client + 2);
+  const targetWidths = await targets.evaluate((element) => ({ scroll: element.scrollWidth, client: element.clientWidth }));
+  expect(targetWidths.scroll).toBeLessThanOrEqual(targetWidths.client + 2);
   await adminContext.close();
 });

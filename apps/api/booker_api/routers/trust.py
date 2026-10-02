@@ -8,11 +8,12 @@ import re
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool
 from sqlalchemy import and_, case, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import (
     AuditLog,
@@ -28,6 +29,7 @@ from booker_api.models import (
     SupportAgentFeedback,
     SupportAgentSession,
     SupportMessage,
+    SupportNotificationTarget,
     SupportOperatorNote,
     SupportTicket,
     TeamMember,
@@ -91,6 +93,19 @@ class SupportPriorityIn(BaseModel):
 class SupportOperatorRoleIn(BaseModel):
     email: str = Field(min_length=3, max_length=255)
     enabled: bool
+
+
+_SUPPORT_TARGET_SCHEDULE = (
+    '{"timezone":"Europe/Moscow","weekdays":[0,1,2,3,4,5,6],'
+    '"start":"10:00","end":"22:00"}'
+)
+
+
+class SupportTargetIn(BaseModel):
+    recipient_user_id: str = Field(min_length=1, max_length=36)
+    channel: str = Field(pattern="^(cabinet|email|telegram)$")
+    escalation_level: str = Field(pattern="^(primary|backup|administrator)$")
+    active: StrictBool
 
 
 def _resolve_org(
@@ -1437,6 +1452,101 @@ def admin_set_support_operator(
     db.commit()
     return {"id": target.id, "is_support_operator": body.enabled,
             "totp_enabled": target.totp_enabled, "idempotent": False}
+
+
+@router.get("/admin/support/notification-targets")
+def admin_list_support_notification_targets(
+    admin: User = Depends(require_admin_step_up),
+    db: Session = Depends(get_db),
+):
+    rows = (db.query(SupportNotificationTarget)
+            .order_by(SupportNotificationTarget.escalation_level,
+                      SupportNotificationTarget.channel,
+                      SupportNotificationTarget.recipient_user_id)
+            .limit(100).all())
+    audit(db, actor_user_id=admin.id, action="support.targets.viewed",
+          entity_type="user", entity_id=admin.id, payload={"count": len(rows)})
+    db.commit()
+    return {"items": [{"id": row.id, "recipient_user_id": row.recipient_user_id,
+                       "channel": row.channel, "escalation_level": row.escalation_level,
+                       "active": row.active, "schedule": json.loads(row.schedule_json),
+                       "state_version": row.state_version} for row in rows],
+            "email_transport_ready": settings.email_provider == "smtp" and bool(settings.email_smtp_host),
+            "telegram_transport_ready": False}
+
+
+@router.post("/admin/support/notification-targets")
+def admin_set_support_notification_target(
+    body: SupportTargetIn,
+    admin: User = Depends(require_admin_step_up),
+    db: Session = Depends(get_db),
+    expected_version: int = Header(alias="If-Match", ge=0),
+):
+    recipient = (db.query(User).filter(User.id == body.recipient_user_id)
+                 .with_for_update().one_or_none())
+    if not recipient or not recipient.email_verified_at or not recipient.totp_enabled:
+        raise HTTPException(409, "Адресат должен подтвердить почту и подключить 2FA")
+    if body.escalation_level == "administrator":
+        if not recipient.is_platform_admin:
+            raise HTTPException(409, "Административный сигнал требует администратора")
+    elif not recipient.is_support_operator or recipient.is_platform_admin:
+        raise HTTPException(409, "Основной или резервный адресат должен быть оператором")
+    if body.active and body.channel == "telegram":
+        raise HTTPException(409, "Telegram адресат не подтверждён и транспорт выключен")
+    if body.active and body.channel == "email" and (
+        settings.email_provider != "smtp" or not settings.email_smtp_host
+    ):
+        raise HTTPException(409, "Рабочий email транспорт пока не настроен")
+    row = (db.query(SupportNotificationTarget).filter(
+        SupportNotificationTarget.recipient_user_id == recipient.id,
+        SupportNotificationTarget.channel == body.channel,
+        SupportNotificationTarget.escalation_level == body.escalation_level,
+    ).with_for_update().one_or_none())
+    if row:
+        if row.state_version != expected_version:
+            raise HTTPException(409, "Настройка адресата уже изменилась")
+        if row.active == body.active:
+            return {"id": row.id, "active": row.active,
+                    "state_version": row.state_version, "idempotent": True}
+        try:
+            changed = db.execute(update(SupportNotificationTarget).where(
+                SupportNotificationTarget.id == row.id,
+                SupportNotificationTarget.state_version == expected_version,
+            ).values(active=body.active, updated_at=now(),
+                     state_version=SupportNotificationTarget.state_version + 1)).rowcount
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(409, "Основной или резервный адресат уже назначен") from None
+        if changed != 1:
+            db.rollback()
+            raise HTTPException(409, "Настройка адресата уже изменилась")
+        target_id = row.id
+        version = expected_version + 1
+    else:
+        if expected_version != 0:
+            raise HTTPException(409, "Новая настройка начинается с версии 0")
+        row = SupportNotificationTarget(
+            recipient_user_id=recipient.id, channel=body.channel,
+            escalation_level=body.escalation_level, active=body.active,
+            schedule_json=_SUPPORT_TARGET_SCHEDULE,
+        )
+        db.add(row)
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(409, "Адресат или уровень уже занят") from None
+        target_id = row.id
+        version = 0
+    audit(db, actor_user_id=admin.id,
+          action="support.target.configured",
+          entity_type="support_notification_target", entity_id=target_id,
+          payload={"recipient_user_id": recipient.id, "channel": body.channel,
+                   "escalation_level": body.escalation_level, "active": body.active,
+                   "state_version": version})
+    db.commit()
+    return {"id": target_id, "active": body.active,
+            "state_version": version, "idempotent": False}
 
 
 @router.get("/admin/support/tickets")

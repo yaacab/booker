@@ -4,7 +4,7 @@
   "expected_before_states": [
     "c8d9e0f1a2b3"
   ],
-  "target_head": "a07f89e01f23",
+  "target_head": "a08f90e12f34",
   "revisions": [
     {
       "revision": "ad7ec0cd0ee2",
@@ -574,6 +574,20 @@
       "sha256": "7f099e6ca68f9f797cee2ab989bb3df8bfdd92624e671f58d5c9df3d839dfa10",
       "classification": "manual_block",
       "reasons": [
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a08f90e12f34",
+      "down_revision": "a07f89e01f23",
+      "file": "a08f90e12f34_support_notification_targets.py",
+      "sha256": "512ae5486f1ff53876dc6270a031c3721ab54b5f9e6a98e3ec4b75f5289b7e74",
+      "classification": "manual_block",
+      "reasons": [
+        "get_foreign_keys",
+        "get_indexes",
+        "get_unique_constraints",
         "inspect"
       ],
       "reversible": false

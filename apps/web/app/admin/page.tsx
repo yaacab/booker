@@ -6,6 +6,7 @@ import { api, getToken } from "@/lib/api";
 import { formatWhen } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import AdminSupportQueue from "@/components/AdminSupportQueue";
+import SupportNotificationTargets from "@/components/SupportNotificationTargets";
 import DataSubjectRequests from "@/components/DataSubjectRequests";
 import SupportOperatorManagement from "@/components/SupportOperatorManagement";
 
@@ -539,6 +540,11 @@ export default function AdminPage() {
         {isPlatformAdmin ? (
           <article className="card" style={{ gridColumn: "1 / -1", minWidth: 0 }}>
             <SupportOperatorManagement totpEnabled={totpEnabled} />
+          </article>
+        ) : null}
+        {isPlatformAdmin ? (
+          <article className="card" style={{ gridColumn: "1 / -1", minWidth: 0 }}>
+            <SupportNotificationTargets />
           </article>
         ) : null}
         <article className="card" style={{ gridColumn: "1 / -1", minWidth: 0 }}>

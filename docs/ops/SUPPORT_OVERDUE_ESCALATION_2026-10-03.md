@@ -33,3 +33,7 @@ rehearsal и staging не проверены. Скрипт и cron находя�
 21 файл web unit-тестов, Next build, Ruff, bash syntax, diff-check и
 source/deploy-payload/build secret gate — PASS. Реальный scheduler и
 PostgreSQL/staging/production не проверены.
+
+Следующий локальный срез добавил настраиваемые адресаты и отдельный outbox
+для email: см. `SUPPORT_DELIVERY_TARGETS_2026-10-03.md`. Реальная доставка
+остаётся отдельным приёмочным гейтом.

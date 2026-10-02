@@ -1019,6 +1019,46 @@ class UserNotification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class SupportNotificationTarget(Base):
+    """Explicit staff destination; email resolves from the verified User row."""
+
+    __tablename__ = "support_notification_targets"
+    __table_args__ = (
+        UniqueConstraint(
+            "recipient_user_id", "channel", "escalation_level",
+            name="uq_support_notification_target",
+        ),
+        CheckConstraint(
+            "channel IN ('cabinet','email','telegram')",
+            name="ck_support_notification_target_channel",
+        ),
+        CheckConstraint(
+            "escalation_level IN ('primary','backup','administrator')",
+            name="ck_support_notification_target_level",
+        ),
+        Index(
+            "uq_support_notification_target_active_staff_level",
+            "channel", "escalation_level", unique=True,
+            sqlite_where=text("active = 1 AND escalation_level IN ('primary','backup')"),
+            postgresql_where=text("active = true AND escalation_level IN ('primary','backup')"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    recipient_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    channel: Mapped[str] = mapped_column(String(16))
+    escalation_level: Mapped[str] = mapped_column(String(16))
+    active: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    # Calendar changes require a reviewed policy; the current API writes only this schedule.
+    schedule_json: Mapped[str] = mapped_column(
+        Text,
+        default='{"timezone":"Europe/Moscow","weekdays":[0,1,2,3,4,5,6],"start":"10:00","end":"22:00"}',
+    )
+    state_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class LegalDocumentVersion(Base):
     __tablename__ = "legal_document_versions"
     __table_args__ = (
