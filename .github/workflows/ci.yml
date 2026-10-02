@@ -74,10 +74,27 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: python3 scripts/check_secret_exposure.py --build
 
-  # Critical e2e on the PR/candidate SHA (not an old master green).
+  # Full browser suite and isolated recovery on the same candidate SHA.
   e2e-critical:
     needs: dependency-audit
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BOOKER_RUNTIME_ENV: test
+      BOOKER_ALLOW_DEMO_SEED: "1"
+      BOOKER_DATABASE_URL: sqlite:////tmp/booker-ci-full.db
+      BOOKER_UPLOAD_DIR: /tmp/booker-ci-full-uploads
+      BOOKER_E2E_TOKEN_CACHE: ${{ format('/tmp/booker-ci-full-{0}.json', github.run_id) }}
+      BOOKER_E2E_NEXT_DIST_DIR: .next
+      BOOKER_E2E_WEB_MODE: production
+      BOOKER_API_URL: http://127.0.0.1:18421
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:18421
+      BOOKER_INTERNAL_API_URL: http://127.0.0.1:18421
+      BOOKER_E2E_WEB_URL: http://127.0.0.1:13421
+      BOOKER_CORS_ORIGINS: http://127.0.0.1:13421
+      BOOKER_EMAIL_PROVIDER: disabled
+      BOOKER_IN_APP_PROVIDER: dev
+      BOOKER_PAYMENT_PROVIDER: stub
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -86,49 +103,40 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: API deps + seed DB
+      - name: Install isolated API environment
         working-directory: apps/api
         run: |
-          pip install -r requirements.lock
-          pip install -e ".[dev]" --no-deps
-          pip check
-          BOOKER_ALLOW_DEMO_SEED=1 BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db python -m booker_api.seed
-      - name: Start API
-        working-directory: apps/api
-        run: |
-          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PAYMENT_PROVIDER=stub \
-            uvicorn booker_api.main:app --host 127.0.0.1 --port 8000 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.lock
+          .venv/bin/pip install -e ".[dev]" --no-deps
+          .venv/bin/pip check
       - name: Web install + Playwright
         working-directory: apps/web
         run: |
           npm ci
           npx playwright install --with-deps chromium
-      - name: Critical e2e (flag + supply nav)
+      - name: Build web and scan generated assets
         working-directory: apps/web
-        env:
-          BOOKER_API_URL: http://127.0.0.1:8000
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
-          BOOKER_INTERNAL_API_URL: http://127.0.0.1:8000
-          # Default OFF — do not set NEXT_PUBLIC_EVENT_STUDIO_MAP_V1=1
         run: |
           npm run build
           python3 ../../scripts/check_secret_exposure.py --build
-          npx next start -H 127.0.0.1 -p 3000 &
-          for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
-          npx playwright test \
-            e2e/event-studio-map.spec.ts \
-            e2e/supply-nav.spec.ts \
-            e2e/search-filters.spec.ts \
-            e2e/search-persist.spec.ts \
-            e2e/flow.spec.ts \
-            e2e/deal-path.spec.ts \
-            e2e/cabinets-cross-role.spec.ts \
-            e2e/cabinet-customer.spec.ts \
-            e2e/cabinet-performer.spec.ts \
-            e2e/cabinet-venue.spec.ts \
-            e2e/org-switch.spec.ts \
-            e2e/cabinet-a11y.spec.ts \
-            e2e/studio-autosave.spec.ts \
-            e2e/onboarding.spec.ts \
-            --reporter=line
+      - name: Full browser suite
+        working-directory: apps/web
+        run: npx playwright test --config=playwright.support-isolated.config.ts --reporter=line --output=/tmp/booker-ci-full-results
+      - name: Staff recovery on a separate database
+        working-directory: apps/web
+        env:
+          BOOKER_E2E_STAFF_RECOVERY_ISOLATED: "1"
+          BOOKER_DATABASE_URL: sqlite:////tmp/booker-ci-recovery.db
+          BOOKER_UPLOAD_DIR: /tmp/booker-ci-recovery-uploads
+          BOOKER_E2E_TOKEN_CACHE: ${{ format('/tmp/booker-ci-recovery-{0}.json', github.run_id) }}
+        run: npx playwright test --config=playwright.support-isolated.config.ts e2e/staff-recovery.spec.ts --reporter=line --output=/tmp/booker-ci-recovery-results
+      - name: Preserve failed browser evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-evidence
+          path: |
+            /tmp/booker-ci-full-results
+            /tmp/booker-ci-recovery-results
+          retention-days: 7

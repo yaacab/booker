@@ -356,10 +356,18 @@ export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<
 }
 
 export async function injectSession(page: Page, token: string, orgId: string): Promise<void> {
-  await page.addInitScript(
+  // Записываем текущую сессию один раз. Повторные init scripts на одной странице
+  // конкурируют при навигации и могут вернуть предыдущую роль или отозванный токен.
+  const origin = new URL(process.env.BOOKER_E2E_WEB_URL ?? "http://127.0.0.1:3000").origin;
+  if (!page.url().startsWith(`${origin}/`)) {
+    await page.goto(`${origin}/login`, { waitUntil: "domcontentloaded" });
+  }
+  await page.evaluate(
     ({ token, orgId }) => {
       localStorage.setItem("booker.token", token);
       localStorage.setItem("booker.org", orgId);
+      localStorage.removeItem("booker.admin");
+      window.dispatchEvent(new Event("storage"));
     },
     { token, orgId },
   );

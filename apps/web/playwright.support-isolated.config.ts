@@ -6,6 +6,9 @@ const databaseUrl = process.env.BOOKER_DATABASE_URL ?? "";
 const tokenCache = process.env.BOOKER_E2E_TOKEN_CACHE ?? "";
 const uploadDir = process.env.BOOKER_UPLOAD_DIR ?? "";
 const nextDistDir = process.env.BOOKER_E2E_NEXT_DIST_DIR ?? "";
+const productionBuild = process.env.BOOKER_E2E_WEB_MODE === "production";
+const isolatedBuild = /^\.next-e2e-[a-zA-Z0-9_-]+$/.test(nextDistDir)
+  || (productionBuild && nextDistDir === ".next");
 
 function isolatedPort(url: URL, defaultPort: string): number {
   const port = Number(url.port);
@@ -20,7 +23,7 @@ const apiPort = isolatedPort(apiUrl, "8000");
 const webPort = isolatedPort(webUrl, "3000");
 if (apiPort === webPort || !databaseUrl.startsWith("sqlite:////tmp/") ||
     !tokenCache.startsWith("/tmp/") || !uploadDir.startsWith("/tmp/") ||
-    !/^\.next-e2e-[a-zA-Z0-9_-]+$/.test(nextDistDir) ||
+    !isolatedBuild ||
     process.env.BOOKER_RUNTIME_ENV !== "test" ||
     process.env.BOOKER_ALLOW_DEMO_SEED !== "1" ||
     process.env.BOOKER_CORS_ORIGINS !== webUrl.origin) {
@@ -31,6 +34,8 @@ export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
   workers: 1,
+  forbidOnly: Boolean(process.env.CI),
+  retries: 0,
   webServer: [
     {
       command: `cd ../api && .venv/bin/python -m uvicorn booker_api.main:app --host 127.0.0.1 --port ${apiPort}`,
@@ -39,7 +44,9 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: `npm run dev -- --hostname 127.0.0.1 --port ${webPort}`,
+      command: productionBuild
+        ? `npm run start -- --hostname 127.0.0.1 --port ${webPort}`
+        : `npm run dev -- --hostname 127.0.0.1 --port ${webPort}`,
       url: webUrl.origin,
       reuseExistingServer: false,
       timeout: 120_000,

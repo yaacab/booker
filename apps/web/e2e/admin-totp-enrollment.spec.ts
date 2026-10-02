@@ -35,6 +35,7 @@ test("admin opens pre-login TOTP setup, confirms email proof, then signs in agai
   await page.goto("/admin");
   await page.getByRole("link", { name: "Перейти к настройке" }).click();
   await expect(page).toHaveURL(/\/login\?next=%2Fadmin&enroll=1$/);
+  await expect(page.getByLabel("Email администратора")).toBeVisible();
   expect(await page.evaluate(() => ({
     token: localStorage.getItem("booker.token"), admin: localStorage.getItem("booker.admin"),
   }))).toEqual({ token: null, admin: null });
