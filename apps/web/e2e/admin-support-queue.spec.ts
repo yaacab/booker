@@ -56,6 +56,7 @@ test("ordinary user handoff reaches protected operator queue and returns one rep
   await fillTotp();
   await queue.getByRole("button", { name: "Взять в работу" }).click();
   await expect(queue.getByText("Назначение: мне")).toBeVisible();
+  await expect(queue.getByText(/Принятие: подтверждено/)).toBeVisible();
 
   if (process.env.BOOKER_RUNTIME_ENV === "test" &&
       process.env.BOOKER_DATABASE_URL?.startsWith("sqlite:////tmp/")) {
@@ -82,10 +83,14 @@ with sqlite3.connect(sys.argv[1]) as db:
     await fillTotp();
     await queue.getByRole("button", { name: "Передать", exact: true }).click();
     await expect(queue.getByText("Назначение: другому сотруднику")).toBeVisible();
+    await expect(queue.getByText("Принятие: ожидается")).toBeVisible();
     await queue.getByLabel("Передать обращение").selectOption(admin.user_id);
     await fillTotp();
     await queue.getByRole("button", { name: "Передать", exact: true }).click();
     await expect(queue.getByText("Назначение: мне")).toBeVisible();
+    await fillTotp();
+    await queue.getByRole("button", { name: "Подтвердить принятие" }).click();
+    await expect(queue.getByText(/Принятие: подтверждено/)).toBeVisible();
   }
   await queue.getByLabel("Приоритет очереди").selectOption("high");
   await fillTotp();
@@ -123,6 +128,10 @@ with sqlite3.connect(sys.argv[1]) as db:
   await fillTotp();
   await queue.getByRole("button", { name: "Открыть повторно" }).click();
   await expect(queue.getByRole("button", { name: "Закрыть", exact: true })).toBeVisible();
+  await expect(queue.getByText("Принятие: ожидается")).toBeVisible();
+  await fillTotp();
+  await queue.getByRole("button", { name: "Подтвердить принятие" }).click();
+  await expect(queue.getByText(/Принятие: подтверждено/)).toBeVisible();
   await adminPage.setViewportSize({ width: 390, height: 844 });
   const widths = await queue.evaluate((element) => ({ scroll: element.scrollWidth, client: element.clientWidth }));
   expect(widths.scroll).toBeLessThanOrEqual(widths.client + 2);

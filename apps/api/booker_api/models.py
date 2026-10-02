@@ -1303,12 +1303,25 @@ class SupportTicket(Base):
             "idempotency_key_hash",
             name="uq_support_ticket_author_idempotency",
         ),
+        CheckConstraint(
+            "(accepted_by_user_id IS NULL AND accepted_at IS NULL) OR "
+            "(accepted_by_user_id IS NOT NULL AND accepted_at IS NOT NULL "
+            "AND assigned_to_user_id IS NOT NULL "
+            "AND accepted_by_user_id = assigned_to_user_id)",
+            name="ck_support_ticket_acceptance",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     assigned_to_user_id: Mapped[str | None] = mapped_column(
         ForeignKey("users.id"), nullable=True, index=True
+    )
+    accepted_by_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+    accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     organization_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("organizations.id"), nullable=True, index=True

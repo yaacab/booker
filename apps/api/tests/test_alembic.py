@@ -590,12 +590,14 @@ def test_support_runtime_schema_can_be_adopted_by_later_migrations(tmp_path):
                 "SELECT name FROM sqlite_master WHERE type = 'trigger'"
             ))
         }
-    assert revision == "a05f67c89d01"
+    assert revision == "a06f78d90e12"
     assert {
         "contracts_offer_version_fk_insert",
         "contracts_offer_version_fk_update",
         "contract_signatures_offer_version_fk_insert",
         "contract_signatures_offer_version_fk_update",
+        "support_ticket_acceptance_insert",
+        "support_ticket_acceptance_update",
     } <= triggers
 
 

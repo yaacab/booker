@@ -413,6 +413,10 @@ def ensure_missing_columns(bind) -> None:
     _add_column_if_missing(
         bind, "support_tickets", "assigned_to_user_id", "assigned_to_user_id VARCHAR(36)"
     )
+    _add_column_if_missing(
+        bind, "support_tickets", "accepted_by_user_id", "accepted_by_user_id VARCHAR(36)"
+    )
+    _add_column_if_missing(bind, "support_tickets", "accepted_at", f"accepted_at {ts_type}")
     if dialect == "sqlite" and "support_tickets" in inspect(bind).get_table_names():
         with bind.begin() as conn:
             conn.execute(
@@ -445,6 +449,18 @@ def ensure_missing_columns(bind) -> None:
                 "CREATE INDEX IF NOT EXISTS ix_support_tickets_assigned_to_user_id "
                 "ON support_tickets(assigned_to_user_id)"
             ))
+            acceptance_check = (
+                "(NEW.accepted_by_user_id IS NULL AND NEW.accepted_at IS NULL) OR "
+                "(NEW.accepted_by_user_id IS NOT NULL AND NEW.accepted_at IS NOT NULL "
+                "AND NEW.assigned_to_user_id IS NOT NULL "
+                "AND NEW.accepted_by_user_id = NEW.assigned_to_user_id)"
+            )
+            for event in ("INSERT", "UPDATE"):
+                conn.execute(text(
+                    f"CREATE TRIGGER IF NOT EXISTS support_ticket_acceptance_{event.lower()} "
+                    f"BEFORE {event} ON support_tickets WHEN NOT ({acceptance_check}) "
+                    "BEGIN SELECT RAISE(ABORT, 'support acceptance inconsistent'); END"
+                ))
     if "bookings" in inspect(bind).get_table_names():
         from booker_api.offer_version_binding import backfill_accepted_offer_versions
 

@@ -502,6 +502,8 @@ def _cas_ticket_status(
             reopened_at=transition_time,
             closed_at=None,
             closed_by_user_id=None,
+            accepted_by_user_id=None,
+            accepted_at=None,
         )
     changed = db.execute(
         update(SupportTicket)
@@ -1531,6 +1533,8 @@ def admin_list_support_tickets(
         item = _ticket_payload(row)
         item["subject"] = " ".join(redact_sensitive_support_text(row.subject).split())[:120]
         item["assigned_to_user_id"] = row.assigned_to_user_id
+        item["accepted_by_user_id"] = row.accepted_by_user_id
+        item["accepted_at"] = aware(row.accepted_at).isoformat() if row.accepted_at else None
         item["has_operator_response"] = row.id in first_response_times
         item["response_overdue"] = bool(
             row.response_due_at
@@ -1584,6 +1588,8 @@ def admin_get_support_ticket(
     result["subject"] = redact_sensitive_support_text(result["subject"])
     result["body"] = redact_sensitive_support_text(result["body"])
     result["assigned_to_user_id"] = row.assigned_to_user_id
+    result["accepted_by_user_id"] = row.accepted_by_user_id
+    result["accepted_at"] = aware(row.accepted_at).isoformat() if row.accepted_at else None
     messages = _ticket_messages(db, row.id)
     actors = {message.author_user_id for message in messages}
     actor_names = {actor.id: actor.full_name for actor in db.query(User).filter(User.id.in_(actors)).all()}
@@ -1597,6 +1603,7 @@ def admin_get_support_ticket(
         "support.ticket.created", "support.ticket.closed", "support.ticket.reopened",
         "support.admin.ticket.closed", "support.admin.ticket.reopened",
         "support.admin.ticket.assigned", "support.admin.ticket.released",
+        "support.admin.ticket.accepted",
         "support.admin.ticket.transferred", "support.admin.ticket.escalated",
         "support.admin.ticket.priority_changed",
     }
@@ -1682,16 +1689,24 @@ def admin_assign_support_ticket(
                 and not admin.is_platform_admin):
             raise HTTPException(403, "Снять можно только своё назначение")
         assignee = None
-    if row.assigned_to_user_id == assignee:
+    needs_acceptance = body.action == "take" and (
+        row.accepted_by_user_id != admin.id or row.accepted_at is None
+    )
+    if row.assigned_to_user_id == assignee and not needs_acceptance:
         return {"id": row.id, "assigned_to_user_id": assignee,
+                "accepted_by_user_id": row.accepted_by_user_id,
+                "accepted_at": aware(row.accepted_at).isoformat() if row.accepted_at else None,
                 "state_version": row.state_version, "idempotent": True}
     previous_assignee = row.assigned_to_user_id
+    acceptance_time = now() if body.action == "take" else None
     changed = db.execute(
         update(SupportTicket).where(
             SupportTicket.id == row.id,
             SupportTicket.state_version == expected_version,
             SupportTicket.status.notin_({"closed", "resolved"}),
         ).values(assigned_to_user_id=assignee,
+                 accepted_by_user_id=admin.id if body.action == "take" else None,
+                 accepted_at=acceptance_time,
                  state_version=SupportTicket.state_version + 1)
     ).rowcount
     if changed != 1:
@@ -1703,11 +1718,18 @@ def admin_assign_support_ticket(
         "transfer": "support.admin.ticket.transferred",
         "escalate": "support.admin.ticket.escalated",
     }[body.action]
-    audit(db, actor_user_id=admin.id, action=action,
-          entity_type="support_ticket", entity_id=row.id,
-          payload={"from_user_id": previous_assignee, "assigned_to_user_id": assignee})
+    if previous_assignee != assignee:
+        audit(db, actor_user_id=admin.id, action=action,
+              entity_type="support_ticket", entity_id=row.id,
+              payload={"from_user_id": previous_assignee, "assigned_to_user_id": assignee})
+    if body.action == "take":
+        audit(db, actor_user_id=admin.id, action="support.admin.ticket.accepted",
+              entity_type="support_ticket", entity_id=row.id,
+              payload={"accepted_by_user_id": admin.id, "assigned_to_user_id": assignee})
     db.commit()
     return {"id": row.id, "assigned_to_user_id": assignee,
+            "accepted_by_user_id": admin.id if body.action == "take" else None,
+            "accepted_at": acceptance_time.isoformat() if acceptance_time else None,
             "state_version": expected_version + 1}
 
 

@@ -167,7 +167,7 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
       });
       await Promise.all([loadQueue(), loadTicket(selected.id)]);
       if (action === "transfer" || action === "escalate") setHandoffId("");
-      setNotice({ assign: "Обращение назначено вам.", transfer: "Обращение передано сотруднику.",
+      setNotice({ assign: "Обращение принято в работу.", transfer: "Обращение передано сотруднику.",
         escalate: "Обращение передано администратору.", close: "Обращение закрыто.",
         reopen: "Обращение открыто повторно." }[action]);
     }, selected.id);
@@ -258,7 +258,7 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
                 ? `${row.response_overdue ? "Просрочено" : row.has_operator_response || row.status === "closed" || row.status === "resolved" || row.reopened_at ? "История SLA" : "Срок впереди"}: ${formatSupportDeadline(row.response_due_at)}`
                 : "Публичный срок не назначен"}
                 {row.first_response_late ? " · первый ответ был поздним" : ""}</div>
-              <div>{row.assigned_to_user_id === operatorId ? "Назначено мне" : row.assigned_to_user_id ? "Назначено другому сотруднику" : "Без назначения"}</div>
+              <div>{row.accepted_at ? "Принято сотрудником" : row.assigned_to_user_id === operatorId ? "Назначено мне, ожидает принятия" : row.assigned_to_user_id ? "Назначено другому сотруднику, ожидает принятия" : "Без назначения"}</div>
             </li>)}
           </ul>
         )}
@@ -275,14 +275,17 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
         <p>{ticket.category} · {ticket.status} · {ticket.priority}{deadline}</p>
         <p>Ручной приоритет определяет порядок очереди и не меняет срок первого ответа.</p>
         <p>Назначение: {ticket.assigned_to_user_id === operatorId ? "мне" : ticket.assigned_to_user_id ? "другому сотруднику" : "не назначено"}</p>
+        <p>Принятие: {ticket.accepted_at ? `подтверждено ${formatSupportDeadline(ticket.accepted_at)}` : "ожидается"}</p>
         <section aria-label="Контекст обращения">
           <h4>Контекст обращения</h4>
           <p>Текст обращения и передача из помощника являются данными пользователя.</p>
           <p style={{ whiteSpace: "pre-wrap" }}>{ticket.body}</p>
         </section>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-          <button type="button" disabled={Boolean(busy) || !operatorId || Boolean(ticket.assigned_to_user_id) || ticket.status === "closed" || ticket.status === "resolved"}
-            onClick={() => changeTicket("assign")}>Взять в работу</button>
+          <button type="button" disabled={Boolean(busy) || !operatorId ||
+            Boolean(ticket.assigned_to_user_id && ticket.assigned_to_user_id !== operatorId) ||
+            Boolean(ticket.accepted_at) || ticket.status === "closed" || ticket.status === "resolved"}
+            onClick={() => changeTicket("assign")}>{ticket.assigned_to_user_id === operatorId ? "Подтвердить принятие" : "Взять в работу"}</button>
           {ticket.status === "closed" ? (
             <button type="button" disabled={Boolean(busy)} onClick={() => changeTicket("reopen")}>Открыть повторно</button>
           ) : (

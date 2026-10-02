@@ -4,7 +4,7 @@
   "expected_before_states": [
     "c8d9e0f1a2b3"
   ],
-  "target_head": "a05f67c89d01",
+  "target_head": "a06f78d90e12",
   "revisions": [
     {
       "revision": "ad7ec0cd0ee2",
@@ -547,6 +547,23 @@
         "get_pk_constraint",
         "get_unique_constraints",
         "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a06f78d90e12",
+      "down_revision": "a05f67c89d01",
+      "file": "a06f78d90e12_support_acceptance.py",
+      "sha256": "7ba50d15bc7518666219951e65ea6c8f25a3a460d69eb5569eb0fed3aa14c1b7",
+      "classification": "manual_block",
+      "reasons": [
+        "create_check_constraint",
+        "execute",
+        "get_check_constraints",
+        "get_foreign_keys",
+        "inspect",
+        "lower",
+        "replace"
       ],
       "reversible": false
     }
