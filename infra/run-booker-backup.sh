@@ -23,7 +23,7 @@ if [[ "${BOOKER_BACKUP_FORMAT:-legacy}" == "sealed" ]]; then
     echo "BOOKER_BACKUP_KEY_FILE is required for sealed backups" >&2
     exit 1
   fi
-  "${BOOKER_BACKUP_CRYPTO_PYTHON:-python3}" "${ROOT}/infra/backup_crypto.py" \
+  "${BOOKER_BACKUP_CRYPTO_PYTHON:-${PY}}" "${ROOT}/infra/backup_crypto.py" \
     check-key "${BOOKER_BACKUP_KEY_FILE}"
 fi
 

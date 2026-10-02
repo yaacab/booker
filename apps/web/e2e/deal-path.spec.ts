@@ -197,8 +197,13 @@ test.describe("Deal path E07–E09", () => {
       await page.getByRole("button", { name: "Подтвердить условия", exact: true }).click();
       await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
 
+      const held = page.waitForResponse((response) =>
+        response.url().endsWith(`/bookings/${ctx.bookingId}/hold`) &&
+        response.request().method() === "POST"
+      );
       await page.getByRole("button", { name: "Удержать дату" }).click();
-      await expect(page.getByText("Дата удерживается").first()).toBeVisible({ timeout: 10_000 });
+      expect((await held).status()).toBe(200);
+      await expect(page.locator(".hold-gold").first()).toBeVisible({ timeout: 10_000 });
 
       const room = await getJson<{ hold?: { status: string }; quote: DealRoomQuote }>(
         request,

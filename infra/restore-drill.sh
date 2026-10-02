@@ -56,7 +56,7 @@ case "${FORMAT}" in
       echo "BOOKER_BACKUP_KEY_FILE is required for sealed restore" >&2
       exit 1
     fi
-    CRYPTO_PY="${BOOKER_BACKUP_CRYPTO_PYTHON:-python3}"
+    CRYPTO_PY="${BOOKER_BACKUP_CRYPTO_PYTHON:-${PY}}"
     find /tmp -maxdepth 1 -mindepth 1 -type d -user "$(id -un)" \
       -name 'booker-sealed-restore-*' -mmin +1440 -exec rm -rf -- {} +
     SEALED_TMP="$(mktemp -d /tmp/booker-sealed-restore-XXXXXX)"

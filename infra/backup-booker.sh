@@ -44,7 +44,7 @@ SUPPORT="${ROOT}/infra/backup_support.py"
 CRYPTO="${ROOT}/infra/backup_crypto.py"
 CONTRACT="${ROOT}/infra/backup_contract.py"
 EVIDENCE="${BOOKER_OPS_BACKUP_EVIDENCE_FILE:-${BACKUP_ROOT}/.ops-backup.json}"
-CRYPTO_PY="${BOOKER_BACKUP_CRYPTO_PYTHON:-python3}"
+CRYPTO_PY="${BOOKER_BACKUP_CRYPTO_PYTHON:-${PY}}"
 KEY_FILE="${BOOKER_BACKUP_KEY_FILE:-}"
 if [[ "${BACKUP_FORMAT}" == "sealed" ]]; then
   if [[ -z "${KEY_FILE}" ]]; then

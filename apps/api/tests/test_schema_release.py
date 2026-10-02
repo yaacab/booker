@@ -182,7 +182,7 @@ def test_v2_sealed_backup_restore_then_copy_rehearsal(tmp_path, monkeypatch):
     env = {**os.environ, "BOOKER_DATABASE_URL": f"sqlite:///{source}",
            "BOOKER_UPLOAD_DIR": str(uploads), "BOOKER_BACKUP_DIR": str(backups),
            "BOOKER_BACKUP_FORMAT": "sealed", "BOOKER_BACKUP_KEY_FILE": str(key),
-           "BOOKER_BACKUP_CRYPTO_PYTHON": "python3", "BOOKER_PYTHON": sys.executable}
+           "BOOKER_PYTHON": sys.executable}
     subprocess.run(["bash", str(ROOT / "infra/backup-booker.sh")], env=env, check=True,
                    capture_output=True)
     archives = list(backups.glob("*.bke"))
