@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CatalogFilters, type CategoryChip } from "@/components/CatalogFilters";
-import { CatalogResultCard } from "@/components/CatalogResultCard";
+import { CatalogSearchResults, type SearchItem } from "@/components/CatalogSearchResults";
 import { CATEGORY, categoryLabel, PILOT_CITIES } from "@/lib/copy";
 import { formatDay } from "@/lib/format";
 
@@ -22,26 +22,6 @@ const API =
   process.env.BOOKER_INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   "http://127.0.0.1:8000";
-
-type SearchItem = {
-  id: string;
-  name: string;
-  city: string;
-  category: string;
-  verified: boolean;
-  has_calendar?: boolean;
-  open_slots?: number;
-  next_open_at?: string | null;
-  tariffs?: { honorarium_rub: number }[];
-  address?: string;
-  metro?: string;
-  availability_mode?: string;
-  listing_origin?: string;
-  source_type?: string;
-  partnership_status?: string;
-  public_disclosure?: string | null;
-  matching_halls?: { id: string; name: string; capacity: number }[];
-};
 
 function fallbackCategories(): CategoryChip[] {
   return Object.entries(CATEGORY).map(([code, title]) => ({ code, title }));
@@ -78,6 +58,7 @@ type SearchQuery = {
   budget_max?: string;
   guests?: string;
   seating?: string;
+  cursor?: string;
 };
 
 export default async function SearchPage({
@@ -110,11 +91,13 @@ export default async function SearchPage({
   if (q.budget_max) params.set("budget_max", q.budget_max);
   if (q.guests) params.set("guests", q.guests);
   if (q.seating) params.set("seating", q.seating);
+  if (q.cursor) params.set("cursor", q.cursor);
   let items: SearchItem[] = [];
   let venues: SearchItem[] = [];
+  let nextCursor: string | null = null;
   let error: string | null = null;
   const [catalogRes, categories] = await Promise.all([
-    fetch(`${API}/catalog/search?${params.toString()}`, { cache: "no-store" }).catch(() => null),
+    fetch(`${API}/catalog/search-page?${params.toString()}`, { cache: "no-store" }).catch(() => null),
     loadCategories(),
   ]);
   try {
@@ -122,11 +105,14 @@ export default async function SearchPage({
       const data = await catalogRes.json();
       items = data.items ?? [];
       venues = data.venues ?? [];
+      nextCursor = typeof data.next_cursor === "string" ? data.next_cursor : null;
     } else error = "Каталог временно недоступен.";
   } catch {
     error = "Каталог временно недоступен.";
   }
-  const empty = items.length === 0 && venues.length === 0 && !error;
+  const empty = items.length === 0 && venues.length === 0 && !nextCursor && !error;
+  const filterParams = new URLSearchParams(params);
+  filterParams.delete("cursor");
   return (
     <main className="page-enter catalog-page">
       <header className="workspace-heading">
@@ -196,37 +182,16 @@ export default async function SearchPage({
               </p>
             </article>
           ) : null}
-          {items.length > 0 ? (
-            <>
-              {venues.length > 0 ? <h2>Артисты</h2> : null}
-              <div className="grid">
-                {items.map((item) => (
-                  <CatalogResultCard
-                    key={item.id}
-                    item={item}
-                    kind="artist"
-                    href={`/artists/${item.id}${itemQs ? `?${itemQs}` : ""}`}
-                    date={q.date}
-                  />
-                ))}
-              </div>
-            </>
-          ) : null}
-          {venues.length > 0 ? (
-            <>
-              {items.length > 0 ? <h2>Площадки</h2> : null}
-              <div className="grid">
-                {venues.map((item) => (
-                  <CatalogResultCard
-                    key={item.id}
-                    item={item}
-                    kind="venue"
-                    href={`/venues/${item.id}${itemQs ? `?${itemQs}` : ""}`}
-                    date={q.date}
-                  />
-                ))}
-              </div>
-            </>
+          {!error ? (
+            <CatalogSearchResults
+              key={params.toString()}
+              initialItems={items}
+              initialVenues={venues}
+              initialCursor={nextCursor}
+              filters={filterParams.toString()}
+              detailQuery={itemQs}
+              date={q.date}
+            />
           ) : null}
         </div>
       </div>

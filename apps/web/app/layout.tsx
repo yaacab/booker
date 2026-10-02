@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { SiteChrome } from "@/components/SiteChrome";
+import { canonicalSiteUrl } from "@/lib/seo";
 import "./globals.css";
 import "./immersive.css";
 import "./cabinet-design.css";
 import "./reference-puzzles.css";
 import "./workspace-design.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bukergo.ru";
+const siteUrl = canonicalSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

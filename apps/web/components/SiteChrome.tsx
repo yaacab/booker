@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
-import { api, getActiveOrg, getToken, setToken, trackClientEvent } from "@/lib/api";
+import { api, getActiveOrg, getToken, setToken, trackClientEvent, SESSION_CHANGED_EVENT } from "@/lib/api";
 import { orgKindToCabinetMode, supplyCalendarHref, supplyRequestsHref, type CabinetMode } from "@/lib/cabinetRoutes";
 import { loginHref } from "@/lib/next";
 import { isEventStudioMapV1 } from "@/lib/features";
@@ -39,6 +39,8 @@ function tabTitle(path: string): string {
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [admin, setAdmin] = useState(false);
+  const [supportOperator, setSupportOperator] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [cabinetMode, setCabinetMode] = useState<CabinetMode | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<
@@ -50,29 +52,47 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [fullScreenStudio, setFullScreenStudio] = useState(false);
 
   useEffect(() => {
-    setAuthed(Boolean(getToken()));
-    setAdmin(localStorage.getItem(ADMIN_KEY) === "1");
+    const refreshSession = () => {
+      const token = getToken();
+      setAuthToken(token);
+      setAuthed(Boolean(token));
+      setAdmin(Boolean(token) && localStorage.getItem(ADMIN_KEY) === "1");
+      if (!token) setSupportOperator(false);
+    };
+    refreshSession();
+    window.addEventListener(SESSION_CHANGED_EVENT, refreshSession);
+    return () => window.removeEventListener(SESSION_CHANGED_EVENT, refreshSession);
   }, [path]);
 
   useEffect(() => {
-    if (!getToken()) {
+    if (!authToken) {
       setCabinetMode(null);
+      setSupportOperator(false);
       return;
     }
+    let current = true;
     void api<{
+      is_support_operator?: boolean;
       organizations?: { id: string; kind: string }[];
       active_organization_id?: string;
     }>("/me")
       .then((me) => {
+        if (!current || getToken() !== authToken) return;
+        setSupportOperator(Boolean(me.is_support_operator));
+        if (me.is_support_operator) {
+          setCabinetMode(null);
+          return;
+        }
         const activeOrgId = getActiveOrg() || me.active_organization_id || me.organizations?.[0]?.id;
         const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
         setCabinetMode(org ? orgKindToCabinetMode(org.kind) : null);
       })
-      .catch(() => setCabinetMode(null));
-  }, [path, authed]);
+      .catch(() => { if (current) { setCabinetMode(null); setSupportOperator(false); } });
+    return () => { current = false; };
+  }, [path, authToken]);
 
   useEffect(() => {
-    if (!authed || !getToken()) {
+    if (!authed || !getToken() || supportOperator || path.startsWith("/operator")) {
       setNotifications([]);
       setNotificationsOpen(false);
       return;
@@ -80,7 +100,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
     void api<{ items: { id: string; subject?: string | null; body?: string | null }[] }>("/notifications")
       .then((res) => setNotifications(res.items || []))
       .catch(() => setNotifications([]));
-  }, [path, authed]);
+  }, [path, authed, supportOperator]);
 
   useEffect(() => {
     setFullScreenStudio(path === "/events/new" && isEventStudioMapV1());
@@ -93,10 +113,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       title = city ? `Каталог — ${city} · Букер` : title;
     }
     document.title = title;
-    if (getToken()) {
+    if (getToken() && !supportOperator && !path.startsWith("/operator")) {
       trackClientEvent("page.view", { path });
     }
-  }, [path]);
+  }, [path, supportOperator]);
 
   useEffect(() => {
     if (fullScreenStudio) return;
@@ -125,6 +145,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const primaryWorkLabel = isSupply ? "Мой календарь" : "Создать заявку";
   const onCalendar = isSupply && path.includes("/calendar");
   const onRequests = isSupply && path.includes("/requests");
+  const operatorNav = supportOperator || path.startsWith("/operator");
 
   if (fullScreenStudio) {
     return (
@@ -147,12 +168,12 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             <span className="brand-tagline">Люди. Места. События.</span>
           </Link>
           <nav className={`nav-public${!authed ? " nav-reference-public" : ""}`} aria-label="Основное">
-            {authed && !isSupply ? (
+            {authed && !operatorNav && !isSupply ? (
               <Link href="/search" aria-current={path.startsWith("/search") ? "page" : undefined}>
                 Каталог
               </Link>
             ) : null}
-            {authed ? (
+            {authed && !operatorNav ? (
               <Link
                 href={primaryWorkHref}
                 aria-current={
@@ -167,14 +188,14 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               >
                 {primaryWorkLabel}
               </Link>
-            ) : (
+            ) : !authed ? (
               <>
                 <Link href="/search?kind=artist">Артисты</Link>
                 <Link href="/search?kind=venue">Площадки</Link>
                 <Link href="/#process-title">Как это работает</Link>
               </>
-            )}
-            {authed ? (
+            ) : null}
+            {authed && !operatorNav ? (
               <Link
                 href={isSupply ? requestsHref : cabinetHref}
                 aria-current={
@@ -190,17 +211,27 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 {isSupply ? "Заявки" : "Сделки"}
               </Link>
             ) : null}
-            {authed ? (
+            {authed && !operatorNav ? (
               <Link href="/profile" aria-current={path.startsWith("/profile") ? "page" : undefined}>
                 Профиль
               </Link>
             ) : null}
-            {admin ? (
+            {admin && !operatorNav ? (
               <Link href="/admin" aria-current={path.startsWith("/admin") ? "page" : undefined}>
                 Оператор
               </Link>
             ) : null}
-            {authed ? (
+            {authed && operatorNav ? (
+              <>
+                <Link href="/operator" aria-current={path.startsWith("/operator") ? "page" : undefined}>
+                  Очередь поддержки
+                </Link>
+                <Link href="/profile" aria-current={path.startsWith("/profile") ? "page" : undefined}>
+                  Профиль
+                </Link>
+              </>
+            ) : null}
+            {authed && !operatorNav ? (
               <span style={{ position: "relative" }}>
                 <button
                   type="button"
@@ -246,7 +277,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 ) : null}
               </span>
             ) : null}
-            {authed ? <WorkspaceSwitcher /> : null}
+            {authed && !operatorNav ? <WorkspaceSwitcher /> : null}
             {authed ? (
               <button
                 type="button"
@@ -298,6 +329,13 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </footer>
       </div>
       <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">
+        {operatorNav ? (
+          <>
+            <Link href="/operator" className={path.startsWith("/operator") ? "on" : ""}>Очередь</Link>
+            <Link href="/profile" className={path.startsWith("/profile") ? "on" : ""}>Профиль</Link>
+          </>
+        ) : (
+          <>
         <Link href="/" aria-label="Главная" className={path === "/" ? "on" : ""}>
           Главная
         </Link>
@@ -332,6 +370,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         <Link href={authed ? "/profile" : loginHref("/profile")} className={path.startsWith("/profile") ? "on" : ""}>
           Профиль
         </Link>
+          </>
+        )}
       </nav>
     </>
   );

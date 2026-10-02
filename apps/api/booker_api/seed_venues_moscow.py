@@ -1,15 +1,14 @@
-"""Idempotent import of curated Moscow open-data venues into the catalog.
+"""Idempotent import of researched Moscow venues into the moderation queue.
 
-Creates shared org «Букер · открытый каталог Москва», venues with halls,
-optional tariff hints, and synthetic open slots (30d for curated tariff rows,
-14d for bulk open-data).
+Automated imports never invent availability. A listing can be content-published
+only with sourced price, licensed/approved photo, official contact and a
+substantial description; catalog discovery still requires an owner calendar.
 """
 
 from __future__ import annotations
 
 import json
 import secrets
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -30,16 +29,17 @@ from booker_api.security import audit, hash_password, now
 from booker_api.venue_catalog import (
     apply_automated_metadata,
     duplicate_score,
+    has_publishable_photo,
+    has_sourced_price,
     record_photos,
     record_source,
 )
 
-MSK = timezone(timedelta(hours=3))
 OPEN_CATALOG_ORG = "Букер · открытый каталог Москва"
 IMPORT_USER_EMAIL = "open-catalog@booker.local"
-DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "moscow_venues_open.json"
+DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "moscow_performance_venues_research.json"
 # Fallback when running from apps/api cwd
-_ALT_DATA = Path(__file__).resolve().parents[2].parent / "data" / "moscow_venues_open.json"
+_ALT_DATA = Path(__file__).resolve().parents[2].parent / "data" / "moscow_performance_venues_research.json"
 
 
 def _data_file() -> Path:
@@ -49,10 +49,10 @@ def _data_file() -> Path:
         return _ALT_DATA
     # repo root relative to apps/api package
     root = Path(__file__).resolve().parents[3]
-    candidate = root / "data" / "moscow_venues_open.json"
+    candidate = root / "data" / "moscow_performance_venues_research.json"
     if candidate.is_file():
         return candidate
-    raise FileNotFoundError(f"moscow_venues_open.json not found near {DATA_PATH}")
+    raise FileNotFoundError(f"moscow_performance_venues_research.json not found near {DATA_PATH}")
 
 
 def _load_payload() -> dict:
@@ -133,42 +133,6 @@ def _upsert_halls(db: Session, venue: Venue, row: dict, capacity: int) -> list[V
     return halls
 
 
-def _synthetic_slots(db: Session, hall_id: str, *, days: int = 30) -> int:
-    """Ensure evening open slots for the next `days` calendar days (MSK)."""
-    created = 0
-    base = now().astimezone(MSK).date()
-    for offset in range(1, days + 1):
-        day = base + timedelta(days=offset)
-        uid = f"synthetic:open:{day.isoformat()}"
-        exists = (
-            db.query(AvailabilitySlot)
-            .filter(
-                AvailabilitySlot.resource_type == "hall",
-                AvailabilitySlot.resource_id == hall_id,
-                AvailabilitySlot.external_uid == uid,
-            )
-            .one_or_none()
-        )
-        if exists:
-            if exists.status != "open":
-                continue
-            continue
-        starts = datetime(day.year, day.month, day.day, 18, 0, tzinfo=MSK)
-        ends = datetime(day.year, day.month, day.day, 22, 0, tzinfo=MSK)
-        db.add(
-            AvailabilitySlot(
-                resource_type="hall",
-                resource_id=hall_id,
-                starts_at=starts,
-                ends_at=ends,
-                status="open",
-                external_uid=uid,
-            )
-        )
-        created += 1
-    return created
-
-
 def import_moscow_venues(db: Session) -> dict:
     payload = _load_payload()
     org, user = _ensure_shared_org(db)
@@ -216,7 +180,7 @@ def import_moscow_venues(db: Session) -> dict:
             "source_url": source_url,
             "source_attribution": str(row.get("attribution") or "openstreetmap"),
             "listing_origin": "open_data",
-            "availability_mode": "synthetic",
+            "availability_mode": "research",
             "city": "Москва",
             "capacity": capacity,
         }
@@ -251,24 +215,24 @@ def import_moscow_venues(db: Session) -> dict:
             updated_venues += 1
 
         halls = _upsert_halls(db, venue, row, capacity)
+        hall_ids = [hall.id for hall in halls]
+        if hall_ids:
+            (
+                db.query(AvailabilitySlot)
+                .filter(
+                    AvailabilitySlot.resource_type == "hall",
+                    AvailabilitySlot.resource_id.in_(hall_ids),
+                    AvailabilitySlot.external_uid.like("synthetic:open:%"),
+                )
+                .delete(synchronize_session=False)
+            )
         record_source(db, venue, row, checked_at)
         record_photos(db, venue, row)
         if row.get("phone") or row.get("email") or row.get("event_contact"):
             with_contacts_count += 1
-        if any(
-            row.get(key)
-            for key in (
-                "tariff_from_rub",
-                "minimum_spend_rub",
-                "deposit_rub",
-                "price_per_person_rub",
-            )
-        ):
+        if has_sourced_price(row):
             with_prices_count += 1
-        if any(
-            isinstance(photo, dict) and photo.get("photo_url") and photo.get("photo_source_url")
-            for photo in (row.get("photos") or [])
-        ):
+        if has_publishable_photo(row):
             with_photos_count += 1
         if row.get("official_website"):
             with_official_website_count += 1
@@ -277,7 +241,17 @@ def import_moscow_venues(db: Session) -> dict:
         else:
             needs_review_count += 1
 
-        tariff_from = row.get("tariff_from_rub")
+        sourced_price = has_sourced_price(row)
+        tariff_from = row.get("tariff_from_rub") if sourced_price else None
+        if not sourced_price:
+            (
+                db.query(VenueTariff)
+                .filter(
+                    VenueTariff.venue_id == venue.id,
+                    VenueTariff.title == "Аренда (ориентир)",
+                )
+                .delete(synchronize_session=False)
+            )
         if tariff_from is not None:
             try:
                 amount = int(tariff_from)
@@ -302,11 +276,7 @@ def import_moscow_venues(db: Session) -> dict:
                 else:
                     tariff.honorarium_rub = amount
 
-        # Curated wave-1 (with tariff hint) keeps 30d; OSM/mos bulk uses 14d.
-        slot_days = 30 if row.get("tariff_from_rub") is not None else 14
-        if venue.moderation_status == "published":
-            for hall in halls:
-                slots_created += _synthetic_slots(db, hall.id, days=slot_days)
+        # Availability is owner-managed. Automated imports never create open slots.
 
     batch.status = "completed"
     batch.found_count = len(venues_in)

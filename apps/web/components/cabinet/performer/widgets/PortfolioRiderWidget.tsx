@@ -77,11 +77,11 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
 
           {publicHref ? (
             <div className="cabinet-hero-actions" style={{ marginTop: 12 }}>
-              <Link className="btn secondary" href={publicHref} data-testid="performer-public-link">
-                Открыть публичную витрину
+              <Link className="btn secondary" href={`/cabinet/preview/artist/${encodeURIComponent(profile.id)}`} data-testid="performer-public-link">
+                Предпросмотр витрины
               </Link>
-              <Link className="btn secondary" href={`${publicHref}#rider`}>
-                Райдер на сайте
+              <Link className="btn secondary" href={`/cabinet/preview/artist/${encodeURIComponent(profile.id)}#rider`}>
+                Предпросмотр райдера
               </Link>
               <Link className="btn" href={`${publicHref}/share`} data-testid="performer-share-link">
                 Поделиться / QR

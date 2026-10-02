@@ -6,7 +6,39 @@ on:
     branches: [master, main]
 
 jobs:
+  secret-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan project source and deploy payload
+        run: python3 scripts/check_secret_exposure.py --source --deploy-payload
+
+  dependency-audit:
+    needs: secret-source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Audit pinned Python graphs
+        run: |
+          python -m pip install pip-audit==2.10.1 uv==0.12.17
+          uv pip compile apps/api/pyproject.toml --python-version 3.11 --constraint apps/api/requirements-prod.lock --no-annotate --no-header --output-file /tmp/booker-prod-resolved.lock
+          cmp apps/api/requirements-prod.lock /tmp/booker-prod-resolved.lock
+          uv pip compile apps/api/pyproject.toml --extra dev --python-version 3.11 --constraint apps/api/requirements.lock --no-annotate --no-header --output-file /tmp/booker-dev-resolved.lock
+          cmp apps/api/requirements.lock /tmp/booker-dev-resolved.lock
+          pip-audit -r apps/api/requirements-prod.lock --no-deps --disable-pip
+          pip-audit -r apps/api/requirements.lock --no-deps --disable-pip
+      - name: Audit web dependency graph
+        working-directory: apps/web
+        run: npm audit --audit-level=high
+
   api:
+    needs: dependency-audit
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -16,11 +48,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -e ".[dev]"
+      - run: |
+          pip install -r requirements.lock
+          pip install -e ".[dev]" --no-deps
+          pip check
       - run: ruff check booker_api tests
       - run: pytest -q
 
   web:
+    needs: dependency-audit
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -30,13 +66,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npm install
+      - run: npm ci
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run build
+      - name: Scan generated web assets
+        working-directory: ${{ github.workspace }}
+        run: python3 scripts/check_secret_exposure.py --build
 
   # Critical e2e on the PR/candidate SHA (not an old master green).
   e2e-critical:
+    needs: dependency-audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +89,9 @@ jobs:
       - name: API deps + seed DB
         working-directory: apps/api
         run: |
-          pip install -e ".[dev]"
+          pip install -r requirements.lock
+          pip install -e ".[dev]" --no-deps
+          pip check
           BOOKER_ALLOW_DEMO_SEED=1 BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db python -m booker_api.seed
       - name: Start API
         working-directory: apps/api
@@ -60,7 +102,7 @@ jobs:
       - name: Web install + Playwright
         working-directory: apps/web
         run: |
-          npm install
+          npm ci
           npx playwright install --with-deps chromium
       - name: Critical e2e (flag + supply nav)
         working-directory: apps/web
@@ -71,6 +113,7 @@ jobs:
           # Default OFF — do not set NEXT_PUBLIC_EVENT_STUDIO_MAP_V1=1
         run: |
           npm run build
+          python3 ../../scripts/check_secret_exposure.py --build
           npx next start -H 127.0.0.1 -p 3000 &
           for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
           npx playwright test \

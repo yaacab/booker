@@ -1,5 +1,6 @@
 from typing import ClassVar
 
+from booker_api.config import settings
 from booker_api.rate_limit import RateLimiter, client_key
 
 
@@ -14,7 +15,7 @@ def test_client_key_ignores_spoofed_forwarded_for():
     assert client_key(FakeRequest(), "login") == "login:10.0.0.1"
 
 
-def test_client_key_prefers_x_real_ip():
+def test_client_key_prefers_x_real_ip_only_from_configured_proxy(monkeypatch):
     class FakeClient:
         host = "10.0.0.1"
 
@@ -25,7 +26,20 @@ def test_client_key_prefers_x_real_ip():
         }
         client = FakeClient()
 
+    assert client_key(FakeRequest(), "login") == "login:10.0.0.1"
+    monkeypatch.setattr(settings, "trusted_proxy_cidrs", "10.0.0.0/8")
     assert client_key(FakeRequest(), "login") == "login:198.51.100.10"
+
+
+def test_client_key_rejects_spoofed_real_ip_from_direct_peer():
+    class FakeClient:
+        host = "203.0.113.9"
+
+    class FakeRequest:
+        headers: ClassVar[dict[str, str]] = {"x-real-ip": "198.51.100.10"}
+        client = FakeClient()
+
+    assert client_key(FakeRequest(), "login") == "login:203.0.113.9"
 
 
 def test_rate_limiter_evicts_stale_keys():

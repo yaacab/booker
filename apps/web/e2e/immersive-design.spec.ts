@@ -28,11 +28,13 @@ test.describe("Immersive design acceptance", () => {
       await page.keyboard.press("Escape");
       await expect(dj).toHaveAttribute("aria-pressed", "false");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      await page.getByRole("group", { name: "Тип поиска" }).getByRole("button", { name: "Площадка", exact: true }).click();
+      const searchType = page.getByRole("group", { name: "Тип поиска" });
+      await searchType.getByRole("button", { name: "Площадка", exact: true }).click();
       await expect(page.getByLabel("Гостей от")).toBeVisible();
-      await expect(page.getByLabel("Категория", { exact: true })).toHaveCount(0);
-      await page.getByRole("button", { name: "Исполнитель", exact: true }).click();
-      await expect(page.getByLabel("Категория", { exact: true })).toBeVisible();
+      const category = page.getByRole("combobox", { name: "Категория" });
+      await expect(category).toHaveCount(0);
+      await searchType.getByRole("button", { name: "Исполнитель", exact: true }).click();
+      await expect(category).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: true });
     });
   }

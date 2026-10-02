@@ -1,20 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
 from tests.conftest import auth_header, register
+from tests.test_admin import _promote_admin
+from tests.totp_helpers import TEST_TOTP_SECRET
 
 
 def _admin(client) -> dict:
-    user = register(client, "venue-catalog-admin@booker.test", "Catalog Admin")
-    db = client.app.state.SessionLocal()
-    try:
-        from booker_api.models import User
-
-        row = db.get(User, user["user_id"])
-        row.is_platform_admin = True
-        db.commit()
-    finally:
-        db.close()
-    return user
+    return _promote_admin(client, "venue-catalog-admin@booker.test", totp=TEST_TOTP_SECRET)
 
 
 def _open_data_venue(client) -> dict:
@@ -51,6 +43,7 @@ def _open_data_venue(client) -> dict:
         db.commit()
     finally:
         db.close()
+    venue["_owner_token"] = owner["token"]
     return venue
 
 
@@ -58,7 +51,8 @@ def test_admin_status_change_preserves_origin_and_updates_public_disclosure(clie
     venue = _open_data_venue(client)
     admin = _admin(client)
 
-    before = client.get(f"/venues/{venue['id']}")
+    preview_headers = auth_header(venue["_owner_token"])
+    before = client.get(f"/venues/{venue['id']}", headers=preview_headers)
     assert before.status_code == 200
     assert before.json()["public_disclosure"] == "Информация из открытых источников"
 
@@ -75,7 +69,7 @@ def test_admin_status_change_preserves_origin_and_updates_public_disclosure(clie
     assert changed.json()["partnership_status"] == "verified"
     assert changed.json()["is_claimed"] is True
 
-    after = client.get(f"/venues/{venue['id']}")
+    after = client.get(f"/venues/{venue['id']}", headers=preview_headers)
     assert after.status_code == 200
     assert after.json()["source_type"] == "automated_import"
     assert after.json()["public_disclosure"] is None
@@ -115,3 +109,24 @@ def test_moderation_hides_venue_and_freshness_marks_old_data(client):
     )
     assert refreshed.status_code == 200
     assert refreshed.json()["stale"] == 1
+
+
+def test_non_admin_cannot_mutate_venue_catalog(client):
+    venue = _open_data_venue(client)
+    headers = auth_header(venue["_owner_token"])
+    checks = (
+        (f"/admin/venue-catalog/venues/{venue['id']}/status",
+         {"partnership_status": "verified", "comment": "spoof"}),
+        (f"/admin/venue-catalog/venues/{venue['id']}/moderation",
+         {"moderation_status": "needs_review", "comment": "spoof"}),
+        ("/admin/venue-catalog/freshness/recalculate", None),
+    )
+    for path, body in checks:
+        response = client.post(path, headers=headers, **({"json": body} if body else {}))
+        assert response.status_code == 403, (path, response.text)
+    with client.app.state.SessionLocal() as db:
+        from booker_api.models import Venue
+
+        row = db.get(Venue, venue["id"])
+        assert row.partnership_status == "unverified_listing"
+        assert row.moderation_status == "published"
