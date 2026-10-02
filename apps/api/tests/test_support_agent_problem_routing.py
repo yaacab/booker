@@ -61,7 +61,7 @@ def test_related_faq_does_not_take_problem_route(question, expected_intent):
         (
             "Исполнитель отменил выступление за час до события, нужна замена",
             "performer_cancelled_event",
-            "normal",
+            "high",
             None,
         ),
         (
@@ -73,7 +73,7 @@ def test_related_faq_does_not_take_problem_route(question, expected_intent):
         (
             "У меня две подтверждённые брони на один слот",
             "duplicate_confirmed_booking",
-            "normal",
+            "high",
             None,
         ),
     ],
