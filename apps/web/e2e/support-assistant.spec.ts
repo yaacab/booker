@@ -205,6 +205,22 @@ test("booking help keeps a separate assistant session and sends the linked booki
     }), { ordinaryKey, linkedKey },
   );
   expect(stored).toEqual({ ordinary: "ordinary-session", linked: linkedSessionId });
+
+  await page.route(`**/support/assistant/sessions/${linkedSessionId}`, async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      id: linkedSessionId, status: "active", related_type: "booking", related_id: bookingId,
+      messages: [{ id: "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff", user_message: "Какой статус брони?",
+        assistant_message: "По связанной брони сервер Букера показывает этап.",
+        intent: "booking_flow", outcome: "answered", needs_human: false,
+        source_ids: ["support.booking_status"], created_at: new Date().toISOString() }],
+    }) });
+  });
+  await page.evaluate(() => window.history.pushState(null, "", "/support"));
+  await expect(page.getByRole("link", { name: "Вернуться в Deal Room" })).toHaveCount(0);
+  await expect(page.getByText(/По связанной брони сервер Букера/)).toHaveCount(0);
+  await page.evaluate((id) => window.history.pushState(null, "", `/support?booking=${id}`), bookingId);
+  await expect(page.getByRole("link", { name: "Вернуться в Deal Room" })).toBeVisible();
+  await expect(page.getByText(/По связанной брони сервер Букера/)).toBeVisible();
 });
 
 

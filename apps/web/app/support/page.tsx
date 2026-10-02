@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api, ApiError, getActiveOrg, getToken } from "@/lib/api";
 import Link from "next/link";
 import { loginHref } from "@/lib/next";
@@ -85,7 +86,7 @@ function legacyAssistantSessionStorageKey(): string {
   return `booker.support.assistantSession.${getActiveOrg() || "personal"}`;
 }
 
-export default function SupportPage() {
+function SupportInner({ bookingId }: { bookingId: string | null }) {
   const [authReady, setAuthReady] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [items, setItems] = useState<Ticket[]>([]);
@@ -114,7 +115,7 @@ export default function SupportPage() {
   const replyRequestKey = useRef<StableRequestKey | null>(null);
   const feedbackRequestInFlight = useRef<string | null>(null);
   const assistantInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const relatedBookingId = useRef<string | null>(null);
+  const relatedBookingId = useRef(bookingId);
 
   function stableKey(ref: { current: StableRequestKey | null }, signature: string): string {
     if (!ref.current || ref.current.signature !== signature) {
@@ -135,9 +136,6 @@ export default function SupportPage() {
   }
 
   useEffect(() => {
-    const requestedBooking = new URLSearchParams(window.location.search).get("booking");
-    relatedBookingId.current = requestedBooking && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requestedBooking)
-      ? requestedBooking : null;
     const authenticated = Boolean(getToken());
     setHasToken(authenticated);
     setAuthReady(true);
@@ -797,4 +795,15 @@ export default function SupportPage() {
       ) : null}
     </main>
   );
+}
+
+function SupportWithBookingContext() {
+  const requestedBooking = useSearchParams().get("booking");
+  const bookingId = requestedBooking && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requestedBooking)
+    ? requestedBooking.toLowerCase() : null;
+  return <SupportInner key={bookingId ?? "general"} bookingId={bookingId} />;
+}
+
+export default function SupportPage() {
+  return <Suspense fallback={<main><p>Загрузка поддержки…</p></main>}><SupportWithBookingContext /></Suspense>;
 }
