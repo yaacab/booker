@@ -28,6 +28,7 @@ _HUMAN_REQUEST = (
 _MONEY_OR_LEGAL = (
     "возврат",
     "верните деньги",
+    "вернуть деньги",
     "спор",
     "претенз",
     "суд",
@@ -40,6 +41,9 @@ _MONEY_OR_LEGAL = (
     "платеж",
     "оплат",
     "чек",
+)
+_MONEY_OR_LEGAL_EXCEPT_CONTRACT = tuple(
+    marker for marker in _MONEY_OR_LEGAL if marker != "договор"
 )
 _SECURITY = (
     "взлом",
@@ -68,7 +72,14 @@ _NO_SHOW_RESOLVED_IN_MESSAGE = re.compile(
     re.IGNORECASE,
 )
 _ARRIVAL_PROBLEM = ("не приехал", "не приехала", "не пришёл", "не пришел", "не пришла")
-_CODE_DELIVERY = ("не пришёл код", "не пришел код", "код не пришёл", "код не пришел")
+_CODE_DELIVERY = (
+    "не пришёл код", "не пришел код", "код не пришёл", "код не пришел",
+    "код для входа не приш", "код подтверждения не приш", "не приходит код",
+)
+_DOCUMENT_ACCESS = (
+    "скачать договор", "не скачивается договор", "не открывается договор",
+    "скачать документ", "не скачивается документ", "не открывается документ",
+)
 _PAID_MARKERS = (
     "оплата прошла",
     "оплатил",
@@ -321,6 +332,35 @@ def answer_support_question(message: str) -> SupportAgentReply:
             source_ids=("support.security", "support.human_handoff"),
         )
 
+    if _has_any(text, _CODE_DELIVERY) and not _has_any(text, _MONEY_OR_LEGAL):
+        return SupportAgentReply(
+            assistant_message=(
+                "Уточните, какой код не поступил: для входа, приглашения или подтверждения "
+                "черновика сделки. Проверьте адрес почты и папку нежелательных писем. Не "
+                "публикуйте код в чате; если он не приходит повторно, передайте вопрос человеку."
+            ),
+            intent="code_delivery",
+            outcome="clarify",
+            needs_human=False,
+            source_ids=("support.account_access", "support.human_handoff"),
+        )
+
+    if _has_any(text, _DOCUMENT_ACCESS) and not _has_any(
+        text, _MONEY_OR_LEGAL_EXCEPT_CONTRACT
+    ):
+        return SupportAgentReply(
+            assistant_message=(
+                "Откройте сделку и вкладку «Документы». Помощник не видит вашу сделку и "
+                "не подтверждает наличие, подписание или юридическую силу документа. "
+                "Если файл отсутствует или не открывается, нажмите «Передать человеку» "
+                "и укажите сделку без личных данных."
+            ),
+            intent="deal_documents",
+            outcome="answered",
+            needs_human=False,
+            source_ids=("support.deal_documents", "contract.legal_drafts"),
+        )
+
     if _has_any(text, _MONEY_OR_LEGAL):
         return SupportAgentReply(
             assistant_message=(
@@ -389,19 +429,6 @@ def answer_support_question(message: str) -> SupportAgentReply:
             outcome="answered",
             needs_human=False,
             source_ids=("support.deal_documents", "contract.legal_drafts"),
-        )
-
-    if _has_any(text, _CODE_DELIVERY):
-        return SupportAgentReply(
-            assistant_message=(
-                "Уточните, какой код не поступил: для входа, приглашения или подтверждения "
-                "черновика сделки. Проверьте адрес почты и папку нежелательных писем. Не "
-                "публикуйте код в чате; если он не приходит повторно, передайте вопрос человеку."
-            ),
-            intent="code_delivery",
-            outcome="clarify",
-            needs_human=False,
-            source_ids=("support.account_access", "support.human_handoff"),
         )
 
     if _has_any(text, _ARRIVAL_PROBLEM):

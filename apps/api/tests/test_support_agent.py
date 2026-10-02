@@ -675,7 +675,7 @@ def test_missing_login_code_does_not_take_event_day_urgency(client):
     exchange = _send(
         client, user, session["id"], "Не пришёл код для входа", "agent-login-code-message"
     )
-    assert exchange["intent"] == "account_access"
+    assert exchange["intent"] == "code_delivery"
     assert exchange["needs_human"] is False
     escalated = client.post(
         f"/support/assistant/sessions/{session['id']}/escalate",
@@ -834,7 +834,8 @@ def test_support_agent_does_not_obey_prompt_injection_or_decide_money():
     ("question", "intent", "needs_human"),
     [
         ("Не могу войти в аккаунт", "account_access", False),
-        ("Не пришёл код для входа", "account_access", False),
+        ("Не пришёл код для входа", "code_delivery", False),
+        ("Код для входа не пришёл", "code_delivery", False),
         ("Исполнитель приехал на событие, но курьер с едой не приехал", "arrival_unclear", True),
         ("Исполнитель приехал, курьер не приехал", "arrival_unclear", True),
         ("Не пришёл код исполнителя", "code_delivery", False),
@@ -843,6 +844,8 @@ def test_support_agent_does_not_obey_prompt_injection_or_decide_money():
         ("Верните оплату по сделке", "money_or_legal", True),
         ("Где документы по моей сделке?", "deal_documents", False),
         ("Не скачивается акт", "deal_documents", False),
+        ("Как скачать договор по сделке?", "deal_documents", False),
+        ("Не открывается договор", "deal_documents", False),
         ("Площадка не видна в каталоге", "supply_profile", False),
         ("Исполнитель не виден в поиске", "supply_profile", False),
         ("Позовите оператора", "human_request", True),
@@ -898,6 +901,8 @@ def test_support_agent_does_not_claim_private_status_or_legal_effect():
 def test_support_agent_document_route_does_not_swallow_contacts_or_contract_dispute():
     assert answer_support_question("Где контакт исполнителя?").intent != "deal_documents"
     assert answer_support_question("Юридический спор по договору").needs_human is True
+    assert answer_support_question("Скачать договор и вернуть деньги").needs_human is True
+    assert answer_support_question("Код для оплаты не пришёл, деньги списаны").needs_human is True
 
 
 def test_support_agent_document_and_supply_guidance_round_trip_through_api(client):
