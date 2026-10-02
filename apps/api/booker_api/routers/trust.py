@@ -239,7 +239,7 @@ def _ticket_payload(row: SupportTicket, *, include_body: bool = False) -> dict:
         "id": row.id,
         "ticket_number": f"SUP-{row.id[:8].upper()}",
         "category": row.category,
-        "subject": row.subject,
+        "subject": redact_sensitive_support_text(row.subject),
         "status": row.status,
         "priority": row.priority,
         "urgency_code": row.urgency_code,
@@ -253,7 +253,7 @@ def _ticket_payload(row: SupportTicket, *, include_body: bool = False) -> dict:
         "escalation": "human",
     }
     if include_body:
-        result["body"] = row.body
+        result["body"] = redact_sensitive_support_text(row.body)
     return result
 
 
@@ -261,7 +261,7 @@ def _message_payload(row: SupportMessage) -> dict:
     return {
         "id": row.id,
         "author_kind": row.author_kind,
-        "body": row.body,
+        "body": redact_sensitive_support_text(row.body),
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }
 
@@ -270,7 +270,7 @@ def _note_payload(row: SupportOperatorNote) -> dict:
     return {
         "id": row.id,
         "author_user_id": row.author_user_id,
-        "body": row.body,
+        "body": redact_sensitive_support_text(row.body),
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }
 
@@ -284,8 +284,8 @@ def _agent_exchange_payload(row: SupportAgentExchange) -> dict:
         source_ids = []
     return {
         "id": row.id,
-        "user_message": row.user_message,
-        "assistant_message": row.assistant_message,
+        "user_message": redact_sensitive_support_text(row.user_message),
+        "assistant_message": redact_sensitive_support_text(row.assistant_message),
         "intent": row.intent,
         "outcome": row.outcome,
         "needs_human": row.needs_human,
@@ -913,6 +913,7 @@ def _agent_escalation_body(exchanges: list[SupportAgentExchange], active_intents
         return "Пользователь запросил помощь специалиста из помощника Букера."
 
     def excerpt(value: str, limit: int, *, preserve_no_show: bool = False) -> tuple[str, bool]:
+        value = redact_sensitive_support_text(value)
         if len(value) <= limit:
             return value, False
         marker = " [середина сообщения пропущена] "

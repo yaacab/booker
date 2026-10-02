@@ -456,6 +456,52 @@ def test_staff_recovery_codes_never_persist_in_assistant_or_manual_ticket(
     assert stored.count("[СЕКРЕТ УДАЛЁН]") >= 2
 
 
+def test_legacy_recovery_code_is_hidden_on_read_and_handoff(client, SessionLocal):
+    legacy_code = "abcd-1234-efef-5678-abab-9090"
+    user = register(client, "agent-legacy-recovery@booker.test")
+    org = _create_org(client, user, "Legacy Recovery")
+    session = _create_session(client, user, org["id"], "legacy-recovery-session")
+    exchange = _send(
+        client, user, session["id"], "Потерял Authenticator", "legacy-recovery-message",
+    )
+    with SessionLocal() as db:
+        row = db.get(SupportAgentExchange, exchange["id"])
+        row.user_message = f"Потерял Authenticator. Код {legacy_code}"
+        db.commit()
+
+    detail = client.get(
+        f"/support/assistant/sessions/{session['id']}",
+        headers=auth_header(user["token"]),
+    )
+    assert detail.status_code == 200, detail.text
+    assert legacy_code not in detail.text
+    assert "[СЕКРЕТ УДАЛЁН]" in detail.text
+
+    escalated = client.post(
+        f"/support/assistant/sessions/{session['id']}/escalate",
+        json={"reason_code": "account_security"},
+        headers={**auth_header(user["token"]),
+                 "Idempotency-Key": "legacy-recovery-escalate"},
+    )
+    assert escalated.status_code == 200, escalated.text
+    ticket_id = escalated.json()["ticket"]["id"]
+    with SessionLocal() as db:
+        ticket = db.get(SupportTicket, ticket_id)
+        assert legacy_code not in ticket.body
+        ticket.subject = f"Код {legacy_code}"
+        ticket.body = f"Потерял доступ: {legacy_code}"
+        message = db.query(SupportMessage).filter_by(ticket_id=ticket_id).one()
+        message.body = f"Старое сообщение: {legacy_code}"
+        db.commit()
+
+    ticket_detail = client.get(
+        f"/support/tickets/{ticket_id}", headers=auth_header(user["token"]),
+    )
+    assert ticket_detail.status_code == 200, ticket_detail.text
+    assert legacy_code not in ticket_detail.text
+    assert ticket_detail.text.count("[СЕКРЕТ УДАЛЁН]") >= 3
+
+
 def test_access_token_and_unlabelled_jwt_never_reach_support_handoff(client, SessionLocal):
     assert redact_sensitive_support_text("У меня токен доступа истёк") == (
         "У меня токен доступа истёк"
