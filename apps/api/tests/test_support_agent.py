@@ -112,6 +112,59 @@ def test_support_agent_session_and_messages_are_idempotent(client, SessionLocal)
         assert db.query(SupportAgentExchange).count() == 1
 
 
+def test_repeated_unresolved_questions_offer_human_handoff_without_auto_ticket(
+    client, SessionLocal,
+):
+    user = register(client, "agent-repeated-clarify@booker.test")
+    org = _create_org(client, user, "Repeated Clarify")
+    session = _create_session(client, user, org["id"], "repeated-clarify-session")
+    for index in (1, 2):
+        exchange = _send(
+            client, user, session["id"], f"Непонятная проблема {index}",
+            f"repeated-clarify-{index}",
+        )
+        assert exchange["outcome"] == "clarify"
+        assert exchange["needs_human"] is False
+    third = _send(
+        client, user, session["id"], "Непонятная проблема 3", "repeated-clarify-3",
+    )
+    assert third["outcome"] == "needs_human"
+    assert third["needs_human"] is True
+    assert "Передать человеку" in third["assistant_message"]
+    replay = _send(
+        client, user, session["id"], "Непонятная проблема 3", "repeated-clarify-3",
+    )
+    assert replay["id"] == third["id"]
+    with SessionLocal() as db:
+        assert db.query(SupportTicket).count() == 0
+    escalated = client.post(
+        f"/support/assistant/sessions/{session['id']}/escalate",
+        json={"reason_code": "user_requested_human"},
+        headers={**auth_header(user["token"]),
+                 "Idempotency-Key": "repeated-clarify-escalate"},
+    )
+    assert escalated.status_code == 200, escalated.text
+    assert escalated.json()["ticket"]["category"] == "other"
+
+
+def test_successful_answer_resets_repeated_clarification_count(client):
+    user = register(client, "agent-clarify-reset@booker.test")
+    org = _create_org(client, user, "Clarify Reset")
+    session = _create_session(client, user, org["id"], "clarify-reset-session")
+    assert _send(client, user, session["id"], "Непонятная проблема 1", "clarify-reset-1")[
+        "outcome"
+    ] == "clarify"
+    assert _send(client, user, session["id"], "Непонятная проблема 2", "clarify-reset-2")[
+        "outcome"
+    ] == "clarify"
+    assert _send(client, user, session["id"], "Не могу войти", "clarify-reset-3")[
+        "outcome"
+    ] == "answered"
+    assert _send(client, user, session["id"], "Непонятная проблема 4", "clarify-reset-4")[
+        "outcome"
+    ] == "clarify"
+
+
 def test_sensitive_topic_requires_explicit_human_escalation(client, SessionLocal):
     user = register(client, "agent-money@booker.test", "Money User")
     org = _create_org(client, user, "Money Org")

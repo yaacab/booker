@@ -64,6 +64,7 @@ from booker_api.security import (
     require_support_step_up,
 )
 from booker_api.support_agent import (
+    SupportAgentReply,
     answer_support_question,
     no_show_evidence_offset,
     redact_sensitive_support_text,
@@ -778,6 +779,26 @@ def send_support_agent_message(
     if claimed.rowcount != 1:
         db.rollback()
         raise HTTPException(409, "Сессия уже передана специалисту или закрыта")
+    if reply.outcome == "clarify":
+        previous = (
+            db.query(SupportAgentExchange.outcome)
+            .filter(SupportAgentExchange.session_id == row.id)
+            .order_by(SupportAgentExchange.created_at.desc(), SupportAgentExchange.id.desc())
+            .limit(2)
+            .all()
+        )
+        if len(previous) == 2 and all(item.outcome == "clarify" for item in previous):
+            reply = SupportAgentReply(
+                assistant_message=(
+                    "Я не смог помочь после нескольких уточнений. Нажмите «Передать человеку», "
+                    "чтобы специалист получил историю вопроса. Пароли, коды и платёжные "
+                    "реквизиты в чат не отправляйте."
+                ),
+                intent=reply.intent,
+                outcome="needs_human",
+                needs_human=True,
+                source_ids=tuple(dict.fromkeys((*reply.source_ids, "support.human_handoff"))),
+            )
     exchange = SupportAgentExchange(
         session_id=row.id,
         user_message=safe_message,
