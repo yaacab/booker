@@ -11,7 +11,7 @@ import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
 import { SlotList } from "@/components/SlotList";
 
-type Venue = {
+export type VenueProfileData = {
   id: string;
   organization_id?: string;
   name: string;
@@ -26,6 +26,16 @@ type Venue = {
   source_attribution?: string;
   listing_origin?: string;
   availability_mode?: string;
+  source_type?: string;
+  partnership_status?: string;
+  public_disclosure?: string | null;
+  data_freshness_status?: string;
+  official_website?: string;
+  photos?: {
+    url: string;
+    source_url?: string;
+    rights_status?: "licensed" | "official_permission";
+  }[];
   facts: { note: string };
   tariffs: { id: string; title: string; honorarium_rub: number }[];
   slots: { id: string; hall: string; starts_at: string; ends_at?: string; status: string }[];
@@ -36,11 +46,15 @@ type HallItem = { id: string; name: string; capacity: number };
 type EventOption = { id: string; title: string; event_date: string; city?: string };
 type Requirement = { id?: string; category_code: string };
 
-export function VenueProfileClient({ params }: { params: Promise<{ id: string }> }) {
+export function VenueProfileClient({
+  venueId,
+  initialData,
+}: {
+  venueId: string;
+  initialData: VenueProfileData;
+}) {
   const router = useRouter();
-  const [venueId, setVenueId] = useState("");
-  const [data, setData] = useState<Venue | null>(null);
-  const [error, setError] = useState("");
+  const [data] = useState<VenueProfileData>(initialData);
   const [formError, setFormError] = useState("");
   const [day, setDay] = useState<string | null>(null);
   const [authed, setAuthed] = useState(false);
@@ -61,17 +75,8 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
     const fromEvent = q.get("event");
     if (fromEvent) setEventId(fromEvent);
     setAuthed(Boolean(getToken()));
-    void params.then((p) => {
-      setVenueId(p.id);
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/venues/${p.id}`)
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найдена"))))
-        .then((venue: Venue) => {
-          setData(venue);
-          setHalls((venue.halls || []) as HallItem[]);
-        })
-        .catch((e: Error) => setError(e.message));
-    });
-  }, [params]);
+    setHalls((initialData.halls || []) as HallItem[]);
+  }, [initialData]);
 
   useEffect(() => {
     if (!getToken()) return;
@@ -199,21 +204,6 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
     }
   }
 
-  if (!data) {
-    return (
-      <main>
-        <h1>Площадка</h1>
-        <p>{error || ""}</p>
-        {!error ? (
-          <div className="grid">
-            <div className="skeleton" />
-            <div className="skeleton" />
-          </div>
-        ) : null}
-      </main>
-    );
-  }
-
   const newEventHref = `/events/new?venue=need&roof=${encodeURIComponent(data.name)}`;
   const canSend = authed && Boolean(eventId);
   const sendLabel = busy ? "Отправляем…" : "Отправить в событие";
@@ -224,13 +214,15 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
       <Suspense fallback={null}>
         <PromoAttributionBeacon kind="venue" profileId={data.id} />
       </Suspense>
+      <header className="profile-overview">
+      <Link className="profile-back" href="/search">← Вернуться в каталог</Link>
       <p className="kicker">Профиль площадки</p>
       <h1>{data.name}</h1>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <span>
           {data.city} · до {guestsLabel(data.capacity)}{" "}
-          {data.listing_origin === "open_data" ? (
-            <span className="chip wait">{CHIP.openDataVenue}</span>
+          {data.public_disclosure ? (
+            <span className="chip wait">{data.public_disclosure}</span>
           ) : synthetic ? (
             <span className="chip wait">{CHIP.syntheticCalendar}</span>
           ) : data.verified ? (
@@ -244,6 +236,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
           Поделиться
         </Link>
       </p>
+      </header>
       {data.address ? (
         <p className="timeline">
           {data.address}
@@ -252,6 +245,31 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
         </p>
       ) : null}
       {data.description ? <p>{data.description}</p> : null}
+      {data.photos?.length ? (
+        <section aria-labelledby="venue-photos-title">
+          <h2 id="venue-photos-title">Фотографии площадки</h2>
+          <div className="venue-gallery">
+            {data.photos.map((photo, index) => (
+              <figure className="venue-gallery-item" key={photo.url}>
+                <img
+                  src={photo.url}
+                  alt={`${data.name}: фотография ${index + 1}`}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                />
+                {photo.source_url ? (
+                  <figcaption>
+                    <a href={photo.source_url} target="_blank" rel="noreferrer noopener">
+                      Источник и лицензия
+                    </a>
+                  </figcaption>
+                ) : null}
+              </figure>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {synthetic ? (
         <article className="card tint" role="note">
           <strong>Календарь ориентировочный</strong>

@@ -18,6 +18,14 @@ type CatalogItem = {
   metro?: string;
   availability_mode?: string;
   listing_origin?: string;
+  source_type?: string;
+  partnership_status?: string;
+  public_disclosure?: string | null;
+  cover_photo?: {
+    url: string;
+    source_url?: string;
+    rights_status?: "owned" | "licensed" | "official_permission";
+  } | null;
   matching_halls?: { id: string; name: string; capacity: number }[];
 };
 
@@ -43,12 +51,23 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
   const hallHint = item.matching_halls?.[0];
 
   return (
-    <article className="card">
+    <article className={`card catalog-result catalog-result--${kind}`}>
       <div className="card-head">
         <Link href={href} style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
-          <span className="avatar" aria-hidden>
-            {initials(item.name)}
-          </span>
+          {kind === "venue" && item.cover_photo?.url ? (
+            <img
+              className="catalog-cover"
+              src={item.cover_photo.url}
+              alt={`Фото площадки «${item.name}»`}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <span className="avatar" aria-hidden>
+              {initials(item.name)}
+            </span>
+          )}
           <strong>{item.name}</strong>
         </Link>
         <FavoriteToggle compact targetType={kind} targetId={item.id} />
@@ -68,8 +87,8 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
         {kind === "venue" && item.address ? <p className="timeline">{item.address}</p> : null}
         <p>
           <span className={`chip ${st.cls}`}>{st.label}</span>{" "}
-          {kind === "venue" && item.listing_origin === "open_data" ? (
-            <span className="chip wait">{CHIP.openDataVenue}</span>
+          {kind === "venue" && item.public_disclosure ? (
+            <span className="chip wait">{item.public_disclosure}</span>
           ) : kind === "venue" && synthetic ? (
             <span className="chip wait">{CHIP.syntheticCalendar}</span>
           ) : item.verified ? (
@@ -82,7 +101,7 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
           {date ? `слот на ${formatDay(`${date}T12:00:00+03:00`)}` : formatWhen(item.next_open_at)}
         </p>
         {item.tariffs?.[0] ? (
-          <p className="timeline">ориентир от {money(item.tariffs[0].honorarium_rub)}</p>
+          <p className="catalog-price"><span>Ориентир от</span> {money(item.tariffs[0].honorarium_rub)}</p>
         ) : kind === "venue" ? (
           <p className="timeline">цена по запросу</p>
         ) : null}

@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from booker_api.security import now
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, publish_artist, register
 
 
 def _setup_event_with_requirement(client):
@@ -29,6 +29,7 @@ def _setup_event_with_requirement(client):
         },
         headers=oh,
     ).json()
+    publish_artist(client, owner, artist["id"])
     event = client.post(
         "/events",
         json={

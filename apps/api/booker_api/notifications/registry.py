@@ -10,9 +10,16 @@ class NotificationMisconfiguredError(RuntimeError):
     pass
 
 
+class AuditTransport(DevTransport):
+    """Audit-only in-app transport without a dev-labelled production provider."""
+
+    provider = "audit"
+
+
 _TRANSPORTS: dict[str, type[NotificationTransport]] = {
     "disabled": DisabledTransport,
     "dev": DevTransport,
+    "audit": AuditTransport,
     "smtp": SmtpTransport,
 }
 
@@ -29,6 +36,8 @@ def _provider_for(channel: Channel) -> str:
 
 def transport_for(channel: Channel) -> NotificationTransport:
     provider = _provider_for(channel)
+    if provider == "audit" and channel is not Channel.IN_APP:
+        raise NotificationMisconfiguredError("audit transport is only available for in-app events")
     cls = _TRANSPORTS.get(provider)
     if cls is None:
         raise NotificationMisconfiguredError(

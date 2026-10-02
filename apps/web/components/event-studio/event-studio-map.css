@@ -1,12 +1,12 @@
 :root {
-  --es-ink: #f4f3fa;
-  --es-muted: #b0b4c6;
-  --es-border: #363a50;
-  --es-paper: #151824;
-  --es-canvas: #090b12;
-  --es-green: #7761cb;
-  --es-green-dark: #d0bfff;
-  --es-gold: #a795d9;
+  --es-ink: #20291b;
+  --es-muted: #58624f;
+  --es-border: #ccd5c5;
+  --es-paper: #f8faf5;
+  --es-canvas: #edf1eb;
+  --es-green: #426225;
+  --es-green-dark: #354d23;
+  --es-gold: #638035;
   --es-shadow: 0 12px 32px rgba(0, 0, 0, .24);
 }
 
@@ -333,17 +333,17 @@
 }
 
 /* Immersive materials; booking state is unchanged. */
-.event-studio-shell .time-editor > label > input { background: #202436; color: var(--es-ink); }
+.event-studio-shell .time-editor > label > input { background: #ffffff; color: var(--es-ink); }
 .event-studio-shell .stage-rail li button > span { font-size: 14px; flex-shrink: 0; }
 .event-studio-shell .talent-initials {
   display: grid;
   place-items: center;
-  background: #26253c;
-  color: #ddd3ff;
+  background: #e4edcf;
+  color: #354d23;
   font-weight: 650;
   font-size: 25px;
 }
-.event-studio-shell { color-scheme: dark; }
+.event-studio-shell { color-scheme: light; }
 .event-studio-shell :is(.event-studio-header, .stage-rail, .map-card,
   .puzzle-event-meta, .compatibility-note, .event-summary, .talent-card,
   .search-box, .home-button, .add-face, .mobile-panel-toggle) {
@@ -352,21 +352,21 @@
   border-color: var(--es-border);
 }
 .event-studio-shell :is(input, select, .card-button, .role-chips button, .role-tabs button) {
-  background: #202436;
+  background: #ffffff;
   color: var(--es-ink);
   border-color: var(--es-border);
 }
 .event-studio-shell :is(.text-button, .outline-button, .panel-header button) { color: var(--es-ink); }
 .event-studio-shell :is(.card-meta, .event-summary small, .role-chips .ghost-chip) { color: var(--es-muted); }
-.event-studio-shell .role-tabs button.selected { background: #393052; color: #e4d6ff; border-color: #a795d9; }
-.event-studio-shell .remove-talent { background: #302b45; color: #e0d0ff; border-color: #a795d9; }
-.event-studio-shell .event-summary > button { background: #7560c6; }
-.event-studio-shell .submit-error, .event-studio-shell .availability-busy { color: #ffadb8; }
-.event-studio-shell .availability-tentative { color: #eed299; }
-.event-studio-shell .availability-available { color: #87dfbd; }
+.event-studio-shell .role-tabs button.selected { background: #dce8cb; color: #354d23; border-color: #638035; }
+.event-studio-shell .remove-talent { background: #e4edcf; color: #354d23; border-color: #638035; }
+.event-studio-shell .event-summary > button { background: #426225; }
+.event-studio-shell .submit-error, .event-studio-shell .availability-busy { color: #962c41; }
+.event-studio-shell .availability-tentative { color: #725309; }
+.event-studio-shell .availability-available { color: #226443; }
 .event-studio-shell .event-map { background: var(--es-canvas); }
-.event-studio-shell .puzzle-label.is-filled strong { color: #dbceff; }
-.event-studio-shell .puzzle-board-svg { filter: drop-shadow(0 10px 8px #0009) drop-shadow(0 0 20px #9a6df126); }
+.event-studio-shell .puzzle-label.is-filled strong { color: #354d23; }
+.event-studio-shell .puzzle-board-svg { filter: drop-shadow(0 10px 8px #263b2426); }
 .event-studio-shell .puzzle-piece--ghost { opacity: .55; }
 .event-studio-shell .puzzle-piece--snapping { animation-name: puzzle-assemble; }
 @keyframes puzzle-assemble {
@@ -404,26 +404,26 @@
 .event-studio-shell .compatibility-note { grid-area: note; }
 .event-studio-shell .event-summary { grid-area: summary; }
 .event-studio-shell .connection-lines { display: none; }
-.event-studio-shell .map-card { padding: 16px; border-radius: 20px; background: rgba(21, 24, 36, .94); }
+.event-studio-shell .map-card { padding: 16px; border-radius: 20px; background: rgba(255, 255, 255, .8); }
 .event-studio-shell .puzzle-stage.map-card-focus { box-shadow: none; }
-.event-studio-shell .puzzle-event-meta { background: #171b2c; border-color: #746a9d; box-shadow: var(--es-shadow); }
+.event-studio-shell .puzzle-event-meta { background: #f8faf5; border-color: #879c69; box-shadow: var(--es-shadow); }
 .event-studio-shell .puzzle-label { max-width: 88px; white-space: normal; }
 .event-studio-shell .puzzle-label span { white-space: nowrap; }
 .event-studio-shell .puzzle-label--left { transform: translate(-25%, -50%); }
 .event-studio-shell .puzzle-label--right { transform: translate(-75%, -50%); }
 .event-studio-shell .team-faces { flex-wrap: wrap; }
-.event-studio-shell .talent-face { border-color: #202436; }
+.event-studio-shell .talent-face { border-color: #ffffff; }
 .event-studio-shell .talent-copy { min-width: 0; overflow-wrap: anywhere; }
-.event-studio-shell .talent-photo { background-color: #2b3047; }
+.event-studio-shell .talent-photo { background-color: #e5ebdf; }
 .event-studio-shell .stage-rail li button { color: var(--es-muted); }
 .event-studio-shell .stage-rail li.active button { color: var(--es-ink); }
 .event-studio-shell .stage-rail li:not(:last-child)::after { background: var(--es-border); }
-.event-studio-shell .stage-rail li button > span { border-color: #596079; }
+.event-studio-shell .stage-rail li button > span { border-color: #879c69; }
 .event-studio-shell .requirement { gap: 12px; }
-.event-studio-shell .requirement i { flex-shrink: 0; color: #91e3cf; border-color: #5d9e90; }
+.event-studio-shell .requirement i { flex-shrink: 0; color: #426225; border-color: #879c69; }
 .event-studio-shell :is(.card-button, .role-chips button, .role-tabs button, .text-button, .outline-button) { min-height: 44px; }
-.event-studio-shell .search-box:focus-within { outline: 2px solid #bca6ff; outline-offset: 2px; }
-.event-studio-shell :focus-visible { outline-color: #bca6ff; }
+.event-studio-shell .search-box:focus-within { outline: 2px solid #426225; outline-offset: 2px; }
+.event-studio-shell :focus-visible { outline-color: #426225; }
 .event-studio-shell .talent-panel { position: sticky; top: 0; overscroll-behavior: contain; }
 .event-studio-shell .panel-backdrop { background: rgba(3, 5, 12, .72); }
 .event-studio-shell .puzzle-piece--snapping { animation-duration: 420ms; }

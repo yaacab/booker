@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, publish_artist, publish_venue, register
 
 
 def _owner_artist(client):
@@ -57,6 +57,7 @@ def test_search_hides_busy_and_no_calendar(client):
         },
         headers=auth_header(owner["token"]),
     )
+    publish_artist(client, owner, artist["id"])
     found = client.get(
         "/catalog/search",
         params={"city": "Москва", "category": "cover", "date": "2026-10-02T12:00:00+00:00"},
@@ -82,6 +83,7 @@ def test_search_date_is_moscow_calendar_day(client):
         },
         headers=auth_header(owner["token"]),
     )
+    publish_artist(client, owner, artist["id"])
     oct2 = client.get(
         "/catalog/search",
         params={"city": "Москва", "category": "cover", "date": "2026-10-02T00:00:00+03:00"},
@@ -118,6 +120,7 @@ def test_search_includes_venues_with_calendar(client):
         },
         headers=auth_header(owner["token"]),
     )
+    publish_venue(client, owner, venue["id"])
     found = client.get(
         "/catalog/search",
         params={"city": "Москва", "category": "venue", "date": "2026-10-12T12:00:00+00:00"},

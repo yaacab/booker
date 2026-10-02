@@ -1,4 +1,8 @@
-from tests.conftest import auth_header, register
+import json
+
+from booker_api.ical import MAX_ICAL_BYTES
+from booker_api.request_body_limit import MULTIPART_OVERHEAD_BYTES
+from tests.conftest import auth_header, publish_artist, register
 
 SAMPLE_ICAL = """BEGIN:VCALENDAR
 VERSION:2.0
@@ -67,6 +71,7 @@ def test_ical_import_creates_busy_slots(client):
         headers=auth_header(owner["token"]),
     )
     assert open_slot.status_code == 200
+    publish_artist(client, owner, artist["id"])
 
     res = client.post(
         "/calendar/ical/import",
@@ -85,7 +90,9 @@ def test_ical_import_creates_busy_slots(client):
     assert body["overlaid_open"] >= 1
     assert body["removed_open"] == body["overlaid_open"]
 
-    page = client.get(f"/artists/{artist['id']}").json()
+    public = client.get(f"/artists/{artist['id']}").json()
+    assert all(slot["status"] == "open" for slot in public["slots"])
+    page = client.get(f"/artists/{artist['id']}", headers=auth_header(owner["token"])).json()
     statuses = {s["status"] for s in page["slots"]}
     assert "busy" in statuses
     assert "open" in statuses  # overlay keeps local open slots
@@ -111,6 +118,7 @@ def test_ical_reimport_preserves_open_under_overlay(client):
         headers=headers,
     )
     assert open_slot.status_code == 200
+    publish_artist(client, owner, artist["id"])
     open_id = open_slot.json()["id"]
     payload = {
         "organization_id": org["id"],
@@ -119,11 +127,11 @@ def test_ical_reimport_preserves_open_under_overlay(client):
         "ical_body": SAMPLE_ICAL,
     }
     assert client.post("/calendar/ical/import", json=payload, headers=headers).status_code == 200
-    page = client.get(f"/artists/{artist['id']}").json()
+    page = client.get(f"/artists/{artist['id']}", headers=headers).json()
     assert any(s["id"] == open_id and s["status"] == "open" for s in page["slots"])
     # Reimport replaces only ical:* busy rows
     assert client.post("/calendar/ical/import", json=payload, headers=headers).status_code == 200
-    page2 = client.get(f"/artists/{artist['id']}").json()
+    page2 = client.get(f"/artists/{artist['id']}", headers=headers).json()
     assert any(s["id"] == open_id and s["status"] == "open" for s in page2["slots"])
     busy = [s for s in page2["slots"] if s["status"] == "busy"]
     assert len(busy) == 2
@@ -148,3 +156,48 @@ def test_ical_import_requires_writer(client):
         headers=auth_header(viewer["token"]),
     )
     assert res.status_code == 403
+
+
+def test_ical_inline_body_rejected_before_import_when_oversized(client, SessionLocal):
+    owner, org, artist = _artist_ctx(client)
+    res = client.post(
+        "/calendar/ical/import",
+        json={
+            "organization_id": org["id"],
+            "resource_type": "artist",
+            "resource_id": artist["id"],
+            "ical_body": SAMPLE_ICAL + (" " * MAX_ICAL_BYTES),
+        },
+        headers=auth_header(owner["token"]),
+    )
+    assert res.status_code == 400
+    assert "большой" in res.json()["detail"]
+    from booker_api.models import AvailabilitySlot
+
+    with SessionLocal() as db:
+        assert db.query(AvailabilitySlot).filter_by(resource_type="artist", resource_id=artist["id"]).count() == 0
+
+
+def test_ical_request_body_rejected_before_json_parse(client):
+    limit = MAX_ICAL_BYTES * 6 + MULTIPART_OVERHEAD_BYTES
+    res = client.post("/calendar/ical/import", content=b"x" * (limit + 1))
+    assert res.status_code == 413
+    assert "iCal слишком большой" in res.json()["detail"]
+
+
+def test_ical_inline_body_rejects_invalid_unicode(client):
+    owner, org, artist = _artist_ctx(client)
+    payload = json.dumps(
+        {
+            "organization_id": org["id"],
+            "resource_type": "artist",
+            "resource_id": artist["id"],
+            "ical_body": "BEGIN:VCALENDAR\n" + "\ud800",
+        }
+    ).encode("utf-8")
+    res = client.post(
+        "/calendar/ical/import",
+        content=payload,
+        headers={**auth_header(owner["token"]), "content-type": "application/json"},
+    )
+    assert res.status_code == 400

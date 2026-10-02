@@ -14,21 +14,31 @@ import urllib.parse
 import urllib.request
 
 ENDPOINT = "https://query.wikidata.org/sparql"
-# Theatre, museum, concert hall, cultural centre, cinema, stadium, exhibition hall, nightclub
+# Keep this list intentionally narrow. Earlier versions contained unrelated
+# identifiers (cemetery, national park, archive and a municipality), which
+# polluted the Moscow venue queue.
 QUERY = """
-SELECT DISTINCT ?item ?itemLabel ?coord ?website ?street ?housenumber WHERE {
+SELECT DISTINCT
+  ?item ?itemLabel ?itemDescription ?matchedType ?matchedTypeLabel
+  ?coord ?website ?streetAddress ?street ?streetLabel ?housenumber ?image
+WHERE {
   ?item wdt:P131* wd:Q649;
-        wdt:P31/wdt:P279* ?type.
-  VALUES ?type {
-    wd:Q24354 wd:Q207694 wd:Q20010800 wd:Q1329623 wd:Q41253
-    wd:Q483110 wd:Q57660343 wd:Q622425 wd:Q1007870 wd:Q856584
-    wd:Q166118 wd:Q24699794 wd:Q46169 wd:Q13926 wd:Q33506
-    wd:Q15243209 wd:Q570116 wd:Q210272 wd:Q39614
+        wdt:P31/wdt:P279* ?matchedType.
+  VALUES ?matchedType {
+    wd:Q24354
+    wd:Q1329623
+    wd:Q41253
+    wd:Q57660343
+    wd:Q207694
+    wd:Q24699794
+    wd:Q15243209
   }
   OPTIONAL { ?item wdt:P625 ?coord. }
   OPTIONAL { ?item wdt:P856 ?website. }
+  OPTIONAL { ?item wdt:P6375 ?streetAddress. }
   OPTIONAL { ?item wdt:P669 ?street. }
   OPTIONAL { ?item wdt:P670 ?housenumber. }
+  OPTIONAL { ?item wdt:P18 ?image. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "ru,en". }
 }
 LIMIT 800
@@ -50,6 +60,18 @@ def _parse_coord(value: str) -> tuple[float | None, float | None]:
         return None, None
 
 
+def _commons_source(image_url: str) -> str:
+    if not image_url:
+        return ""
+    marker = "/Special:FilePath/"
+    if marker not in image_url:
+        return image_url
+    filename = urllib.parse.unquote(image_url.split(marker, 1)[1])
+    return "https://commons.wikimedia.org/wiki/File:" + urllib.parse.quote(
+        filename.replace(" ", "_"), safe="():,_-."
+    )
+
+
 def fetch() -> dict:
     url = ENDPOINT + "?" + urllib.parse.urlencode({"query": QUERY, "format": "json"})
     req = urllib.request.Request(url, method="GET")
@@ -65,14 +87,18 @@ def fetch() -> dict:
             continue
         item = (b.get("item") or {}).get("value") or ""
         website = (b.get("website") or {}).get("value") or ""
-        street = (b.get("street") or {}).get("value") or ""
-        # street may be a Wikidata entity URL — skip entity URLs as address
+        description = (b.get("itemDescription") or {}).get("value") or ""
+        venue_type = (b.get("matchedTypeLabel") or {}).get("value") or ""
+        street_address = (b.get("streetAddress") or {}).get("value") or ""
+        street = (b.get("streetLabel") or {}).get("value") or ""
+        if not street or street.startswith("Q"):
+            street = (b.get("street") or {}).get("value") or ""
         if street.startswith("http"):
             street = ""
         house = (b.get("housenumber") or {}).get("value") or ""
         lat, lon = _parse_coord((b.get("coord") or {}).get("value") or "")
         address_parts = [p for p in (street, house) if p]
-        address = ", ".join(address_parts)
+        address = street_address or ", ".join(address_parts)
         if not address and lat is not None:
             address = f"{lat:.5f},{lon:.5f}"
         if not address:
@@ -81,11 +107,42 @@ def fetch() -> dict:
         if key in seen:
             continue
         seen.add(key)
+        image = (b.get("image") or {}).get("value") or ""
         quality = 25
         if website:
             quality += 40
         if any(c.isalpha() for c in address):
             quality += 20
+        if description:
+            quality += 10
+        if image:
+            quality += 10
+        sources = [
+            {
+                "field_name": "name,address,description,venue_type",
+                "source_url": item,
+                "source_kind": "wikidata_cc0",
+            }
+        ]
+        if website:
+            sources.append(
+                {
+                    "field_name": "official_website",
+                    "source_url": item,
+                    "source_kind": "wikidata_cc0",
+                }
+            )
+        photos = (
+            [
+                {
+                    "photo_url": image,
+                    "photo_source_url": _commons_source(image),
+                    "photo_rights_status": "licensed",
+                }
+            ]
+            if image
+            else []
+        )
         rows.append(
             {
                 "name": name.strip(),
@@ -93,9 +150,13 @@ def fetch() -> dict:
                 "district": "",
                 "metro": "",
                 "capacity": None,
-                "description": "Площадка из Wikidata (Москва)",
-                "source_url": website or item,
+                "description": description,
+                "source_url": item,
                 "attribution": "wikidata",
+                "official_website": website,
+                "venue_type": venue_type,
+                "sources": sources,
+                "photos": photos,
                 "quality": quality,
                 "lat": lat,
                 "lon": lon,

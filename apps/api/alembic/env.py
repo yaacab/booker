@@ -41,8 +41,10 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-
     with connectable.connect() as connection:
+        # SQLite batch migrations recreate referenced tables. Keeping FK checks on
+        # during that DDL makes valid migrations fail while dropping the old table.
+        # Application and test engines enable FK checks on every runtime connection.
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

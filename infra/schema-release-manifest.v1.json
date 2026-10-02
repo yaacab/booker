@@ -1,0 +1,529 @@
+{
+  "version": 1,
+  "baseline_source_commit": "834fb22d71ad2d83b212a5ad5ef1e7ef9b485907",
+  "expected_before_states": [
+    "c8d9e0f1a2b3"
+  ],
+  "target_head": "a03f45a67b89",
+  "revisions": [
+    {
+      "revision": "ad7ec0cd0ee2",
+      "down_revision": null,
+      "file": "ad7ec0cd0ee2_baseline.py",
+      "sha256": "bb36fe673b854fecde1ac2bd32b6f24e58882aa3c1af3baeb7bb8a84755f38ce",
+      "classification": "manual_block",
+      "reasons": [
+        "Float",
+        "ForeignKeyConstraint",
+        "PrimaryKeyConstraint",
+        "f"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "b3f8a1c2d4e5",
+      "down_revision": "ad7ec0cd0ee2",
+      "file": "b3f8a1c2d4e5_venue_open_data_fields.py",
+      "sha256": "08aa72bc91bae0c0890bcee40c3613da2bb2c419e5fb5acf562bc19e4e7e4dac",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "c7a9f0e1d2b3",
+      "down_revision": "b3f8a1c2d4e5",
+      "file": "c7a9f0e1d2b3_session_token_security.py",
+      "sha256": "04c71e46fc38588d6e58d9b9b7926ca9d1948441c89763b6478f07795dd0395c",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "d4e8b2a9c1f0",
+      "down_revision": "c7a9f0e1d2b3",
+      "file": "d4e8b2a9c1f0_password_reset_tokens.py",
+      "sha256": "f481a73a81a567ee9cd486db6172eddd962ed7e916e873890c5ab4bc229878f7",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "e5f1a2b3c4d5",
+      "down_revision": "d4e8b2a9c1f0",
+      "file": "e5f1a2b3c4d5_reviews.py",
+      "sha256": "9037f5805c06eedc4ba2d5fa7b36bc6caefb10c788d4afa17b488640d74ce623",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "f6a2b3c4d5e6",
+      "down_revision": "e5f1a2b3c4d5",
+      "file": "f6a2b3c4d5e6_favorites.py",
+      "sha256": "1c7c60f8dabd458cee52448379de0a8c62e5848ce6341eefbfa47ba7108edbb8",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "f7a3b4c5d6e7",
+      "down_revision": "f6a2b3c4d5e6",
+      "file": "f7a3b4c5d6e7_public_briefs.py",
+      "sha256": "7c59b249ee0d9dfca1ade82c4da81e27d2cc75fdfa1688e18e891d9963dcf4f4",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "a8b9c0d1e2f3",
+      "down_revision": "f7a3b4c5d6e7",
+      "file": "a8b9c0d1e2f3_share_claim_support_outbox.py",
+      "sha256": "3fc0f3cdd7336a0ed047edbb1e0a3bebca2e7fee50a9ad50765bc901b77f5006",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "b1c2d3e4f5a7",
+      "down_revision": "a8b9c0d1e2f3",
+      "file": "b1c2d3e4f5a7_saved_searches.py",
+      "sha256": "8e8ea6796f5ad9c73bf516ea3ca92650cacde260246586c91dea6290a80a8d1f",
+      "classification": "manual_block",
+      "reasons": [
+        "false"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "c8d9e0f1a2b3",
+      "down_revision": "b1c2d3e4f5a7",
+      "file": "c8d9e0f1a2b3_venue_catalog_lifecycle.py",
+      "sha256": "cad24387ad821849245b57962c9234e3a45d8ac92c8f59a4cb5de685365370bd",
+      "classification": "manual_block",
+      "reasons": [
+        "Float",
+        "execute",
+        "false",
+        "true"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "d9e0f1a2b3c4",
+      "down_revision": "c8d9e0f1a2b3",
+      "file": "d9e0f1a2b3c4_booking_accepted_offer_version.py",
+      "sha256": "53bd3e0eefc8e28bb3a7e68c872224d0ea80980b80b5d19ee27eea659ecacd94",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "e0f1a2b3c4d5",
+      "down_revision": "d9e0f1a2b3c4",
+      "file": "e0f1a2b3c4d5_external_payment_reports.py",
+      "sha256": "6d44ffc993ad6f4e3a4a698e40bd4cc3ed5872365e9323aff93eb179930c1e90",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "f1a2b3c4d5e6",
+      "down_revision": "e0f1a2b3c4d5",
+      "file": "f1a2b3c4d5e6_refund_requests.py",
+      "sha256": "d87afaedc07f2d20053a56f197566e4579a5918770b50049848305889ec4d46c",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "f2b3c4d5e6f7",
+      "down_revision": "f1a2b3c4d5e6",
+      "file": "f2b3c4d5e6f7_attachment_quarantine.py",
+      "sha256": "dd3ec7a75e3ce2388c0c1bbaa271bf0ad50accb0943aa574992fa0355f6b9e38",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "a3c4d5e6f7a8",
+      "down_revision": "f2b3c4d5e6f7",
+      "file": "a3c4d5e6f7a8_payment_obligations.py",
+      "sha256": "23887fe652720efef0464bb5aeb5e22911145ddb392b56b1f425e9c7944a0f11",
+      "classification": "manual_block",
+      "reasons": [
+        "execute"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "b4d5e6f7a8b9",
+      "down_revision": "a3c4d5e6f7a8",
+      "file": "b4d5e6f7a8b9_money_movements.py",
+      "sha256": "0c089b7502629cbdc9d978325a6cae2b1c8340db150db46a79b63d97de45c906",
+      "classification": "manual_block",
+      "reasons": [
+        "execute"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "c5e6f7a8b9c0",
+      "down_revision": "b4d5e6f7a8b9",
+      "file": "c5e6f7a8b9c0_payment_terminal_guards.py",
+      "sha256": "f5064034dda53965fe2aa6a7df7e06a56bf2b6c8d73728f778aeee5efedfaea0",
+      "classification": "expand_review",
+      "reasons": [],
+      "reversible": false
+    },
+    {
+      "revision": "d6f7a8b9c0d1",
+      "down_revision": "c5e6f7a8b9c0",
+      "file": "d6f7a8b9c0d1_organization_invitations.py",
+      "sha256": "267d986432080ad8efb8030c2935485bb76d7c1678ef7aad366ffa933c8b9781",
+      "classification": "manual_block",
+      "reasons": [
+        "ForeignKeyConstraint",
+        "PrimaryKeyConstraint"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "e7a8b9c0d1e2",
+      "down_revision": "d6f7a8b9c0d1",
+      "file": "e7a8b9c0d1e2_request_conversations.py",
+      "sha256": "dbb4bee5b63f937fb2531b2d3efd5b2fba3163810cefb20d4cfe7bcf18762337",
+      "classification": "manual_block",
+      "reasons": [
+        "ForeignKeyConstraint",
+        "PrimaryKeyConstraint",
+        "alter_column",
+        "create_unique_constraint",
+        "execute"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "e8b9c0d1e2f3",
+      "down_revision": "e7a8b9c0d1e2",
+      "file": "e8b9c0d1e2f3_support_ticket_vertical.py",
+      "sha256": "4cd808bb9298869c6be18b8ff7905b446aa92970d5e1829b4b4561222dcdfe44",
+      "classification": "manual_block",
+      "reasons": [
+        "ForeignKeyConstraint",
+        "PrimaryKeyConstraint",
+        "create_unique_constraint",
+        "get_check_constraints",
+        "get_foreign_keys",
+        "get_unique_constraints",
+        "inspect",
+        "intersection",
+        "issubset"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "e9c0d1e2f3a4",
+      "down_revision": "e8b9c0d1e2f3",
+      "file": "e9c0d1e2f3a4_support_agent_sessions.py",
+      "sha256": "338f3eaa6b194a2928309381d124d5e67efaaa691ca7b8a4414d51664f81ff79",
+      "classification": "manual_block",
+      "reasons": [
+        "ForeignKeyConstraint",
+        "PrimaryKeyConstraint",
+        "get_check_constraints",
+        "get_foreign_keys",
+        "get_unique_constraints",
+        "inspect",
+        "intersection",
+        "issubset"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "ea1d2e3f4a5b",
+      "down_revision": "e9c0d1e2f3a4",
+      "file": "ea1d2e3f4a5b_support_ticket_sla.py",
+      "sha256": "b9bcf25c008db6dadccdd88f982884f996105160031595f1f0b92e2364cc05d2",
+      "classification": "manual_block",
+      "reasons": [
+        "get_indexes",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "eb2e3f4a5b6c",
+      "down_revision": "ea1d2e3f4a5b",
+      "file": "eb2e3f4a5b6c_supply_publication_evidence.py",
+      "sha256": "8f12b2037f6f9f642b58551ed56b9ff31938874354dc69b5ab264494ac37a3f4",
+      "classification": "manual_block",
+      "reasons": [
+        "false"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "ec3f4a5b6c7d",
+      "down_revision": "eb2e3f4a5b6c",
+      "file": "ec3f4a5b6c7d_dispute_case_management.py",
+      "sha256": "b10d670650dc74d1e4f1f157f2fcd0e5c90f766f7841251594ee9e01934bc7d2",
+      "classification": "manual_block",
+      "reasons": [
+        "execute",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "ed4a5b6c7d8e",
+      "down_revision": "ec3f4a5b6c7d",
+      "file": "ed4a5b6c7d8e_message_sequences.py",
+      "sha256": "599cd2a80e5c59c5d0cd34478f4052233fde5fd7bf0e4d1a27a468d1ef93ad0b",
+      "classification": "manual_block",
+      "reasons": [
+        "execute"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "ef5b6c7d8e9f",
+      "down_revision": "ed4a5b6c7d8e",
+      "file": "ef5b6c7d8e9f_conversation_participant_snapshot.py",
+      "sha256": "6f1f2667e184127b9231b8bcff6c8684b7c12d5d3caee76a9eacc846f04f275d",
+      "classification": "manual_block",
+      "reasons": [
+        "alter_column",
+        "execute"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "f05c6d7e8f90",
+      "down_revision": "ef5b6c7d8e9f",
+      "file": "f05c6d7e8f90_actor_attribution.py",
+      "sha256": "8516d7963a3f64cea6a24d02df6f1e356964087c7dc890fd2c034ff6e2c6e23e",
+      "classification": "manual_block",
+      "reasons": [
+        "execute"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "f16d7e8f901a",
+      "down_revision": "f05c6d7e8f90",
+      "file": "f16d7e8f901a_message_actor_attribution.py",
+      "sha256": "45e560855655e7e3f200969d8a7278f893ca603c3849d422444e536d30b7e621",
+      "classification": "manual_block",
+      "reasons": [
+        "create_check_constraint",
+        "execute",
+        "get_check_constraints",
+        "get_foreign_keys",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "f27e8f901ab2",
+      "down_revision": "f16d7e8f901a",
+      "file": "f27e8f901ab2_conversation_org_read_state.py",
+      "sha256": "b8b5904a0b8fe9dde867cfbdbfcc48280dd410b41f84de5703782787081b9223",
+      "classification": "manual_block",
+      "reasons": [
+        "ForeignKeyConstraint",
+        "PrimaryKeyConstraint",
+        "drop_table",
+        "execute",
+        "rename_table"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "f38f901ab2c3",
+      "down_revision": "f27e8f901ab2",
+      "file": "f38f901ab2c3_payment_obligation_deadlines.py",
+      "sha256": "c33b1594096f30ac1af3e93ec5150ae1caf8941c03b79d203f96c3fca1e1c4c8",
+      "classification": "manual_block",
+      "reasons": [
+        "execute",
+        "false",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "f49a012bc3d4",
+      "down_revision": "f38f901ab2c3",
+      "file": "f49a012bc3d4_payment_reconciliation.py",
+      "sha256": "a1ad49d656c33cadedb54a79d7373a5bb85b9e8f13add13a45b83e73693abe5e",
+      "classification": "manual_block",
+      "reasons": [
+        "execute",
+        "false",
+        "get_indexes",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "f5b0c1d2e3f4",
+      "down_revision": "f49a012bc3d4",
+      "file": "f5b0c1d2e3f4_service_profile_binding.py",
+      "sha256": "b961a0c06bdb9162a387f15ca13bb9684218ffc2425441abd70fa0f4fb969633",
+      "classification": "manual_block",
+      "reasons": [
+        "execute"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "f8b4c5d6e7f8",
+      "down_revision": "f5b0c1d2e3f4",
+      "file": "f8b4c5d6e7f8_message_received_at.py",
+      "sha256": "a370a4d71e5c92d797ed695d5155dc3d85525032adffce30c4f364b778c1f161",
+      "classification": "manual_block",
+      "reasons": [
+        "execute",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "f9c5d6e7f8a9",
+      "down_revision": "f8b4c5d6e7f8",
+      "file": "f9c5d6e7f8a9_attachment_av_verdict.py",
+      "sha256": "02ce8def752cb1e3883a53a6ad96afc9923a2d7ff570c8b91cdc10f9a4b522d3",
+      "classification": "manual_block",
+      "reasons": [
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "fa6d7e8f901b",
+      "down_revision": "f9c5d6e7f8a9",
+      "file": "fa6d7e8f901b_rate_limit_counters.py",
+      "sha256": "a921af9afda0c7318c53fcd051cd9d3784a322863707b098d54693ced0331dc8",
+      "classification": "manual_block",
+      "reasons": [
+        "BigInteger",
+        "get_indexes",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "fb7e8f901ab2",
+      "down_revision": "fa6d7e8f901b",
+      "file": "fb7e8f901ab2_external_payment_corrections.py",
+      "sha256": "856e08f80f0036689cef731ae9ece17057429f9c193c7e736ecdf98ad6cb6f34",
+      "classification": "manual_block",
+      "reasons": [
+        "execute",
+        "get_indexes",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "fc8f901ab2c3",
+      "down_revision": "fb7e8f901ab2",
+      "file": "fc8f901ab2c3_support_operator_queue.py",
+      "sha256": "62382f55fa48fc3a77ea8304df0c8d4d6143bd3ac449daa5c40f62dc83895d52",
+      "classification": "manual_block",
+      "reasons": [
+        "get_foreign_keys",
+        "get_indexes",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "fd9a012bc3d4",
+      "down_revision": "fc8f901ab2c3",
+      "file": "fd9a012bc3d4_data_subject_requests.py",
+      "sha256": "dc525e35899aa0e353042d132b2e593a7388827d2505829a02f2e0b398ae6af5",
+      "classification": "manual_block",
+      "reasons": [
+        "execute",
+        "false",
+        "get_indexes",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "feab012bc3d5",
+      "down_revision": "fd9a012bc3d4",
+      "file": "feab012bc3d5_legal_document_consent_ledger.py",
+      "sha256": "4a6aabf7f7bfb16ad3bad4d501c3ea23cd3e2a7582ec0e01a6788f49bce29707",
+      "classification": "manual_block",
+      "reasons": [
+        "false",
+        "get_indexes",
+        "get_unique_constraints",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "ffbc123cd4e6",
+      "down_revision": "feab012bc3d5",
+      "file": "ffbc123cd4e6_contract_draft_ack.py",
+      "sha256": "e6139300398082fee80ba97b2ee9dea81c67702c1c48cdd7e5468ed7f57283fd",
+      "classification": "manual_block",
+      "reasons": [
+        "execute",
+        "get_foreign_keys",
+        "get_indexes",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a01d23e45f67",
+      "down_revision": "ffbc123cd4e6",
+      "file": "a01d23e45f67_email_verification.py",
+      "sha256": "322ded47f6c061e747a4f3b7e0b88051f9ccbf4987207150383f3cf7f2ce4bd5",
+      "classification": "manual_block",
+      "reasons": [
+        "execute",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a02e34f56a78",
+      "down_revision": "a01d23e45f67",
+      "file": "a02e34f56a78_support_operator_role.py",
+      "sha256": "f4e25aadeab8ba174f156c439411448e82d544c14fcb5cb07631138c760797fc",
+      "classification": "manual_block",
+      "reasons": [
+        "execute",
+        "false",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a03f45a67b89",
+      "down_revision": "a02e34f56a78",
+      "file": "a03f45a67b89_staff_recovery_codes.py",
+      "sha256": "dc373f5a1842a3e5a33c0db0f4a68e688f22c7d1e3c3698949fb2046ca3cf23f",
+      "classification": "manual_block",
+      "reasons": [
+        "get_foreign_keys",
+        "get_indexes",
+        "get_pk_constraint",
+        "inspect"
+      ],
+      "reversible": false
+    }
+  ],
+  "review": {
+    "status": "draft",
+    "owner": "",
+    "rehearsal_evidence_sha256": "",
+    "data_backup_sha256": ""
+  }
+}
