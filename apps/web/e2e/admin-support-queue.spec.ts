@@ -59,10 +59,13 @@ test("ordinary user handoff reaches protected operator queue and returns one rep
   await fillTotp();
   await queue.getByLabel("Заметка для операторов").fill("Только внутренний контекст");
   await queue.getByRole("button", { name: "Сохранить заметку" }).click();
+  await expect(queue.getByText("Внутренняя заметка сохранена.")).toBeVisible();
   await expect(queue.getByText("Только внутренний контекст")).toBeVisible();
   await fillTotp();
   await queue.getByLabel("Ответ пользователю").fill("Оператор проверяет обращение");
-  await queue.getByRole("button", { name: "Отправить ответ" }).evaluate((button: HTMLButtonElement) => {
+  const sendReply = queue.getByRole("button", { name: "Отправить ответ" });
+  await expect(sendReply).toBeEnabled();
+  await sendReply.evaluate((button: HTMLButtonElement) => {
     button.click();
     button.click();
   });
