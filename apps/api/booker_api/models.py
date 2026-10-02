@@ -20,6 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from booker_api.db import Base
+from booker_api.totp_storage import EncryptedTotpSecret
 
 
 def utcnow() -> datetime:
@@ -41,7 +42,7 @@ class User(Base):
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_support_operator: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    totp_secret: Mapped[str | None] = mapped_column(EncryptedTotpSecret(), nullable=True)
     active_organization_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     optional_processing_restricted: Mapped[bool] = mapped_column(Boolean, default=False)
     marketing_consent_active: Mapped[bool] = mapped_column(Boolean, default=False)

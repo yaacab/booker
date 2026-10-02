@@ -13,7 +13,8 @@ function proveTestMailboxAndSeedTotp(email: string) {
 import sqlite3, sys
 db = sqlite3.connect(sys.argv[1])
 try:
-    db.execute("UPDATE users SET email_verified_at = CURRENT_TIMESTAMP, totp_enabled = 1, totp_secret = ? WHERE email = ?", (sys.argv[3], sys.argv[2]))
+    from booker_api.totp_storage import encrypt_totp_secret
+    db.execute("UPDATE users SET email_verified_at = CURRENT_TIMESTAMP, totp_enabled = 1, totp_secret = ? WHERE email = ?", (encrypt_totp_secret(sys.argv[3]), sys.argv[2]))
     if db.total_changes != 1:
         raise RuntimeError("operator fixture account missing")
     db.commit()

@@ -4,6 +4,7 @@ from ipaddress import ip_network
 from typing import Literal
 from urllib.parse import urlsplit
 
+from cryptography.fernet import Fernet
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 APPROVED_SUPPORT_SLA_SCHEDULE = {
@@ -56,6 +57,8 @@ class Settings(BaseSettings):
     composition_v2: bool = True
     workspace_switcher: bool = True
     require_admin_2fa_enforced: bool = False
+    # Comma-separated Fernet keys, newest first. Local/test use a fixed test-only key if empty.
+    totp_encryption_keys: str = ""
     admin_2fa_step_up_minutes: int = 15
     rate_limit_max_keys: int = 10_000
     rate_limit_backend: Literal["auto", "memory", "database"] = "auto"
@@ -92,6 +95,15 @@ settings = Settings()
 
 def validate_runtime_config(config: Settings = settings) -> None:
     """Reject unsafe production settings before any schema or seed work."""
+    if config.runtime_env == "staging":
+        keys = [part.strip() for part in config.totp_encryption_keys.split(",")]
+        try:
+            if not keys or any(not key for key in keys):
+                raise ValueError("empty key")
+            for key in keys:
+                Fernet(key.encode("ascii"))
+        except (TypeError, ValueError, UnicodeError):
+            raise RuntimeError("BOOKER_TOTP_ENCRYPTION_KEYS requires valid staging keys") from None
     if config.runtime_env != "production":
         return
 
@@ -133,6 +145,15 @@ def validate_runtime_config(config: Settings = settings) -> None:
         problems.append("BOOKER_WEBHOOK_SECRET must be a non-default secret of at least 32 characters")
     if not config.require_admin_2fa_enforced:
         problems.append("BOOKER_REQUIRE_ADMIN_2FA_ENFORCED must be true")
+    keys = [part.strip() for part in config.totp_encryption_keys.split(",")]
+    if not keys or any(not key for key in keys):
+        problems.append("BOOKER_TOTP_ENCRYPTION_KEYS must contain at least one Fernet key")
+    else:
+        try:
+            for key in keys:
+                Fernet(key.encode("ascii"))
+        except (TypeError, ValueError, UnicodeError):
+            problems.append("BOOKER_TOTP_ENCRYPTION_KEYS contains an invalid Fernet key")
     if os.environ.get("BOOKER_ALLOW_DEMO_SEED") == "1":
         problems.append("BOOKER_ALLOW_DEMO_SEED must not be enabled")
     if "BOOKER_SESSION_SECRET" in os.environ:

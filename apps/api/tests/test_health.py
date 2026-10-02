@@ -54,10 +54,14 @@ def test_production_readiness_requires_admin(client, monkeypatch):
 
 
 def test_production_readiness_rejects_member_and_allows_admin(client, monkeypatch):
+    from cryptography.fernet import Fernet
+
     from tests.conftest import auth_header, register
     from tests.test_admin import _promote_admin
     from tests.totp_helpers import TEST_TOTP_SECRET, admin_totp_headers
 
+    # Use one explicit key across enrollment and production-mode reads.
+    monkeypatch.setattr(settings, "totp_encryption_keys", Fernet.generate_key().decode("ascii"))
     member = register(client, "perimeter-member@booker.test", "Member")
     admin = _promote_admin(client, "perimeter-admin@booker.test", totp=TEST_TOTP_SECRET)
     monkeypatch.setattr(settings, "runtime_env", "production")

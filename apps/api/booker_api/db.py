@@ -520,6 +520,15 @@ def ensure_missing_columns(bind) -> None:
                 "WHEN NEW.is_support_operator = 1 AND NEW.email_verified_at IS NULL "
                 "BEGIN SELECT RAISE(ABORT, 'support operator email verification required'); END"
             ))
+            for action in ("INSERT", "UPDATE"):
+                name = f"users_totp_ciphertext_{action.lower()}"
+                target = "" if action == "INSERT" else "OF totp_secret "
+                conn.execute(text(
+                    f"CREATE TRIGGER IF NOT EXISTS {name} BEFORE {action} {target}ON users "
+                    "WHEN NEW.totp_secret IS NOT NULL "
+                    "AND NEW.totp_secret NOT LIKE 'fernet:v1:%' "
+                    "BEGIN SELECT RAISE(ABORT, 'TOTP secret must be encrypted'); END"
+                ))
 
 
 def _ensure_sqlite_request_conversations(bind) -> None:

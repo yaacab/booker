@@ -6,12 +6,14 @@ import sys
 from pathlib import Path
 
 import pytest
+from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 
 from booker_api.config import Settings, settings, validate_runtime_config
 from booker_api.main import app
 
 ROOT = Path(__file__).resolve().parents[3]
+TEST_TOTP_STORAGE_KEY = Fernet.generate_key().decode("ascii")
 
 
 def production_settings(**overrides) -> Settings:
@@ -21,6 +23,7 @@ def production_settings(**overrides) -> Settings:
         "webhook_secret": "a9Kq5pL2vX7mR3tY8nB4cD6fG1hJ0sWz",
         "allow_default_webhook_secret": False,
         "require_admin_2fa_enforced": True,
+        "totp_encryption_keys": TEST_TOTP_STORAGE_KEY,
         "public_url": "https://bukergo.ru",
         "cors_origins": "https://bukergo.ru,https://www.bukergo.ru",
         "in_app_provider": "audit",
@@ -48,6 +51,8 @@ def test_external_production_profile_and_local_defaults(monkeypatch):
         ({"webhook_secret": "a" * 32}, "BOOKER_WEBHOOK_SECRET"),
         ({"allow_default_webhook_secret": True}, "BOOKER_WEBHOOK_SECRET"),
         ({"require_admin_2fa_enforced": False}, "BOOKER_REQUIRE_ADMIN_2FA_ENFORCED"),
+        ({"totp_encryption_keys": ""}, "BOOKER_TOTP_ENCRYPTION_KEYS"),
+        ({"totp_encryption_keys": "bad-key"}, "BOOKER_TOTP_ENCRYPTION_KEYS"),
         ({"rate_limit_backend": "memory"}, "BOOKER_RATE_LIMIT_BACKEND"),
         ({"ops_public_metrics": True}, "BOOKER_OPS_PUBLIC_METRICS"),
         ({"ops_alert_transport": "test_file"}, "BOOKER_OPS_ALERT_TRANSPORT"),
@@ -116,6 +121,7 @@ def test_deploy_preflight_rejects_missing_secret_and_env_override(tmp_path):
     env_file.write_text(
         f"BOOKER_RUNTIME_ENV=local\nBOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db\n"
         f"BOOKER_WEBHOOK_SECRET={secret}\n"
+        f"BOOKER_TOTP_ENCRYPTION_KEYS={TEST_TOTP_STORAGE_KEY}\n"
         "BOOKER_EMAIL_PROVIDER=smtp\nBOOKER_EMAIL_SMTP_HOST=smtp.booker.test\n",
         encoding="utf-8",
     )

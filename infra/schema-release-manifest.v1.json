@@ -4,7 +4,7 @@
   "expected_before_states": [
     "c8d9e0f1a2b3"
   ],
-  "target_head": "a03f45a67b89",
+  "target_head": "a04f56b78c90",
   "revisions": [
     {
       "revision": "ad7ec0cd0ee2",
@@ -516,6 +516,22 @@
         "get_indexes",
         "get_pk_constraint",
         "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a04f56b78c90",
+      "down_revision": "a03f45a67b89",
+      "file": "a04f56b78c90_encrypt_totp_secret.py",
+      "sha256": "4592d554334762e17bff55d0723078a681e3ba808ef602b09a550f8d9b35f8d5",
+      "classification": "manual_block",
+      "reasons": [
+        "alter_column",
+        "create_check_constraint",
+        "execute",
+        "fullmatch",
+        "lower",
+        "startswith"
       ],
       "reversible": false
     }
