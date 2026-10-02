@@ -2,6 +2,7 @@
 
 import pytest
 
+from booker_api.support_agent import answer_support_question
 from tests.conftest import auth_header, register
 from tests.test_admin import _promote_admin
 from tests.test_support_agent import _create_org, _create_session, _send
@@ -57,3 +58,68 @@ def test_manual_duplicate_booking_ticket_gets_high_priority_without_sla(client):
     assert result.status_code == 201, result.text
     assert result.json()["priority"] == "high"
     assert result.json()["response_due_at"] is None
+
+
+@pytest.mark.parametrize(
+    ("message", "intent", "category", "priority"),
+    [
+        ("Меня взломали, нужен оператор", "account_security", "profile", "high"),
+        ("Нужен возврат оплаты и оператор", "money_or_legal", "payment", "normal"),
+        ("Не могу войти, нужен оператор", "account_access", "profile", "normal"),
+    ],
+)
+def test_explicit_human_request_preserves_issue_and_routes_handoff(
+    client, message, intent, category, priority,
+):
+    customer = register(client, f"human-intent-{intent}@booker.test")
+    org = _create_org(client, customer, f"Human {intent}")
+    session = _create_session(client, customer, org["id"], f"human-session-{intent}")
+    exchange = _send(client, customer, session["id"], message, f"human-message-{intent}")
+    assert exchange["intent"] == intent
+    assert exchange["needs_human"] is True
+    assert exchange["outcome"] == "needs_human"
+    result = client.post(
+        f"/support/assistant/sessions/{session['id']}/escalate",
+        json={"reason_code": "user_requested_human"},
+        headers={**auth_header(customer["token"]),
+                 "Idempotency-Key": f"human-escalate-{intent}"},
+    )
+    assert result.status_code == 200, result.text
+    assert result.json()["ticket"]["category"] == category
+    assert result.json()["ticket"]["priority"] == priority
+
+
+def test_standalone_human_request_keeps_explicit_handoff():
+    reply = answer_support_question("Позовите оператора")
+    assert reply.intent == "human_request"
+    assert reply.needs_human is True
+
+
+@pytest.mark.parametrize(
+    ("message", "intent", "category"),
+    [
+        ("Не пришёл код для входа, нужен оператор", "code_delivery", "profile"),
+        ("Не открывается документ, нужен оператор", "deal_documents", "technical"),
+        ("Не вижу профиль площадки, нужен оператор", "supply_profile", "profile"),
+        ("Не работает приглашение в организацию, нужен оператор",
+         "organization_invitation", "profile"),
+        ("Курьер не приехал, нужен оператор", "arrival_unclear", "incident"),
+    ],
+)
+def test_known_support_issues_keep_categories_on_explicit_handoff(
+    client, message, intent, category,
+):
+    customer = register(client, f"known-intent-{intent}@booker.test")
+    org = _create_org(client, customer, f"Known {intent}")
+    session = _create_session(client, customer, org["id"], f"known-session-{intent}")
+    exchange = _send(client, customer, session["id"], message, f"known-message-{intent}")
+    assert exchange["intent"] == intent
+    assert exchange["needs_human"] is True
+    result = client.post(
+        f"/support/assistant/sessions/{session['id']}/escalate",
+        json={"reason_code": "user_requested_human"},
+        headers={**auth_header(customer["token"]),
+                 "Idempotency-Key": f"known-escalate-{intent}"},
+    )
+    assert result.status_code == 200, result.text
+    assert result.json()["ticket"]["category"] == category

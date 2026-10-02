@@ -839,8 +839,13 @@ def _agent_escalation_category(intents: set[str]) -> str:
         "money_or_legal": "payment",
         "messages": "message",
         "media_upload": "media",
+        "code_delivery": "profile",
         "account_access": "profile",
         "account_security": "profile",
+        "organization_invitation": "profile",
+        "supply_profile": "profile",
+        "deal_documents": "technical",
+        "arrival_unclear": "incident",
         "booking_flow": "brief",
         "technical": "technical",
     }
@@ -849,13 +854,18 @@ def _agent_escalation_category(intents: set[str]) -> str:
         "event_day_no_show",
         "performer_cancelled_event",
         "duplicate_confirmed_booking",
+        "arrival_unclear",
         "paid_not_confirmed",
         "money_or_legal",
         "booking_flow",
         "technical",
         "messages",
         "media_upload",
+        "code_delivery",
         "account_access",
+        "organization_invitation",
+        "supply_profile",
+        "deal_documents",
     ):
         if intent in intents:
             return category_by_intent[intent]

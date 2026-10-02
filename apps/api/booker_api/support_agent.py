@@ -247,7 +247,7 @@ def _active_no_show_in_message(message: str) -> bool:
     return not resolution or max(offsets) >= resolution[-1].end()
 
 
-def answer_support_question(message: str) -> SupportAgentReply:
+def _answer_support_question(message: str) -> SupportAgentReply:
     """Return a bounded answer from approved static guidance, without network or mutations."""
 
     text = re.sub(r"\s+", " ", message.casefold()).strip()
@@ -305,18 +305,6 @@ def answer_support_question(message: str) -> SupportAgentReply:
             outcome="needs_human",
             needs_human=True,
             source_ids=("contract.booking_state", "support.human_handoff"),
-        )
-
-    if _has_any(text, _HUMAN_REQUEST):
-        return SupportAgentReply(
-            assistant_message=(
-                "Передам обращение специалисту после вашего нажатия «Передать человеку». "
-                "Статусы сделки и денег при этом не изменятся."
-            ),
-            intent="human_request",
-            outcome="needs_human",
-            needs_human=True,
-            source_ids=("support.human_handoff",),
         )
 
     if _has_any(text, _SECURITY):
@@ -524,4 +512,34 @@ def answer_support_question(message: str) -> SupportAgentReply:
         outcome="clarify",
         needs_human=False,
         source_ids=("support.scope",),
+    )
+
+
+def answer_support_question(message: str) -> SupportAgentReply:
+    """Classify the actual issue first; an explicit human request adds handoff."""
+
+    reply = _answer_support_question(message)
+    text = re.sub(r"\s+", " ", message.casefold()).strip()
+    if not _has_any(text, _HUMAN_REQUEST) or reply.needs_human:
+        return reply
+    if reply.intent == "clarification":
+        return SupportAgentReply(
+            assistant_message=(
+                "Передам обращение специалисту после вашего нажатия «Передать человеку». "
+                "Статусы сделки и денег при этом не изменятся."
+            ),
+            intent="human_request",
+            outcome="needs_human",
+            needs_human=True,
+            source_ids=("support.human_handoff",),
+        )
+    return SupportAgentReply(
+        assistant_message=(
+            f"{reply.assistant_message} По вашей просьбе нажмите «Передать человеку», "
+            "чтобы специалист получил обращение."
+        ),
+        intent=reply.intent,
+        outcome="needs_human",
+        needs_human=True,
+        source_ids=tuple(dict.fromkeys((*reply.source_ids, "support.human_handoff"))),
     )

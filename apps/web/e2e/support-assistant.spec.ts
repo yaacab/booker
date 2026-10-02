@@ -39,7 +39,7 @@ test("support assistant answers safely and creates a human ticket on explicit ha
 
   await page.goto("/support");
   await expect(page.getByRole("heading", { name: "Помощник Букера" })).toBeVisible();
-  await page.getByLabel("Сообщение помощнику").fill("Мне нужен возврат оплаты");
+  await page.getByLabel("Сообщение помощнику").fill("Мне нужен возврат оплаты, нужен оператор");
   await page.getByRole("button", { name: "Спросить помощника" }).click();
 
   await expect(page.getByText(/решения по платежам, возвратам/i).first()).toBeVisible();
@@ -53,9 +53,12 @@ test("support assistant answers safely and creates a human ticket on explicit ha
     `${API_BASE}/support/assistant/sessions/${firstSessionId}`,
     { headers: { Authorization: `Bearer ${session.token}` } },
   );
-  const firstExchangeId = ((await firstSessionResponse.json()) as {
-    messages: Array<{ id: string }>;
-  }).messages[0].id;
+  const firstExchange = ((await firstSessionResponse.json()) as {
+    messages: Array<{ id: string; intent: string; needs_human: boolean }>;
+  }).messages[0];
+  expect(firstExchange.intent).toBe("money_or_legal");
+  expect(firstExchange.needs_human).toBe(true);
+  const firstExchangeId = firstExchange.id;
   const outsider = await login(request, DEMO_ACCOUNTS.artist);
   const outsiderFeedback = await request.post(
     `${API_BASE}/support/assistant/exchanges/${firstExchangeId}/feedback`,
@@ -111,7 +114,9 @@ test("support assistant answers safely and creates a human ticket on explicit ha
     { headers: adminHeaders() },
   );
   expect(ticketDetail.status()).toBe(200);
-  expect((await ticketDetail.json()).id).toBe(createdIds[0]);
+  const ticketInfo = await ticketDetail.json();
+  expect(ticketInfo.id).toBe(createdIds[0]);
+  expect(ticketInfo.category).toBe("payment");
   const operatorReply = "Ответ оператора по вашему обращению E2E";
   const sent = await request.post(`${API_BASE}/admin/support/tickets/${createdIds[0]}/messages`, {
     headers: { ...adminHeaders(), "Idempotency-Key": `support-e2e-${createdIds[0]}` },
