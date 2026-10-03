@@ -4,7 +4,7 @@
   "expected_before_states": [
     "c8d9e0f1a2b3"
   ],
-  "target_head": "a08f90e12f34",
+  "target_head": "a09f01e23f45",
   "revisions": [
     {
       "revision": "ad7ec0cd0ee2",
@@ -587,6 +587,22 @@
       "reasons": [
         "get_foreign_keys",
         "get_indexes",
+        "get_unique_constraints",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a09f01e23f45",
+      "down_revision": "a08f90e12f34",
+      "file": "a09f01e23f45_user_identities.py",
+      "sha256": "b7ba66c730ec62fdd77d44a31f97f0c7b161123f19448f0e8a8389ef0b1a4856",
+      "classification": "manual_block",
+      "reasons": [
+        "get_check_constraints",
+        "get_foreign_keys",
+        "get_indexes",
+        "get_pk_constraint",
         "get_unique_constraints",
         "inspect"
       ],

@@ -57,6 +57,35 @@ class User(Base):
 
     memberships: Mapped[list["TeamMember"]] = relationship(back_populates="user")
     sessions: Mapped[list["SessionToken"]] = relationship(back_populates="user")
+    identities: Mapped[list["UserIdentity"]] = relationship(back_populates="user")
+
+
+class UserIdentity(Base):
+    """External login identity; provider claims never imply Booker email proof."""
+
+    __tablename__ = "user_identities"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_subject", name="uq_user_identity_subject"),
+        UniqueConstraint("user_id", "provider", name="uq_user_identity_user_provider"),
+        CheckConstraint("provider IN ('telegram','yandex','vk')", name="ck_user_identity_provider"),
+        CheckConstraint("length(provider_subject) > 0", name="ck_user_identity_subject"),
+        CheckConstraint("link_origin IN ('first_login','explicit_link')",
+                        name="ck_user_identity_link_origin"),
+        Index("ix_user_identities_user_id", "user_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    provider: Mapped[str] = mapped_column(String(16), nullable=False)
+    provider_subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_email_verified: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    provider_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    link_origin: Mapped[str] = mapped_column(String(16), nullable=False)
+    linked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[User] = relationship(back_populates="identities")
 
 
 class SessionToken(Base):
