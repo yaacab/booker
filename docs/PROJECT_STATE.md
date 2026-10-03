@@ -653,3 +653,23 @@ Ruff, secret gate и diff-check PASS. Подробности — в
 Это локальный API-срез; web/Mini App, внешние-only step-up, Яндекс/VK и
 staging остаются открытыми. Полный запуск **59,00%**, MVP **56,00%**, дизайн
 **15,00%**; изменение +0,00 п.п. по каждой шкале.
+
+## 51. Telegram Mini App web-вход, локальный этап A3d, 03.10.2026
+
+Перед этапом сверены `AGENTS.md`, продуктовый контракт, расширенная цель,
+реестр `PROJECT_PROGRESS.md`, этот журнал и чистота изолированной ветки.
+Кодовый SHA `dcafeb29f85eed89068635c2b74be676cf269964` добавил страницу
+`/telegram`, официальный Telegram JS, серверный prepare/complete, точный
+legal pack при первом входе, Booker TOTP для staff и локальный onboarding
+трёх пользовательских ролей. CSP допускает только Telegram script origin.
+Playwright на временной SQLite/loopback/production build — **3 PASS**;
+статический perimeter — **3 PASS**; web lint/21 unit/build, source/build/deploy
+secret gate и diff-check — PASS. Подробности и границы:
+[TELEGRAM_MINIAPP_WEB_STAGE_A3D_2026-10-03.md](ops/TELEGRAM_MINIAPP_WEB_STAGE_A3D_2026-10-03.md).
+
+Реальный bot/WebView и staging не проверены. Для нового аккаунта без email
+staging/production gate подтверждённой почты ещё не даёт создать организацию;
+это следующий интеграционный этап. Полный запуск **59,00%** (осталось 41,00
+п.п.), MVP **56,00%** (осталось 44,00 п.п.), дизайн **15,00%** (осталось
+85,00 п.п.), изменение каждой шкалы **+0,00 п.п.** Общий dirty checkout,
+production и внешние секреты не менялись.
