@@ -22,3 +22,5 @@
 ## CI99 fixture rate limit
 
 CI99 fccf829: API/web/security/dependency checks SUCCESS; browser failed at support linked booking fixture with registration HTTP429. Fixture helper now respects numeric Retry-After 1..60 seconds with exactly one retry; persistent 429, invalid header and other errors still fail. Four controlled cases PASS; TypeScript/diff PASS. Server limiter unchanged. CI100 on 67ac8bd started before this fixture correction; new exact SHA needs CI.
+
+CI101 again exposed registration429: helper cap60 was smaller than server auth window300. Corrected fixture cap to300, extending test timeout only by the requested wait. Server limiter unchanged. Regression uses actual Retry-After61 (not mocked timer), verifies success plus persistent429/invalid/>300/500 failures: PASS (1m). TypeScript and source secret check passed; exact new CI remains required.

@@ -1,4 +1,4 @@
-import type { APIRequestContext, Page } from "@playwright/test";
+import { test, type APIRequestContext, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import { demoTotp } from "./totp-fixture";
@@ -106,8 +106,10 @@ export async function register(
   if (res.status() === 429) {
     const retryAfter = res.headers()["retry-after"] ?? "";
     const seconds = /^\d+$/.test(retryAfter) ? Number(retryAfter) : NaN;
-    if (Number.isInteger(seconds) && seconds >= 1 && seconds <= 60) {
-      await new Promise((resolve) => setTimeout(resolve, seconds * 1000 + 100));
+    if (Number.isInteger(seconds) && seconds >= 1 && seconds <= 300) {
+      const waitMs = seconds * 1000 + 100;
+      test.setTimeout(test.info().timeout + waitMs);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
       res = await request.post(`${API_BASE}/auth/register`, registrationOptions);
     }
   }
