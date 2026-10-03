@@ -28,7 +28,10 @@ def test_proxy_headers_cover_redirects_errors_api_and_cache_classes():
     assert "unsafe-eval" not in common
     assert "object-src 'none'" in common
     assert "frame-ancestors 'self'" in common
-    assert "https://" not in common  # no credentials or external endpoint embedded in policy
+    # The Telegram Mini App loads Telegram's official bridge script. No other
+    # external origin or credential-bearing URL belongs in the policy.
+    assert common.count("https://") == 1
+    assert "script-src 'self' 'unsafe-inline' https://telegram.org;" in common
 
 
 def test_next_disables_powered_by_and_deploy_checks_database_readiness():
