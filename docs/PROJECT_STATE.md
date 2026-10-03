@@ -618,3 +618,20 @@ Manifest остаётся `manual_block`, PG/staging/production не прове�
 pending-auth/legal/TOTP gates — в
 [TELEGRAM_INITDATA_STAGE_A3A_2026-10-03.md](ops/TELEGRAM_INITDATA_STAGE_A3A_2026-10-03.md).
 Три шкалы остаются **59,00% / 56,00% / 15,00%** (+0,00 п.п.).
+
+## 49. Одноразовый Telegram pending-auth, локальный этап A3b, 03.10.2026
+
+После проверки `AGENTS.md`, `CONTRACT.md`, `DEVELOPMENT_GOAL.md`, реестра
+прогресса и чистоты изолированной ветки добавлены два серверных маршрута:
+подготовка подписанного Mini App proof без сессии и одноразовое завершение.
+Первый вход привязан к точному legal pack и отдельным согласиям; уже связанный
+аккаунт входит без объединения по email, служебная роль требует Booker TOTP.
+Таблица `pending_external_auth` и миграция `a11f23e45f67` записывают только
+хеши proof/token; schema manifest остаётся `manual_block`. Кодовый SHA
+`72934af4eeb7624b12913ca6de6a0cbc20f3e1b7`; полный API **802 PASS,
+9 SKIP**, адресный suite **38 PASS, 1 SKIP**, Ruff/secret/diff PASS. Подробности — в
+[TELEGRAM_PENDING_AUTH_STAGE_A3B_2026-10-03.md](ops/TELEGRAM_PENDING_AUTH_STAGE_A3B_2026-10-03.md).
+
+Staging bot, Mini App/web, явная привязка аккаунта и onboarding по ролям ещё
+не проверены. Полный запуск **59,00%**, MVP **56,00%**, дизайн **15,00%**,
+изменение каждой шкалы +0,00 п.п.
