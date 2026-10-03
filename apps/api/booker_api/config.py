@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     payment_secret_key: str = ""
     lawyer_approval_date: str = ""
     legal_publication_approved: bool = False
+    # Server-only first-factor credential; no Mini App session is issued without it.
+    telegram_bot_token: str = ""
     payment_flow_approval: str = ""
     support_email: str = "hello@bukergo.ru"
     # Owner-approved daily support window; explicit env setting can override it.

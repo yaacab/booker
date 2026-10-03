@@ -27,6 +27,7 @@ from booker_api.routers import (
     saved_searches,
     services,
     shortlists,
+    telegram_auth,
     trust,
     venue_admin,
 )
@@ -59,6 +60,7 @@ app.add_middleware(AttachmentBodyLimitMiddleware)
 app.add_middleware(OpsHttpMiddleware)
 app.include_router(health.router)
 app.include_router(identity.router)
+app.include_router(telegram_auth.router)
 app.include_router(legal.router)
 app.include_router(data_subject.router)
 app.include_router(analytics.router)

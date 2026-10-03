@@ -94,6 +94,26 @@ class UserIdentity(Base):
     user: Mapped[User] = relationship(back_populates="identities")
 
 
+class PendingExternalAuth(Base):
+    """One-use first-factor proof; it never grants Booker permissions."""
+
+    __tablename__ = "pending_external_auth"
+    __table_args__ = (
+        UniqueConstraint("provider", "proof_hash", name="uq_pending_external_auth_proof"),
+        CheckConstraint("provider IN ('telegram','yandex','vk')", name="ck_pending_external_provider"),
+        Index("ix_pending_external_auth_expires_at", "expires_at"),
+    )
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(16), nullable=False)
+    provider_subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    proof_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class SessionToken(Base):
     __tablename__ = "session_tokens"
 

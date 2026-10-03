@@ -4,7 +4,7 @@
   "expected_before_states": [
     "c8d9e0f1a2b3"
   ],
-  "target_head": "a10f12e34f56",
+  "target_head": "a11f23e45f67",
   "revisions": [
     {
       "revision": "ad7ec0cd0ee2",
@@ -618,6 +618,21 @@
         "alter_column",
         "create_check_constraint",
         "execute",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a11f23e45f67",
+      "down_revision": "a10f12e34f56",
+      "file": "a11f23e45f67_pending_external_auth.py",
+      "sha256": "aa6aab807943d0cebb083ad354da7dd5c91eadd80cc14f3422917774ea56e46a",
+      "classification": "manual_block",
+      "reasons": [
+        "get_check_constraints",
+        "get_indexes",
+        "get_pk_constraint",
+        "get_unique_constraints",
         "inspect"
       ],
       "reversible": false
