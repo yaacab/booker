@@ -95,6 +95,8 @@ jobs:
       BOOKER_EMAIL_PROVIDER: disabled
       BOOKER_IN_APP_PROVIDER: dev
       BOOKER_PAYMENT_PROVIDER: stub
+      # Public test fixture matching telegram-miniapp.spec.ts; never a real bot.
+      BOOKER_TELEGRAM_BOT_TOKEN: test-telegram-fixture-token-20261003
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

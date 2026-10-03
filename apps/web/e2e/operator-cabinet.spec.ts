@@ -11,6 +11,8 @@ function proveTestMailboxAndSeedTotp(email: string) {
   const dbPath = databaseUrl.slice("sqlite:///".length);
   execFileSync("../api/.venv/bin/python", ["-c", `
 import sqlite3, sys
+from pathlib import Path
+sys.path.insert(0, str(Path("../api").resolve()))
 db = sqlite3.connect(sys.argv[1])
 try:
     from booker_api.totp_storage import encrypt_totp_secret

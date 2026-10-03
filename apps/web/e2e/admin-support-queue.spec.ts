@@ -74,6 +74,8 @@ test("ordinary user handoff reaches protected operator queue and returns one rep
     const databasePath = process.env.BOOKER_DATABASE_URL.slice("sqlite:///".length);
     execFileSync("../api/.venv/bin/python", ["-c", `
 import sqlite3, sys
+from pathlib import Path
+sys.path.insert(0, str(Path("../api").resolve()))
 from booker_api.totp_storage import encrypt_totp_secret
 with sqlite3.connect(sys.argv[1]) as db:
     db.execute("UPDATE users SET email_verified_at = CURRENT_TIMESTAMP, totp_enabled = 1, totp_secret = ? WHERE email = ?", (encrypt_totp_secret(sys.argv[3]), sys.argv[2]))
