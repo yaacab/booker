@@ -23,3 +23,7 @@
 ## Следующий gate
 
 Завершить CI99; при ошибке исправить адресно. Перед слиянием необходимо фактическое ревью групп, а перед staging — адрес среды, engine/revision, DB+uploads backup/restore и разрешение на развёртывание. Локальный Docker отчёт от 06.09 не доказывает текущую staging-среду.
+
+## Проверка schema subset a06–a11
+
+Прочитаны шесть миграций поддержки/identity. a10 перестраивает users в SQLite, сохраняет SQL триггеров и сравнивает FK violations; downgrade намеренно manual. Тест копии a09→head расширен существующей user_identity ДО перестроения: запись пользователя, session и provider binding должны сохраниться, исходный файл не изменяется, integrity/FK/triggers/indexes проверяются. Адресный тест PASS, Ruff/diff PASS. Это синтетическая SQLite-копия, не approval manual_block и не фактический staging restore. PG и историческая DB неизвестны. Остальной накопленный diff не объявляется проверенным.

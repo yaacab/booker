@@ -44,6 +44,11 @@ def test_optional_credentials_copy_upgrade_preserves_legacy_account_and_guards(t
             "INSERT INTO session_tokens (token,user_id,created_at) "
             "VALUES ('legacy-session','legacy',CURRENT_TIMESTAMP)"
         )
+        db.execute(
+            "INSERT INTO user_identities (id,user_id,provider,provider_subject,link_origin,"
+            "linked_at) VALUES ('legacy-binding','legacy','telegram','legacy-tg',"
+            "'explicit_link',CURRENT_TIMESTAMP)"
+        )
         before_triggers = _triggers(db)
         before_indexes = _named_indexes(db)
     before_bytes = original.read_bytes()
@@ -64,6 +69,10 @@ def test_optional_credentials_copy_upgrade_preserves_legacy_account_and_guards(t
         assert db.execute(
             "SELECT user_id FROM session_tokens WHERE token='legacy-session'"
         ).fetchone() == ("legacy",)
+        assert db.execute(
+            "SELECT user_id,provider,provider_subject,link_origin FROM user_identities "
+            "WHERE id='legacy-binding'"
+        ).fetchone() == ("legacy", "telegram", "legacy-tg", "explicit_link")
         db.execute(
             "INSERT INTO users (id,email,full_name,password_hash,is_platform_admin,"
             "totp_enabled,created_at) VALUES "
