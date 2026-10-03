@@ -31,8 +31,13 @@ def hash_password(password: str) -> str:
     return f"{salt}${digest}"
 
 
-def verify_password(password: str, stored: str) -> bool:
+def verify_password(password: str, stored: str | None) -> bool:
+    """An external-only account has no local password to verify."""
+    if not stored or "$" not in stored:
+        return False
     salt, digest = stored.split("$", 1)
+    if not salt or not digest:
+        return False
     check = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
     return hmac.compare_digest(check, digest)
 

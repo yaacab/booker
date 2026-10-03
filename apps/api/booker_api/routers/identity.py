@@ -147,7 +147,7 @@ def _require_email_proof(user: User) -> None:
 
 
 def _send_email_verification(db: Session, user: User) -> str:
-    if settings.email_provider != "smtp" or not settings.email_smtp_host.strip():
+    if not user.email or settings.email_provider != "smtp" or not settings.email_smtp_host.strip():
         return "unavailable"
     issued_at = now()
     raw = secrets.token_urlsafe(32)
@@ -1252,7 +1252,7 @@ def accept_organization_invitation(
         )
         db.commit()
         raise HTTPException(410, "Приглашение истекло")
-    if user.email.lower() != invitation.email:
+    if not user.email or user.email.lower() != invitation.email:
         raise HTTPException(403, "Приглашение выдано другому пользователю")
     _require_email_proof(user)
     if invitation.invited_user_id and invitation.invited_user_id != user.id:

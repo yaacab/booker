@@ -2,8 +2,16 @@ import hashlib
 from datetime import timedelta
 
 from booker_api.models import PasswordResetToken, SessionToken
-from booker_api.security import now
+from booker_api.security import hash_password, now, verify_password
 from tests.conftest import auth_header, publish_artist, register
+
+
+def test_password_verifier_rejects_accounts_without_local_credentials():
+    password = "known-password"
+    assert verify_password(password, hash_password(password))
+    assert not verify_password(password, None)
+    assert not verify_password(password, "")
+    assert not verify_password(password, "malformed")
 
 
 def test_membership_changes_and_active_org_switch_require_target_org_authority(client):

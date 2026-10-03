@@ -138,6 +138,27 @@ def test_security_notice_outbox_commits_atomically_without_auth_secret(
     assert any(item["id"] == notice_id for item in response.json()["items"])
 
 
+def test_security_notice_without_email_keeps_private_inbox_and_skips_email(
+    client, SessionLocal, monkeypatch,
+):
+    from booker_api.models import EmailOutbox, User, UserNotification
+    from booker_api.notifications.security import queue_security_notice
+
+    account = register(client, "future-external@booker.test")
+    monkeypatch.setattr(settings, "email_provider", "smtp")
+    # Existing schema still requires email; emulate the future optional field
+    # without changing the persisted legacy account in this preparatory slice.
+    external_only = User(id=account["user_id"], email=None)
+    with SessionLocal() as db:
+        notice_id = queue_security_notice(
+            db, recipient=external_only, template="security.totp_enabled",
+            actor_user_id=external_only.id,
+        )
+        db.commit()
+        assert db.get(UserNotification, notice_id).recipient_user_id == external_only.id
+        assert db.query(EmailOutbox).filter_by(template="security.totp_enabled").count() == 0
+
+
 def test_dev_in_app_body_is_private_and_not_persisted_in_audit(client, SessionLocal):
     from booker_api.models import AuditLog
 

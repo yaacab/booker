@@ -33,7 +33,7 @@ def queue_security_notice(
         entity_id=event_id,
     )
     assert notice is not None
-    if settings.email_provider == "smtp":
+    if settings.email_provider == "smtp" and recipient.email:
         subject, body = NOTICE_COPY[template]
         key = hashlib.sha256(
             f"booker-security-notice:{notice.id}:{recipient.id}".encode()
@@ -55,6 +55,6 @@ def queue_security_notice(
         entity_type="user",
         entity_id=recipient.id,
         payload={"template": template, "notice_id": notice.id,
-                 "email_outbox_queued": settings.email_provider == "smtp"},
+                 "email_outbox_queued": settings.email_provider == "smtp" and bool(recipient.email)},
     )
     return notice.id
