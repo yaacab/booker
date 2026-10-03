@@ -75,3 +75,16 @@ def support_response_due_at(
     except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         logger.error("Invalid support SLA schedule: %s", type(exc).__name__)
     return None
+
+
+def support_acceptance_due_at(
+    priority: str, *, started_at: datetime,
+) -> datetime | None:
+    """Owner-approved 15 working minutes to accept an urgent/high ticket.
+
+    Acceptance and first response are separate clocks. Use the approved
+    urgent working calendar, including closures, rather than wall-clock time.
+    """
+    if priority not in {"urgent", "high"}:
+        return None
+    return support_response_due_at("event_day_no_show", 15, started_at=started_at)

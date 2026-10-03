@@ -42,9 +42,9 @@ def _version(path: Path, revision: str, parent: str | None, operation: str) -> N
 def test_real_chain_is_single_head_and_draft_is_blocked():
     versions = ROOT / "apps/api/alembic/versions"
     chain = inventory(versions)
-    assert len(chain) == 51
+    assert len(chain) == 52
     assert chain[9]["revision"] == "c8d9e0f1a2b3"
-    assert chain[-1]["revision"] == "a11f23e45f67"
+    assert chain[-1]["revision"] == "b12f34e56a78"
     assert any(entry["classification"] == "manual_block" for entry in chain[10:])
     draft = json.loads((ROOT / "infra/schema-release-manifest.v1.json").read_text())
     assert draft == draft_manifest(versions, baseline="c8d9e0f1a2b3")
@@ -132,7 +132,7 @@ def test_available_c8_baseline_copy_upgrades_without_touching_original(tmp_path)
     command.upgrade(cfg, "head")
     assert original.read_bytes() == old_bytes
     assert sqlite_state(original) == "c8d9e0f1a2b3"
-    assert sqlite_state(candidate) == "a11f23e45f67"
+    assert sqlite_state(candidate) == "b12f34e56a78"
     with sqlite3.connect(candidate) as db:
         assert db.execute("PRAGMA integrity_check").fetchone() == ("ok",)
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -295,7 +295,7 @@ def test_postgres_c8_to_head_in_disposable_schema():
         command.upgrade(config, "head")
         with engine.connect() as connection:
             assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == (
-                "a11f23e45f67"
+                "b12f34e56a78"
             )
             assert connection.execute(text(
                 "SELECT body FROM support_tickets WHERE id='pg-ticket'"

@@ -9,7 +9,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field, StrictBool
-from sqlalchemy import and_, case, func, update
+from sqlalchemy import and_, case, func, or_, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -70,7 +70,7 @@ from booker_api.support_agent import (
     redact_sensitive_support_text,
 )
 from booker_api.support_escalation import queue_new_ticket_notices
-from booker_api.support_sla import support_response_due_at
+from booker_api.support_sla import support_acceptance_due_at, support_response_due_at
 
 router = APIRouter(tags=["trust"])
 
@@ -521,6 +521,7 @@ def _cas_ticket_status(
             closed_by_user_id=None,
             accepted_by_user_id=None,
             accepted_at=None,
+            acceptance_escalated_at=None,
         )
     changed = db.execute(
         update(SupportTicket)
@@ -1686,7 +1687,8 @@ def admin_list_support_tickets(
     if overdue_only:
         query = query.filter(overdue_condition)
     if escalated_only:
-        query = query.filter(SupportTicket.overdue_escalated_at.is_not(None))
+        query = query.filter(or_(SupportTicket.overdue_escalated_at.is_not(None),
+                                 SupportTicket.acceptance_escalated_at.is_not(None)))
     if priority:
         query = query.filter(SupportTicket.priority == priority)
     if category:
@@ -1740,6 +1742,13 @@ def admin_list_support_tickets(
         item["assigned_to_user_id"] = row.assigned_to_user_id
         item["accepted_by_user_id"] = row.accepted_by_user_id
         item["accepted_at"] = aware(row.accepted_at).isoformat() if row.accepted_at else None
+        acceptance_due = support_acceptance_due_at(
+            row.priority, started_at=row.reopened_at or row.created_at
+        )
+        item["acceptance_due_at"] = acceptance_due.isoformat() if acceptance_due else None
+        item["acceptance_escalated_at"] = (
+            aware(row.acceptance_escalated_at).isoformat() if row.acceptance_escalated_at else None
+        )
         item["has_operator_response"] = row.id in first_response_times
         item["response_overdue"] = bool(
             row.response_due_at
@@ -1799,6 +1808,13 @@ def admin_get_support_ticket(
     result["assigned_to_user_id"] = row.assigned_to_user_id
     result["accepted_by_user_id"] = row.accepted_by_user_id
     result["accepted_at"] = aware(row.accepted_at).isoformat() if row.accepted_at else None
+    acceptance_due = support_acceptance_due_at(
+        row.priority, started_at=row.reopened_at or row.created_at
+    )
+    result["acceptance_due_at"] = acceptance_due.isoformat() if acceptance_due else None
+    result["acceptance_escalated_at"] = (
+        aware(row.acceptance_escalated_at).isoformat() if row.acceptance_escalated_at else None
+    )
     result["overdue_escalated_at"] = (
         aware(row.overdue_escalated_at).isoformat() if row.overdue_escalated_at else None
     )
@@ -1819,6 +1835,7 @@ def admin_get_support_ticket(
         "support.admin.ticket.transferred", "support.admin.ticket.escalated",
         "support.admin.ticket.priority_changed",
         "support.ticket.first_response_overdue",
+        "support.ticket.acceptance_overdue",
     }
     events = db.query(AuditLog).filter(
         AuditLog.entity_type == "support_ticket", AuditLog.entity_id == row.id,

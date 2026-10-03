@@ -280,6 +280,8 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
         <p>Ручной приоритет определяет порядок очереди и не меняет срок первого ответа.</p>
         <p>Назначение: {ticket.assigned_to_user_id === operatorId ? "мне" : ticket.assigned_to_user_id ? "другому сотруднику" : "не назначено"}</p>
         <p>Принятие: {ticket.accepted_at ? `подтверждено ${formatSupportDeadline(ticket.accepted_at)}` : "ожидается"}</p>
+        {ticket.acceptance_due_at && <p>Принять до: {formatSupportDeadline(ticket.acceptance_due_at)} (15 рабочих минут).</p>}
+        {ticket.acceptance_escalated_at && <p role="status">Срок принятия истёк — обращение передано администратору.</p>}
         {ticket.overdue_escalated_at ? <p>Просроченный первый ответ эскалирован администратору: {formatSupportDeadline(ticket.overdue_escalated_at)}</p> : null}
         <section aria-label="Контекст обращения">
           <h4>Контекст обращения</h4>

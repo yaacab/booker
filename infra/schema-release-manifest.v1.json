@@ -4,7 +4,7 @@
   "expected_before_states": [
     "c8d9e0f1a2b3"
   ],
-  "target_head": "a11f23e45f67",
+  "target_head": "b12f34e56a78",
   "revisions": [
     {
       "revision": "ad7ec0cd0ee2",
@@ -633,6 +633,17 @@
         "get_indexes",
         "get_pk_constraint",
         "get_unique_constraints",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "b12f34e56a78",
+      "down_revision": "a11f23e45f67",
+      "file": "b12f34e56a78_support_acceptance_deadline.py",
+      "sha256": "3964cd7ccd0fdd5eeba71655642b921ca5a624ee5f8a7472b400da41295b4859",
+      "classification": "manual_block",
+      "reasons": [
         "inspect"
       ],
       "reversible": false

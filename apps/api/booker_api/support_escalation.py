@@ -11,14 +11,15 @@ import hashlib
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import update
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from booker_api.config import settings
 from booker_api.models import SupportMessage, SupportNotificationTarget, SupportTicket, User
 from booker_api.notifications.inbox import NOTICE_COPY, persist_safe_notice
 from booker_api.notifications.outbox import enqueue_email
-from booker_api.security import audit
+from booker_api.security import audit, aware
+from booker_api.support_sla import support_acceptance_due_at
 
 
 def queue_new_ticket_notices(db: Session, ticket: SupportTicket) -> dict[str, int]:
@@ -162,6 +163,74 @@ def escalate_overdue(db: Session, *, at: datetime, limit: int = 100) -> dict[str
             "email_queued": email_queued, "email_unavailable": email_unavailable}
 
 
+
+def escalate_unaccepted(db: Session, *, at: datetime, limit: int = 100) -> dict[str, int]:
+    """Escalate an urgent ticket once per open cycle, independently of replies."""
+    if at.tzinfo is None or not 1 <= limit <= 500:
+        raise ValueError("Aware time and limit 1..500 required")
+    admins = db.query(User).filter(
+        User.is_platform_admin.is_(True), User.email_verified_at.is_not(None),
+        User.totp_enabled.is_(True),
+    ).order_by(User.id).all()
+    counts = {"escalated": 0, "notices": 0, "email_queued": 0,
+              "no_admin": int(not admins), "calendar_unavailable": 0}
+    if not admins:
+        return counts
+    rows = db.query(SupportTicket).filter(
+        SupportTicket.priority.in_(("urgent", "high")),
+        SupportTicket.accepted_at.is_(None),
+        SupportTicket.acceptance_escalated_at.is_(None),
+        SupportTicket.status.notin_(("closed", "resolved")),
+    ).order_by(func.coalesce(SupportTicket.reopened_at, SupportTicket.created_at),
+               SupportTicket.id).limit(limit).all()
+    for row in rows:
+        due = support_acceptance_due_at(row.priority, started_at=row.reopened_at or row.created_at)
+        if due is None:
+            counts["calendar_unavailable"] += 1
+            continue
+        if due > aware(at):
+            continue
+        ticket_id, version = row.id, row.state_version
+        changed = db.execute(update(SupportTicket).where(
+            SupportTicket.id == ticket_id, SupportTicket.state_version == version,
+            SupportTicket.accepted_at.is_(None),
+            SupportTicket.acceptance_escalated_at.is_(None),
+            SupportTicket.priority.in_(("urgent", "high")),
+            SupportTicket.status.notin_(("closed", "resolved")),
+        ).values(acceptance_escalated_at=at,
+                 assigned_to_user_id=admins[0].id, accepted_by_user_id=None,
+                 state_version=SupportTicket.state_version + 1)).rowcount
+        if changed != 1:
+            db.rollback()
+            continue
+        audit(db, actor_user_id=None, action="support.ticket.acceptance_overdue",
+              entity_type="support_ticket", entity_id=ticket_id,
+              payload={"due_at": due.isoformat(), "state_version": version + 1})
+        # Cycle-specific identity permits a new notice after reopening, with
+        # no duplicate notice on the next scheduler tick.
+        event_id = f"{ticket_id}:{version + 1}"
+        for admin in admins:
+            persist_safe_notice(db, recipient_user_id=admin.id,
+                                template="support.acceptance_overdue",
+                                entity_type="support_acceptance", entity_id=event_id)
+            counts["notices"] += 1
+            target = db.query(SupportNotificationTarget.id).filter_by(
+                recipient_user_id=admin.id, channel="email",
+                escalation_level="administrator", active=True,
+            ).first()
+            if target and admin.email and settings.email_provider == "smtp" and settings.email_smtp_host:
+                subject, body = NOTICE_COPY["support.acceptance_overdue"]
+                enqueue_email(db, idempotency_key=hashlib.sha256(
+                    f"support-acceptance:{event_id}:{admin.id}".encode()).hexdigest(),
+                    recipient_email=admin.email, subject=subject, body=body,
+                    template="support.acceptance_overdue", entity_type="support_ticket",
+                    entity_id=ticket_id)
+                counts["email_queued"] += 1
+        db.commit()
+        counts["escalated"] += 1
+    return counts
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Escalate unanswered Booker support tickets")
     parser.add_argument("--limit", type=int, default=100)
@@ -169,7 +238,9 @@ def main() -> int:
     from booker_api.db import SessionLocal
 
     with SessionLocal() as db:
-        result = escalate_overdue(db, at=datetime.now(timezone.utc), limit=args.limit)
+        at = datetime.now(timezone.utc)
+        result = escalate_overdue(db, at=at, limit=args.limit)
+        result["acceptance"] = escalate_unaccepted(db, at=at, limit=args.limit)
     print(json.dumps(result, sort_keys=True))
     return 0 if not result["no_admin"] else 2
 

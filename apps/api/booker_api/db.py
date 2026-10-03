@@ -420,6 +420,8 @@ def ensure_missing_columns(bind) -> None:
     _add_column_if_missing(
         bind, "support_tickets", "overdue_escalated_at", f"overdue_escalated_at {ts_type}"
     )
+    _add_column_if_missing(bind, "support_tickets", "acceptance_escalated_at",
+                   f"acceptance_escalated_at {ts_type}")
     if dialect == "sqlite" and "support_tickets" in inspect(bind).get_table_names():
         with bind.begin() as conn:
             conn.execute(

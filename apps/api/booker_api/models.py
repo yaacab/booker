@@ -1432,6 +1432,9 @@ class SupportTicket(Base):
     response_due_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
+    acceptance_escalated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     overdue_escalated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

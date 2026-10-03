@@ -19,6 +19,8 @@ export type SupportTicket = {
   assigned_to_user_id?: string | null;
   accepted_by_user_id?: string | null;
   accepted_at?: string | null;
+  acceptance_due_at?: string | null;
+  acceptance_escalated_at?: string | null;
   state_version: number;
   response_due_at?: string | null;
   response_overdue?: boolean;
