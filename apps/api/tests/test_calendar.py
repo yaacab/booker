@@ -78,27 +78,36 @@ def test_search_hides_busy_and_no_calendar(client):
 
 def test_search_date_is_moscow_calendar_day(client):
     owner, artist = _owner_artist(client)
-    client.post(
+    starts_at = (datetime.now(timezone.utc) + timedelta(days=7)).replace(
+        hour=22, minute=0, second=0, microsecond=0,
+    )
+    ends_at = starts_at + timedelta(hours=3)
+    previous_moscow_day = starts_at.date().isoformat()
+    slot_moscow_day = ends_at.date().isoformat()
+    created = client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-10-02T22:00:00+00:00",
-            "ends_at": "2026-10-03T01:00:00+00:00",
+            "starts_at": starts_at.isoformat(),
+            "ends_at": ends_at.isoformat(),
         },
         headers=auth_header(owner["token"]),
     )
+    assert created.status_code == 200, created.text
     publish_artist(client, owner, artist["id"])
-    oct2 = client.get(
+    previous = client.get(
         "/catalog/search",
-        params={"city": "Москва", "category": "cover", "date": "2026-10-02T00:00:00+03:00"},
+        params={"city": "Москва", "category": "cover",
+                "date": f"{previous_moscow_day}T00:00:00+03:00"},
     )
-    oct3 = client.get(
+    current = client.get(
         "/catalog/search",
-        params={"city": "Москва", "category": "cover", "date": "2026-10-03T00:00:00+03:00"},
+        params={"city": "Москва", "category": "cover",
+                "date": f"{slot_moscow_day}T00:00:00+03:00"},
     )
-    assert oct2.json()["items"] == []
-    assert len(oct3.json()["items"]) == 1
+    assert previous.json()["items"] == []
+    assert len(current.json()["items"]) == 1
 
 
 def test_search_includes_venues_with_calendar(client):
