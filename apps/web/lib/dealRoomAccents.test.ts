@@ -60,3 +60,16 @@ test("buildDealRoomAccents surfaces rider for performer", () => {
   const rider = buildDealRoomAccents("performer", sampleRoom).find((a) => a.id === "rider");
   assert.match(rider?.body ?? "", /Райдер DJ/);
 });
+
+test("contract accents describe technical acknowledgement without legal-signature claims", () => {
+  const room = {
+    ...sampleRoom,
+    status: "AwaitingContract",
+    contract: { customer_signed: true, supplier_signed: true },
+  };
+  const obligations = buildDealRoomAccents("performer", room).find((a) => a.id === "obligations");
+  const tasks = buildDealRoomAccents("performer", room).find((a) => a.id === "tasks");
+  assert.match(obligations?.body ?? "", /технически подтверждён/);
+  assert.doesNotMatch(obligations?.body ?? "", /подписан/);
+  assert.match(tasks?.body ?? "", /Технически подтвердить/);
+});

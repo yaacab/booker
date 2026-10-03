@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import { CHIP, categoryLabel } from "@/lib/copy";
 import { formatWhen, money, moscowDate } from "@/lib/format";
@@ -12,7 +12,7 @@ import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeaco
 import { SlotList } from "@/components/SlotList";
 
 type Slot = { id: string; starts_at: string; ends_at: string; status: string };
-type Artist = {
+export type ArtistProfileData = {
   id: string;
   name: string;
   city: string;
@@ -41,10 +41,15 @@ function requirementLabel(req: Requirement): string {
   return req.qty && req.qty > 1 ? `${label} · ${req.qty} чел.` : label;
 }
 
-export function ArtistProfileClient() {
-  const params = useParams<{ id: string }>();
+export function ArtistProfileClient({
+  artistId,
+  initialData,
+}: {
+  artistId: string;
+  initialData: ArtistProfileData;
+}) {
   const router = useRouter();
-  const [data, setData] = useState<Artist | null>(null);
+  const [data] = useState<ArtistProfileData>(initialData);
   const [error, setError] = useState("");
   const [slotId, setSlotId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -64,23 +69,16 @@ export function ArtistProfileClient() {
     setWantedDay(day);
     if (fromEvent) setEventId(fromEvent);
     if (fromReq) setRequirementId(fromReq);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/artists/${params.id}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Не найден"))))
-      .then((json: Artist) => {
-        setData(json);
-        const day = q.get("date");
-        const live = json.slots.filter(
-          (s) => !s.ends_at || new Date(s.ends_at).getTime() >= Date.now()
-        );
-        const fromUrl = live.find((s) => s.id === wanted && s.status === "open");
-        const fromDay = day
-          ? live.find((s) => s.status === "open" && moscowDate(s.starts_at) === day)
-          : undefined;
-        const open = fromUrl || fromDay || live.find((s) => s.status === "open");
-        if (open) setSlotId(open.id);
-      })
-      .catch((err: Error) => setError(err.message));
-  }, [params.id]);
+    const live = initialData.slots.filter(
+      (s) => !s.ends_at || new Date(s.ends_at).getTime() >= Date.now(),
+    );
+    const fromUrl = live.find((s) => s.id === wanted && s.status === "open");
+    const fromDay = day
+      ? live.find((s) => s.status === "open" && moscowDate(s.starts_at) === day)
+      : undefined;
+    const open = fromUrl || fromDay || live.find((s) => s.status === "open");
+    if (open) setSlotId(open.id);
+  }, [initialData]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -132,7 +130,7 @@ export function ArtistProfileClient() {
       const q = new URLSearchParams(window.location.search);
       if (slotId) q.set("slot", slotId);
       const qs = q.toString();
-      router.push(loginHref(`/artists/${params.id}${qs ? `?${qs}` : ""}`));
+      router.push(loginHref(`/artists/${artistId}${qs ? `?${qs}` : ""}`));
       return;
     }
     if (!slotId) {
@@ -140,7 +138,7 @@ export function ArtistProfileClient() {
       return;
     }
     const body: { artist_id: string; slot_id: string; event_id?: string; requirement_id?: string } = {
-      artist_id: params.id,
+      artist_id: artistId,
       slot_id: slotId,
     };
     if (eventId) {
@@ -162,22 +160,6 @@ export function ArtistProfileClient() {
     }
   }
 
-  if (!data) {
-    return (
-      <main>
-        <h1>Профиль</h1>
-        <p>{error || ""}</p>
-        {!error ? (
-          <div className="grid">
-            <div className="skeleton" />
-            <div className="skeleton" />
-            <div className="skeleton" />
-          </div>
-        ) : null}
-      </main>
-    );
-  }
-
   const rider = data.rider || {};
   const selectableRequirements = requirements.filter((req): req is Requirement & { id: string } => Boolean(req.id));
 
@@ -186,6 +168,8 @@ export function ArtistProfileClient() {
       <Suspense fallback={null}>
         <PromoAttributionBeacon kind="artist" profileId={data.id} />
       </Suspense>
+      <header className="profile-overview">
+      <Link className="profile-back" href="/search">← Вернуться в каталог</Link>
       <p className="kicker">Профиль артиста</p>
       <h1>{data.name}</h1>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -198,6 +182,7 @@ export function ArtistProfileClient() {
           Поделиться
         </Link>
       </p>
+      </header>
       <p>{data.facts.note}</p>
       <p className="timeline">
         Ответ обычно: {data.facts.response || "данных пока мало"}. Завершённых сделок: {data.facts.deals ?? 0}.

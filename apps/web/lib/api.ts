@@ -1,5 +1,6 @@
 const TOKEN_KEY = "booker.token";
 const ORG_KEY = "booker.org";
+export const SESSION_CHANGED_EVENT = "booker:session-changed";
 
 export function apiBase(): string {
   if (typeof window !== "undefined") {
@@ -24,16 +25,23 @@ export function getActiveOrg(): string | null {
 
 export function setActiveOrg(id: string | null): void {
   if (typeof window === "undefined") return;
+  if (getActiveOrg() === id) return;
   if (id) localStorage.setItem(ORG_KEY, id);
   else localStorage.removeItem(ORG_KEY);
+  window.dispatchEvent(new Event(SESSION_CHANGED_EVENT));
 }
 
 export function setToken(token: string | null): void {
   if (typeof window === "undefined") return;
+  const previousToken = getToken();
+  const previousOrg = getActiveOrg();
   if (token) localStorage.setItem(TOKEN_KEY, token);
   else {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(ORG_KEY);
+  }
+  if (previousToken !== token || (!token && previousOrg !== null)) {
+    window.dispatchEvent(new Event(SESSION_CHANGED_EVENT));
   }
 }
 
@@ -67,7 +75,23 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   if (!res.ok) {
     const detail = data.detail;
-    const message = typeof detail === "string" ? detail : text || res.statusText;
+    const validationMessages = Array.isArray(detail)
+      ? detail
+          .map((item) => {
+            if (!item || typeof item !== "object") return "";
+            const candidate = item as { msg?: unknown; loc?: unknown };
+            if (typeof candidate.msg !== "string") return "";
+            const location = Array.isArray(candidate.loc)
+              ? candidate.loc.filter((part) => part !== "body").join(" → ")
+              : "";
+            return location ? `${location}: ${candidate.msg}` : candidate.msg;
+          })
+          .filter(Boolean)
+      : [];
+    const message =
+      typeof detail === "string"
+        ? detail
+        : validationMessages.join("; ") || text || res.statusText;
     throw new ApiError(message, res.status);
   }
   return data as T;

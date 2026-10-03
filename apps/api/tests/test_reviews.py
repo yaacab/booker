@@ -43,10 +43,14 @@ def test_review_accepted_when_completed(client):
     items = listed.json()["items"]
     assert len(items) == 1
     assert items[0]["id"] == body["id"]
+    assert "booking_id" not in items[0]
+    assert "author_user_id" not in items[0]
 
     artist_list = client.get(f"/artists/{ctx['artist']['id']}/reviews")
     assert artist_list.status_code == 200
     assert len(artist_list.json()["items"]) == 1
+    assert "booking_id" not in artist_list.json()["items"][0]
+    assert "author_user_id" not in artist_list.json()["items"][0]
 
 
 def test_review_duplicate_rejected(client):
@@ -75,6 +79,29 @@ def test_review_forbidden_for_stranger(client):
         headers=auth_header(stranger["token"]),
     )
     assert res.status_code == 403
+
+
+def test_viewer_cannot_publish_review_for_organization(client, SessionLocal):
+    from booker_api.models import AuditLog, Review
+
+    ctx = _completed_booking(client)
+    viewer = register(client, "viewer-rev@booker.test", "Viewer")
+    added = client.post(
+        f"/orgs/{ctx['cust_org']['id']}/members",
+        json={"user_id": viewer["user_id"], "role": "viewer"},
+        headers=ctx["ch"],
+    )
+    assert added.status_code == 200, added.text
+    with SessionLocal() as db:
+        before = (db.query(Review).count(), db.query(AuditLog).count())
+    denied = client.post(
+        f"/bookings/{ctx['booking_id']}/reviews",
+        json={"rating": 1, "text": "Отзыв наблюдателя"},
+        headers=auth_header(viewer["token"]),
+    )
+    assert denied.status_code == 403, denied.text
+    with SessionLocal() as db:
+        assert (db.query(Review).count(), db.query(AuditLog).count()) == before
 
 
 def test_supplier_can_review_customer_org(client):

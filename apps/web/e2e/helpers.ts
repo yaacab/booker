@@ -1,15 +1,17 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import { demoTotp } from "./totp-fixture";
 
 export const API_BASE = process.env.BOOKER_API_URL ?? "http://127.0.0.1:8000";
 export const DEMO_PASSWORD = "password1";
-const TOKEN_CACHE = path.resolve(__dirname, ".demo-tokens.json");
+const TOKEN_CACHE = process.env.BOOKER_E2E_TOKEN_CACHE ?? path.resolve(__dirname, ".demo-tokens.json");
 
 export const DEMO_ACCOUNTS = {
   customer: "customer@booker.test",
   artist: "artist@booker.test",
   venue: "venue@booker.test",
+  admin: "admin@booker.test",
 } as const;
 
 function authHeader(token: string, orgId?: string): Record<string, string> {
@@ -50,6 +52,23 @@ async function getJson<T>(
   return res.json() as Promise<T>;
 }
 
+async function putJson<T>(
+  request: APIRequestContext,
+  path: string,
+  token: string,
+  data: unknown,
+  orgId?: string,
+): Promise<T> {
+  const res = await request.put(`${API_BASE}${path}`, {
+    headers: { ...authHeader(token, orgId), "Content-Type": "application/json" },
+    data,
+  });
+  if (!res.ok()) {
+    throw new Error(`${path} failed (${res.status()}): ${await res.text()}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function apiHealth(request: APIRequestContext): Promise<boolean> {
   const res = await request.get(`${API_BASE}/health`);
   return res.ok();
@@ -60,6 +79,12 @@ export async function register(
   email: string,
   name: string,
 ): Promise<{ token: string; user_id: string }> {
+  const packResponse = await request.get(`${API_BASE}/legal/pack`);
+  if (!packResponse.ok()) throw new Error(`legal pack failed: ${packResponse.status()}`);
+  const pack = await packResponse.json() as {
+    acceptance_effect: string;
+    documents: Array<{ key: string; version: string; content_hash: string; required: boolean }>;
+  };
   const res = await request.post(`${API_BASE}/auth/register`, {
     headers: { "Content-Type": "application/json" },
     data: {
@@ -69,6 +94,11 @@ export async function register(
       phone: "+79000000000",
       accept_offer: true,
       accept_privacy: true,
+      accept_processing: true,
+      accepted_documents: pack.documents.filter((doc) => doc.required).map(
+        ({ key, version, content_hash }) => ({ key, version, content_hash }),
+      ),
+      draft_test_acknowledgement: pack.acceptance_effect === "test_acknowledgement",
     },
   });
   if (!res.ok()) {
@@ -78,58 +108,92 @@ export async function register(
 }
 
 export type RequestOfferSeed = {
+  customerToken: string;
+  customerOrgId: string;
   ownerToken: string;
   artistOrgId: string;
+  requestId: string;
   eventTitle: string;
 };
 
 const EVENT_TITLE = "E2E Корпоратив";
 
+async function demoArtist(
+  request: APIRequestContext,
+  viewerToken: string,
+): Promise<{ owner: AuthSession; organizationId: string; artistId: string }> {
+  const owner = await login(request, DEMO_ACCOUNTS.artist);
+  const ownerMe = await fetchMe(request, owner.token);
+  const organization = ownerMe.organizations.find((item) => item.kind === "artist");
+  if (!organization) throw new Error("Demo artist organization is missing — run make seed");
+  if (owner.artist_id) {
+    return { owner, organizationId: organization.id, artistId: owner.artist_id };
+  }
+  const catalog = await getJson<{ items: { id: string; name: string }[] }>(
+    request,
+    "/catalog/search?city=Москва&category=dj",
+    viewerToken,
+  );
+  const artist = catalog.items.find((item) => item.name === "DJ Nova");
+  if (!artist) throw new Error("DJ Nova is not published — run make seed");
+  return { owner, organizationId: organization.id, artistId: artist.id };
+}
+
 /** Customer org + artist org, event, request — без оффера (для UI path). */
 export async function seedRequestAwaitingOffer(request: APIRequestContext): Promise<RequestOfferSeed> {
-  const suffix = Date.now();
+  const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+  const eventTitle = `${EVENT_TITLE} ${suffix}`;
   const customer = await register(request, `e2e-c-${suffix}@booker.test`, "E2E Клиент");
-  const owner = await register(request, `e2e-a-${suffix}@booker.test`, "E2E Артист");
 
   const custOrg = await postJson<{ id: string }>(request, "/orgs", customer.token, {
     name: "E2E Заказчик",
     kind: "customer",
   });
-  const artistOrg = await postJson<{ id: string }>(request, "/orgs", owner.token, {
-    name: "E2E Шоу",
-    kind: "artist",
-  });
-  const artist = await postJson<{ id: string }>(request, "/artists", owner.token, {
-    organization_id: artistOrg.id,
-    name: "E2E DJ",
-    category: "dj",
-  });
-  await postJson(request, `/artists/${artist.id}/tariffs`, owner.token, {
-    title: "Сет",
-    honorarium_rub: 80000,
-  });
-  await postJson(request, "/slots", owner.token, {
-    resource_type: "artist",
-    resource_id: artist.id,
-    starts_at: "2026-09-15T18:00:00+00:00",
-    ends_at: "2026-09-15T22:00:00+00:00",
-  });
+  const artist = await demoArtist(request, customer.token);
+  let startsAt = new Date(Date.now() + (35 + Math.floor(Math.random() * 35)) * 86_400_000);
+  startsAt.setUTCHours(10 + Math.floor(Math.random() * 10), Math.floor(Math.random() * 4) * 15, 0, 0);
+  let endsAt = new Date(startsAt.getTime() + 4 * 3_600_000);
+  let slotCreated = false;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const response = await request.post(`${API_BASE}/slots`, {
+      headers: { ...authHeader(artist.owner.token, artist.organizationId), "Content-Type": "application/json" },
+      data: {
+        resource_type: "artist",
+        resource_id: artist.artistId,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+      },
+    });
+    if (response.ok()) {
+      slotCreated = true;
+      break;
+    }
+    if (response.status() !== 409) {
+      throw new Error(`/slots failed (${response.status()}): ${await response.text()}`);
+    }
+    startsAt = new Date(startsAt.getTime() + 2 * 86_400_000);
+    endsAt = new Date(startsAt.getTime() + 4 * 3_600_000);
+  }
+  if (!slotCreated) throw new Error("Не удалось подобрать свободный E2E-слот за 20 попыток");
   const event = await postJson<{ id: string }>(request, "/events", customer.token, {
     organization_id: custOrg.id,
-    title: EVENT_TITLE,
-    event_date: "2026-09-15T18:00:00+00:00",
+    title: eventTitle,
+    event_date: startsAt.toISOString(),
     guest_count: 50,
     budget_rub: 150000,
   });
-  await postJson(request, `/events/${event.id}/requests`, customer.token, {
+  const req = await postJson<{ id: string }>(request, `/events/${event.id}/requests`, customer.token, {
     resource_type: "artist",
-    resource_id: artist.id,
+    resource_id: artist.artistId,
   });
 
   return {
-    ownerToken: owner.token,
-    artistOrgId: artistOrg.id,
-    eventTitle: EVENT_TITLE,
+    customerToken: customer.token,
+    customerOrgId: custOrg.id,
+    ownerToken: artist.owner.token,
+    artistOrgId: artist.organizationId,
+    requestId: req.id,
+    eventTitle,
   };
 }
 
@@ -155,54 +219,59 @@ export async function seedNegotiation(
   opts?: { honorariumRub?: number; terms?: string; slotStartsAt?: string; slotEndsAt?: string },
 ): Promise<NegotiationSeed> {
   const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const startsAt = opts?.slotStartsAt ?? "2026-10-12T18:00:00+00:00";
-  const endsAt = opts?.slotEndsAt ?? "2026-10-12T22:00:00+00:00";
+  let startsAt = new Date(opts?.slotStartsAt ?? "2026-10-12T18:00:00+00:00");
+  let endsAt = new Date(opts?.slotEndsAt ?? "2026-10-12T22:00:00+00:00");
   const honorariumRub = opts?.honorariumRub ?? 100_000;
   const terms = opts?.terms ?? "E2E: 2 часа сет";
   const eventTitle = `E2E Deal ${suffix}`;
 
   const customer = await register(request, `e2e-deal-c-${suffix}@booker.test`, "E2E Deal Клиент");
-  const owner = await register(request, `e2e-deal-a-${suffix}@booker.test`, "E2E Deal Артист");
 
   const custOrg = await postJson<{ id: string }>(request, "/orgs", customer.token, {
     name: "E2E Deal Заказчик",
     kind: "customer",
   });
-  const artistOrg = await postJson<{ id: string }>(request, "/orgs", owner.token, {
-    name: "E2E Deal Шоу",
-    kind: "artist",
-  });
-  const artist = await postJson<{ id: string }>(request, "/artists", owner.token, {
-    organization_id: artistOrg.id,
-    name: `E2E Deal DJ ${suffix}`,
-    category: "dj",
-  });
-  await postJson(request, `/artists/${artist.id}/tariffs`, owner.token, {
-    title: "Сет",
-    honorarium_rub: honorariumRub,
-  });
-  const slot = await postJson<{ id: string }>(request, "/slots", owner.token, {
-    resource_type: "artist",
-    resource_id: artist.id,
-    starts_at: startsAt,
-    ends_at: endsAt,
-  });
+  const artist = await demoArtist(request, customer.token);
+  let slot: { id: string } | null = null;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const response = await request.post(`${API_BASE}/slots`, {
+      headers: { ...authHeader(artist.owner.token, artist.organizationId), "Content-Type": "application/json" },
+      data: {
+        resource_type: "artist",
+        resource_id: artist.artistId,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+      },
+    });
+    if (response.ok()) {
+      slot = (await response.json()) as { id: string };
+      break;
+    }
+    if (response.status() !== 409) {
+      throw new Error(`/slots failed (${response.status()}): ${await response.text()}`);
+    }
+    startsAt = new Date(startsAt.getTime() + 2 * 86_400_000);
+    endsAt = new Date(endsAt.getTime() + 2 * 86_400_000);
+  }
+  if (!slot) throw new Error("Не удалось подобрать свободный E2E-слот за 20 попыток");
+  const startsAtIso = startsAt.toISOString();
+  const endsAtIso = endsAt.toISOString();
   const event = await postJson<{ id: string }>(request, "/events", customer.token, {
     organization_id: custOrg.id,
     title: eventTitle,
-    event_date: startsAt,
+    event_date: startsAtIso,
     guest_count: 80,
     budget_rub: 200_000,
   });
   const req = await postJson<{ id: string }>(request, `/events/${event.id}/requests`, customer.token, {
     resource_type: "artist",
-    resource_id: artist.id,
+    resource_id: artist.artistId,
   });
   const offer = await postJson<{
     id: string;
     booking_id: string;
     version: { id: string; quote_id: string; honorarium_rub: number; terms?: string };
-  }>(request, `/requests/${req.id}/offers`, owner.token, {
+  }>(request, `/requests/${req.id}/offers`, artist.owner.token, {
     honorarium_rub: honorariumRub,
     slot_id: slot.id,
     terms,
@@ -210,8 +279,8 @@ export async function seedNegotiation(
 
   return {
     customer: { ...customer, orgId: custOrg.id },
-    owner: { ...owner, orgId: artistOrg.id },
-    artistId: artist.id,
+    owner: { ...artist.owner, orgId: artist.organizationId },
+    artistId: artist.artistId,
     slotId: slot.id,
     requestId: req.id,
     offerId: offer.id,
@@ -220,8 +289,8 @@ export async function seedNegotiation(
     honorariumRub: offer.version.honorarium_rub,
     terms,
     eventTitle,
-    startsAt,
-    endsAt,
+    startsAt: startsAtIso,
+    endsAt: endsAtIso,
   };
 }
 
@@ -243,8 +312,8 @@ export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<
     slotEndsAt: endsAt,
   });
 
-  await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: "supplier" }, ctx.owner.orgId);
-  await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.customer.token, { side: "customer" }, ctx.customer.orgId);
+  await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: "supplier", quote_id: ctx.quoteId }, ctx.owner.orgId);
+  await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.customer.token, { side: "customer", quote_id: ctx.quoteId }, ctx.customer.orgId);
 
   const customer2 = await register(request, `e2e-deal-c2-${suffix}@booker.test`, "E2E Deal Клиент2");
   await postJson(
@@ -257,7 +326,7 @@ export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<
   const event2 = await postJson<{ id: string }>(request, "/events", customer2.token, {
     organization_id: ctx.customer.orgId,
     title: `E2E Deal Race B ${suffix}`,
-    event_date: startsAt,
+    event_date: ctx.startsAt,
     guest_count: 60,
     budget_rub: 150_000,
   }, ctx.customer.orgId);
@@ -268,15 +337,15 @@ export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<
     { resource_type: "artist", resource_id: ctx.artistId },
     ctx.customer.orgId,
   );
-  const offer2 = await postJson<{ id: string; booking_id: string }>(
+  const offer2 = await postJson<{ id: string; booking_id: string; version: { quote_id: string } }>(
     request,
     `/requests/${req2.id}/offers`,
     ctx.owner.token,
     { honorarium_rub: 95_000, slot_id: ctx.slotId, terms: "E2E race B" },
     ctx.owner.orgId,
   );
-  await postJson(request, `/offers/${offer2.id}/ack`, ctx.owner.token, { side: "supplier" }, ctx.owner.orgId);
-  await postJson(request, `/offers/${offer2.id}/ack`, customer2.token, { side: "customer" }, ctx.customer.orgId);
+  await postJson(request, `/offers/${offer2.id}/ack`, ctx.owner.token, { side: "supplier", quote_id: offer2.version.quote_id }, ctx.owner.orgId);
+  await postJson(request, `/offers/${offer2.id}/ack`, customer2.token, { side: "customer", quote_id: offer2.version.quote_id }, ctx.customer.orgId);
 
   return {
     ...ctx,
@@ -287,16 +356,24 @@ export async function seedSameSlotHoldRace(request: APIRequestContext): Promise<
 }
 
 export async function injectSession(page: Page, token: string, orgId: string): Promise<void> {
-  await page.addInitScript(
+  // Записываем текущую сессию один раз. Повторные init scripts на одной странице
+  // конкурируют при навигации и могут вернуть предыдущую роль или отозванный токен.
+  const origin = new URL(process.env.BOOKER_E2E_WEB_URL ?? "http://127.0.0.1:3000").origin;
+  if (!page.url().startsWith(`${origin}/`)) {
+    await page.goto(`${origin}/login`, { waitUntil: "domcontentloaded" });
+  }
+  await page.evaluate(
     ({ token, orgId }) => {
       localStorage.setItem("booker.token", token);
       localStorage.setItem("booker.org", orgId);
+      localStorage.removeItem("booker.admin");
+      window.dispatchEvent(new Event("storage"));
     },
     { token, orgId },
   );
 }
 
-export type AuthSession = { token: string; user_id: string };
+export type AuthSession = { token: string; user_id: string; artist_id?: string };
 
 export type MeOrg = {
   id: string;
@@ -309,11 +386,23 @@ export type MeOrg = {
 export async function login(request: APIRequestContext, email: string): Promise<AuthSession> {
   if (fs.existsSync(TOKEN_CACHE)) {
     const cached = JSON.parse(fs.readFileSync(TOKEN_CACHE, "utf8")) as Record<string, AuthSession>;
-    if (cached[email]?.token) return cached[email];
+    if (cached[email]?.token) {
+      const session = await request.get(`${API_BASE}/me`, {
+        headers: { Authorization: `Bearer ${cached[email].token}` },
+      });
+      if (session.ok()) return cached[email];
+      if (session.status() !== 401) {
+        throw new Error(`cached session validation failed (${session.status()})`);
+      }
+    }
   }
   for (let attempt = 0; attempt < 5; attempt++) {
     const res = await request.post(`${API_BASE}/auth/login`, {
-      data: { email, password: DEMO_PASSWORD },
+      data: {
+        email,
+        password: DEMO_PASSWORD,
+        ...(email === DEMO_ACCOUNTS.admin ? { totp: demoTotp() } : {}),
+      },
     });
     if (res.status() === 429 && attempt < 4) {
       await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
@@ -333,6 +422,65 @@ export async function fetchMe(
   orgId?: string,
 ): Promise<{ email: string; organizations: MeOrg[] }> {
   return getJson(request, "/me", token, orgId);
+}
+
+async function approveAndPublishArtist(
+  request: APIRequestContext,
+  ownerToken: string,
+  organizationId: string,
+  artistId: string,
+): Promise<void> {
+  const admin = await login(request, DEMO_ACCOUNTS.admin);
+  await postJson(request, "/admin/verifications", admin.token, {
+    target_type: "artist",
+    target_id: artistId,
+    approve: true,
+    notes: "E2E fixture",
+  });
+  await putJson(request, `/artists/${artistId}/publication-evidence`, ownerToken, {
+    media_url: "/design/puzzle-dj.png",
+    media_source_url: "/design/puzzle-dj.png",
+    media_rights_status: "owned",
+    rights_attested: true,
+    calendar_confirmed_through: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+  }, organizationId);
+  await putJson(request, `/artists/${artistId}/publication`, ownerToken, {
+    enabled: true,
+    state_version: 0,
+  }, organizationId);
+}
+
+async function approveAndPublishVenue(
+  request: APIRequestContext,
+  ownerToken: string,
+  organizationId: string,
+  venueId: string,
+): Promise<void> {
+  const admin = await login(request, DEMO_ACCOUNTS.admin);
+  await postJson(request, "/admin/verifications", admin.token, {
+    target_type: "venue",
+    target_id: venueId,
+    approve: true,
+    notes: "E2E fixture",
+  });
+  await postJson(request, `/venues/${venueId}/tariffs`, ownerToken, {
+    title: "E2E аренда",
+    honorarium_rub: 120_000,
+  }, organizationId);
+  await putJson(request, `/venues/${venueId}/photos`, ownerToken, {
+    photo_url: "/design/puzzle-venue.png",
+    photo_source_url: "/design/puzzle-venue.png",
+    photo_rights_status: "owned",
+    rights_attested: true,
+    sort_order: 0,
+  }, organizationId);
+  await putJson(request, `/venues/${venueId}/publication-evidence`, ownerToken, {
+    calendar_confirmed_through: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+  }, organizationId);
+  await putJson(request, `/venues/${venueId}/publication`, ownerToken, {
+    enabled: true,
+    state_version: 0,
+  }, organizationId);
 }
 
 export type CrossRoleSeed = {
@@ -578,6 +726,7 @@ export async function seedOrgSwitchWorkspace(request: APIRequestContext): Promis
     },
     artistOrg.id,
   );
+  await approveAndPublishArtist(request, user.token, artistOrg.id, artist.id);
 
   const venue = await postJson<{ id: string; hall_id: string }>(
     request,
@@ -603,6 +752,7 @@ export async function seedOrgSwitchWorkspace(request: APIRequestContext): Promis
     },
     venueOrg.id,
   );
+  await approveAndPublishVenue(request, user.token, venueOrg.id, venue.id);
 
   const peerOrg = await postJson<{ id: string }>(request, "/orgs", peer.token, {
     name: `E15 Peer Cust ${suffix}`,

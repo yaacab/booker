@@ -1,7 +1,7 @@
 /* Role workspaces: visual layer only, no booking or permission semantics. */
-.cabinet-v2.cabinet-customer { --cabinet-accent: #86d7cb; --cabinet-accent-soft: #162e2c; }
-.cabinet-v2.cabinet-performer { --cabinet-accent: #a99aee; --cabinet-accent-soft: #26203a; }
-.cabinet-v2.cabinet-venue { --cabinet-accent: #90c6ff; --cabinet-accent-soft: #192b40; }
+.cabinet-v2.cabinet-customer { --cabinet-accent: #426225; --cabinet-accent-soft: #e4edcf; }
+.cabinet-v2.cabinet-performer { --cabinet-accent: #426225; --cabinet-accent-soft: #e4edcf; }
+.cabinet-v2.cabinet-venue { --cabinet-accent: #426225; --cabinet-accent-soft: #e4edcf; }
 
 .cabinet-v2 .cabinet-hero {
   background: var(--surface);
@@ -22,7 +22,7 @@
 .cabinet-v2 .cabinet-identity-mail { overflow-wrap: anywhere; max-width: 100%; }
 .cabinet-v2 .cabinet-hero-actions { align-self: center; }
 .cabinet-v2 .cabinet-hero-actions .btn:not(.secondary) {
-  color: #10151e;
+  color: #ffffff;
   background: var(--cabinet-accent);
   border-color: var(--cabinet-accent);
 }
@@ -72,8 +72,8 @@
 .cabinet-v2 :is(input, select, textarea) { min-width: 0; max-width: 100%; }
 .cabinet-v2 .cabinet-alert {
   color: var(--danger);
-  background: #321d2a;
-  border-color: #734455;
+  background: #f9e7e9;
+  border-color: #d3a1a9;
   line-height: 1.65;
 }
 .cabinet-v2 .cabinet-alert a { color: inherit; text-decoration: underline; }
@@ -81,13 +81,13 @@
 
 /* Semantic status colors must stay legible on dark surfaces. */
 :is(.cabinet-v2, .deal-shell, .deal-head, .deal-accent-grid, .deal-summary) .chip.ok {
-  color: #94e6c3; background: #17342c; border-color: #37664f;
+  color: #226443; background: #e0f0e3; border-color: #90b79c;
 }
 :is(.cabinet-v2, .deal-shell, .deal-head, .deal-accent-grid, .deal-summary) .chip.wait {
-  color: #f0d39b; background: #352d1c; border-color: #72613b;
+  color: #725309; background: #faf0d3; border-color: #c2a76b;
 }
 :is(.cabinet-v2, .deal-shell, .deal-head, .deal-accent-grid, .deal-summary) .chip.bad {
-  color: #ffafbe; background: #351e29; border-color: #784754;
+  color: #962c41; background: #f9e7e9; border-color: #d3a1a9;
 }
 :is(.cabinet-v2, .deal-shell) :is(a, button, input, select, textarea):focus-visible {
   outline: 2px solid var(--cabinet-accent, #b9a9ff);

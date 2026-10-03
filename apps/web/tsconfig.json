@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -13,9 +17,35 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "**/*.test.ts"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".next-e2e-NQ0bn0xE/types/**/*.ts",
+    ".next-e2e-operator-8970/types/**/*.ts",
+    ".next-e2e-s05-20261002-2/types/**/*.ts",
+    ".next-e2e-s05-20261002/types/**/*.ts",
+    ".next-e2e-s06-20261002/types/**/*.ts",
+    ".next-e2e-s06b/types/**/*.ts",
+    ".next-preview-check/types/**/*.ts",
+    ".next-preview-e2e/types/**/*.ts",
+    ".next-preview-session-build/types/**/*.ts",
+    ".next-preview-session-e2e/types/**/*.ts",
+    ".next/types/**/*.ts",
+    "next-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts"
+  ]
 }

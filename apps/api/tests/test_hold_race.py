@@ -41,12 +41,12 @@ def setup_same_slot_negotiations(client, suffix: str):
     data = offer2.json()
     client.post(
         f"/offers/{data['id']}/ack",
-        json={"side": "supplier"},
+        json={"side": "supplier", "quote_id": data["version"]["quote_id"]},
         headers=auth_header(ctx["owner"]["token"]),
     )
     ack = client.post(
         f"/offers/{data['id']}/ack",
-        json={"side": "customer"},
+        json={"side": "customer", "quote_id": data["version"]["quote_id"]},
         headers=auth_header(customer2["token"]),
     )
     assert ack.status_code == 200
