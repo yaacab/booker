@@ -15,17 +15,21 @@ from booker_api.auth_providers.telegram import InvalidTelegramInitData, verify_i
 from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.legal_registry import REQUIRED_KEYS
-from booker_api.models import ConsentEvent, PendingExternalAuth, User, UserIdentity
+from booker_api.models import ConsentEvent, PendingExternalAuth, SessionToken, User, UserIdentity
+from booker_api.notifications.security import queue_security_notice
 from booker_api.rate_limit import auth_limiter, client_key, otp_limiter
 from booker_api.routers.legal import current_pack
 from booker_api.schemas import AcceptedDocumentIn
 from booker_api.security import (
+    AuthContext,
     audit,
+    auth_context,
     aware,
     ensure_admin_2fa_configured,
     issue_token,
     mark_admin_2fa_verified,
     now,
+    verify_password,
 )
 from booker_api.totp import verify_totp_code
 
@@ -49,6 +53,16 @@ class TelegramCompleteIn(BaseModel):
     draft_test_acknowledgement: StrictBool = False
 
 
+class TelegramIdentityChangeIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    password: str = Field(min_length=1, max_length=1024)
+    totp: str | None = Field(default=None, min_length=6, max_length=6)
+
+
+class TelegramLinkIn(TelegramIdentityChangeIn):
+    pending_token: str = Field(min_length=64, max_length=64)
+
+
 def _pending_token(proof_hash: str) -> str:
     # Stable for a retry of the same signed initData, without storing a bearer.
     return hmac.new(
@@ -64,6 +78,117 @@ def _token_hash(raw: str) -> str:
 def _serialize_sqlite(db: Session) -> None:
     if db.get_bind().dialect.name == "sqlite":
         db.execute(text("BEGIN IMMEDIATE"))
+
+
+def _fresh_account_for_change(
+    db: Session, user_id: str, session_key: str, body: TelegramIdentityChangeIn,
+) -> User:
+    user = db.query(User).filter_by(id=user_id).with_for_update().one_or_none()
+    session = db.query(SessionToken).filter_by(token=session_key, user_id=user_id).with_for_update().one_or_none()
+    if not user or not session or (session.expires_at and aware(session.expires_at) <= now()):
+        raise HTTPException(401, "Сессия недействительна")
+    if not user.email or not verify_password(body.password, user.password_hash):
+        raise HTTPException(403, "Для изменения способов входа подтвердите действующий пароль")
+    if user.is_platform_admin or user.is_support_operator:
+        ensure_admin_2fa_configured(user)
+        otp_limiter.check(f"otp:user:{user.id}")
+        if not verify_totp_code(user.totp_secret, body.totp):
+            raise HTTPException(403, "Нужен код второго фактора")
+    return user
+
+
+@router.get("/me/identities")
+def my_identities(ctx: AuthContext = Depends(auth_context), db: Session = Depends(get_db)):
+    rows = db.query(UserIdentity).filter_by(user_id=ctx.user.id).order_by(UserIdentity.provider).all()
+    return {
+        "has_password_login": bool(ctx.user.email and ctx.user.password_hash),
+        "identities": [
+            {"provider": row.provider, "linked_at": row.linked_at,
+             "last_login_at": row.last_login_at}
+            for row in rows
+        ],
+    }
+
+
+@router.post("/me/identities/telegram/link")
+def link_telegram(
+    body: TelegramLinkIn, request: Request,
+    ctx: AuthContext = Depends(auth_context), db: Session = Depends(get_db),
+):
+    auth_limiter.check(client_key(request, "telegram-link"))
+    if not settings.telegram_bot_token:
+        raise HTTPException(503, "Вход через Telegram не настроен")
+    user_id, session_key = ctx.user.id, ctx.session.token
+    otp_limiter.check(f"identity-change:user:{user_id}")
+    db.rollback()
+    _serialize_sqlite(db)
+    pending = (db.query(PendingExternalAuth)
+               .filter_by(token_hash=_token_hash(body.pending_token), provider="telegram")
+               .with_for_update().one_or_none())
+    if not pending or pending.consumed_at or aware(pending.expires_at) <= now():
+        raise HTTPException(409, "Подтверждение Telegram недействительно")
+    linked = (db.query(UserIdentity)
+              .filter_by(provider="telegram", provider_subject=pending.provider_subject)
+              .with_for_update().one_or_none())
+    if linked:
+        raise HTTPException(409, "Telegram уже привязан к аккаунту")
+    existing = (db.query(UserIdentity)
+                .filter_by(user_id=user_id, provider="telegram")
+                .with_for_update().one_or_none())
+    if existing:
+        raise HTTPException(409, "У аккаунта уже есть привязка Telegram")
+    user = _fresh_account_for_change(db, user_id, session_key, body)
+    db.add(UserIdentity(
+        user_id=user.id, provider="telegram", provider_subject=pending.provider_subject,
+        link_origin="explicit_link", last_login_at=None,
+    ))
+    pending.consumed_at = now()
+    audit(db, actor_user_id=user.id, action="auth.identity_linked",
+          entity_type="user", entity_id=user.id,
+          payload={"provider": "telegram", "subject_hash": hashlib.sha256(
+              pending.provider_subject.encode()
+          ).hexdigest()})
+    queue_security_notice(db, recipient=user, template="security.identity_linked",
+                          actor_user_id=user.id)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "Привязка Telegram уже существует") from exc
+    return {"linked": True, "provider": "telegram"}
+
+
+@router.post("/me/identities/telegram/unlink")
+def unlink_telegram(
+    body: TelegramIdentityChangeIn, request: Request,
+    ctx: AuthContext = Depends(auth_context), db: Session = Depends(get_db),
+):
+    auth_limiter.check(client_key(request, "telegram-unlink"))
+    user_id, session_key = ctx.user.id, ctx.session.token
+    otp_limiter.check(f"identity-change:user:{user_id}")
+    db.rollback()
+    _serialize_sqlite(db)
+    identity = (db.query(UserIdentity)
+                .filter_by(user_id=user_id, provider="telegram")
+                .with_for_update().one_or_none())
+    if not identity:
+        raise HTTPException(404, "Привязка Telegram не найдена")
+    user = _fresh_account_for_change(db, user_id, session_key, body)
+    # This is the only external provider with a working sign-in flow today.
+    # _fresh_account_for_change proved that email + password login remains.
+    subject_hash = hashlib.sha256(identity.provider_subject.encode()).hexdigest()
+    db.delete(identity)
+    db.execute(delete(SessionToken).where(
+        SessionToken.user_id == user.id, SessionToken.token != session_key
+    ))
+    audit(db, actor_user_id=user.id, action="auth.identity_unlinked",
+          entity_type="user", entity_id=user.id,
+          payload={"provider": "telegram", "subject_hash": subject_hash,
+                   "other_sessions_revoked": True})
+    queue_security_notice(db, recipient=user, template="security.identity_unlinked",
+                          actor_user_id=user.id)
+    db.commit()
+    return {"unlinked": True, "provider": "telegram"}
 
 
 @router.post("/auth/telegram/prepare")

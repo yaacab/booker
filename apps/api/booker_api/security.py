@@ -79,6 +79,9 @@ def _support_operator_route_allowed(request: Request) -> bool:
     path = request.url.path
     method = request.method
     if (path, method) in {("/me", "GET"), ("/notifications", "GET"),
+                          ("/me/identities", "GET"),
+                          ("/me/identities/telegram/link", "POST"),
+                          ("/me/identities/telegram/unlink", "POST"),
                           ("/auth/logout", "POST"),
                           ("/auth/admin-totp/recovery-codes/count", "GET"),
                           ("/admin/support/tickets", "GET"),
