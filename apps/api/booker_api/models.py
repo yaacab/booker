@@ -33,12 +33,18 @@ def new_id() -> str:
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "email IS NOT NULL OR email_verified_at IS NULL",
+            name="ck_users_email_proof_has_address",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     full_name: Mapped[str] = mapped_column(String(255))
-    password_hash: Mapped[str] = mapped_column(String(255))
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_support_operator: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)

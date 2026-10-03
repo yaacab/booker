@@ -12,7 +12,7 @@ import StaffRecoverySecurity from "@/components/StaffRecoverySecurity";
 type Org = { id: string; name: string; kind: string; role: string };
 
 type Me = {
-  email: string;
+  email: string | null;
   full_name: string;
   is_platform_admin?: boolean;
   is_support_operator?: boolean;
@@ -102,10 +102,10 @@ export default function ProfilePage() {
       <main>
         <p className="kicker">Поддержка Букера</p>
         <h1>{me.full_name}</h1>
-        <p className="timeline">{me.email}</p>
+        <p className="timeline">{me.email || "Email не добавлен"}</p>
         <p>Служебный аккаунт доступен для обращений поддержки.</p>
         <p><Link className="btn" href="/operator">Кабинет оператора поддержки</Link></p>
-        <StaffRecoverySecurity email={me.email} />
+        {me.email ? <StaffRecoverySecurity email={me.email} /> : null}
         <button type="button" className="secondary" onClick={() => {
           setToken(null);
           localStorage.removeItem("booker.admin");
@@ -119,7 +119,7 @@ export default function ProfilePage() {
     <main>
       <p className="kicker">Это вы</p>
       <h1>{me.full_name}</h1>
-      <p className="timeline">{me.email}</p>
+      <p className="timeline">{me.email || "Email не добавлен"}</p>
       {orgs.length > 1 ? (
         <label>
           Активное пространство
@@ -188,7 +188,7 @@ export default function ProfilePage() {
       {me.is_support_operator ? (
         <p><Link href="/operator">Кабинет оператора поддержки</Link></p>
       ) : null}
-      {me.is_platform_admin ? <StaffRecoverySecurity email={me.email} /> : null}
+      {me.is_platform_admin && me.email ? <StaffRecoverySecurity email={me.email} /> : null}
       <DataSubjectRequests />
       <AccountConsents />
       <p style={{ display: "flex", gap: 8 }}>

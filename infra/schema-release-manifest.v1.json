@@ -4,7 +4,7 @@
   "expected_before_states": [
     "c8d9e0f1a2b3"
   ],
-  "target_head": "a09f01e23f45",
+  "target_head": "a10f12e34f56",
   "revisions": [
     {
       "revision": "ad7ec0cd0ee2",
@@ -604,6 +604,20 @@
         "get_indexes",
         "get_pk_constraint",
         "get_unique_constraints",
+        "inspect"
+      ],
+      "reversible": false
+    },
+    {
+      "revision": "a10f12e34f56",
+      "down_revision": "a09f01e23f45",
+      "file": "a10f12e34f56_optional_user_credentials.py",
+      "sha256": "4706cecbab17c1f8c383efe968a4fe7d499139e3f946a5671bd4ce19ed2e39de",
+      "classification": "manual_block",
+      "reasons": [
+        "alter_column",
+        "create_check_constraint",
+        "execute",
         "inspect"
       ],
       "reversible": false

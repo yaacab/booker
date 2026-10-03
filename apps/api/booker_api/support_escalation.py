@@ -51,7 +51,8 @@ def queue_new_ticket_notices(db: Session, ticket: SupportTicket) -> dict[str, in
             entity_type="support_ticket", entity_id=ticket.id,
         )
         notices += int(notice is not None)
-        if not urgent or settings.email_provider != "smtp" or not settings.email_smtp_host:
+        if (not urgent or not recipient.email or settings.email_provider != "smtp"
+                or not settings.email_smtp_host):
             continue
         email_target = db.query(SupportNotificationTarget.id).filter(
             SupportNotificationTarget.recipient_user_id == recipient.id,
@@ -141,7 +142,7 @@ def escalate_overdue(db: Session, *, at: datetime, limit: int = 100) -> dict[str
             )
             notices += int(notice is not None)
         for target, recipient in email_targets:
-            if settings.email_provider != "smtp" or not settings.email_smtp_host:
+            if not recipient.email or settings.email_provider != "smtp" or not settings.email_smtp_host:
                 email_unavailable += 1
                 continue
             subject, body = NOTICE_COPY["support.first_response_overdue"]

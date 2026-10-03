@@ -161,6 +161,7 @@ def enqueue_payment_reminders(db: Session, *, at: datetime | None = None) -> dic
             .filter(
                 TeamMember.organization_id == event.organization_id,
                 TeamMember.role.in_(("owner", "admin", "manager")),
+                User.email.is_not(None),
             )
             .order_by(TeamMember.id.asc())
             .first()

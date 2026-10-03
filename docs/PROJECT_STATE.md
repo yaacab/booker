@@ -596,3 +596,14 @@ API теперь отклоняет локальный пароль, если у
 не внешний вход. Следующая миграция требует отдельной SQLite-репетиции с
 сохранением триггеров, nullable-проекции в web и source/staging gate. Шкалы
 не меняются; изменений в production нет.
+
+## 47. Необязательные credentials, локальный этап A2, 03.10.2026
+
+В отдельном worktree добавлена миграция `a10f12e34f56` с nullable email и
+паролем, сохранением SQLite-триггеров и FK-состояния; API/web принимают
+`email: null` без ложного подтверждения. Репетиция копии SQLite и затронутые
+тесты описаны в [IDENTITY_MODEL_STAGE_A2_2026-10-03.md](ops/IDENTITY_MODEL_STAGE_A2_2026-10-03.md).
+Manifest остаётся `manual_block`, PG/staging/production не проверены, OAuth
+пока не включён. Полный API **787 PASS/9 SKIP**, schema/Alembic
+**35 PASS/1 SKIP**, web TypeScript/21 unit/build PASS; Ruff и secret gate PASS.
+Три шкалы **59,00% / 56,00% / 15,00%** (+0,00 п.п.).
