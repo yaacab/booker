@@ -611,7 +611,8 @@ Manifest остаётся `manual_block`, PG/staging/production не прове�
 
 ## 48. Telegram initData, локальный этап A3a, 03.10.2026
 
-Добавлен серверный HMAC-валидатор без маршрута входа и выдачи сессии.
+Кодовый SHA `99d42dadbeec1ddd204c4c2a2da468dd73abea93`: добавлен
+серверный HMAC-валидатор без маршрута входа и выдачи сессии.
 Подделка, дубликат полей, устаревшие данные и неверный Telegram ID отклоняются;
 адресные тесты 9 PASS, Ruff и secret gate PASS. Детали и отсутствующие
 pending-auth/legal/TOTP gates — в
