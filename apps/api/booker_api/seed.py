@@ -16,6 +16,7 @@ from booker_api.models import (
     User,
     Venue,
     VenueHall,
+    VenuePhoto,
     VenueTariff,
 )
 from booker_api.security import hash_password, now
@@ -91,11 +92,84 @@ def _ensure_cross_role_catalog(db: Session) -> int:
     return added
 
 
+def _ensure_demo_publication(db: Session) -> int:
+    """Make only the fictional cross-role demo profiles publicly eligible."""
+    changed = 0
+    confirmed_at = now()
+    confirmed_through = confirmed_at + timedelta(days=90)
+
+    nova = db.query(Artist).filter(Artist.name == "DJ Nova").one_or_none()
+    if nova:
+        owner_id = (
+            db.query(TeamMember.user_id)
+            .filter(
+                TeamMember.organization_id == nova.organization_id,
+                TeamMember.role.in_(("owner", "admin")),
+            )
+            .scalar()
+        )
+        if owner_id:
+            nova.verified = True
+            nova.verified_status = "approved"
+            nova.media_url = "/design/puzzle-dj.png"
+            nova.media_source_url = "/design/puzzle-dj.png"
+            nova.media_rights_status = "owned"
+            nova.media_rights_attested_at = confirmed_at
+            nova.media_rights_attested_by_user_id = owner_id
+            nova.calendar_confirmed_through = confirmed_through
+            nova.calendar_confirmed_at = confirmed_at
+            nova.calendar_confirmed_by_user_id = owner_id
+            nova.publication_enabled = True
+            changed += 1
+
+    venue = db.query(Venue).filter(Venue.name == "Клуб Сигнал").one_or_none()
+    if venue:
+        owner_id = (
+            db.query(TeamMember.user_id)
+            .filter(
+                TeamMember.organization_id == venue.organization_id,
+                TeamMember.role.in_(("owner", "admin")),
+            )
+            .scalar()
+        )
+        if owner_id:
+            venue.verified = True
+            venue.verified_status = "approved"
+            venue.is_claimed = True
+            venue.moderation_status = "published"
+            venue.calendar_confirmed_through = confirmed_through
+            venue.calendar_confirmed_at = confirmed_at
+            venue.calendar_confirmed_by_user_id = owner_id
+            venue.publication_enabled = True
+            photo = (
+                db.query(VenuePhoto)
+                .filter(
+                    VenuePhoto.venue_id == venue.id,
+                    VenuePhoto.photo_url == "/design/puzzle-venue.png",
+                )
+                .one_or_none()
+            )
+            if photo is None:
+                photo = VenuePhoto(
+                    venue_id=venue.id,
+                    photo_url="/design/puzzle-venue.png",
+                    photo_source_url="/design/puzzle-venue.png",
+                    photo_rights_status="owned",
+                    sort_order=0,
+                )
+                db.add(photo)
+            photo.rights_attested_at = confirmed_at
+            photo.rights_attested_by_user_id = owner_id
+            changed += 1
+    return changed
+
+
 def seed(db: Session) -> dict[str, str]:
     if db.query(User).filter(User.email == "customer@booker.test").one_or_none():
         added = enrich_catalog(db)
         added += _ensure_cross_role_catalog(db)
         venue_user_added = _ensure_venue_user(db)
+        _ensure_demo_publication(db)
         db.commit()
         return {"status": "already_seeded", "catalog_added": added, "venue_user_added": venue_user_added}
 
@@ -115,6 +189,7 @@ def seed(db: Session) -> dict[str, str]:
         email="admin@booker.test",
         full_name="Админ Букер",
         password_hash=hash_password(DEMO_PASSWORD),
+        email_verified_at=now(),  # Synthetic local seed account, never a real-user backfill.
         is_platform_admin=True,
         totp_enabled=True,
         totp_secret="JBSWY3DPEHPK3PXP",
@@ -169,8 +244,9 @@ def seed(db: Session) -> dict[str, str]:
     db.commit()
     enrich_catalog(db)
     _ensure_cross_role_catalog(db)
-    db.commit()
     _ensure_venue_user(db)
+    _ensure_demo_publication(db)
+    db.commit()
     return {
         "status": "ok",
         "customer": "customer@booker.test",
@@ -509,6 +585,8 @@ def enrich_catalog(db: Session) -> int:
                 [
                     Service(
                         organization_id=nova.organization_id,
+                        resource_type="artist",
+                        resource_id=nova.id,
                         category_code="dj",
                         title="DJ-сет Nova",
                         description="Витрина, не quote.",
@@ -522,7 +600,7 @@ def enrich_catalog(db: Session) -> int:
                         title="Ведущий в паре",
                         description="Витрина, не quote.",
                         city="Москва",
-                        published=True,
+                        published=False,
                         honorarium_rub=60000,
                     ),
                 ]
@@ -532,6 +610,10 @@ def enrich_catalog(db: Session) -> int:
 
 
 def main() -> None:
+    from booker_api.config import settings
+
+    if settings.runtime_env == "production":
+        raise RuntimeError("demo seed is forbidden in Booker production")
     if os.environ.get("BOOKER_ALLOW_DEMO_SEED") != "1":
         print("demo seed отключён: задайте BOOKER_ALLOW_DEMO_SEED=1 (только локальный контур)")
         return

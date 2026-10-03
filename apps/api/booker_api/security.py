@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.models import AuditLog, SessionToken, TeamMember, User
+from booker_api.rate_limit import otp_limiter
 from booker_api.totp import verify_totp_code
 
 bearer = HTTPBearer(auto_error=False)
@@ -30,8 +31,13 @@ def hash_password(password: str) -> str:
     return f"{salt}${digest}"
 
 
-def verify_password(password: str, stored: str) -> bool:
+def verify_password(password: str, stored: str | None) -> bool:
+    """An external-only account has no local password to verify."""
+    if not stored or "$" not in stored:
+        return False
     salt, digest = stored.split("$", 1)
+    if not salt or not digest:
+        return False
     check = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
     return hmac.compare_digest(check, digest)
 
@@ -68,13 +74,42 @@ def authenticate_token(db: Session, raw: str) -> tuple[User, SessionToken]:
     return user, row
 
 
+def _support_operator_route_allowed(request: Request) -> bool:
+    """A staff bearer cannot inherit unrelated marketplace permissions."""
+    path = request.url.path
+    method = request.method
+    if (path, method) in {("/me", "GET"), ("/notifications", "GET"),
+                          ("/me/identities", "GET"),
+                          ("/me/identities/telegram/link", "POST"),
+                          ("/me/identities/telegram/unlink", "POST"),
+                          ("/auth/logout", "POST"),
+                          ("/auth/admin-totp/recovery-codes/count", "GET"),
+                          ("/admin/support/tickets", "GET"),
+                          ("/admin/support/staff", "GET")}:
+        return True
+    parts = path.strip("/").split("/")
+    if len(parts) < 4 or parts[:3] != ["admin", "support", "tickets"] or not parts[3]:
+        return False
+    if len(parts) == 4:
+        return method == "GET"
+    if len(parts) != 5:
+        return False
+    action = parts[4]
+    return (action == "notes" and method == "GET") or (
+        action in {"messages", "assign", "priority", "notes", "close", "reopen"} and method == "POST"
+    )
+
+
 def auth_context(
+    request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ) -> AuthContext:
     if creds is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Нужна авторизация")
     user, row = authenticate_token(db, creds.credentials)
+    if user.is_support_operator and not user.is_platform_admin and not _support_operator_route_allowed(request):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Аккаунт оператора доступен только для поддержки")
     return AuthContext(user, row)
 
 
@@ -114,8 +149,19 @@ def require_org_writer(db: Session, user: User, org_id: str) -> TeamMember:
     return member
 
 
+def require_org_owner_or_admin_member(db: Session, user: User, org_id: str) -> TeamMember:
+    """Require a real legal representative; platform-admin bypass is intentionally excluded."""
+    member = membership(db, user.id, org_id)
+    if not member or member.role not in {"owner", "admin"}:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Подтверждение доступно только владельцу или администратору организации",
+        )
+    return member
+
+
 def ensure_admin_2fa_configured(user: User) -> None:
-    if settings.require_admin_2fa_enforced and not user.totp_enabled:
+    if not user.totp_enabled:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "Администратору нужен включённый второй фактор (TOTP)",
@@ -134,10 +180,10 @@ def _totp_from_request(request: Request | None, code: str | None) -> str | None:
 def require_admin_2fa(user: User, code: str | None, request: Request | None = None) -> None:
     """Step-up: always verify a fresh TOTP code for sensitive admin mutations."""
     if not user.totp_enabled:
-        if settings.require_admin_2fa_enforced:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Нужен включённый второй фактор")
-        return
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Нужен включённый второй фактор")
     totp = _totp_from_request(request, code)
+    if totp:
+        otp_limiter.check(f"otp:user:{user.id}")
     if not verify_totp_code(user.totp_secret, totp):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Нужен второй фактор")
 
@@ -147,12 +193,19 @@ def ensure_admin_2fa_session(
     db: Session,
     user: User,
     session: SessionToken,
+    *,
+    force: bool = False,
 ) -> None:
-    """When 2FA is enforced, admin reads/writes need a verified step-up session or header."""
+    """Privileged reads/writes need a verified step-up session or header."""
+    if force and not user.totp_enabled:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Администратору нужен включённый второй фактор (TOTP)",
+        )
     ensure_admin_2fa_configured(user)
-    if not settings.require_admin_2fa_enforced:
-        return
     header_code = _totp_from_request(request, None)
+    if header_code:
+        otp_limiter.check(f"otp:user:{user.id}")
     if header_code and verify_totp_code(user.totp_secret, header_code):
         session.admin_2fa_verified_at = now()
         db.commit()
@@ -177,6 +230,33 @@ def require_admin(
     if not user.is_platform_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")
     ensure_admin_2fa_session(request, db, user, ctx.session)
+    return user
+
+
+def require_admin_step_up(
+    request: Request,
+    ctx: AuthContext = Depends(auth_context),
+    db: Session = Depends(get_db),
+) -> User:
+    """Require a current TOTP step-up even when the global rollout flag is disabled."""
+
+    user = ctx.user
+    if not user.is_platform_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только администратор платформы")
+    ensure_admin_2fa_session(request, db, user, ctx.session, force=True)
+    return user
+
+
+def require_support_step_up(
+    request: Request,
+    ctx: AuthContext = Depends(auth_context),
+    db: Session = Depends(get_db),
+) -> User:
+    """Support queue access is separate from platform administration."""
+    user = ctx.user
+    if not (user.is_platform_admin or user.is_support_operator):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только оператор поддержки")
+    ensure_admin_2fa_session(request, db, user, ctx.session, force=True)
     return user
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import ipaddress
 import re
 import socket
+import zlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlparse
@@ -16,6 +17,7 @@ from booker_api.security import aware
 
 MSK = ZoneInfo("Europe/Moscow")
 MAX_ICAL_BYTES = 512_000
+MAX_ICAL_EVENTS = 5_000
 ICAL_FETCH_TIMEOUT = 10.0
 ICAL_MAX_REDIRECTS = 5
 
@@ -144,6 +146,8 @@ def parse_ical_events(body: str) -> list[IcalEvent]:
             ends_at = starts_at + timedelta(hours=1)
         status = (props.get("STATUS", [[{}, ""]])[0][1] or "").upper()
         transp = (props.get("TRANSP", [[{}, ""]])[0][1] or "").upper()
+        if len(events) >= MAX_ICAL_EVENTS:
+            raise ValueError("Слишком много событий iCal")
         events.append(
             IcalEvent(
                 uid=uid,
@@ -231,16 +235,46 @@ async def fetch_ical(url: str) -> str:
     async with httpx.AsyncClient(timeout=ICAL_FETCH_TIMEOUT, follow_redirects=False) as client:
         for _ in range(ICAL_MAX_REDIRECTS + 1):
             validate_ical_fetch_url(current)
-            res = await client.get(current)
-            if res.is_redirect:
-                location = res.headers.get("location")
-                if not location:
-                    raise ValueError("iCal редирект без Location")
-                current = urljoin(str(res.url), location)
-                continue
-            res.raise_for_status()
-            body = res.content
-            if len(body) > MAX_ICAL_BYTES:
-                raise ValueError("iCal слишком большой")
-            return body.decode("utf-8", errors="replace")
+            async with client.stream("GET", current, headers={"Accept-Encoding": "identity"}) as res:
+                if res.is_redirect:
+                    location = res.headers.get("location")
+                    if not location:
+                        raise ValueError("iCal редирект без Location")
+                    current = urljoin(str(res.url), location)
+                    continue
+                res.raise_for_status()
+                encoding = res.headers.get("content-encoding", "identity").lower()
+                if encoding not in {"identity", "gzip", "deflate"}:
+                    raise ValueError("Неподдерживаемое сжатие iCal")
+                length = res.headers.get("content-length", "")
+                if length.isdigit() and int(length) > MAX_ICAL_BYTES + (65_536 if encoding != "identity" else 0):
+                    raise ValueError("iCal слишком большой")
+                body = bytearray()
+                decoder = (
+                    zlib.decompressobj(16 + zlib.MAX_WBITS)
+                    if encoding == "gzip"
+                    else zlib.decompressobj() if encoding == "deflate" else None
+                )
+                compressed_bytes = 0
+                async for chunk in res.aiter_raw(chunk_size=64_000):
+                    compressed_bytes += len(chunk)
+                    if compressed_bytes > MAX_ICAL_BYTES + (65_536 if decoder else 0):
+                        raise ValueError("iCal слишком большой")
+                    if decoder is None:
+                        body.extend(chunk)
+                    else:
+                        try:
+                            body.extend(decoder.decompress(chunk, MAX_ICAL_BYTES - len(body) + 1))
+                        except zlib.error as exc:
+                            raise ValueError("Некорректное сжатие iCal") from exc
+                    if len(body) > MAX_ICAL_BYTES or (decoder and decoder.unconsumed_tail):
+                        raise ValueError("iCal слишком большой")
+                if decoder is not None:
+                    try:
+                        body.extend(decoder.flush(MAX_ICAL_BYTES - len(body) + 1))
+                    except zlib.error as exc:
+                        raise ValueError("Некорректное сжатие iCal") from exc
+                    if len(body) > MAX_ICAL_BYTES or not decoder.eof:
+                        raise ValueError("iCal слишком большой" if len(body) > MAX_ICAL_BYTES else "Некорректное сжатие iCal")
+                return body.decode("utf-8", errors="replace")
     raise ValueError("Слишком много редиректов iCal")

@@ -1,0 +1,17 @@
+# Букер — локальная транзакция выпуска, 02.10.2026
+
+Статус: **локально проверено на подставном корне; staging/VPS/production не проверены**. Никаких SSH, перезапусков, commit, push или deploy в этом транше не было. Действующий production не переключался.
+
+## Порядок
+
+1. `infra/deploy-vps.sh` проверяет исходники и точный rsync payload на секреты, создаёт уникальный `/opt/booker/releases/<id>` и загружает туда исходники без удаления действующего каталога. Для грязного дерева `source_sha=UNKNOWN`; точный SHA можно указывать только для чистого дерева.
+2. `infra/release_deploy.py` берёт эксклюзивный lock, проверяет путь и наличие защищённого `/etc/booker/booker-api.env`. Изолированно создаёт API `.venv` из `requirements-prod.lock`, устанавливает пакет, выполняет `pip check` и production config preflight. Затем делает `npm ci`, Next build, secret build gate и синтаксическую проверку nginx на конфиге кандидата. Текущий `current`, старые `.venv`, `node_modules` и `.next` при этом не меняются.
+3. До переключения сравнивает модели/DB код и набор миграций с предыдущим релизом. При расхождении применяет [строгий schema gate](SCHEMA_RELEASE_PLAN_2026-10-02.md): exact reviewed manifest, hashes, separate migration/backup/rehearsal evidence и наблюдаемую target revision. Текущий черновик с `manual_block` остаётся заблокированным. При существующей DB без сравнимой старой схемы выпуск тоже останавливается.
+4. Сохраняет установленные systemd/nginx/cron конфиги, записывает состояние транзакции, ставит конфиги кандидата, атомарно меняет `/opt/booker/current`, перезапускает API/web, делает `nginx -t` и reload, проверяет active units, внутренний API `/internal/readiness` и web HTTP. При отказе возвращает предыдущий `current` и точные конфиги, перезапускает прежние сервисы/nginx и проверяет прежний API/web. Если откат сам не прошёл, сохраняет `deploy-state.json` с `rollback_failed` и выдаёт критическую ошибку; следующая попытка сначала повторяет восстановление.
+5. При успехе пишет `release-evidence.json` с ID, предыдущим ID, source SHA или `UNKNOWN`, временем и SHA-256 ключевых файлов. Затем устойчиво помечает транзакцию `committed`; очистка идёт уже после фиксации и её ошибка не вызывает откат. Оставляет текущий, предыдущий и три более старых подтверждённых релиза; старые незавершённые каталоги удаляет только через семь дней. Общие DB/uploads/backups и защищённый env не удаляет.
+
+## Подтверждение и ограничения
+
+`apps/api/tests/test_release_deploy.py`: **13 PASS** на fake-root/fake-runner, включая успешное переключение, сбой до сборки и после переключения API/web/nginx, отказ проверки прежнего health, первый выпуск, изменение схемы, небезопасный путь, параллельный lock, сохранение/очистку релизов и прерывание после commit. Два адресных статических теста nginx/deploy также PASS. Ruff, `bash -n`, `git diff --check` и source/payload secret gate PASS. Настоящие nginx, systemd, `npm ci`, `pip install` на VPS и реальный API/web старт этим harness не проверяются. Production конфиг и исходные процессы должны быть отдельно осмотрены перед staging.
+
+Откат переключает код и конфиги, **но не откатывает данные**. Код, который запускает `init_schema`/миграцию при старте или изменяет shared DB до отказа, требует отдельного data-backup и совместимого migration plan. До проверки этой транзакции на staging с действительными systemd/nginx, rollback fault injection, DB probe и пользовательским smoke production выпуск запрещён.

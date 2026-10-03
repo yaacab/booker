@@ -14,7 +14,7 @@ test("юридический пакет опубликован как черно
   ).toBeVisible();
   await expect(page.getByText("не является исполнителем выступления", { exact: false })).toBeVisible();
   await expect(
-    page.getByText("обе стороны подтвердили активную версию оффера", { exact: false }),
+    page.getByText("Новая версия оффера не действует, пока её не подтвердят стороны", { exact: false }),
   ).toBeVisible();
 });
 
@@ -24,10 +24,11 @@ test("заявка → оффер: API seed, artist cabinet, Deal Room", async (
   const ctx = await seedRequestAwaitingOffer(request);
   await injectSession(page, ctx.ownerToken, ctx.artistOrgId);
 
-  await page.goto("/cabinet");
-  await expect(page.getByRole("heading", { name: "Новые заявки" })).toBeVisible();
-  await expect(page.getByText(ctx.eventTitle)).toBeVisible();
-  await page.getByRole("button", { name: "Отправить предложение" }).click();
+  await page.goto("/cabinet/performer");
+  await expect(page.getByRole("heading", { name: "Новые заявки" })).toBeVisible({ timeout: 15_000 });
+  const requestCard = page.getByRole("article").filter({ hasText: ctx.eventTitle });
+  await expect(requestCard).toBeVisible();
+  await requestCard.getByRole("button", { name: "Отправить предложение" }).click();
 
   await expect(page).toHaveURL(/\/deals\//, { timeout: 15_000 });
   await expect(page.getByRole("tab", { name: "Чат" })).toBeVisible();
@@ -38,5 +39,5 @@ test("студия события и каталог доступны", async ({ 
   await page.goto("/events/new");
   await expect(page.getByRole("heading").first()).toBeVisible();
   await page.goto("/search");
-  await expect(page.getByRole("heading", { name: /Свободные артисты/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Найдите свою команду" })).toBeVisible();
 });
