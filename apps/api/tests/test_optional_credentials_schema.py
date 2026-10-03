@@ -1,6 +1,7 @@
 """External-only accounts must not change or disable legacy account guards."""
 
 import sqlite3
+from pathlib import Path
 
 import pytest
 from alembic.config import Config
@@ -30,7 +31,7 @@ def _named_indexes(db: sqlite3.Connection) -> dict[str, str]:
 def test_optional_credentials_copy_upgrade_preserves_legacy_account_and_guards(tmp_path):
     original = tmp_path / "legacy.db"
     candidate = tmp_path / "candidate.db"
-    config = Config("apps/api/alembic.ini")
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{original}")
     command.upgrade(config, "a09f01e23f45")
     with sqlite3.connect(original) as db:

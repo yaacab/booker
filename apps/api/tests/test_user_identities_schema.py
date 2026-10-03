@@ -1,6 +1,7 @@
 """The identity expansion must preserve legacy users and never merge by email."""
 
 import sqlite3
+from pathlib import Path
 
 import pytest
 from alembic.config import Config
@@ -90,7 +91,7 @@ def test_fresh_metadata_and_alembic_identity_constraints_match(tmp_path):
 def test_copy_upgrade_preserves_existing_account_and_session(tmp_path):
     original = tmp_path / "existing.db"
     candidate = tmp_path / "candidate.db"
-    config = Config("apps/api/alembic.ini")
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{original}")
     command.upgrade(config, "a08f90e12f34")
     with sqlite3.connect(original) as db:
