@@ -85,7 +85,7 @@ export async function register(
     acceptance_effect: string;
     documents: Array<{ key: string; version: string; content_hash: string; required: boolean }>;
   };
-  const res = await request.post(`${API_BASE}/auth/register`, {
+  const registrationOptions = {
     headers: { "Content-Type": "application/json" },
     data: {
       email,
@@ -100,7 +100,17 @@ export async function register(
       ),
       draft_test_acknowledgement: pack.acceptance_effect === "test_acknowledgement",
     },
-  });
+  };
+  let res = await request.post(`${API_BASE}/auth/register`, registrationOptions);
+  // Fixture setup respects the shared loopback IP limit, with one bounded retry.
+  if (res.status() === 429) {
+    const retryAfter = res.headers()["retry-after"] ?? "";
+    const seconds = /^\d+$/.test(retryAfter) ? Number(retryAfter) : NaN;
+    if (Number.isInteger(seconds) && seconds >= 1 && seconds <= 60) {
+      await new Promise((resolve) => setTimeout(resolve, seconds * 1000 + 100));
+      res = await request.post(`${API_BASE}/auth/register`, registrationOptions);
+    }
+  }
   if (!res.ok()) {
     throw new Error(`register failed (${res.status()}): ${await res.text()}`);
   }
