@@ -8,10 +8,11 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, text, update
+from sqlalchemy import delete, func, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from booker_api.auth_providers.telegram import InvalidTelegramInitData, verify_init_data
 from booker_api.composition import ALLOWED_ORG_KINDS, ALLOWED_ROLES, normalize_kind
 from booker_api.config import settings
 from booker_api.db import SessionLocal, get_db
@@ -28,6 +29,7 @@ from booker_api.models import (
     StaffRecoveryCode,
     TeamMember,
     User,
+    UserIdentity,
     UserNotification,
 )
 from booker_api.notifications.inbox import notice_payload
@@ -122,6 +124,11 @@ class EmailVerificationConfirmIn(BaseModel):
     token: str = Field(min_length=32, max_length=128)
 
 
+class TelegramEmailClaimIn(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    init_data: str = Field(min_length=1, max_length=8192)
+
+
 def _admin_totp_proof_hash(raw: str) -> str:
     """Domain separation keeps this proof unusable as a password-reset token."""
     return hashlib.sha256(b"booker.admin-totp.v1\0" + raw.encode()).hexdigest()
@@ -179,7 +186,8 @@ def _send_email_verification(db: Session, user: User) -> str:
         recipient_user_id=user.id,
         recipient_email=user.email,
         subject="Подтвердите email · Букер",
-        body=(f"Подтвердите адрес: {settings.public_url.rstrip('/')}/login#verify={raw}\n"
+        body=(f"Подтвердите адрес: {settings.public_url.rstrip('/')}/"
+              f"{'verify-email' if user.password_hash is None else 'login'}#verify={raw}\n"
               f"Ссылка действует {EMAIL_VERIFICATION_TTL_HOURS} часа."),
         entity_type="user", entity_id=user.id,
         metadata={"ephemeral_secret": True, "delivery_id": secrets.token_hex(16)},
@@ -335,6 +343,104 @@ def request_email_verification(
     if user and not user.email_verified_at and verify_password(body.password, user.password_hash):
         _send_email_verification(db, user)
     return answer
+
+
+@router.post("/me/email/telegram/request")
+def request_telegram_email_verification(
+    body: TelegramEmailClaimIn,
+    request: Request,
+    ctx: AuthContext = Depends(auth_context),
+    db: Session = Depends(get_db),
+):
+    """Claim an address for an external-only Telegram account; proof is the mailbox."""
+    auth_limiter.check(client_key(request, "telegram-email-request"))
+    if (not settings.telegram_bot_token or settings.email_provider != "smtp"
+            or not settings.email_smtp_host.strip()):
+        raise HTTPException(503, "Подтверждение email временно недоступно")
+    try:
+        claim = verify_init_data(body.init_data, bot_token=settings.telegram_bot_token)
+    except InvalidTelegramInitData as exc:
+        raise HTTPException(401, "Данные Telegram недействительны") from exc
+    email = normalize_invitation_email(body.email)
+    user_id, session_key = ctx.user.id, ctx.session.token
+    otp_limiter.check(f"telegram-email:user:{user_id}")
+    db.rollback()
+    _serialize_auth_change(db)
+    current = db.query(User).filter_by(id=user_id).with_for_update().one_or_none()
+    session = db.query(SessionToken).filter_by(
+        token=session_key, user_id=user_id,
+    ).with_for_update().one_or_none()
+    if not session or (session.expires_at and aware(session.expires_at) <= now()):
+        raise HTTPException(401, "Сессия недействительна")
+    identity = db.query(UserIdentity).filter_by(
+        user_id=user_id, provider="telegram", provider_subject=claim.subject,
+    ).one_or_none()
+    if (not current or not identity or current.password_hash is not None
+            or current.email_verified_at is not None
+            or current.is_platform_admin or current.is_support_operator):
+        raise HTTPException(403, "Этот способ подтверждения недоступен")
+    if db.query(TeamMember).filter_by(user_id=user_id).first():
+        raise HTTPException(403, "Адрес аккаунта с организацией меняется отдельно")
+    if db.query(User).filter(func.lower(User.email) == email, User.id != user_id).first():
+        raise HTTPException(409, "Адрес уже используется; войдите существующим способом")
+    current.email = email
+    current.email_verification_required_at = now()
+    current.email_verified_at = None
+    audit(db, actor_user_id=user_id, action="auth.telegram_email_claimed",
+          entity_type="user", entity_id=user_id,
+          payload={"email_hash": hashlib.sha256(email.encode()).hexdigest()})
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "Адрес уже используется; войдите существующим способом") from exc
+    return {"ok": True, "delivery": _send_email_verification(db, current)}
+
+
+@router.post("/auth/email-verification/external-confirm")
+def confirm_external_email_verification(
+    body: EmailVerificationConfirmIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """A mailbox proof marks only an external-only address verified; issues no session."""
+    auth_limiter.check(client_key(request, "external-email-confirm"))
+    token_hash = _email_verification_hash(body.token.strip())
+    _serialize_auth_change(db)
+    challenge = db.query(EmailVerificationChallenge).filter_by(
+        token_hash=token_hash,
+    ).with_for_update().one_or_none()
+    if not challenge:
+        raise HTTPException(409, "Ссылка подтверждения недействительна")
+    current = db.query(User).filter_by(id=challenge.user_id).with_for_update().one_or_none()
+    if (not current or current.password_hash is not None or not current.email
+            or current.email != challenge.target_email
+            or not db.query(UserIdentity).filter_by(
+                user_id=current.id, provider="telegram",
+            ).first()):
+        raise HTTPException(409, "Ссылка подтверждения недействительна")
+    if challenge.consumed_at and current.email_verified_at:
+        return {"email_verified": True, "idempotent": True}
+    if challenge.consumed_at or challenge.revoked_at or aware(challenge.expires_at) <= now():
+        raise HTTPException(409, "Ссылка подтверждения истекла или заменена")
+    verified_at = now()
+    challenge.consumed_at = verified_at
+    current.email_verified_at = verified_at
+    db.execute(
+        update(EmailVerificationChallenge)
+        .where(EmailVerificationChallenge.user_id == current.id,
+               EmailVerificationChallenge.token_hash != token_hash,
+               EmailVerificationChallenge.consumed_at.is_(None),
+               EmailVerificationChallenge.revoked_at.is_(None))
+        .values(revoked_at=verified_at)
+        .execution_options(synchronize_session=False)
+    )
+    audit(db, actor_user_id=current.id, action="auth.email_verified",
+          entity_type="user", entity_id=current.id,
+          payload={"email_hash": hashlib.sha256(current.email.encode()).hexdigest(),
+                   "channel": "external_mailbox_link"})
+    db.commit()
+    return {"email_verified": True, "idempotent": False}
 
 
 @router.post("/auth/email-verification/confirm")

@@ -11,7 +11,7 @@ import { safeNext } from "@/lib/next";
 
 type TelegramWebApp = { initData: string; ready?: () => void; expand?: () => void };
 type TelegramWindow = Window & { Telegram?: { WebApp?: TelegramWebApp } };
-type Flow = "loading" | "outside" | "legal" | "totp" | "workspace" | "error";
+type Flow = "loading" | "outside" | "legal" | "totp" | "email" | "email_wait" | "workspace" | "error";
 type CompleteResult = {
   token: string;
   user_id: string;
@@ -33,6 +33,8 @@ export default function TelegramPage() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [selectedRole, setSelectedRole] = useState("customer");
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [emailDelivery, setEmailDelivery] = useState("");
 
   const legalState = registrationLegalState(legalPack);
   const legalConsentKey = legalState.accepted_documents.map((item) =>
@@ -58,14 +60,22 @@ export default function TelegramPage() {
       router.replace("/admin");
       return;
     }
+    const me = await api<{
+      email?: string | null;
+      email_verified?: boolean;
+      email_verification_required?: boolean;
+      organizations?: { id: string; kind: string }[];
+      active_organization_id?: string | null;
+    }>("/me");
+    if (me.email_verification_required && !me.email_verified) {
+      setVerificationEmail(me.email ?? "");
+      setFlow(me.email ? "email_wait" : "email");
+      return;
+    }
     if (result.onboarding_required) {
       setFlow("workspace");
       return;
     }
-    const me = await api<{
-      organizations?: { id: string; kind: string }[];
-      active_organization_id?: string | null;
-    }>("/me");
     const org = me.organizations?.find((item) => item.id === me.active_organization_id)
       ?? me.organizations?.[0];
     if (!org) {
@@ -199,6 +209,49 @@ export default function TelegramPage() {
     }
   }
 
+  async function requestEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return;
+    const telegram = telegramWebApp();
+    if (!telegram?.initData) {
+      setError("Откройте Mini App заново из Telegram для подтверждения адреса.");
+      return;
+    }
+    setPending(true);
+    setError("");
+    const email = String(new FormData(event.currentTarget).get("email") || "").trim();
+    try {
+      const response = await api<{ delivery: string }>("/me/email/telegram/request", {
+        method: "POST", body: JSON.stringify({ email, init_data: telegram.initData }),
+      });
+      setVerificationEmail(email);
+      setEmailDelivery(response.delivery);
+      setFlow("email_wait");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось отправить письмо.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function checkEmail() {
+    if (pending) return;
+    setPending(true);
+    setError("");
+    try {
+      const me = await api<{ email_verified: boolean; email_verification_required: boolean }>("/me");
+      if (me.email_verified || !me.email_verification_required) {
+        setFlow("workspace");
+      } else {
+        setError("Адрес пока не подтверждён. Откройте ссылку из письма и повторите проверку.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось проверить адрес.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <main className="workspace" style={{ maxWidth: 560, margin: "0 auto", paddingBlock: 32 }}>
       <Script
@@ -235,6 +288,21 @@ export default function TelegramPage() {
         {error ? <p role="alert">{error}</p> : null}
         <button type="submit" disabled={pending || !legalState.available}>{pending ? "Подтверждаем…" : "Продолжить"}</button>
       </form> : null}
+      {flow === "email" ? <form className="card surface-glass" onSubmit={requestEmail} style={{ display: "grid", gap: 12 }}>
+        <h2>Подтвердите email</h2>
+        <p>Укажите адрес для уведомлений Букера. Мы отправим ссылку; после подтверждения можно создать рабочее пространство.</p>
+        <label>Email<input name="email" type="email" autoComplete="email" maxLength={255} required /></label>
+        {error ? <p role="alert">{error}</p> : null}
+        <button type="submit" disabled={pending}>{pending ? "Отправляем…" : "Отправить письмо"}</button>
+      </form> : null}
+      {flow === "email_wait" ? <section className="card surface-glass" style={{ display: "grid", gap: 12 }}>
+        <h2>Проверьте почту</h2>
+        <p>Ссылка для {verificationEmail} запрошена. Откройте письмо в браузере, затем вернитесь в Mini App.</p>
+        {emailDelivery && emailDelivery !== "sent" ? <p role="status">Доставка письма не подтверждена. Можно запросить его повторно.</p> : null}
+        {error ? <p role="alert">{error}</p> : null}
+        <button type="button" disabled={pending} onClick={() => { void checkEmail(); }}>Я подтвердил(а) адрес</button>
+        <button type="button" disabled={pending} onClick={() => { setFlow("email"); }}>Изменить адрес или отправить ещё раз</button>
+      </section> : null}
       {flow === "workspace" ? <form className="card surface-glass" onSubmit={createWorkspace} style={{ display: "grid", gap: 12 }}>
         <h2>Создайте рабочее пространство</h2>
         <label>Название пространства<input name="name" minLength={2} required /></label>
