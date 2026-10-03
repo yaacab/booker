@@ -608,3 +608,12 @@ Manifest остаётся `manual_block`, PG/staging/production не прове�
 пока не включён. Полный API **787 PASS/9 SKIP**, schema/Alembic
 **35 PASS/1 SKIP**, web TypeScript/21 unit/build PASS; Ruff и secret gate PASS.
 Три шкалы **59,00% / 56,00% / 15,00%** (+0,00 п.п.).
+
+## 48. Telegram initData, локальный этап A3a, 03.10.2026
+
+Добавлен серверный HMAC-валидатор без маршрута входа и выдачи сессии.
+Подделка, дубликат полей, устаревшие данные и неверный Telegram ID отклоняются;
+адресные тесты 9 PASS, Ruff и secret gate PASS. Детали и отсутствующие
+pending-auth/legal/TOTP gates — в
+[TELEGRAM_INITDATA_STAGE_A3A_2026-10-03.md](ops/TELEGRAM_INITDATA_STAGE_A3A_2026-10-03.md).
+Три шкалы остаются **59,00% / 56,00% / 15,00%** (+0,00 п.п.).
