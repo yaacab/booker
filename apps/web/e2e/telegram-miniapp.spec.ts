@@ -7,6 +7,7 @@ function initData(queryId: string, userId = 91827364): string {
   const fields: Record<string, string> = {
     auth_date: String(Math.floor(Date.now() / 1000)),
     query_id: queryId,
+    signature: "fixture-third-party-signature",
     user: JSON.stringify({ id: userId, first_name: "Телеграм", last_name: "Тест" }),
   };
   const check = Object.keys(fields).sort().map((key) => `${key}=${fields[key]}`).join("\n");

@@ -71,3 +71,16 @@ def test_signed_user_must_have_a_real_numeric_subject_and_name():
     fields["hash"] = hmac.new(key, check_string.encode(), hashlib.sha256).hexdigest()
     with pytest.raises(InvalidTelegramInitData):
         verify_init_data(urlencode(fields), bot_token=FAKE_BOT_VALUE, now_epoch=NOW)
+
+
+def test_hmac_covers_optional_third_party_signature_field():
+    raw = signed_data(signature="fixture-ed25519-signature")
+    claim = verify_init_data(raw, bot_token=FAKE_BOT_VALUE, now_epoch=NOW)
+    assert claim.subject == "123456789"
+    with pytest.raises(InvalidTelegramInitData):
+        verify_init_data(raw.replace("fixture-ed25519-signature", "altered-signature"),
+                         bot_token=FAKE_BOT_VALUE, now_epoch=NOW)
+    # Appending an unsigned field to a legacy payload must not be accepted.
+    with pytest.raises(InvalidTelegramInitData):
+        verify_init_data(signed_data() + "&signature=unsigned",
+                         bot_token=FAKE_BOT_VALUE, now_epoch=NOW)

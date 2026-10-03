@@ -57,10 +57,10 @@ def verify_init_data(
     supplied_hash = fields.get("hash", "")
     if not _HASH_RE.fullmatch(supplied_hash):
         raise InvalidTelegramInitData("Missing Telegram hash")
-    # signature is Telegram's optional third-party Ed25519 proof; Booker does
-    # not consume it. The bot-token proof covers every field Booker does use.
-    signed_fields = {key: value for key, value in fields.items()
-                     if key not in {"hash", "signature"}}
+    # Bot-token HMAC includes every received field except hash, including
+    # signature when present. Only the separate Ed25519 third-party flow
+    # excludes both hash and signature from its data-check-string.
+    signed_fields = {key: value for key, value in fields.items() if key != "hash"}
     check_string = "\n".join(f"{key}={signed_fields[key]}" for key in sorted(signed_fields))
     secret = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
     expected = hmac.new(secret, check_string.encode("utf-8"), hashlib.sha256).hexdigest()
