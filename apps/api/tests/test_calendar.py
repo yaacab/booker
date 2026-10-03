@@ -3,6 +3,10 @@ from datetime import datetime, timedelta, timezone
 from tests.conftest import auth_header, publish_artist, publish_venue, register
 
 
+def _future_day(offset: int = 7):
+    return (datetime.now(timezone.utc) + timedelta(days=offset)).date()
+
+
 def _owner_artist(client):
     owner = register(client, "cal@booker.test", "Cal")
     org = client.post(
@@ -20,13 +24,14 @@ def _owner_artist(client):
 
 def test_overlapping_slots_rejected(client):
     owner, artist = _owner_artist(client)
+    day = _future_day()
     first = client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-10-01T18:00:00+00:00",
-            "ends_at": "2026-10-01T22:00:00+00:00",
+            "starts_at": f"{day.isoformat()}T18:00:00+00:00",
+            "ends_at": f"{day.isoformat()}T22:00:00+00:00",
         },
         headers=auth_header(owner["token"]),
     )
@@ -36,8 +41,8 @@ def test_overlapping_slots_rejected(client):
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-10-01T20:00:00+00:00",
-            "ends_at": "2026-10-01T23:00:00+00:00",
+            "starts_at": f"{day.isoformat()}T20:00:00+00:00",
+            "ends_at": f"{day.isoformat()}T23:00:00+00:00",
         },
         headers=auth_header(owner["token"]),
     )
@@ -49,7 +54,7 @@ def test_search_hides_busy_and_no_calendar(client):
     empty = client.get("/catalog/search", params={"city": "Москва", "category": "cover"})
     assert empty.json()["items"] == []
 
-    day = (datetime.now(timezone.utc) + timedelta(days=7)).date()
+    day = _future_day()
     following_day = day + timedelta(days=1)
 
     client.post(
@@ -78,31 +83,34 @@ def test_search_hides_busy_and_no_calendar(client):
 
 def test_search_date_is_moscow_calendar_day(client):
     owner, artist = _owner_artist(client)
+    day = _future_day()
+    following_day = day + timedelta(days=1)
     client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-10-02T22:00:00+00:00",
-            "ends_at": "2026-10-03T01:00:00+00:00",
+            "starts_at": f"{day.isoformat()}T22:00:00+00:00",
+            "ends_at": f"{following_day.isoformat()}T01:00:00+00:00",
         },
         headers=auth_header(owner["token"]),
     )
     publish_artist(client, owner, artist["id"])
-    oct2 = client.get(
+    first_moscow_day = client.get(
         "/catalog/search",
-        params={"city": "Москва", "category": "cover", "date": "2026-10-02T00:00:00+03:00"},
+        params={"city": "Москва", "category": "cover", "date": f"{day.isoformat()}T00:00:00+03:00"},
     )
-    oct3 = client.get(
+    next_moscow_day = client.get(
         "/catalog/search",
-        params={"city": "Москва", "category": "cover", "date": "2026-10-03T00:00:00+03:00"},
+        params={"city": "Москва", "category": "cover", "date": f"{following_day.isoformat()}T00:00:00+03:00"},
     )
-    assert oct2.json()["items"] == []
-    assert len(oct3.json()["items"]) == 1
+    assert first_moscow_day.json()["items"] == []
+    assert len(next_moscow_day.json()["items"]) == 1
 
 
 def test_search_includes_venues_with_calendar(client):
     owner = register(client, "venue@booker.test", "Hall")
+    day = _future_day(10)
     org = client.post(
         "/orgs",
         json={"name": "Зал", "kind": "venue"},
@@ -120,15 +128,15 @@ def test_search_includes_venues_with_calendar(client):
         json={
             "resource_type": "hall",
             "resource_id": venue["hall_id"],
-            "starts_at": "2026-10-12T19:00:00+00:00",
-            "ends_at": "2026-10-12T23:00:00+00:00",
+            "starts_at": f"{day.isoformat()}T19:00:00+00:00",
+            "ends_at": f"{day.isoformat()}T23:00:00+00:00",
         },
         headers=auth_header(owner["token"]),
     )
     publish_venue(client, owner, venue["id"])
     found = client.get(
         "/catalog/search",
-        params={"city": "Москва", "category": "venue", "date": "2026-10-12T12:00:00+00:00"},
+        params={"city": "Москва", "category": "venue", "date": f"{day.isoformat()}T12:00:00+00:00"},
     )
     assert len(found.json()["venues"]) == 1
     page = client.get(f"/venues/{venue['id']}")
