@@ -185,7 +185,11 @@ export default function DealPage() {
   const side = current.role;
   const accentKind = orgKindToDealRoomAccentKind(current.workspace_kind ?? (side === "customer" ? "customer" : "artist"));
   const people = current.participants ?? [];
-  const action = nextAction(current.status);
+  const readyToHold = current.status === "Negotiation" && side === "customer"
+    && current.quote.customer_ack && current.quote.supplier_ack;
+  const action = readyToHold
+    ? { label: "Удержать дату", kind: "hold" }
+    : nextAction(current.status);
   const idx = STAGE_ORDER.indexOf(current.status);
   const activeDispute = disputes.find((row) => row.status !== "resolved") ?? null;
   const cleanAttachments = (room.documents ?? []).filter(
@@ -244,6 +248,10 @@ export default function DealPage() {
   }
 
   async function runNext() {
+    if (readyToHold) {
+      await act(() => api(`/bookings/${current.booking_id}/hold`, { method: "POST" }));
+      return;
+    }
     if (current.next_action?.kind === "pay_obligation" && current.next_action.obligation_id) {
       const obligationId = current.next_action.obligation_id;
       await act(() =>
@@ -819,7 +827,7 @@ export default function DealPage() {
           <p className="kicker">Следующий шаг</p>
           <p>{room.next_step}</p>
           <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
-            {current.next_action?.label || action.label}
+            {readyToHold ? action.label : current.next_action?.label || action.label}
           </button>
           {room.contract && action.kind === "contract" ? (
             <>
@@ -850,7 +858,7 @@ export default function DealPage() {
             Предложение
           </button>
           <button type="button" aria-busy={busy} disabled={busy} onClick={() => void runNext()}>
-            {current.next_action?.label || action.label}
+            {readyToHold ? action.label : current.next_action?.label || action.label}
           </button>
         </div>
       </div>

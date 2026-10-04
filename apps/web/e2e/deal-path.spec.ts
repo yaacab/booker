@@ -104,6 +104,7 @@ test.describe("Deal path E07–E09", () => {
     request,
   }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
 
     const ctx = await seedNegotiation(request, {
       honorariumRub: 100_000,
@@ -177,7 +178,8 @@ test.describe("Deal path E07–E09", () => {
       await injectSession(page, ctx.owner.token, ctx.owner.orgId);
       await page.goto(`/deals/${ctx.bookingId}`);
       await expect(page.getByTestId("deal-room-accents")).toBeVisible({ timeout: 15_000 });
-      await page.getByRole("button", { name: "Подтвердить условия", exact: true }).click();
+      await page.getByRole("button", { name: "Подтвердить условия обеими сторонами", exact: true }).click();
+      await page.getByRole("tab", { name: "Условия", exact: true }).click();
       await expect(page.getByText("подтвердил только исполнитель").first()).toBeVisible({ timeout: 10_000 });
 
       const hold = await request.post(`${API_BASE}/bookings/${ctx.bookingId}/hold`, {
@@ -194,7 +196,8 @@ test.describe("Deal path E07–E09", () => {
       await injectSession(page, ctx.customer.token, ctx.customer.orgId);
       await page.goto(`/deals/${ctx.bookingId}`);
       await expect(page.getByText(`quote_id: ${v2.quote_id}`).first()).toBeVisible({ timeout: 15_000 });
-      await page.getByRole("button", { name: "Подтвердить условия", exact: true }).click();
+      await page.getByRole("button", { name: "Подтвердить условия обеими сторонами", exact: true }).click();
+      await page.getByRole("tab", { name: "Условия", exact: true }).click();
       await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
 
       const held = page.waitForResponse((response) =>
@@ -203,7 +206,8 @@ test.describe("Deal path E07–E09", () => {
       );
       await page.getByRole("button", { name: "Удержать дату" }).click();
       expect((await held).status()).toBe(200);
-      await expect(page.locator(".hold-gold").first()).toBeVisible({ timeout: 10_000 });
+      await page.getByRole("button", { name: "Предложение", exact: true }).click();
+      await expect(page.locator(".sheet.open .hold-gold")).toBeVisible({ timeout: 10_000 });
 
       const room = await getJson<{ hold?: { status: string }; quote: DealRoomQuote }>(
         request,
