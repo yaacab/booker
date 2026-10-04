@@ -125,7 +125,7 @@ test.describe("Cross-role E2E §7.5.11", () => {
         await expect(page.getByRole("heading", { name: "Итог" })).toBeVisible();
         await page.getByRole("button", { name: "Подтвердить условия", exact: true }).click();
         await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
-        await page.getByRole("button", { name: "Удержать дату" }).click();
+        await page.locator(".deal-toolbar").getByRole("button", { name: "Удержать дату", exact: true }).click();
         await expect(page.getByText("Дата удерживается").first()).toBeVisible({ timeout: 10_000 });
       }
     });
