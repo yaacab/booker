@@ -3,7 +3,7 @@ export const STATUS_LABEL: Record<string, string> = {
   RequestSent: "Заявка отправлена",
   Negotiation: "Согласование",
   DateHeld: "Дата удерживается",
-  AwaitingContract: "Договор",
+  AwaitingContract: "Черновик условий",
   AwaitingPayment: "Ожидается оплата",
   Confirmed: "Подтверждено",
   InProgress: "В работе",
@@ -23,7 +23,7 @@ export const STAGE_ORDER = [
 
 export function nextAction(status: string): { label: string; kind: string } {
   if (status === "Negotiation") return { label: "Кивнуть условиям", kind: "ack" };
-  if (status === "DateHeld" || status === "AwaitingContract") return { label: "Достать договор", kind: "contract" };
+  if (status === "DateHeld" || status === "AwaitingContract") return { label: "Открыть черновик условий", kind: "contract" };
   if (status === "AwaitingPayment") return { label: "К оплате", kind: "pay" };
   if (status === "Confirmed" || status === "InProgress") return { label: "Принять вечер", kind: "receive" };
   if (status === "Dispute") return { label: "Позвать человека", kind: "operator" };
@@ -32,7 +32,7 @@ export function nextAction(status: string): { label: string; kind: string } {
 
 export function nextActionHint(kind: string): string {
   if (kind === "ack") return "Подтвердите условия — обе стороны должны нажать «Кивнуть».";
-  if (kind === "contract") return "Подпишите договор через OTP.";
+  if (kind === "contract") return "Технически подтвердите неизменяемый черновик по коду.";
   if (kind === "pay") return "Создайте счёт и внесите оплату.";
   if (kind === "receive") return "Дождитесь дня события.";
   if (kind === "operator") return "Оператор рассмотрит спор.";

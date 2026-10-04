@@ -37,3 +37,19 @@ def test_supply_completeness_customer_not_applicable(client):
     )
     assert res.status_code == 200
     assert res.json()["applicable"] is False
+
+
+def test_supply_completeness_rejects_foreign_org(client):
+    owner = register(client, "supply-private-owner@booker.test")
+    outsider = register(client, "supply-private-outsider@booker.test")
+    org = client.post(
+        "/orgs",
+        json={"name": "Private supply", "kind": "artist"},
+        headers=auth_header(owner["token"]),
+    ).json()
+    denied = client.get(
+        f"/organizations/{org['id']}/supply-completeness",
+        headers=auth_header(outsider["token"]),
+    )
+    assert denied.status_code == 403
+    assert org["id"] not in denied.text

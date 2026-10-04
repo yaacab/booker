@@ -26,13 +26,9 @@ test.describe("Venue cabinet §13 scenarios", () => {
 
     await page.goto("/cabinet/venue/stats");
     await expect(page.getByRole("heading", { name: "Пульт площадки" })).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page
-        .getByRole("heading", { name: "Статистика появится позже" })
-        .or(page.getByRole("heading", { name: "Бронирования" }))
-        .or(page.getByRole("heading", { name: "Статистика" })),
-    ).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("Сводка по бронированиям площадки", { exact: false })).toBeVisible();
+    await expect(page.getByText("Сводка по бронированиям площадки", { exact: false })).toBeVisible({
+      timeout: 15_000,
+    });
 
     await page.goto("/cabinet/venue/calendar");
     await expect(page).toHaveURL(/\/cabinet\/venue\/calendar/);

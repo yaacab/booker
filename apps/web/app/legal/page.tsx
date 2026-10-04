@@ -1,16 +1,24 @@
 import Link from "next/link";
-import { LEGAL_DOCS, LEGAL_PACK_VERSION } from "@/lib/legal";
+import { LEGAL_DOCS } from "@/lib/legal";
+import { getPublicLegalPack } from "@/lib/legalPack";
 
 export const metadata = { title: "Правовые документы", alternates: { canonical: "/legal" } };
+export const dynamic = "force-dynamic";
 
-export default function LegalIndexPage() {
+export default async function LegalIndexPage() {
+  const pack = await getPublicLegalPack();
   return (
     <main className="page-enter">
       <p className="kicker">Правила сервиса</p>
       <h1>Правовые документы</h1>
-      <div className="legal-banner">
-        Редакция {LEGAL_PACK_VERSION}. Черновики для человека с дипломом. Эквайринг не включаем, пока
-        не появится юрлицо в клеточках.
+      <div className="legal-banner" role="status">
+        <strong>{pack?.status === "published" ? "Серверный пакет опубликован." : "Черновик."}</strong>{" "}
+        {pack?.pack_version ? `Редакция ${pack.pack_version}. ` : "Серверная редакция не подтверждена. "}
+        {pack?.status === "draft"
+          ? "Документы проходят юридическую проверку; тестовое ознакомление не является юридическим акцептом."
+          : pack?.status === "published"
+            ? "Статус каждого показанного текста проверяйте на его странице."
+            : "Доступность регистрации пока не подтверждена."}
       </div>
       <ul className="legal-index">
         {LEGAL_DOCS.map((doc) => (
@@ -22,9 +30,7 @@ export default function LegalIndexPage() {
           <Link href="/legal/cancellation">Шаблон отмен</Link>
         </li>
       </ul>
-      <p className="timeline">
-        При входе в клуб две галочки обязательны. Рассылки — по желанию, мы не обидимся.
-      </p>
+      <p className="timeline">Доступность регистрации определяется серверным статусом пакета. Согласие на рассылки всегда отдельно и необязательно.</p>
     </main>
   );
 }

@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Scan project source and deploy payload
+        run: python3 scripts/check_secret_exposure.py --source --deploy-payload
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -18,7 +20,9 @@ jobs:
       - name: API deps + seed DB
         working-directory: apps/api
         run: |
-          pip install -e ".[dev]"
+          pip install -r requirements.lock
+          pip install -e ".[dev]" --no-deps
+          pip check
           BOOKER_ALLOW_DEMO_SEED=1 BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db python -m booker_api.seed
       - name: Start API
         working-directory: apps/api
@@ -29,7 +33,7 @@ jobs:
       - name: Web install + Playwright
         working-directory: apps/web
         run: |
-          npm install
+          npm ci
           npx playwright install --with-deps chromium
       - name: E2E flow smoke
         working-directory: apps/web
@@ -39,6 +43,7 @@ jobs:
           BOOKER_INTERNAL_API_URL: http://127.0.0.1:8030
         run: |
           npm run build
+          python3 ../../scripts/check_secret_exposure.py --build
           npx next start -H 127.0.0.1 -p 3000 &
           for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
           npx playwright test \

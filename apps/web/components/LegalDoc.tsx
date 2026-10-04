@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { LEGAL_PACK_VERSION, parseLegalMarkdown, splitInline, type Block } from "@/lib/legal";
+import { legalDocumentPublication, parseLegalMarkdown, splitInline, type Block } from "@/lib/legal";
+import type { LegalDocumentKey } from "@/lib/legalPack";
 
 function Inline({ text }: { text: string }) {
   return (
@@ -61,15 +62,16 @@ function BlockView({ block }: { block: Block }) {
   );
 }
 
-export function LegalDoc({ source }: { source: string }) {
+export async function LegalDoc({ source, documentKey }: { source: string; documentKey: LegalDocumentKey }) {
   const blocks = parseLegalMarkdown(source);
+  const publication = await legalDocumentPublication(source, documentKey);
   return (
     <main className="page-enter legal-doc">
       <p className="timeline">
         <Link href="/legal">Правовые документы</Link>
       </p>
-      <div className="legal-banner">
-        Редакция {LEGAL_PACK_VERSION}. До завершения юридической проверки документ считается черновиком и не является действующей офертой или консультацией.
+      <div className="legal-banner" role="status">
+        <strong>{publication.label}.</strong> {publication.explanation} Этот текст не является юридической консультацией.
         Платежи в пилотной версии отключены. Реквизиты оператора будут заполнены после юридической проверки.
         Все документы: <Link href="/legal">в общем разделе</Link>.
       </div>

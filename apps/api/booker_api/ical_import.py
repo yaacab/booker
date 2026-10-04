@@ -10,7 +10,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from booker_api.calendar import ranges_overlap
-from booker_api.ical import IcalEvent, fetch_ical, parse_ical_events
+from booker_api.ical import MAX_ICAL_BYTES, IcalEvent, fetch_ical, parse_ical_events
 from booker_api.models import Artist, AvailabilitySlot, Venue, VenueHall
 from booker_api.security import audit, aware, now
 
@@ -188,6 +188,12 @@ async def import_ical_source(
     if ical_url:
         body = await fetch_ical(ical_url)
     elif ical_body:
+        try:
+            byte_length = len(ical_body.encode("utf-8"))
+        except UnicodeEncodeError as exc:
+            raise ValueError("Некорректный текст iCal") from exc
+        if byte_length > MAX_ICAL_BYTES:
+            raise ValueError("iCal слишком большой")
         body = ical_body
     else:
         raise ValueError("Нужен ical_url или ical_body")
