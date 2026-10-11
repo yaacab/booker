@@ -7,6 +7,15 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    env:
+      # Playwright config and helpers read BOOKER_API_URL; without it they look for
+      # an API on :8000 and try to start one from a local .venv that CI does not have.
+      BOOKER_API_URL: http://127.0.0.1:8030
+      BOOKER_DATABASE_URL: sqlite:////tmp/booker-e2e.db
+      BOOKER_ALLOW_DEMO_SEED: "1"
+      BOOKER_PAYMENT_PROVIDER: stub
+      # A missing API must fail the run instead of skipping the specs.
+      E2E_REQUIRE_API: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -19,13 +28,13 @@ jobs:
         working-directory: apps/api
         run: |
           pip install -e ".[dev]"
-          BOOKER_ALLOW_DEMO_SEED=1 BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db python -m booker_api.seed
+          python -m booker_api.seed
       - name: Start API
         working-directory: apps/api
         run: |
-          BOOKER_DATABASE_URL=sqlite:////tmp/booker-e2e.db BOOKER_PAYMENT_PROVIDER=stub \
-            uvicorn booker_api.main:app --host 127.0.0.1 --port 8030 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8030/health && break; sleep 1; done
+          uvicorn booker_api.main:app --host 127.0.0.1 --port 8030 &
+          for i in $(seq 1 30); do curl -sf "$BOOKER_API_URL/health" && break; sleep 1; done
+          curl -sf "$BOOKER_API_URL/health" >/dev/null || { echo "API did not become healthy"; exit 1; }
       - name: Web install + Playwright
         working-directory: apps/web
         run: |
@@ -41,6 +50,7 @@ jobs:
           npm run build
           npx next start -H 127.0.0.1 -p 3000 &
           for i in $(seq 1 40); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:3000/ >/dev/null || { echo "Web did not start"; exit 1; }
           npx playwright test \
             e2e/flow.spec.ts \
             e2e/cabinets-cross-role.spec.ts \

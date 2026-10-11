@@ -51,8 +51,15 @@ async function getJson<T>(
 }
 
 export async function apiHealth(request: APIRequestContext): Promise<boolean> {
-  const res = await request.get(`${API_BASE}/health`);
-  return res.ok();
+  const ok = await request
+    .get(`${API_BASE}/health`)
+    .then((res) => res.ok())
+    .catch(() => false);
+  // CI sets E2E_REQUIRE_API=1 so an unreachable API fails the spec instead of skipping it.
+  if (!ok && process.env.E2E_REQUIRE_API === "1") {
+    throw new Error(`API недоступен (${API_BASE}), а E2E_REQUIRE_API=1`);
+  }
+  return ok;
 }
 
 export async function register(
