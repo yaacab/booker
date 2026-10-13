@@ -204,7 +204,7 @@ export function VenueProfileClient({
     }
   }
 
-  const newEventHref = `/events/new?venue=need&roof=${encodeURIComponent(data.name)}`;
+  const newEventHref = `/events/new?event_studio_map_v1=1&venue=${encodeURIComponent(data.id)}`;
   const canSend = authed && Boolean(eventId);
   const sendLabel = busy ? "Отправляем…" : "Отправить в событие";
   const synthetic = data.availability_mode === "synthetic";

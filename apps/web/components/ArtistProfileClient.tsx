@@ -162,6 +162,7 @@ export function ArtistProfileClient({
 
   const rider = data.rider || {};
   const selectableRequirements = requirements.filter((req): req is Requirement & { id: string } => Boolean(req.id));
+  const studioHref = `/events/new?event_studio_map_v1=1&artist=${encodeURIComponent(data.id)}`;
 
   return (
     <main>
@@ -256,14 +257,29 @@ export function ArtistProfileClient({
       {signedIn ? <p className="timeline">Цена на этом шаге не считается. Предложение придёт с сервера.</p> : null}
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       <p className="artist-desk-cta">
-        <button type="button" onClick={() => void request()} disabled={!slotId || busy}>
-          {busy ? "Отправляем заявку…" : "Запросить предложение"}
-        </button>
+        {slotId ? (
+          <button type="button" onClick={() => void request()} disabled={busy}>
+            {busy ? "Отправляем заявку…" : "Отправить заявку артисту"}
+          </button>
+        ) : (
+          <Link className="btn" href={studioHref}>
+            Собрать заявку с артистом
+          </Link>
+        )}{" "}
+        <Link className="btn secondary" href={studioHref}>
+          Добавить в новое событие
+        </Link>
       </p>
       <div className="sticky-cta">
-        <button type="button" onClick={() => void request()} disabled={!slotId || busy}>
-          {busy ? "Отправляем заявку…" : "Запросить предложение"}
-        </button>
+        {slotId ? (
+          <button type="button" onClick={() => void request()} disabled={busy}>
+            {busy ? "Отправляем заявку…" : "Отправить заявку артисту"}
+          </button>
+        ) : (
+          <Link className="btn" href={studioHref}>
+            Собрать заявку с артистом
+          </Link>
+        )}
       </div>
     </main>
   );

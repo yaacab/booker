@@ -18,6 +18,7 @@ const baseDraft: EventStudioDraft = {
   startsAt: "17:00",
   endsAt: "23:00",
   guests: 80,
+  budgetRub: null,
   talentIds: ["a1"],
   requirements: [],
   version: 2,

@@ -107,6 +107,20 @@ export async function loadCatalog(
   return api<CatalogResponse>(`/catalog/search?${params.toString()}`, { signal });
 }
 
+export async function loadPreferredTalent(
+  id: string,
+  date: string,
+  signal?: AbortSignal,
+): Promise<TalentItem> {
+  const item = await api<CatalogItem>(`/artists/${encodeURIComponent(id)}`, { signal });
+  return mapCatalogTalent(item, date);
+}
+
+export async function loadPreferredVenue(id: string, signal?: AbortSignal): Promise<VenueItem> {
+  const item = await api<CatalogItem>(`/venues/${encodeURIComponent(id)}`, { signal });
+  return mapCatalogVenue(item);
+}
+
 export function budgetHintFromSelection(
   talents: TalentItem[],
   venues: VenueItem[],
@@ -247,7 +261,7 @@ export async function submitEventStudioDraft(
       city: draft.city || "Москва",
       event_date: eventIso(draft),
       guest_count: draft.guests || 50,
-      budget_rub: null,
+      budget_rub: draft.budgetRub,
       requirements,
       notes: [
         `формат:${draft.kind}`,

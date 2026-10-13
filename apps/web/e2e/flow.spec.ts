@@ -36,7 +36,7 @@ test("заявка → оффер: API seed, artist cabinet, Deal Room", async (
 });
 
 test("студия события и каталог доступны", async ({ page }) => {
-  await page.goto("/events/new");
+  await page.goto("/events/new?event_studio_map_v1=0");
   await expect(page.getByRole("heading").first()).toBeVisible();
   await page.goto("/search");
   await expect(page.getByRole("heading", { name: "Найдите свою команду" })).toBeVisible();

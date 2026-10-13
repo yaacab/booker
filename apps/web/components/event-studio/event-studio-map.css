@@ -379,7 +379,7 @@
 .event-studio-shell .event-map {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-areas: "venue time" "puzzle puzzle" "team terms" "note note" "summary summary";
+  grid-template-areas: "jump jump" "venue time" "puzzle puzzle" "team terms" "note note" "summary summary";
   align-content: start;
   align-items: start;
   gap: 24px;
@@ -404,7 +404,7 @@
 .event-studio-shell .compatibility-note { grid-area: note; }
 .event-studio-shell .event-summary { grid-area: summary; }
 .event-studio-shell .connection-lines { display: none; }
-.event-studio-shell .map-card { padding: 16px; border-radius: 20px; background: rgba(255, 255, 255, .8); }
+.event-studio-shell .map-card { padding: 16px; border-radius: 20px; background: #ffffff; }
 .event-studio-shell .puzzle-stage.map-card-focus { box-shadow: none; }
 .event-studio-shell .puzzle-event-meta { background: #f8faf5; border-color: #879c69; box-shadow: var(--es-shadow); }
 .event-studio-shell .puzzle-label { max-width: 88px; white-space: normal; }
@@ -460,7 +460,7 @@
   .event-studio-shell .panel-header { position: sticky; top: -18px; z-index: 2; background: var(--es-paper); padding-block: 12px; }
 }
 @media (max-width: 520px) {
-  .event-studio-shell .event-map { grid-template-areas: "venue time" "puzzle puzzle" "team team" "terms terms" "note note" "summary summary"; gap: 14px; }
+  .event-studio-shell .event-map { grid-template-areas: "jump jump" "venue time" "puzzle puzzle" "team team" "terms terms" "note note" "summary summary"; gap: 14px; }
   .event-studio-shell .venue-card h2, .event-studio-shell .time-card h2 { align-items: flex-start; overflow-wrap: anywhere; }
   .event-studio-shell .map-card h2 .es-icon { flex-shrink: 0; }
   .event-studio-shell .talent-card { grid-template-columns: 88px minmax(0, 1fr); gap: 12px; }
@@ -469,3 +469,288 @@
   .event-studio-shell .puzzle-piece { animation: none !important; transition: none !important; }
 }
 .puzzle-board--reduced .puzzle-piece--releasing { animation: none !important; }
+
+/* The customer can open every event section in any order. */
+.event-studio-shell .section-jump-bar {
+  grid-area: jump;
+  position: sticky;
+  top: 0;
+  z-index: 18;
+  padding: 14px;
+  border: 1px solid var(--es-border);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(32, 41, 27, .08);
+}
+.event-studio-shell .section-jump-bar p {
+  margin: 0 0 10px;
+  color: var(--es-muted);
+  font-size: 12px;
+}
+.event-studio-shell .section-jump-bar > div {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+.event-studio-shell .section-jump-bar button {
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--es-border);
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: #f8faf5;
+  color: var(--es-ink);
+  cursor: pointer;
+}
+.event-studio-shell .format-field {
+  width: min(210px, 100%);
+  margin-top: 10px;
+}
+.event-studio-shell .format-field select {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 4px;
+  border: 1px solid var(--es-border);
+  border-radius: 8px;
+  padding: 8px;
+}
+.event-studio-shell .card-help {
+  margin: 0 0 12px;
+}
+.event-studio-shell .requirement-list {
+  display: grid;
+  gap: 8px;
+}
+.event-studio-shell .requirement-choice {
+  min-height: 48px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--es-border);
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+}
+.event-studio-shell .requirement-choice input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  accent-color: var(--es-green);
+}
+.event-studio-shell .budget-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 5px 0 8px;
+}
+.event-studio-shell .budget-field input {
+  min-width: 0;
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--es-border);
+  border-radius: 9px;
+  padding: 9px 11px;
+  background: #ffffff;
+  color: var(--es-ink);
+  font-weight: 650;
+}
+.event-studio-shell .budget-field b,
+.event-studio-shell .event-summary strong {
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Calendar and wheel pickers use the top layer and always have an opaque surface. */
+.event-studio-shell .es-picker-field {
+  margin: 8px 0;
+}
+.event-studio-shell .es-picker-field > label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--es-muted);
+  font-size: 11px;
+}
+.event-studio-shell .es-picker-trigger {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--es-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: var(--es-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.es-picker-dialog {
+  width: min(430px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  overflow: auto;
+  background: #ffffff;
+  color: #20291b;
+  box-shadow: 0 24px 80px rgba(9, 14, 8, .34);
+}
+.es-picker-dialog::backdrop {
+  background: rgba(13, 18, 12, .58);
+}
+.es-picker-sheet {
+  padding: 20px;
+  background: #ffffff;
+}
+.es-picker-heading,
+.es-picker-month {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.es-picker-heading h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.es-picker-heading button,
+.es-picker-month button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid #ccd5c5;
+  border-radius: 50%;
+  background: #f8faf5;
+  color: #20291b;
+  cursor: pointer;
+}
+.es-picker-month {
+  margin: 20px 0 14px;
+}
+.es-picker-month strong {
+  text-transform: capitalize;
+}
+.es-picker-weekdays,
+.es-picker-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.es-picker-weekdays {
+  margin-bottom: 6px;
+  color: #58624f;
+  font-size: 11px;
+  text-align: center;
+}
+.es-picker-days button {
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #20291b;
+  cursor: pointer;
+}
+.es-picker-days button:hover,
+.es-picker-days button:focus-visible {
+  border-color: #638035;
+}
+.es-picker-days button.is-selected {
+  background: #426225;
+  color: #ffffff;
+}
+.es-picker-days button:disabled {
+  color: #a9afa4;
+  cursor: not-allowed;
+}
+.es-time-preview {
+  margin: 14px 0 8px;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.es-time-wheels {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.es-time-center {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 88px;
+  height: 44px;
+  border: 1px solid #879c69;
+  border-radius: 10px;
+  background: #eef3e9;
+  pointer-events: none;
+}
+.es-time-column {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+.es-time-column > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #58624f;
+  font-size: 11px;
+  text-align: center;
+}
+.es-time-wheel {
+  height: 220px;
+  overflow-y: auto;
+  padding-block: 88px;
+  scroll-snap-type: y mandatory;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.es-time-wheel::-webkit-scrollbar {
+  display: none;
+}
+.es-time-wheel button {
+  width: 100%;
+  height: 44px;
+  display: block;
+  border: 0;
+  scroll-snap-align: center;
+  background: transparent;
+  color: #58624f;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.es-time-wheel button.is-selected {
+  color: #20291b;
+  font-size: 19px;
+  font-weight: 700;
+}
+.es-picker-hint {
+  margin: 12px 0;
+  color: #58624f;
+  font-size: 12px;
+  text-align: center;
+}
+.es-picker-confirm {
+  min-height: 48px;
+  background: #426225;
+  color: #ffffff;
+}
+
+@media (max-width: 520px) {
+  .event-studio-shell .section-jump-bar {
+    margin-inline: -4px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .es-picker-sheet {
+    padding: 16px;
+  }
+}
