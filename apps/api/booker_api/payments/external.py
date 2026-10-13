@@ -8,8 +8,6 @@ from booker_api.payments.adapter import (
     WebhookEvent,
 )
 
-_WEBHOOK_STATUSES = frozenset({"succeeded", "failed"})
-
 
 class ExternalPaymentAdapter(PaymentAdapter):
     """Off-platform transfer: pending until concierge/admin confirms (audit)."""
@@ -62,23 +60,4 @@ class ExternalPaymentAdapter(PaymentAdapter):
         total_rub: int,
         idempotency_key: str | None = None,
     ) -> RefundOutcome:
-        if idempotency_key:
-            self.normalize_idempotency_key(idempotency_key)
-        if amount_rub <= 0 or amount_rub > total_rub:
-            raise PaymentAdapterError("Некорректная сумма возврата")
-        kind = "full" if amount_rub == total_rub else "partial"
-        self.ledger.on_refund(payment_id, amount_rub, kind)
-        return RefundOutcome(
-            refund_id=f"external-refund-{payment_id}",
-            amount_rub=amount_rub,
-            kind=kind,
-            status="succeeded",
-        )
-
-
-def mark_external_succeeded_event(payment_id: str) -> WebhookEvent:
-    return WebhookEvent(
-        event_id=f"external-confirm-{payment_id}",
-        payment_id=payment_id,
-        status="succeeded",
-    )
+        raise PaymentAdapterError("Внешний перевод возвращают стороны вне Букера; автоматический возврат недоступен")

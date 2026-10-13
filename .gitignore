@@ -25,3 +25,8 @@ apps/api/.data/
 apps/web/test-results/
 apps/web/playwright-report/
 apps/web/e2e/.demo-tokens.json
+# Local Booker test/runtime artifacts
+apps/web/.next-e2e-*/
+apps/web/.next-preview-*/
+*.db.rate-limit
+:memory:.ses

@@ -20,7 +20,8 @@ from booker_api.models import (
     VenueHall,
     utcnow,
 )
-from booker_api.security import audit, aware, current_user, require_org_member
+from booker_api.publication_eligibility import target_is_public
+from booker_api.security import audit, aware, current_user, require_org_writer
 
 router = APIRouter(tags=["shortlists"])
 
@@ -47,11 +48,13 @@ def _org_id(db: Session, user: User, organization_id: str | None, x_booker_org: 
     org_id = (organization_id or x_booker_org or user.active_organization_id or "").strip()
     if not org_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Нужна организация")
-    require_org_member(db, user, org_id)
+    require_org_writer(db, user, org_id)
     return org_id
 
 
 def _snapshot(db: Session, target_type: str, target_id: str) -> tuple[str, str, str]:
+    if not target_is_public(db, target_type, target_id):
+        raise HTTPException(404, "Публичный профиль не найден")
     if target_type == "artist":
         row = db.get(Artist, target_id)
         if not row:
@@ -182,6 +185,13 @@ def public_shared_shortlist(token: str, db: Session = Depends(get_db)):
     row = db.query(SharedShortlist).filter(SharedShortlist.token == token).one_or_none()
     if not row or row.revoked_at is not None or aware(row.expires_at) <= utcnow():
         raise HTTPException(404, "Ссылка недоступна")
+    public_items = [
+        it
+        for it in sorted(row.items, key=lambda i: i.sort_order)
+        if target_is_public(db, row.target_type, it.target_id)
+    ]
+    if not public_items:
+        raise HTTPException(404, "Ссылка недоступна")
     # Public payload: no phones, private budget, chat, owner identity
     return {
         "title": row.title,
@@ -195,7 +205,7 @@ def public_shared_shortlist(token: str, db: Session = Depends(get_db)):
                 "summary": it.summary,
                 "profile_path": f"/{'artists' if row.target_type == 'artist' else 'venues'}/{it.target_id}",
             }
-            for it in sorted(row.items, key=lambda i: i.sort_order)
+            for it in public_items
         ],
         "robots": "noindex",
     }
@@ -220,7 +230,7 @@ def compare_candidates(
     if normalized == "artist":
         for aid in id_list:
             artist = db.get(Artist, aid)
-            if not artist:
+            if not artist or not target_is_public(db, "artist", aid):
                 raise HTTPException(404, f"Артист {aid} не найден")
             columns.append(
                 {
@@ -236,7 +246,7 @@ def compare_candidates(
     else:
         for vid in id_list:
             venue = db.get(Venue, vid)
-            if not venue:
+            if not venue or not target_is_public(db, "venue", vid):
                 raise HTTPException(404, f"Площадка {vid} не найдена")
             halls = db.query(VenueHall).filter(VenueHall.venue_id == venue.id).all()
             max_cap = max([h.capacity for h in halls], default=venue.capacity)

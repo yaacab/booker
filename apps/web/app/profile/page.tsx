@@ -5,13 +5,17 @@ import { FormEvent, useEffect, useState } from "react";
 import { api, createOrgWithConfirm, getActiveOrg, getToken, setActiveOrg, setToken } from "@/lib/api";
 import { KIND_LABEL } from "@/lib/copy";
 import { loginHref } from "@/lib/next";
+import DataSubjectRequests from "@/components/DataSubjectRequests";
+import AccountConsents from "@/components/AccountConsents";
+import StaffRecoverySecurity from "@/components/StaffRecoverySecurity";
 
 type Org = { id: string; name: string; kind: string; role: string };
 
 type Me = {
-  email: string;
+  email: string | null;
   full_name: string;
   is_platform_admin?: boolean;
+  is_support_operator?: boolean;
   organizations: Org[];
   active_organization_id?: string;
 };
@@ -93,11 +97,29 @@ export default function ProfilePage() {
     }
   }
 
+  if (me.is_support_operator && !me.is_platform_admin) {
+    return (
+      <main>
+        <p className="kicker">Поддержка Букера</p>
+        <h1>{me.full_name}</h1>
+        <p className="timeline">{me.email || "Email не добавлен"}</p>
+        <p>Служебный аккаунт доступен для обращений поддержки.</p>
+        <p><Link className="btn" href="/operator">Кабинет оператора поддержки</Link></p>
+        {me.email ? <StaffRecoverySecurity email={me.email} /> : null}
+        <button type="button" className="secondary" onClick={() => {
+          setToken(null);
+          localStorage.removeItem("booker.admin");
+          window.location.href = "/";
+        }}>Выйти</button>
+      </main>
+    );
+  }
+
   return (
     <main>
       <p className="kicker">Это вы</p>
       <h1>{me.full_name}</h1>
-      <p className="timeline">{me.email}</p>
+      <p className="timeline">{me.email || "Email не добавлен"}</p>
       {orgs.length > 1 ? (
         <label>
           Активное пространство
@@ -163,6 +185,12 @@ export default function ProfilePage() {
           <Link href="/admin">Пульт. Без нейронки.</Link>
         </p>
       ) : null}
+      {me.is_support_operator ? (
+        <p><Link href="/operator">Кабинет оператора поддержки</Link></p>
+      ) : null}
+      {me.is_platform_admin && me.email ? <StaffRecoverySecurity email={me.email} /> : null}
+      <DataSubjectRequests />
+      <AccountConsents />
       <p style={{ display: "flex", gap: 8 }}>
         <Link className="btn" href="/cabinet">
           Сделки

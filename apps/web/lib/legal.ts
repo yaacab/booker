@@ -1,7 +1,33 @@
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
+import { getPublicLegalPack, type LegalDocumentKey, type LegalPack } from "./legalPack";
 
-export const LEGAL_PACK_VERSION = "2026-08-18-draft";
+export function legalDocumentPublicationFromPack(pack: LegalPack | null, source: string, key: LegalDocumentKey): {
+  label: string;
+  explanation: string;
+} {
+  const document = pack?.documents?.find((item) => item.key === key);
+  const digest = createHash("sha256").update(source, "utf8").digest("hex");
+  if (!document || document.content_hash !== digest) {
+    return {
+      label: "Черновик",
+      explanation: "Показанный локальный текст не подтверждён серверным пакетом. Для регистрации проверьте статус на странице входа.",
+    };
+  }
+  if (pack?.status === "published" && pack.acceptance_effect === "legal_acceptance" &&
+      document.status === "published") {
+    return { label: "Опубликован", explanation: `Серверная редакция ${document.version}; содержание сверено по hash.` };
+  }
+  return {
+    label: "Черновик",
+    explanation: `Серверная редакция ${document.version} имеет статус «${document.status}». Юридическая публикация не подтверждена.`,
+  };
+}
+
+export async function legalDocumentPublication(source: string, key: LegalDocumentKey) {
+  return legalDocumentPublicationFromPack(await getPublicLegalPack(), source, key);
+}
 
 export const LEGAL_DOCS = [
   { href: "/legal/offer", file: "OFFER_DRAFT.md", title: "Оферта цифровых услуг" },
@@ -9,6 +35,7 @@ export const LEGAL_DOCS = [
   { href: "/legal/cookies", file: "COOKIES_DRAFT.md", title: "Cookie-файлы" },
   { href: "/legal/disputes", file: "DISPUTES_REFUNDS_DRAFT.md", title: "Споры и возвраты" },
   { href: "/legal/suppliers", file: "SUPPLIER_TERMS_DRAFT.md", title: "Исполнители и площадки" },
+  { href: "/legal/consent-texts", file: "CONSENT_TEXTS.md", title: "Тексты согласий" },
 ] as const;
 
 export async function readLegalFile(file: string): Promise<string> {

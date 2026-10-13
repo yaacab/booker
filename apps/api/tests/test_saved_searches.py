@@ -3,6 +3,7 @@
 import pytest
 
 from booker_api.main import app
+from booker_api.models import SavedSearch
 from booker_api.routers import saved_searches as saved_searches_router
 from tests.conftest import auth_header, register
 
@@ -144,3 +145,47 @@ def test_stranger_cannot_delete(client):
     stranger = auth_header(register(client, "saved-other@booker.test", "Другой")["token"])
     denied = client.delete(f"/saved-searches/{created['id']}", headers=stranger)
     assert denied.status_code == 404
+
+
+def test_saved_search_list_and_create_reject_foreign_tenant_without_writes(
+    client, SessionLocal
+):
+    ctx = _customer_ctx(client)
+    owner = register(client, "saved-foreign-owner@booker.test", "Foreign Owner")
+    owner_headers = auth_header(owner["token"])
+    other_org = client.post(
+        "/orgs", json={"name": "Foreign Search", "kind": "customer"},
+        headers=owner_headers,
+    ).json()
+    other_saved = client.post(
+        "/saved-searches",
+        json={
+            "name": "Private", "organization_id": other_org["id"],
+            "query_params": {"city": "Москва"},
+        },
+        headers=owner_headers,
+    )
+    assert other_saved.status_code == 201, other_saved.text
+    with SessionLocal() as db:
+        before = db.query(SavedSearch).count()
+    foreign_list = client.get(
+        "/saved-searches",
+        headers={**ctx["headers"], "X-Booker-Org": other_org["id"]},
+    )
+    assert foreign_list.status_code == 403
+    foreign_create = client.post(
+        "/saved-searches",
+        json={
+            "name": "Forged", "organization_id": other_org["id"],
+            "query_params": {"kind": "venue"},
+        },
+        headers=ctx["headers"],
+    )
+    assert foreign_create.status_code == 403
+    own_list = client.get("/saved-searches", headers=ctx["headers"])
+    assert own_list.status_code == 200
+    assert other_saved.json()["id"] not in {
+        row["id"] for row in own_list.json()["items"]
+    }
+    with SessionLocal() as db:
+        assert db.query(SavedSearch).count() == before

@@ -95,9 +95,9 @@ function ackSummary(q: DealRoomAccentSource["quote"]): string {
 
 function contractSummary(c: DealRoomAccentSource["contract"]): string {
   if (!c) return "договор ещё не создан";
-  if (c.customer_signed && c.supplier_signed) return "договор подписан обеими сторонами";
-  if (c.customer_signed || c.supplier_signed) return "ожидается вторая подпись";
-  return "черновик договора готов к подписанию";
+  if (c.customer_signed && c.supplier_signed) return "черновик технически подтверждён обеими сторонами";
+  if (c.customer_signed || c.supplier_signed) return "ожидается второе техническое подтверждение";
+  return "черновик готов к техническому подтверждению";
 }
 
 function paymentSummary(p: DealRoomAccentSource["payment"]): string {
@@ -108,14 +108,14 @@ function paymentSummary(p: DealRoomAccentSource["payment"]): string {
 function riderSummary(docs: DealRoomAccentSource["documents"]): string {
   const riders = (docs ?? []).filter((d) => /райдер|rider/i.test(d.label));
   if (riders.length === 0) return "райдер уточняется в чате и вкладке «Документы»";
-  return riders.map((d) => `${d.label}${d.signed ? " · подписано" : ""}`).join("; ");
+  return riders.map((d) => `${d.label}${d.signed ? " · подтверждено" : ""}`).join("; ");
 }
 
 function taskLines(status: string): string {
   const map: Record<string, string> = {
     Negotiation: "Подтвердить условия · проверить quote_id",
-    DateHeld: "Подписать договор · подготовить райдер",
-    AwaitingContract: "Подписать договор OTP",
+    DateHeld: "Технически подтвердить черновик · подготовить райдер",
+    AwaitingContract: "Технически подтвердить черновик по коду",
     AwaitingPayment: "Дождаться оплаты заказчика",
     Confirmed: "Подготовиться к событию · проверить логистику",
   };

@@ -1,6 +1,6 @@
 """E10: atomic multi-hall (multi-booking) hold — no partial capture."""
 
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, publish_venue, register
 from tests.test_offers import ack_both
 
 
@@ -42,6 +42,8 @@ def _setup_two_hall_package(client):
             headers=auth_header(owner["token"]),
         ).json()
         slots.append(slot)
+
+    publish_venue(client, owner, venue["id"])
 
     event = client.post(
         "/events",
@@ -85,6 +87,7 @@ def _setup_two_hall_package(client):
 
     return {
         "customer": customer,
+        "cust_org": cust_org,
         "owner": owner,
         "event": event,
         "slots": slots,
@@ -155,3 +158,26 @@ def test_atomic_multi_hall_no_partial_on_conflict(client):
         assert slot_a.status == "open"
     finally:
         db.close()
+
+
+def test_atomic_multi_hall_hold_rejects_viewer_and_outsider_without_partial_capture(client):
+    ctx = _setup_two_hall_package(client)
+    viewer = register(client, "viewer-mh@booker.test", "Viewer")
+    outsider = register(client, "outsider-mh@booker.test", "Outsider")
+    customer_headers = auth_header(ctx["customer"]["token"])
+    assert client.post(
+        f"/orgs/{ctx['cust_org']['id']}/members",
+        json={"user_id": viewer["user_id"], "role": "viewer"},
+        headers=customer_headers,
+    ).status_code == 200
+    path = f"/events/{ctx['event']['id']}/holds/atomic"
+    for user in (viewer, outsider):
+        denied = client.post(
+            path, json={"booking_ids": ctx["booking_ids"]},
+            headers=auth_header(user["token"]),
+        )
+        assert denied.status_code == 403, denied.text
+    for booking_id in ctx["booking_ids"]:
+        room = client.get(f"/deal-room/{booking_id}", headers=customer_headers)
+        assert room.status_code == 200
+        assert room.json()["status"] == "Negotiation"

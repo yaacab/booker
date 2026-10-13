@@ -4,17 +4,18 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/booker/apps/api
+WorkingDirectory=/opt/booker/current/apps/api
 Environment=BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db
-Environment=BOOKER_CORS_ORIGINS=https://bukergo.ru,https://www.bukergo.ru,http://localhost:3000
+Environment=BOOKER_RUNTIME_ENV=production
+Environment=BOOKER_CORS_ORIGINS=https://bukergo.ru,https://www.bukergo.ru
 Environment=BOOKER_PUBLIC_URL=https://bukergo.ru
 Environment=BOOKER_UPLOAD_DIR=/opt/booker/data/uploads
 Environment=BOOKER_ALLOW_DEFAULT_WEBHOOK_SECRET=false
 Environment=BOOKER_PAYMENT_PROVIDER=external
 Environment=BOOKER_REQUIRE_ADMIN_2FA_ENFORCED=true
-Environment=BOOKER_IN_APP_PROVIDER=dev
-EnvironmentFile=-/etc/booker/booker-api.env
-ExecStart=/opt/booker/.venv/bin/uvicorn booker_api.main:app --host 127.0.0.1 --port 8030
+Environment=BOOKER_IN_APP_PROVIDER=audit
+EnvironmentFile=/etc/booker/booker-api.env
+ExecStart=/usr/bin/env BOOKER_RUNTIME_ENV=production /opt/booker/current/.venv/bin/uvicorn booker_api.main:app --host 127.0.0.1 --port 8030 --no-proxy-headers --no-access-log
 Restart=always
 RestartSec=3
 User=booker

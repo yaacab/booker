@@ -1,7 +1,9 @@
 """W3-FAV / E04: избранное без побочных booking/hold/request."""
 
-from booker_api.models import Booking, BookingHold, Request
-from tests.conftest import auth_header, register
+from datetime import datetime, timedelta, timezone
+
+from booker_api.models import Booking, BookingHold, Favorite, Request
+from tests.conftest import auth_header, publish_artist, publish_venue, register
 
 
 def _counts(SessionLocal) -> dict[str, int]:
@@ -46,6 +48,24 @@ def _seed_artist_and_venue(client):
         json={"organization_id": venue_org["id"], "name": "Зал Избранный", "capacity": 100},
         headers=own_h,
     ).json()
+    starts = datetime.now(timezone.utc) + timedelta(days=10)
+    for resource_type, resource_id in (
+        ("artist", artist["id"]),
+        ("hall", venue["hall_id"]),
+    ):
+        slot = client.post(
+            "/slots",
+            json={
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+                "starts_at": starts.isoformat(),
+                "ends_at": (starts + timedelta(hours=4)).isoformat(),
+            },
+            headers=own_h,
+        )
+        assert slot.status_code == 200, slot.text
+    publish_artist(client, owner, artist["id"])
+    publish_venue(client, owner, venue["id"])
     return {
         "customer": customer,
         "cust_h": cust_h,
@@ -155,7 +175,32 @@ def test_favorites_e04_no_booking_hold_request(client, SessionLocal):
     assert _counts(SessionLocal) == before
 
 
-def test_favorites_auth_required_and_idor(client):
+def test_unpublished_profile_disappears_from_saved_favorites(client):
+    ctx = _seed_artist_and_venue(client)
+    added = client.post(
+        "/favorites",
+        json={
+            "target_type": "artist", "target_id": ctx["artist"]["id"],
+            "organization_id": ctx["cust_org"]["id"],
+        },
+        headers=ctx["cust_h"],
+    )
+    assert added.status_code == 201
+    disabled = client.put(
+        f"/artists/{ctx['artist']['id']}/publication",
+        json={"enabled": False, "state_version": 1},
+        headers=ctx["own_h"],
+    )
+    assert disabled.status_code == 200
+    listed = client.get(
+        f"/favorites?organization_id={ctx['cust_org']['id']}",
+        headers=ctx["cust_h"],
+    )
+    assert listed.status_code == 200
+    assert listed.json()["items"] == []
+
+
+def test_favorites_auth_required_and_idor(client, SessionLocal):
     ctx = _seed_artist_and_venue(client)
     anon = client.get("/favorites")
     assert anon.status_code == 401
@@ -188,9 +233,52 @@ def test_favorites_auth_required_and_idor(client):
         headers=auth_header(stranger["token"]),
     )
     assert denied.status_code == 404
+    with SessionLocal() as db:
+        assert db.get(Favorite, created["id"]) is not None
 
     foreign_org = client.get(
         f"/favorites?organization_id={ctx['cust_org']['id']}",
         headers=auth_header(stranger["token"]),
     )
     assert foreign_org.status_code == 403
+
+
+def test_favorite_create_and_target_delete_reject_foreign_org_without_writes(
+    client, SessionLocal
+):
+    from booker_api.models import Favorite
+
+    ctx = _seed_artist_and_venue(client)
+    stranger = register(client, "fav-foreign-mutation@booker.test", "Stranger")
+    outsider_headers = auth_header(stranger["token"])
+    with SessionLocal() as db:
+        before = db.query(Favorite).count()
+    denied_create = client.post(
+        "/favorites",
+        json={
+            "target_type": "artist", "target_id": ctx["artist"]["id"],
+            "organization_id": ctx["cust_org"]["id"],
+        },
+        headers=outsider_headers,
+    )
+    assert denied_create.status_code == 403
+    with SessionLocal() as db:
+        assert db.query(Favorite).count() == before
+
+    created = client.post(
+        "/favorites",
+        json={
+            "target_type": "artist", "target_id": ctx["artist"]["id"],
+            "organization_id": ctx["cust_org"]["id"],
+        },
+        headers=ctx["cust_h"],
+    )
+    assert created.status_code == 201, created.text
+    denied_delete = client.delete(
+        f"/favorites/target/artist/{ctx['artist']['id']}",
+        params={"organization_id": ctx["cust_org"]["id"]},
+        headers=outsider_headers,
+    )
+    assert denied_delete.status_code == 403
+    with SessionLocal() as db:
+        assert db.get(Favorite, created.json()["id"]) is not None

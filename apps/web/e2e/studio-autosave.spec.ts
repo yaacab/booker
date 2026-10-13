@@ -19,7 +19,7 @@ async function clearStudioStorage(page: import("@playwright/test").Page) {
 
 test.describe("E06 Event Studio autosave", () => {
   test("классический мастер: draft переживает reload (map flag OFF)", async ({ page }) => {
-    await page.goto("/events/new");
+    await page.goto("/events/new?event_studio_map_v1=0");
     await clearStudioStorage(page);
     await page.reload();
 
@@ -63,7 +63,7 @@ test.describe("E06 Event Studio autosave", () => {
   });
 
   test("offline: статус и локальный draft без сетевых хаков", async ({ page, context }) => {
-    await page.goto("/events/new");
+    await page.goto("/events/new?event_studio_map_v1=0");
     await clearStudioStorage(page);
     await page.reload();
     await expect(page.getByRole("heading", { name: "Новая заявка" })).toBeVisible();

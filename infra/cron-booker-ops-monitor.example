@@ -1,0 +1,3 @@
+# Example only; local diagnostic checker, no paging transport configured.
+# Install only after validating the service name, journal access and permissions.
+*/5 * * * * root /opt/booker/current/infra/run-booker-ops-monitor.sh >> /var/log/booker-ops-monitor.log 2>&1

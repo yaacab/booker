@@ -1,22 +1,5 @@
 """W3-PROMO: organic share funnel events via audit log (no new tables)."""
 
-import pytest
-
-from booker_api.main import app
-from booker_api.routers.promo import router as promo_router
-
-_promo_mounted = False
-
-
-@pytest.fixture(autouse=True)
-def _mount_promo_router():
-    global _promo_mounted
-    if not _promo_mounted:
-        app.include_router(promo_router)
-        _promo_mounted = True
-    yield
-
-
 def test_promo_event_writes_audit(client, SessionLocal):
     res = client.post(
         "/promo/events",
@@ -59,7 +42,11 @@ def test_promo_event_no_auth_required(client):
     assert res.json()["ok"] is True
 
 
-def test_promo_event_ignores_unknown_name(client):
+def test_promo_event_ignores_unknown_name(client, SessionLocal):
+    from booker_api.models import AuditLog
+
+    with SessionLocal() as db:
+        before = db.query(AuditLog).count()
     res = client.post(
         "/promo/events",
         json={
@@ -70,6 +57,8 @@ def test_promo_event_ignores_unknown_name(client):
     )
     assert res.status_code == 200
     assert res.json()["ignored"] is True
+    with SessionLocal() as db:
+        assert db.query(AuditLog).count() == before
 
 
 def test_promo_event_rejects_invalid_kind(client):

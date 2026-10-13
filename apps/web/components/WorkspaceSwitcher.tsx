@@ -13,16 +13,9 @@ export function WorkspaceSwitcher() {
 
   useEffect(() => {
     if (!getToken()) return;
-    void api<{ flags?: { workspace_switcher?: boolean } }>("/health")
-      .then((health) => {
-        if (health.flags && health.flags.workspace_switcher === false) {
-          setOrgs([]);
-        }
-      })
-      .catch(() => {});
-    void api<{ organizations: Org[]; active_organization_id?: string }>("/me")
+    void api<{ organizations: Org[]; active_organization_id?: string; workspace_switcher_enabled: boolean }>("/me")
       .then((me) => {
-        setOrgs(me.organizations || []);
+        setOrgs(me.workspace_switcher_enabled !== false ? me.organizations || [] : []);
         const next = getActiveOrg() || me.active_organization_id || me.organizations[0]?.id || "";
         setCurrent(next);
         if (next) setActiveOrg(next);

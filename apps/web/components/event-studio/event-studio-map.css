@@ -1,12 +1,12 @@
 :root {
-  --es-ink: #f4f3fa;
-  --es-muted: #b0b4c6;
-  --es-border: #363a50;
-  --es-paper: #151824;
-  --es-canvas: #090b12;
-  --es-green: #7761cb;
-  --es-green-dark: #d0bfff;
-  --es-gold: #a795d9;
+  --es-ink: #20291b;
+  --es-muted: #58624f;
+  --es-border: #ccd5c5;
+  --es-paper: #f8faf5;
+  --es-canvas: #edf1eb;
+  --es-green: #426225;
+  --es-green-dark: #354d23;
+  --es-gold: #638035;
   --es-shadow: 0 12px 32px rgba(0, 0, 0, .24);
 }
 
@@ -333,17 +333,17 @@
 }
 
 /* Immersive materials; booking state is unchanged. */
-.event-studio-shell .time-editor > label > input { background: #202436; color: var(--es-ink); }
+.event-studio-shell .time-editor > label > input { background: #ffffff; color: var(--es-ink); }
 .event-studio-shell .stage-rail li button > span { font-size: 14px; flex-shrink: 0; }
 .event-studio-shell .talent-initials {
   display: grid;
   place-items: center;
-  background: #26253c;
-  color: #ddd3ff;
+  background: #e4edcf;
+  color: #354d23;
   font-weight: 650;
   font-size: 25px;
 }
-.event-studio-shell { color-scheme: dark; }
+.event-studio-shell { color-scheme: light; }
 .event-studio-shell :is(.event-studio-header, .stage-rail, .map-card,
   .puzzle-event-meta, .compatibility-note, .event-summary, .talent-card,
   .search-box, .home-button, .add-face, .mobile-panel-toggle) {
@@ -352,21 +352,21 @@
   border-color: var(--es-border);
 }
 .event-studio-shell :is(input, select, .card-button, .role-chips button, .role-tabs button) {
-  background: #202436;
+  background: #ffffff;
   color: var(--es-ink);
   border-color: var(--es-border);
 }
 .event-studio-shell :is(.text-button, .outline-button, .panel-header button) { color: var(--es-ink); }
 .event-studio-shell :is(.card-meta, .event-summary small, .role-chips .ghost-chip) { color: var(--es-muted); }
-.event-studio-shell .role-tabs button.selected { background: #393052; color: #e4d6ff; border-color: #a795d9; }
-.event-studio-shell .remove-talent { background: #302b45; color: #e0d0ff; border-color: #a795d9; }
-.event-studio-shell .event-summary > button { background: #7560c6; }
-.event-studio-shell .submit-error, .event-studio-shell .availability-busy { color: #ffadb8; }
-.event-studio-shell .availability-tentative { color: #eed299; }
-.event-studio-shell .availability-available { color: #87dfbd; }
+.event-studio-shell .role-tabs button.selected { background: #dce8cb; color: #354d23; border-color: #638035; }
+.event-studio-shell .remove-talent { background: #e4edcf; color: #354d23; border-color: #638035; }
+.event-studio-shell .event-summary > button { background: #426225; }
+.event-studio-shell .submit-error, .event-studio-shell .availability-busy { color: #962c41; }
+.event-studio-shell .availability-tentative { color: #725309; }
+.event-studio-shell .availability-available { color: #226443; }
 .event-studio-shell .event-map { background: var(--es-canvas); }
-.event-studio-shell .puzzle-label.is-filled strong { color: #dbceff; }
-.event-studio-shell .puzzle-board-svg { filter: drop-shadow(0 10px 8px #0009) drop-shadow(0 0 20px #9a6df126); }
+.event-studio-shell .puzzle-label.is-filled strong { color: #354d23; }
+.event-studio-shell .puzzle-board-svg { filter: drop-shadow(0 10px 8px #263b2426); }
 .event-studio-shell .puzzle-piece--ghost { opacity: .55; }
 .event-studio-shell .puzzle-piece--snapping { animation-name: puzzle-assemble; }
 @keyframes puzzle-assemble {
@@ -379,7 +379,7 @@
 .event-studio-shell .event-map {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-areas: "venue time" "puzzle puzzle" "team terms" "note note" "summary summary";
+  grid-template-areas: "jump jump" "venue time" "puzzle puzzle" "team terms" "note note" "summary summary";
   align-content: start;
   align-items: start;
   gap: 24px;
@@ -404,26 +404,26 @@
 .event-studio-shell .compatibility-note { grid-area: note; }
 .event-studio-shell .event-summary { grid-area: summary; }
 .event-studio-shell .connection-lines { display: none; }
-.event-studio-shell .map-card { padding: 16px; border-radius: 20px; background: rgba(21, 24, 36, .94); }
+.event-studio-shell .map-card { padding: 16px; border-radius: 20px; background: #ffffff; }
 .event-studio-shell .puzzle-stage.map-card-focus { box-shadow: none; }
-.event-studio-shell .puzzle-event-meta { background: #171b2c; border-color: #746a9d; box-shadow: var(--es-shadow); }
+.event-studio-shell .puzzle-event-meta { background: #f8faf5; border-color: #879c69; box-shadow: var(--es-shadow); }
 .event-studio-shell .puzzle-label { max-width: 88px; white-space: normal; }
 .event-studio-shell .puzzle-label span { white-space: nowrap; }
 .event-studio-shell .puzzle-label--left { transform: translate(-25%, -50%); }
 .event-studio-shell .puzzle-label--right { transform: translate(-75%, -50%); }
 .event-studio-shell .team-faces { flex-wrap: wrap; }
-.event-studio-shell .talent-face { border-color: #202436; }
+.event-studio-shell .talent-face { border-color: #ffffff; }
 .event-studio-shell .talent-copy { min-width: 0; overflow-wrap: anywhere; }
-.event-studio-shell .talent-photo { background-color: #2b3047; }
+.event-studio-shell .talent-photo { background-color: #e5ebdf; }
 .event-studio-shell .stage-rail li button { color: var(--es-muted); }
 .event-studio-shell .stage-rail li.active button { color: var(--es-ink); }
 .event-studio-shell .stage-rail li:not(:last-child)::after { background: var(--es-border); }
-.event-studio-shell .stage-rail li button > span { border-color: #596079; }
+.event-studio-shell .stage-rail li button > span { border-color: #879c69; }
 .event-studio-shell .requirement { gap: 12px; }
-.event-studio-shell .requirement i { flex-shrink: 0; color: #91e3cf; border-color: #5d9e90; }
+.event-studio-shell .requirement i { flex-shrink: 0; color: #426225; border-color: #879c69; }
 .event-studio-shell :is(.card-button, .role-chips button, .role-tabs button, .text-button, .outline-button) { min-height: 44px; }
-.event-studio-shell .search-box:focus-within { outline: 2px solid #bca6ff; outline-offset: 2px; }
-.event-studio-shell :focus-visible { outline-color: #bca6ff; }
+.event-studio-shell .search-box:focus-within { outline: 2px solid #426225; outline-offset: 2px; }
+.event-studio-shell :focus-visible { outline-color: #426225; }
 .event-studio-shell .talent-panel { position: sticky; top: 0; overscroll-behavior: contain; }
 .event-studio-shell .panel-backdrop { background: rgba(3, 5, 12, .72); }
 .event-studio-shell .puzzle-piece--snapping { animation-duration: 420ms; }
@@ -460,7 +460,7 @@
   .event-studio-shell .panel-header { position: sticky; top: -18px; z-index: 2; background: var(--es-paper); padding-block: 12px; }
 }
 @media (max-width: 520px) {
-  .event-studio-shell .event-map { grid-template-areas: "venue time" "puzzle puzzle" "team team" "terms terms" "note note" "summary summary"; gap: 14px; }
+  .event-studio-shell .event-map { grid-template-areas: "jump jump" "venue time" "puzzle puzzle" "team team" "terms terms" "note note" "summary summary"; gap: 14px; }
   .event-studio-shell .venue-card h2, .event-studio-shell .time-card h2 { align-items: flex-start; overflow-wrap: anywhere; }
   .event-studio-shell .map-card h2 .es-icon { flex-shrink: 0; }
   .event-studio-shell .talent-card { grid-template-columns: 88px minmax(0, 1fr); gap: 12px; }
@@ -469,3 +469,288 @@
   .event-studio-shell .puzzle-piece { animation: none !important; transition: none !important; }
 }
 .puzzle-board--reduced .puzzle-piece--releasing { animation: none !important; }
+
+/* The customer can open every event section in any order. */
+.event-studio-shell .section-jump-bar {
+  grid-area: jump;
+  position: sticky;
+  top: 0;
+  z-index: 18;
+  padding: 14px;
+  border: 1px solid var(--es-border);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(32, 41, 27, .08);
+}
+.event-studio-shell .section-jump-bar p {
+  margin: 0 0 10px;
+  color: var(--es-muted);
+  font-size: 12px;
+}
+.event-studio-shell .section-jump-bar > div {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+.event-studio-shell .section-jump-bar button {
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--es-border);
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: #f8faf5;
+  color: var(--es-ink);
+  cursor: pointer;
+}
+.event-studio-shell .format-field {
+  width: min(210px, 100%);
+  margin-top: 10px;
+}
+.event-studio-shell .format-field select {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 4px;
+  border: 1px solid var(--es-border);
+  border-radius: 8px;
+  padding: 8px;
+}
+.event-studio-shell .card-help {
+  margin: 0 0 12px;
+}
+.event-studio-shell .requirement-list {
+  display: grid;
+  gap: 8px;
+}
+.event-studio-shell .requirement-choice {
+  min-height: 48px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--es-border);
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+}
+.event-studio-shell .requirement-choice input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  accent-color: var(--es-green);
+}
+.event-studio-shell .budget-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 5px 0 8px;
+}
+.event-studio-shell .budget-field input {
+  min-width: 0;
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--es-border);
+  border-radius: 9px;
+  padding: 9px 11px;
+  background: #ffffff;
+  color: var(--es-ink);
+  font-weight: 650;
+}
+.event-studio-shell .budget-field b,
+.event-studio-shell .event-summary strong {
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Calendar and wheel pickers use the top layer and always have an opaque surface. */
+.event-studio-shell .es-picker-field {
+  margin: 8px 0;
+}
+.event-studio-shell .es-picker-field > label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--es-muted);
+  font-size: 11px;
+}
+.event-studio-shell .es-picker-trigger {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--es-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: var(--es-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.es-picker-dialog {
+  width: min(430px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  overflow: auto;
+  background: #ffffff;
+  color: #20291b;
+  box-shadow: 0 24px 80px rgba(9, 14, 8, .34);
+}
+.es-picker-dialog::backdrop {
+  background: rgba(13, 18, 12, .58);
+}
+.es-picker-sheet {
+  padding: 20px;
+  background: #ffffff;
+}
+.es-picker-heading,
+.es-picker-month {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.es-picker-heading h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.es-picker-heading button,
+.es-picker-month button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid #ccd5c5;
+  border-radius: 50%;
+  background: #f8faf5;
+  color: #20291b;
+  cursor: pointer;
+}
+.es-picker-month {
+  margin: 20px 0 14px;
+}
+.es-picker-month strong {
+  text-transform: capitalize;
+}
+.es-picker-weekdays,
+.es-picker-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.es-picker-weekdays {
+  margin-bottom: 6px;
+  color: #58624f;
+  font-size: 11px;
+  text-align: center;
+}
+.es-picker-days button {
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #20291b;
+  cursor: pointer;
+}
+.es-picker-days button:hover,
+.es-picker-days button:focus-visible {
+  border-color: #638035;
+}
+.es-picker-days button.is-selected {
+  background: #426225;
+  color: #ffffff;
+}
+.es-picker-days button:disabled {
+  color: #a9afa4;
+  cursor: not-allowed;
+}
+.es-time-preview {
+  margin: 14px 0 8px;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.es-time-wheels {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.es-time-center {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 88px;
+  height: 44px;
+  border: 1px solid #879c69;
+  border-radius: 10px;
+  background: #eef3e9;
+  pointer-events: none;
+}
+.es-time-column {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+.es-time-column > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #58624f;
+  font-size: 11px;
+  text-align: center;
+}
+.es-time-wheel {
+  height: 220px;
+  overflow-y: auto;
+  padding-block: 88px;
+  scroll-snap-type: y mandatory;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.es-time-wheel::-webkit-scrollbar {
+  display: none;
+}
+.es-time-wheel button {
+  width: 100%;
+  height: 44px;
+  display: block;
+  border: 0;
+  scroll-snap-align: center;
+  background: transparent;
+  color: #58624f;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.es-time-wheel button.is-selected {
+  color: #20291b;
+  font-size: 19px;
+  font-weight: 700;
+}
+.es-picker-hint {
+  margin: 12px 0;
+  color: #58624f;
+  font-size: 12px;
+  text-align: center;
+}
+.es-picker-confirm {
+  min-height: 48px;
+  background: #426225;
+  color: #ffffff;
+}
+
+@media (max-width: 520px) {
+  .event-studio-shell .section-jump-bar {
+    margin-inline: -4px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .es-picker-sheet {
+    padding: 16px;
+  }
+}

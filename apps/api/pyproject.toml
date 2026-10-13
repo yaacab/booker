@@ -17,6 +17,7 @@ dependencies = [
   "httpx>=0.27",
   "python-multipart>=0.0.9",
   "pyotp>=2.9",
+  "cryptography>=46.0.7",
 ]
 
 [project.optional-dependencies]
@@ -31,6 +32,7 @@ packages = ["booker_api", "booker_api.notifications", "booker_api.routers"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["postgres_integration: opt-in isolated PostgreSQL schema tests (TEST_POSTGRES_DSN)"]
 
 [tool.ruff]
 line-length = 100

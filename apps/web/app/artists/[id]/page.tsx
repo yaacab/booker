@@ -1,10 +1,24 @@
 import type { Metadata } from "next";
-import { ArtistProfileClient } from "@/components/ArtistProfileClient";
+import { notFound } from "next/navigation";
+import { cache } from "react";
+import {
+  ArtistProfileClient,
+  type ArtistProfileData,
+} from "@/components/ArtistProfileClient";
 
 const API =
   process.env.BOOKER_INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   "http://127.0.0.1:8000";
+
+const getArtist = cache(async (id: string): Promise<ArtistProfileData | null> => {
+  const res = await fetch(`${API}/artists/${encodeURIComponent(id)}`, {
+    next: { revalidate: 300 },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Artist profile API failed with ${res.status}`);
+  return (await res.json()) as ArtistProfileData;
+});
 
 export async function generateMetadata({
   params,
@@ -12,23 +26,26 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  try {
-    const res = await fetch(`${API}/artists/${id}`, { next: { revalidate: 300 } });
-    if (!res.ok) return { title: "Артист · Букер", robots: { index: false } };
-    const data = (await res.json()) as { name?: string; city?: string; category?: string };
-    const title = data.name ? `${data.name} — артист · Букер` : "Артист · Букер";
-    const description = [data.name, data.city, data.category].filter(Boolean).join(" · ");
-    return {
+  const data = await getArtist(id);
+  if (!data) notFound();
+  const title = `${data.name} — артист · Букер`;
+  const description = [data.name, data.city, data.category].filter(Boolean).join(" · ");
+  return {
+    title,
+    description,
+    alternates: { canonical: `/artists/${id}` },
+    openGraph: {
       title,
       description,
-      alternates: { canonical: `/artists/${id}` },
-      openGraph: { title, description, url: `/artists/${id}` },
-    };
-  } catch {
-    return { title: "Артист · Букер" };
-  }
+      url: `/artists/${id}`,
+      images: data.media_url ? [data.media_url] : undefined,
+    },
+  };
 }
 
-export default function ArtistPage() {
-  return <ArtistProfileClient />;
+export default async function ArtistPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const artist = await getArtist(id);
+  if (!artist) notFound();
+  return <ArtistProfileClient artistId={id} initialData={artist} />;
 }

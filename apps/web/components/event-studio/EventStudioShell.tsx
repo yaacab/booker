@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getToken, trackClientEvent } from "@/lib/api";
 import { moscowToday } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -14,6 +14,8 @@ import {
   getOrCreateSubmitIdempotencyKey,
   isDraftVersionConflict,
   loadCatalog,
+  loadPreferredTalent,
+  loadPreferredVenue,
   loadStoredDraft,
   mapCatalogTalent,
   mapCatalogVenue,
@@ -29,6 +31,9 @@ const CATALOG_DEBOUNCE_MS = 400;
 
 export default function EventStudioShell() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preferredArtistId = searchParams.get("artist") || "";
+  const preferredVenueId = searchParams.get("venue") || "";
   const [draft, setDraft] = useState<EventStudioDraft>(EMPTY_DRAFT);
   const [hydrated, setHydrated] = useState(false);
   const [talents, setTalents] = useState<TalentItem[]>([]);
@@ -111,8 +116,38 @@ export default function EventStudioShell() {
     try {
       const data = await loadCatalog(draft.city || "Москва", draft.date, undefined, controller.signal);
       if (catalogAbortRef.current !== controller) return;
-      setTalents(data.items.map((item) => mapCatalogTalent(item, draft.date)));
-      setVenues(data.venues.map(mapCatalogVenue));
+      const mappedTalents = data.items.map((item) => mapCatalogTalent(item, draft.date));
+      const mappedVenues = data.venues.map(mapCatalogVenue);
+      const [preferredTalent, preferredVenue] = await Promise.all([
+        preferredArtistId && !mappedTalents.some((item) => item.id === preferredArtistId)
+          ? loadPreferredTalent(preferredArtistId, draft.date, controller.signal).catch(() => null)
+          : Promise.resolve(null),
+        preferredVenueId && !mappedVenues.some((item) => item.id === preferredVenueId)
+          ? loadPreferredVenue(preferredVenueId, controller.signal).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+      if (catalogAbortRef.current !== controller) return;
+      if (preferredTalent) mappedTalents.unshift(preferredTalent);
+      if (preferredVenue) mappedVenues.unshift(preferredVenue);
+      setTalents(mappedTalents);
+      setVenues(mappedVenues);
+      if (
+        (preferredArtistId && mappedTalents.some((item) => item.id === preferredArtistId)) ||
+        (preferredVenueId && mappedVenues.some((item) => item.id === preferredVenueId))
+      ) {
+        setDraft((current) => {
+          const talentIds =
+            preferredArtistId && !current.talentIds.includes(preferredArtistId)
+              ? [preferredArtistId, ...current.talentIds]
+              : current.talentIds;
+          const venueId =
+            preferredVenueId && mappedVenues.some((item) => item.id === preferredVenueId)
+              ? preferredVenueId
+              : current.venueId;
+          if (talentIds === current.talentIds && venueId === current.venueId) return current;
+          return bumpDraftVersion({ ...current, talentIds, venueId });
+        });
+      }
     } catch (err) {
       if (catalogAbortRef.current !== controller) return;
       setTalentsError(err instanceof Error ? err.message : "Каталог недоступен");
@@ -121,7 +156,7 @@ export default function EventStudioShell() {
     } finally {
       if (catalogAbortRef.current === controller) setLoadingTalents(false);
     }
-  }, [draft.city, draft.date]);
+  }, [draft.city, draft.date, preferredArtistId, preferredVenueId]);
 
   // Город набирается вручную — не дёргаем /catalog/search на каждый символ.
   useEffect(() => {
@@ -135,7 +170,8 @@ export default function EventStudioShell() {
   async function handleContinue() {
     if (submitLockRef.current) return;
     if (!getToken()) {
-      router.push(loginHref("/events/new?event_studio_map_v1=1"));
+      const query = searchParams.toString();
+      router.push(loginHref(`/events/new?${query || "event_studio_map_v1=1"}`));
       return;
     }
     if (!draft.title.trim()) {

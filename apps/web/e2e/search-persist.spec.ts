@@ -36,7 +36,7 @@ test.describe("E01 guest search → login persist", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/search?city=Москва&kind=artist");
-    await expect(page.getByRole("heading", { name: "Свободные артисты и площадки" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Найдите свою команду" })).toBeVisible();
 
     await page.getByLabel("Формат (исполнитель)").fill("club");
     await page.getByLabel("Бюджет до, ₽").fill("150000");
@@ -65,7 +65,7 @@ test.describe("E01 guest search → login persist", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     // Start without format filter so seed artists with open slots are listed, then apply filters.
     await page.goto("/search?city=Москва&kind=artist");
-    await expect(page.getByRole("heading", { name: "Свободные артисты и площадки" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Найдите свою команду" })).toBeVisible({
       timeout: 20_000,
     });
 

@@ -127,3 +127,28 @@ def get_payment_adapter() -> PaymentAdapter:
             "BOOKER_PAYMENT_MERCHANT_ID",
         )
     return LivePaymentAdapter()
+
+
+def get_refund_adapter_for_payment(
+    *, payment_provider: str, provider_merchant: str
+) -> PaymentAdapter:
+    """Select the original payment rail, never the current checkout mode alone."""
+    from booker_api.payments.stub import StubPaymentAdapter
+
+    original = payment_provider.strip().lower()
+    if original == "stub":
+        if settings.runtime_env not in {"local", "test"}:
+            raise PaymentAdapterUnavailable("Тестовый платёж нельзя вернуть в production")
+        return StubPaymentAdapter()
+    if original == "external":
+        raise PaymentAdapterUnavailable(
+            "Внешний перевод возвращают стороны вне Букер; операция через адаптер недоступна"
+        )
+    current = settings.payment_provider.strip().lower()
+    merchant = (settings.payment_merchant_id or "").strip()
+    if not original or current != original or not merchant or merchant != provider_merchant:
+        raise PaymentAdapterUnavailable("Провайдер или магазин исходного платежа недоступен")
+    adapter = get_payment_adapter()
+    if adapter.name != original:
+        raise PaymentAdapterUnavailable("Адаптер исходного платежа не подключён")
+    return adapter

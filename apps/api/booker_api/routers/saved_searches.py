@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
+from booker_api.data_subject_lock import lock_subject
 from booker_api.db import get_db
 from booker_api.models import Organization, SavedSearch, User
 from booker_api.security import current_user, require_org_member
@@ -134,6 +135,10 @@ def create_saved_search(
 ):
     org_id = _resolve_org_id(db, user, body.organization_id, x_booker_org)
     _require_notify_consent(body.notify_consent, body.consent)
+    if body.notify_consent:
+        subject = lock_subject(db, user.id)
+        if subject is None or subject.optional_processing_restricted:
+            raise HTTPException(409, "Необязательные уведомления ограничены")
     row = SavedSearch(
         user_id=user.id,
         organization_id=org_id,
@@ -159,6 +164,10 @@ def patch_notify_consent(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Сохранённый поиск не найден")
     require_org_member(db, user, row.organization_id)
     _require_notify_consent(body.notify_consent, body.consent)
+    if body.notify_consent:
+        subject = lock_subject(db, user.id)
+        if subject is None or subject.optional_processing_restricted:
+            raise HTTPException(409, "Необязательные уведомления ограничены")
     row.notify_consent = body.notify_consent
     db.commit()
     db.refresh(row)

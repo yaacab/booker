@@ -102,12 +102,12 @@ export function CabinetDashboard({ cabinetMode }: CabinetDashboardProps) {
     }
     try {
       const me = await api<{
-        email: string;
+        email: string | null;
         is_platform_admin?: boolean;
         organizations?: { id: string; name: string; kind: string; role?: string }[];
         active_organization_id?: string;
       }>("/me");
-      setEmail(me.email);
+      setEmail(me.email || "");
       if (me.is_platform_admin) localStorage.setItem("booker.admin", "1");
       const activeOrgId = getActiveOrg() || me.active_organization_id || me.organizations?.[0]?.id;
       const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];

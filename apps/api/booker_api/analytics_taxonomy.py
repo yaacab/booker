@@ -41,7 +41,7 @@ FUNNEL_STEPS: tuple[tuple[str, str, str | None], ...] = (
     ("request.created", "request.created", None),
     ("offer.created", "offer.created", None),
     ("hold.created", "hold.created", None),
-    ("contract.signed", "contract.signed", None),
+    ("contract.draft_acknowledged", "contract.draft_acknowledged", None),
     ("payment.webhook", "payment.webhook", None),
     ("promo.event", "promo.event", None),
 )

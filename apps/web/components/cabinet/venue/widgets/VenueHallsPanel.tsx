@@ -111,8 +111,8 @@ export function VenueHallsPanel({ venueId, venueName, role }: Props) {
                 </div>
                 <div className="dashboard-action-meta">
                   <span className="chip chip-glass">Зал</span>
-                  <Link className="btn secondary" href={`/venues/${venueId}`}>
-                    Витрина
+                  <Link className="btn secondary" href={`/cabinet/preview/venue/${encodeURIComponent(venueId)}`}>
+                    Предпросмотр витрины
                   </Link>
                   <Link className="btn secondary" href={`/venues/${venueId}/share`}>
                     Поделиться / QR

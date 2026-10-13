@@ -1,4 +1,4 @@
-"""Upload validation: size, extension, magic bytes. ClamAV — при появлении prod storage."""
+"""Upload size/type checks only; these checks are not an antivirus verdict."""
 
 from __future__ import annotations
 
@@ -41,6 +41,16 @@ def detect_kind(header: bytes) -> str | None:
     if header[:4] == b"RIFF" and len(header) >= 12 and header[8:12] == b"WEBP":
         return "webp"
     return None
+
+
+def safe_media_type(content: bytes) -> str:
+    """Return a download MIME derived from bytes, never from the upload header."""
+    return {
+        "pdf": "application/pdf",
+        "png": "image/png",
+        "jpeg": "image/jpeg",
+        "webp": "image/webp",
+    }.get(detect_kind(content[:16]), "application/octet-stream")
 
 
 def scan_upload(content: bytes, filename: str, *, max_bytes: int) -> str:

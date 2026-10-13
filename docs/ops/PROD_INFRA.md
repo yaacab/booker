@@ -2,7 +2,7 @@
 
 Источник: MASTER_PLAN `p0-prod-infra`. Юридический контекст: [HOSTING_152FZ.md](../legal/HOSTING_152FZ.md).
 
-**Инженерная часть закрыта** (скрипты, Alembic, deploy hook, чеклисты ниже). Остаётся **ops/runtime** — выполнение пунктов в разделе «Runtime (только прод)».
+**Инженерная часть подготовлена локально**, но production readiness требует runtime-проверок и согласованного snapshot DB+uploads. Оставшиеся пункты перечислены в разделе «Runtime (только прод)».
 
 ## Текущее состояние (пилот 2026-09)
 
@@ -19,14 +19,16 @@
 
 `BOOKER_DATABASE_URL` в [config.py](../../apps/api/booker_api/config.py); локальный Postgres: `infra/docker-compose.yml`.
 
+Перед следующим применением `infra/systemd/booker-api.service` обязателен [production configuration gate](PRODUCTION_CONFIG_GATE.md): новый шаблон задаёт `BOOKER_RUNTIME_ENV=production` и не стартует с default/отсутствующим webhook secret, `stub`, выключенной admin 2FA, dev transport или localhost CORS. Текущий установленный unit и защищённый env-файл не проверены; изменение шаблона само по себе не означает готовности к deploy.
+
 ---
 
 ## Runtime (только прод) — что осталось
 
-Инженерных задач нет. Выполнить на VPS / в облаке РФ:
+Локальный backup/restore путь проверен на синтетической SQLite, но инженерные и runtime-гейты ниже остаются. Выполнить на VPS / в облаке РФ:
 
-- [ ] **Cron verify** — после `make deploy`: `cat /etc/cron.d/booker-backup`, дождаться 02:15 MSK или запустить вручную `BOOKER_DATABASE_URL=sqlite:////opt/booker/data/booker.db /opt/booker/infra/backup-booker.sh`
-- [ ] **Первый backup + verify** — файл в `/var/backups/booker/booker-*.db.gz`, `gunzip -t`, restore drill на staging (см. ниже)
+- [ ] **Cron verify** — после `make deploy`: `cat /etc/cron.d/booker-backup`, дождаться 02:15 MSK или запустить вручную `/opt/booker/infra/run-booker-backup.sh`; wrapper читает `/etc/booker/booker-api.env`
+- [ ] **Первый backup + verify** — архив в `/var/backups/booker/booker-*.tar.gz`, `tar -tzf`, restore drill на staging (см. ниже)
 - [ ] **Restore drill (staging)** — пройти чеклист «Restore drill», записать RTO в журнал MASTER_PLAN
 - [ ] **Postgres cutover** — пройти чеклист «Postgres cutover» в окне обслуживания
 - [ ] **RU hosting audit** — пройти чеклист «Аудит хостинга РФ», зафиксировать evidence
@@ -44,7 +46,9 @@ sudo cp /opt/booker/infra/cron-booker-backup.example /etc/cron.d/booker-backup
 sudo chmod 644 /etc/cron.d/booker-backup
 ```
 
-Скрипт: [infra/backup-booker.sh](../../infra/backup-booker.sh) — `sqlite3 .backup` + gzip (SQLite) или `pg_dump` (Postgres), retention 30 дней.
+Wrapper: [infra/run-booker-backup.sh](../../infra/run-booker-backup.sh) читает защищённый runtime env API. Он **не останавливает API по умолчанию**: SQLite online backup и `pg_dump` выполняются при работающем сервисе; изменившиеся во время копирования uploads отклоняют backup. `BOOKER_BACKUP_QUIESCE_SERVICE` включает явную остановку указанного сервиса, если это требуется для согласованного snapshot; этот режим требует отдельной операционной проверки. Скрипт [infra/backup-booker.sh](../../infra/backup-booker.sh) делает SQLite online backup через Python, `pg_dump --format=custom` для Postgres, добавляет проверенную копию uploads и manifest в legacy `tar.gz` по умолчанию. Опциональный authenticated/encrypted `.bke` и требуемый внешний Python с `cryptography` описаны в [BACKUP_SEALED.md](BACKUP_SEALED.md); это **локально испытанный формат, не включённый production gate**. Перед публикацией архив проверяется; повтор в ту же секунду получает уникальное имя, при сбое `.partial` удаляется. Retention: `find -mtime +N` по mtime в backup-каталоге после успешного backup для обоих форматов; `BOOKER_BACKUP_RETENTION_DAYS` принимает 1–3650, `BOOKER_BACKUP_RETENTION_DRY_RUN=1` показывает кандидатов без удаления. **Полного dry-run без создания архива пока нет.**
+
+Архив `tar.gz` **не зашифрован**, а SHA-256 manifest хранится внутри него и обнаруживает случайную порчу, но не подмену архива с пересчитанным manifest. Локальные права `0700/0600` не защищают скопированный архив. Off-site передача и хранение ПДн требуют отдельного защищённого канала, шифрования с управлением ключами и проверки восстановления; пример `rsync` ниже не является готовым безопасным регламентом.
 
 Off-site копия (ручной шаг до выбора bucket):
 
@@ -88,7 +92,7 @@ A1–A8: pass / fail / n/a (по строкам)
 
 - [ ] Managed Postgres 16 в том же облаке/регионе, что VPS (Yandex / Selectel)
 - [ ] Создана БД `booker`, пользователь с минимальными правами, SSL enforced
-- [ ] Секрет `BOOKER_DATABASE_URL=postgresql+psycopg://USER:PASS@HOST:5432/booker?sslmode=require` — только в `/etc/systemd/system/booker-api.service`, не в git
+- [ ] Секрет `BOOKER_DATABASE_URL=postgresql+psycopg://USER:PASS@HOST:5432/booker?sslmode=require` — в `/etc/booker/booker-api.env` с `root:root 0600`, не в git; его читают API и backup wrapper
 - [ ] Локально: `docker compose -f infra/docker-compose.yml up -d postgres`, `make migrate`, `make test-api` — зелёные
 - [ ] Smoke на staging Postgres: seed + `curl /health` + выборочные API
 - [ ] Свежий SQLite backup: `backup-booker.sh`, файл сохранён off-site
@@ -156,8 +160,8 @@ BOOKER_DATABASE_URL="${DST}" alembic -c apps/api/alembic.ini upgrade head
 
 **Post-cutover (48h)**
 
-- [ ] Cron backup использует Postgres URL (тот же `/etc/cron.d/booker-backup`, env из скрипта или wrapper)
-- [ ] Restore drill на `.dump.gz` (quarterly)
+- [ ] Cron backup использует Postgres URL из `/etc/booker/booker-api.env`; проверить до открытия трафика
+- [ ] Restore drill на `booker-pg-*.tar.gz` (quarterly)
 - [ ] SQLite файл архивирован, не удалять 30 дней
 
 ### Alembic (справка)
@@ -181,8 +185,8 @@ make test-api
 | Шаг | Действие | Ожидание |
 |-----|----------|----------|
 | 1 | Выбрать backup не старше 24h | файл `.gz` в `/var/backups/booker/` |
-| 2 | Staging VM или `/opt/booker-restore-test` | изолированный путь, **не prod** |
-| 3 | Restore DB | SQLite: [restore-drill.sh](../../infra/restore-drill.sh); Postgres: `gunzip -c booker-pg-*.dump.gz \| pg_restore -d booker_restored` |
+| 2 | Staging VM или новый каталог под `/tmp/booker-restore-*` | изолированный путь, **не prod** |
+| 3 | Restore DB | SQLite: [restore-drill.sh](../../infra/restore-drill.sh); Postgres: создать отдельную пустую staging-БД `booker_restored`, проверить host/name, распаковать `booker.dump`, затем `pg_restore --exit-on-error --no-owner --dbname=booker_restored booker.dump` |
 | 4 | `BOOKER_DATABASE_URL` → restored | API стартует на staging |
 | 5 | `curl /health` + smoke API | 200, ключевые endpoints |
 | 6 | Записать RTO, проблемы | строка в журнале MASTER_PLAN |
@@ -191,10 +195,10 @@ make test-api
 
 ```bash
 # SQLite pilot
-/opt/booker/infra/restore-drill.sh /var/backups/booker/booker-YYYYMMDD.db.gz /tmp/booker-restore-drill
+/opt/booker/infra/restore-drill.sh /var/backups/booker/booker-YYYYMMDDTHHMMSSZ.tar.gz /tmp/booker-restore-drill
 ```
 
-Pytest smoke: `apps/api/tests/test_restore_drill.py`.
+Pytest smoke: `apps/api/tests/test_backup_restore.py`.
 
 ---
 

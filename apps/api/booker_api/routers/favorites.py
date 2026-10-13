@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
 from booker_api.models import Artist, Favorite, User, Venue
+from booker_api.publication_eligibility import target_is_public
 from booker_api.security import current_user, membership, require_org_member
 
 router = APIRouter(prefix="/favorites", tags=["favorites"])
@@ -44,6 +45,8 @@ def _resolve_org_id(
 
 
 def _ensure_target_exists(db: Session, target_type: str, target_id: str) -> tuple[str | None, str | None]:
+    if not target_is_public(db, target_type, target_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Публичный профиль не найден")
     if target_type == "artist":
         row = db.get(Artist, target_id)
         if not row:
@@ -104,7 +107,13 @@ def list_favorites(
     if target_id:
         q = q.filter(Favorite.target_id == target_id.strip())
     rows = q.order_by(Favorite.created_at.desc()).all()
-    return {"items": [_enrich(db, row) for row in rows]}
+    return {
+        "items": [
+            _enrich(db, row)
+            for row in rows
+            if target_is_public(db, row.target_type, row.target_id)
+        ]
+    }
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

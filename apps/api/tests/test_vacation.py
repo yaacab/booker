@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, publish_artist, register
 
 
 def _artist_ctx(client):
@@ -43,6 +43,7 @@ def test_vacation_creates_busy_and_hides_from_search(client):
         headers=headers,
     )
     assert open_slot.status_code == 200
+    publish_artist(client, owner, artist["id"])
 
     res = client.post(
         "/calendar/vacation",
@@ -60,7 +61,9 @@ def test_vacation_creates_busy_and_hides_from_search(client):
     assert body["overlaid_open"] >= 1
     assert body["removed_open"] == body["overlaid_open"]
 
-    page = client.get(f"/artists/{artist['id']}").json()
+    public = client.get(f"/artists/{artist['id']}").json()
+    assert all(slot["status"] == "open" for slot in public["slots"])
+    page = client.get(f"/artists/{artist['id']}", headers=headers).json()
     vacation_slots = [s for s in page["slots"] if s.get("busy_source") == "vacation"]
     assert len(vacation_slots) == 1
     assert vacation_slots[0]["status"] == "busy"
@@ -92,6 +95,7 @@ def test_vacation_clear_restores_search_via_overlay(client):
         ).status_code
         == 200
     )
+    publish_artist(client, owner, artist["id"])
     assert (
         client.post(
             "/calendar/vacation",
@@ -125,7 +129,7 @@ def test_vacation_clear_restores_search_via_overlay(client):
     assert cleared.status_code == 200
     assert cleared.json()["cleared"] is True
 
-    page = client.get(f"/artists/{artist['id']}").json()
+    page = client.get(f"/artists/{artist['id']}", headers=headers).json()
     assert not any(s.get("busy_source") == "vacation" for s in page["slots"])
     assert any(s["status"] == "open" for s in page["slots"])
 
@@ -165,7 +169,7 @@ def test_vacation_clear(client):
     assert cleared.status_code == 200
     assert cleared.json()["cleared"] is True
 
-    page = client.get(f"/artists/{artist['id']}").json()
+    page = client.get(f"/artists/{artist['id']}", headers=headers).json()
     assert not any(s.get("busy_source") == "vacation" for s in page["slots"])
 
     status = client.get(f"/organizations/{org['id']}/vacation", headers=headers).json()
@@ -192,6 +196,54 @@ def test_vacation_requires_writer(client):
         headers=auth_header(viewer["token"]),
     )
     assert res.status_code == 403
+
+
+def test_calendar_mutations_bind_resource_to_acting_org(client):
+    owner, org, artist = _artist_ctx(client)
+    other = register(client, "vacation-foreign-owner@booker.test", "Other")
+    other_headers = auth_header(other["token"])
+    other_org = client.post(
+        "/orgs",
+        json={"name": "Other Calendar", "kind": "artist"},
+        headers=other_headers,
+    ).json()
+    vacation = {
+        "organization_id": other_org["id"],
+        "resource_type": "artist",
+        "resource_id": artist["id"],
+        "starts_at": "2026-12-01T00:00:00+00:00",
+        "ends_at": "2026-12-15T00:00:00+00:00",
+    }
+    assert client.post(
+        "/calendar/vacation", json=vacation, headers=other_headers
+    ).status_code == 400
+    assert client.request(
+        "DELETE", "/calendar/vacation",
+        json={key: vacation[key] for key in ("organization_id", "resource_type", "resource_id")},
+        headers=other_headers,
+    ).status_code == 400
+    assert client.post(
+        "/calendar/ical/import",
+        json={
+            "organization_id": other_org["id"], "resource_type": "artist",
+            "resource_id": artist["id"], "ical_body": "BEGIN:VCALENDAR\nEND:VCALENDAR",
+        },
+        headers=other_headers,
+    ).status_code == 400
+    for path in (
+        f"/organizations/{org['id']}/calendar-targets",
+        f"/organizations/{org['id']}/vacation",
+    ):
+        assert client.get(path, headers=other_headers).status_code == 403
+    assert client.post(
+        "/calendar/vacation",
+        json={**vacation, "organization_id": org["id"]},
+        headers=other_headers,
+    ).status_code == 403
+    assert client.get(
+        f"/organizations/{org['id']}/vacation",
+        headers=auth_header(owner["token"]),
+    ).json()["items"][0]["active"] is False
 
 
 def test_vacation_rejects_past_end(client):

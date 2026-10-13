@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 
 from booker_api.config import settings
@@ -12,7 +14,182 @@ from booker_api.notifications import (
 from booker_api.notifications.registry import transport_for
 from booker_api.notifications.transports.dev import DevTransport
 from booker_api.notifications.transports.disabled import DisabledTransport
-from tests.conftest import auth_header, register
+from booker_api.security import now
+from tests.conftest import auth_header, publish_artist, register
+
+
+def test_notification_inbox_is_private(client, SessionLocal):
+    from booker_api.models import AuditLog
+
+    recipient = register(client, "inbox-private-recipient@booker.test")
+    outsider = register(client, "inbox-private-outsider@booker.test")
+    with SessionLocal() as db:
+        db.add(
+            AuditLog(
+                action="notification.in_app",
+                entity_type="test",
+                entity_id="private-inbox",
+                payload='{"recipient_user_id": "' + recipient["user_id"] + '", "body": "PRIVATE_INBOX_BODY"}',
+            )
+        )
+        db.commit()
+    assert client.get("/notifications").status_code == 401
+    denied = client.get("/notifications", headers=auth_header(outsider["token"]))
+    assert denied.status_code == 200
+    assert "PRIVATE_INBOX_BODY" not in denied.text
+    allowed = client.get("/notifications", headers=auth_header(recipient["token"]))
+    assert allowed.status_code == 200
+    assert "PRIVATE_INBOX_BODY" in allowed.text
+
+
+def test_notification_inbox_is_recipient_indexed_and_does_not_persist_secret_body(
+    client, SessionLocal, monkeypatch,
+):
+    from booker_api.models import AuditLog, UserNotification
+
+    recipient = register(client, "indexed-recipient@booker.test")
+    outsider = register(client, "indexed-outsider@booker.test")
+    monkeypatch.setattr(settings, "in_app_provider", "audit")
+    with SessionLocal() as db:
+        notify(
+            db,
+            actor_user_id=None,
+            notifications=[Notification(
+                channel=Channel.IN_APP,
+                template="offer.created",
+                recipient_user_id=recipient["user_id"],
+                subject="Private offer subject",
+                body="SECRET_BODY_MUST_NOT_PERSIST_654321",
+                entity_type="offer",
+                entity_id="indexed-offer",
+            )],
+        )
+        db.add(AuditLog(
+            action="notification.in_app", entity_type="test",
+            entity_id="legacy-own",
+            payload='{"recipient_user_id": "' + recipient["user_id"] + '", '
+                    '"template": "legacy.notice"}',
+        ))
+        for index in range(40):
+            db.add(AuditLog(
+                action="notification.in_app", entity_type="test",
+                entity_id=f"other-{index}",
+                payload='{"recipient_user_id": "' + outsider["user_id"] + '"}',
+            ))
+        db.commit()
+        notices = db.query(UserNotification).filter_by(
+            recipient_user_id=recipient["user_id"]
+        ).all()
+        assert len(notices) == 1
+        assert notices[0].template == "offer.created"
+        assert "SECRET_BODY_MUST_NOT_PERSIST" not in str(notices[0].__dict__)
+        assert "SECRET_BODY_MUST_NOT_PERSIST" not in " ".join(
+            row.payload for row in db.query(AuditLog).all()
+        )
+
+    response = client.get("/notifications", headers=auth_header(recipient["token"]))
+    assert response.status_code == 200
+    assert any(item["entity_id"] == "indexed-offer" for item in response.json()["items"])
+    assert any(item["entity_id"] == "legacy-own" for item in response.json()["items"])
+    assert "SECRET_BODY_MUST_NOT_PERSIST" not in response.text
+    denied = client.get("/notifications", headers=auth_header(outsider["token"]))
+    assert "indexed-offer" not in denied.text
+
+
+def test_security_notice_outbox_commits_atomically_without_auth_secret(
+    client, SessionLocal, monkeypatch,
+):
+    from booker_api.models import EmailOutbox, User, UserNotification
+    from booker_api.notifications.security import queue_security_notice
+
+    account = register(client, "security-notice@booker.test")
+    monkeypatch.setattr(settings, "email_provider", "smtp")
+    with SessionLocal() as db:
+        user = db.get(User, account["user_id"])
+        queue_security_notice(
+            db, recipient=user, template="security.totp_enabled",
+            actor_user_id=user.id,
+        )
+        db.rollback()
+    with SessionLocal() as db:
+        assert db.query(UserNotification).filter_by(
+            recipient_user_id=account["user_id"]
+        ).count() == 0
+        assert db.query(EmailOutbox).filter_by(
+            template="security.totp_enabled"
+        ).count() == 0
+        user = db.get(User, account["user_id"])
+        notice_id = queue_security_notice(
+            db, recipient=user, template="security.totp_enabled",
+            actor_user_id=user.id,
+        )
+        db.commit()
+    with SessionLocal() as db:
+        notice = db.get(UserNotification, notice_id)
+        outbox = db.query(EmailOutbox).filter_by(
+            template="security.totp_enabled"
+        ).one()
+        assert notice.recipient_user_id == account["user_id"]
+        assert outbox.status == "pending"
+        assert "secret" not in outbox.body.lower()
+        assert "654321" not in outbox.body
+    response = client.get("/notifications", headers=auth_header(account["token"]))
+    assert response.status_code == 200
+    assert any(item["id"] == notice_id for item in response.json()["items"])
+
+
+def test_security_notice_without_email_keeps_private_inbox_and_skips_email(
+    client, SessionLocal, monkeypatch,
+):
+    from booker_api.models import EmailOutbox, User, UserNotification
+    from booker_api.notifications.security import queue_security_notice
+
+    account = register(client, "future-external@booker.test")
+    monkeypatch.setattr(settings, "email_provider", "smtp")
+    # Existing schema still requires email; emulate the future optional field
+    # without changing the persisted legacy account in this preparatory slice.
+    external_only = User(id=account["user_id"], email=None)
+    with SessionLocal() as db:
+        notice_id = queue_security_notice(
+            db, recipient=external_only, template="security.totp_enabled",
+            actor_user_id=external_only.id,
+        )
+        db.commit()
+        assert db.get(UserNotification, notice_id).recipient_user_id == external_only.id
+        assert db.query(EmailOutbox).filter_by(template="security.totp_enabled").count() == 0
+
+
+def test_dev_in_app_body_is_private_and_not_persisted_in_audit(client, SessionLocal):
+    from booker_api.models import AuditLog
+
+    recipient = register(client, "dev-inbox-recipient@booker.test")
+    outsider = register(client, "dev-inbox-outsider@booker.test")
+    with SessionLocal() as db:
+        notify(
+            db,
+            actor_user_id=None,
+            notifications=[
+                Notification(
+                    channel=Channel.IN_APP,
+                    template="contract.otp",
+                    recipient_user_id=recipient["user_id"],
+                    subject="Private code",
+                    body="CODE_ONLY_IN_PROCESS_MEMORY_654321",
+                    entity_type="contract",
+                    entity_id="contract-dev-inbox",
+                    metadata={"expires_at": (now() + timedelta(minutes=15)).isoformat()},
+                )
+            ],
+        )
+        db.commit()
+        row = db.query(AuditLog).filter_by(entity_id="contract-dev-inbox").one()
+        assert "654321" not in row.payload
+        assert "CODE_ONLY_IN_PROCESS_MEMORY" not in row.payload
+
+    allowed = client.get("/notifications", headers=auth_header(recipient["token"]))
+    denied = client.get("/notifications", headers=auth_header(outsider["token"]))
+    assert "CODE_ONLY_IN_PROCESS_MEMORY_654321" in allowed.text
+    assert "CODE_ONLY_IN_PROCESS_MEMORY_654321" not in denied.text
 
 
 def test_disabled_transports_do_not_send_or_audit(client, SessionLocal, monkeypatch):
@@ -147,12 +324,25 @@ def test_request_created_hook_logs_in_app_only_by_default(client):
         json={"organization_id": artist_org["id"], "name": "DJ Notify", "category": "dj"},
         headers=auth_header(owner["token"]),
     ).json()
+    starts = (now() + timedelta(days=45)).replace(microsecond=0)
+    slot = client.post(
+        "/slots",
+        json={
+            "resource_type": "artist",
+            "resource_id": artist["id"],
+            "starts_at": starts.isoformat(),
+            "ends_at": (starts + timedelta(hours=4)).isoformat(),
+        },
+        headers=auth_header(owner["token"]),
+    )
+    assert slot.status_code == 200, slot.text
+    publish_artist(client, owner, artist["id"])
     event = client.post(
         "/events",
         json={
             "organization_id": cust_org["id"],
             "title": "Свадьба",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": starts.isoformat(),
             "guest_count": 80,
         },
         headers=auth_header(customer["token"]),
@@ -195,22 +385,24 @@ def test_offer_created_hook_notifies_customer_org(client):
         json={"organization_id": artist_org["id"], "name": "DJ Offer", "category": "dj"},
         headers=auth_header(owner["token"]),
     ).json()
+    starts = (now() + timedelta(days=45)).replace(microsecond=0)
     slot = client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-09-01T18:00:00+00:00",
-            "ends_at": "2026-09-01T22:00:00+00:00",
+            "starts_at": starts.isoformat(),
+            "ends_at": (starts + timedelta(hours=4)).isoformat(),
         },
         headers=auth_header(owner["token"]),
     ).json()
+    publish_artist(client, owner, artist["id"])
     event = client.post(
         "/events",
         json={
             "organization_id": cust_org["id"],
             "title": "Корпоратив",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": starts.isoformat(),
             "guest_count": 80,
         },
         headers=auth_header(customer["token"]),

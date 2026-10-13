@@ -1,4 +1,4 @@
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, publish_venue, register
 
 
 def _venue_owner(client):
@@ -48,6 +48,7 @@ def test_public_halls_require_catalog_or_member(client):
         headers=auth_header(owner["token"]),
     )
     assert slot.status_code == 200, slot.text
+    publish_venue(client, owner, venue["id"])
 
     public = client.get(f"/venues/{venue['id']}/halls")
     assert public.status_code == 200, public.text
@@ -89,8 +90,8 @@ def test_post_hall_requires_writer_not_viewer(client):
 
 
 def test_get_venue_includes_halls_without_dropping_fields(client):
-    _owner, _org, venue = _venue_owner(client)
-    page = client.get(f"/venues/{venue['id']}")
+    owner, _org, venue = _venue_owner(client)
+    page = client.get(f"/venues/{venue['id']}", headers=auth_header(owner["token"]))
     assert page.status_code == 200
     data = page.json()
     for key in ("id", "name", "city", "capacity", "verified", "facts", "tariffs", "slots", "halls"):

@@ -23,7 +23,7 @@ import {
 } from "@/lib/eventDayOps";
 import { STATUS_LABEL } from "@/lib/status";
 
-type Requirement = RequirementLite & { notes?: string };
+type Requirement = RequirementLite & { notes?: string; required?: boolean };
 
 type DraftItem = {
   id?: string;
@@ -35,6 +35,14 @@ type DraftItem = {
 type EventRequest = EventRequestLite & {
   resource_type?: string;
   resource_id?: string;
+  booking_status?: string | null;
+};
+
+type EventReadiness = {
+  state: "empty" | "incomplete" | "ready";
+  required_total: number;
+  ready_total: number;
+  missing_total: number;
 };
 
 type EventDetail = {
@@ -47,6 +55,7 @@ type EventDetail = {
   organization_id?: string;
   requirements?: Requirement[];
   requests?: EventRequest[];
+  readiness?: EventReadiness;
 };
 
 const WRITE_ROLES = new Set(["owner", "admin", "manager"]);
@@ -464,7 +473,9 @@ export default function EventPage() {
   const looseRequests = unmatchedRequests(requests, requirements);
   const looseOpen = openLooseRequests(requests, requirements);
   const nextSteps = buildNextSteps(requirements, requests, roleLabel);
-  const { closed: filledPositions, total: totalPositions } = fillRate(requirements, requests);
+  const fallbackFill = fillRate(requirements.filter((item) => item.required !== false), requests);
+  const filledPositions = event.readiness?.ready_total ?? fallbackFill.closed;
+  const totalPositions = event.readiness?.required_total ?? fallbackFill.total;
   const date = moscowDate(event.event_date);
 
   return (
@@ -510,12 +521,12 @@ export default function EventPage() {
       ) : null}
       {totalPositions > 0 ? (
         <article className="card tint reveal">
-          <strong>Закрытие состава</strong>
+          <strong>Готовность обязательных позиций</strong>
           <p className="timeline">
-            {filledPositions} из {totalPositions} позиций закрыто
+            {filledPositions} из {totalPositions} подтверждено
             {filledPositions < totalPositions
-              ? " — остальные ждут подтверждённую сделку или Deal Room"
-              : " — все роли в составе закрыты"}
+              ? " — событие ещё не готово"
+              : " — обязательный состав готов"}
           </p>
         </article>
       ) : null}

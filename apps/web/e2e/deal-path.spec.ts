@@ -77,15 +77,20 @@ test.describe("Deal path E07–E09", () => {
       await expect(page.getByTestId("deal-room-accents")).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText(`quote_id: ${negotiation.quoteId}`).first()).toBeVisible();
       await expect(page.getByRole("heading", { name: "Итог" })).toBeVisible();
+      await page.getByRole("tab", { name: "Платежи" }).click();
+      await expect(page.getByRole("heading", { name: "График платежей" })).toBeVisible();
+      await expect(page.getByText("Аванс", { exact: false }).first()).toBeVisible();
+      await expect(page.getByText("по выставлению счёта", { exact: false }).first()).toBeVisible();
     });
 
     // UI-path из awaiting-offer (как flow.spec) — общий booking после кнопки
     await test.step("UI path: артист отправляет предложение из кабинета", async () => {
       await injectSession(page, seed.ownerToken, seed.artistOrgId);
-      await page.goto("/cabinet");
+      await page.goto("/cabinet/performer");
       await expect(page.getByRole("heading", { name: "Новые заявки" })).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByText(seed.eventTitle)).toBeVisible();
-      await page.getByRole("button", { name: "Отправить предложение" }).click();
+      const requestCard = page.getByRole("article").filter({ hasText: seed.eventTitle });
+      await expect(requestCard).toBeVisible();
+      await requestCard.getByRole("button", { name: "Отправить предложение" }).click();
       await expect(page).toHaveURL(/\/deals\//, { timeout: 15_000 });
       const bookingId = page.url().split("/deals/")[1]?.split(/[?#]/)[0] ?? "";
       expect(bookingId).toBeTruthy();
@@ -99,6 +104,7 @@ test.describe("Deal path E07–E09", () => {
     request,
   }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
 
     const ctx = await seedNegotiation(request, {
       honorariumRub: 100_000,
@@ -108,12 +114,12 @@ test.describe("Deal path E07–E09", () => {
     });
 
     await test.step("v1: двусторонний ack", async () => {
-      await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: "supplier" }, ctx.owner.orgId);
+      await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: "supplier", quote_id: ctx.quoteId }, ctx.owner.orgId);
       await postJson(
         request,
         `/offers/${ctx.offerId}/ack`,
         ctx.customer.token,
-        { side: "customer" },
+        { side: "customer", quote_id: ctx.quoteId },
         ctx.customer.orgId,
       );
       const room = await getJson<{ quote: DealRoomQuote }>(
@@ -172,7 +178,8 @@ test.describe("Deal path E07–E09", () => {
       await injectSession(page, ctx.owner.token, ctx.owner.orgId);
       await page.goto(`/deals/${ctx.bookingId}`);
       await expect(page.getByTestId("deal-room-accents")).toBeVisible({ timeout: 15_000 });
-      await page.getByRole("button", { name: "Подтвердить условия" }).click();
+      await page.getByRole("button", { name: "Подтвердить условия обеими сторонами", exact: true }).click();
+      await page.getByRole("tab", { name: "Условия", exact: true }).click();
       await expect(page.getByText("подтвердил только исполнитель").first()).toBeVisible({ timeout: 10_000 });
 
       const hold = await request.post(`${API_BASE}/bookings/${ctx.bookingId}/hold`, {
@@ -189,11 +196,18 @@ test.describe("Deal path E07–E09", () => {
       await injectSession(page, ctx.customer.token, ctx.customer.orgId);
       await page.goto(`/deals/${ctx.bookingId}`);
       await expect(page.getByText(`quote_id: ${v2.quote_id}`).first()).toBeVisible({ timeout: 15_000 });
-      await page.getByRole("button", { name: "Подтвердить условия" }).click();
+      await page.getByRole("button", { name: "Подтвердить условия обеими сторонами", exact: true }).click();
+      await page.getByRole("tab", { name: "Условия", exact: true }).click();
       await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
 
+      const held = page.waitForResponse((response) =>
+        response.url().endsWith(`/bookings/${ctx.bookingId}/hold`) &&
+        response.request().method() === "POST"
+      );
       await page.getByRole("button", { name: "Удержать дату" }).click();
-      await expect(page.getByText("Дата удерживается").first()).toBeVisible({ timeout: 10_000 });
+      expect((await held).status()).toBe(200);
+      await page.getByRole("button", { name: "Предложение", exact: true }).click();
+      await expect(page.locator(".sheet.open .hold-gold")).toBeVisible({ timeout: 10_000 });
 
       const room = await getJson<{ hold?: { status: string }; quote: DealRoomQuote }>(
         request,

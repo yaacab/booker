@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CityField } from "@/components/CityField";
 import { categoryLabel } from "@/lib/copy";
 import { formatDay, guestsLabel, money } from "@/lib/format";
@@ -14,9 +14,10 @@ import type {
 } from "./types";
 import { STUDIO_STAGES } from "./types";
 import PuzzleBoard, { slotsFromDraft } from "./PuzzleBoard";
+import { DateTimeField } from "./DateTimeField";
 import "./event-studio-map.css";
 
-type IconName = "home" | "calendar" | "users" | "place" | "check" | "search" | "plus" | "arrow";
+type IconName = "home" | "calendar" | "users" | "place" | "search" | "plus" | "arrow";
 
 export type EventStudioMapProps = {
   draft: EventStudioDraft;
@@ -36,6 +37,18 @@ export type EventStudioMapProps = {
 };
 
 const ROLE_FILTERS = ["Все", "host", "dj", "photo", "decor"] as const;
+const REQUIREMENT_OPTIONS = ["Звук и свет", "Кейтеринг", "Гримерная", "Парковка", "Охрана"] as const;
+type StudioSection = "date" | "guests" | "artist" | "venue" | "rider" | "format" | "budget";
+
+const SECTION_LABELS: { id: StudioSection; label: string }[] = [
+  { id: "date", label: "Дата и время" },
+  { id: "guests", label: "Гости" },
+  { id: "artist", label: "Артист" },
+  { id: "venue", label: "Площадка" },
+  { id: "rider", label: "Райдер" },
+  { id: "format", label: "Формат" },
+  { id: "budget", label: "Бюджет" },
+];
 
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
@@ -65,7 +78,6 @@ function Icon({ name }: { name: IconName }) {
         <path d="M9 9h1M14 9h1M9 13h1M14 13h1" />
       </>
     ),
-    check: <path d="m5 12 4 4L19 6" />,
     search: (
       <>
         <circle cx="11" cy="11" r="7" />
@@ -117,6 +129,10 @@ export default function EventStudioMap({
   const [editingTime, setEditingTime] = useState(false);
   const [editingVenue, setEditingVenue] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const guestsRef = useRef<HTMLInputElement>(null);
+  const formatRef = useRef<HTMLSelectElement>(null);
+  const riderRef = useRef<HTMLInputElement>(null);
+  const budgetRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -148,6 +164,40 @@ export default function EventStudioMap({
 
   function setVenue(id: string) {
     update({ ...draft, venueId: id });
+  }
+
+  function openSection(section: StudioSection) {
+    if (section === "date") {
+      setStage("Основа");
+      setEditingTime(true);
+      return;
+    }
+    if (section === "artist") {
+      setStage("Команда");
+      setPanelOpen(true);
+      return;
+    }
+    if (section === "venue") {
+      setStage("Место");
+      setEditingVenue(true);
+      return;
+    }
+    if (section === "rider") setStage("Детали");
+    if (section === "format" || section === "guests") setStage("Основа");
+    if (section === "budget") setStage("Проверка");
+    window.requestAnimationFrame(() => {
+      if (section === "guests") guestsRef.current?.focus();
+      if (section === "format") formatRef.current?.focus();
+      if (section === "rider") riderRef.current?.focus();
+      if (section === "budget") budgetRef.current?.focus();
+    });
+  }
+
+  function toggleRequirement(requirement: string) {
+    const requirements = draft.requirements.includes(requirement)
+      ? draft.requirements.filter((item) => item !== requirement)
+      : [...draft.requirements, requirement];
+    update({ ...draft, requirements });
   }
 
   const budgetText = useMemo(() => {
@@ -203,12 +253,10 @@ export default function EventStudioMap({
           </a>
           <ol>
             {STUDIO_STAGES.map((item, index) => {
-              const activeIndex = STUDIO_STAGES.indexOf(stage);
-              const completed = index < activeIndex;
               return (
-                <li key={item} className={item === stage ? "active" : completed ? "done" : ""}>
+                <li key={item} className={item === stage ? "active" : ""}>
                   <button type="button" onClick={() => setStage(item)}>
-                    <span>{completed ? <Icon name="check" /> : index + 1}</span>
+                    <span>{index + 1}</span>
                     {item}
                   </button>
                 </li>
@@ -218,6 +266,16 @@ export default function EventStudioMap({
         </aside>
 
         <section className="event-map" aria-label="Карта события">
+          <nav className="section-jump-bar" aria-label="Разделы события">
+            <p>Заполняйте в любом порядке</p>
+            <div>
+              {SECTION_LABELS.map((item) => (
+                <button key={item.id} type="button" onClick={() => openSection(item.id)}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </nav>
           <div className="connection-lines" aria-hidden="true">
             <i className="line venue-line" />
             <i className="line time-line" />
@@ -241,9 +299,27 @@ export default function EventStudioMap({
               <small>
                 {dateLabel} · {draft.city || "город"} · {guestsLabel(draft.guests)}
               </small>
+              <label className="field-inline format-field">
+                Формат
+                <select
+                  ref={formatRef}
+                  aria-label="Формат"
+                  value={draft.kind}
+                  onChange={(event) => update({ ...draft, kind: event.target.value })}
+                >
+                  {["Свадьба", "Корпоратив", "День рождения", "Конференция", "Частная вечеринка"].map(
+                    (item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
               <label className="field-inline guests-field">
                 Гостей
                 <input
+                  ref={guestsRef}
                   type="number"
                   min={1}
                   max={5000}
@@ -314,18 +390,24 @@ export default function EventStudioMap({
             </div>
             {editingTime ? (
               <div className="time-editor">
-                <label className="field-inline">
-                  Дата
-                  <input type="date" value={draft.date} onChange={(e) => update({ ...draft, date: e.target.value })} />
-                </label>
-                <label className="field-inline">
-                  Начало
-                  <input type="time" value={draft.startsAt} onChange={(e) => update({ ...draft, startsAt: e.target.value })} />
-                </label>
-                <label className="field-inline">
-                  Конец
-                  <input type="time" value={draft.endsAt} onChange={(e) => update({ ...draft, endsAt: e.target.value })} />
-                </label>
+                <DateTimeField
+                  label="Дата"
+                  kind="date"
+                  value={draft.date}
+                  onChange={(date) => update({ ...draft, date })}
+                />
+                <DateTimeField
+                  label="Начало"
+                  kind="time"
+                  value={draft.startsAt}
+                  onChange={(startsAt) => update({ ...draft, startsAt })}
+                />
+                <DateTimeField
+                  label="Конец"
+                  kind="time"
+                  value={draft.endsAt}
+                  onChange={(endsAt) => update({ ...draft, endsAt })}
+                />
                 <CityField value={draft.city} onChange={(city) => update({ ...draft, city })} />
                 <button type="button" className="card-button" onClick={() => setEditingTime(false)}>Готово</button>
               </div>
@@ -364,23 +446,37 @@ export default function EventStudioMap({
           </article>
 
           <article className={`map-card terms-card${stage === "Детали" ? " map-card-focus" : ""}`}>
-            <h2>Условия</h2>
-            {draft.requirements.map((item) => (
-              <div className="requirement" key={item}>
-                <span>
-                  {item}
-                  <small>Уточняется в Deal Room</small>
-                </span>
-                <i aria-hidden="true">
-                  <Icon name="check" />
-                </i>
-              </div>
-            ))}
+            <h2>Райдер и условия</h2>
+            <p className="card-help">Можно заполнить до выбора артиста и площадки.</p>
+            <div className="requirement-list">
+              {REQUIREMENT_OPTIONS.map((item, index) => (
+                <label className="requirement requirement-choice" key={item}>
+                  <span>
+                    {item}
+                    <small>Уточняется в Deal Room</small>
+                  </span>
+                  <input
+                    ref={index === 0 ? riderRef : undefined}
+                    type="checkbox"
+                    checked={draft.requirements.includes(item)}
+                    onChange={() => toggleRequirement(item)}
+                  />
+                </label>
+              ))}
+            </div>
           </article>
 
           <div className="compatibility-note" role="note">
-            <strong>✣ Мы анализируем совместимость</strong>
-            <span>команды и площадки · данные из каталога</span>
+            <strong>
+              {selected.length && venue
+                ? "✣ Состав и площадка выбраны"
+                : "✣ Для проверки нужны артист и площадка"}
+            </strong>
+            <span>
+              {selected.length && venue
+                ? "условия совместимости уточняются в Deal Room"
+                : "выберите их в любом порядке"}
+            </span>
           </div>
 
           <div className={`event-summary${stage === "Проверка" ? " map-card-focus" : ""}`}>
@@ -394,12 +490,27 @@ export default function EventStudioMap({
               </span>
             </div>
             <div>
-              <small>Ориентир бюджета</small>
-              <strong>{budgetText}</strong>
+              <small>Бюджет заказчика</small>
+              <label className="budget-field">
+                <span className="sr-only">Бюджет, ₽</span>
+                <input
+                  ref={budgetRef}
+                  aria-label="Бюджет, ₽"
+                  type="number"
+                  min={1}
+                  step={1000}
+                  inputMode="numeric"
+                  placeholder="250 000"
+                  value={draft.budgetRub ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    update({ ...draft, budgetRub: value ? Number(value) : null });
+                  }}
+                />
+                <b>₽</b>
+              </label>
               <span>
-                Итог — только после
-                <br />
-                серверных предложений
+                Ориентир каталога: {budgetText}. Итог — только после серверных предложений.
               </span>
             </div>
             {submitError ? (
