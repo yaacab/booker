@@ -1,6 +1,6 @@
 # Event Studio — интеграция свободной сборки
 
-14.10.2026. BK-DESIGN-FLEX. Интеграционный срез для рабочего web Букера от CORE-кандидата `d741d689bcdda134ab0e415a64a12a65bd09f5ea`. Production не изменён.
+14.10.2026. BK-DESIGN-FLEX. Интеграционный срез для рабочего web Букера от CORE-кандидата `d741d689bcdda134ab0e415a64a12a65bd09f5ea`. Implementation commit: `4a042916a273e91eebe7c964dbd7d59df0056918`. Production не изменён.
 
 ## Что перенесено
 
