@@ -75,4 +75,8 @@
   html[data-booker-theme="cream"] :is(.error,.danger,[role="alert"]) { color: #9c2835 !important; }
   html[data-booker-theme="cream"] [aria-invalid="true"] { border-color: #9c2835 !important; }
   html[data-booker-theme="cream"] .assembly-next { background: #1c1915 !important; color: #fbf8f3 !important; }
+  html[data-booker-theme="cream"] .catalog-kind-switch { background: #f4eee5 !important; border-color: #d8cbb9 !important; }
+  html[data-booker-theme="cream"] .catalog-kind-switch label span { background: #fbf8f3 !important; color: #1c1915 !important; }
+  html[data-booker-theme="cream"] input[type="radio"]:checked + span,
+  html[data-booker-theme="cream"] button:is(.on,.active,.selected,[aria-pressed="true"],[aria-selected="true"]) { background: #ecdfc9 !important; color: #1c1915 !important; border-color: #80601e !important; box-shadow: 0 0 0 1px #b8955a55 !important; }
 }
