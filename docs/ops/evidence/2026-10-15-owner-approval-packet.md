@@ -4,15 +4,13 @@
 
 ## 1. Staging (блокирует T10 / T12 / P06 / O05)
 
-Сейчас: remote staging **не найден**; пакет локального harness готов (`infra/staging-*`, `make staging-up` / `staging-sqlite-rehearsal`).
+**Решение владельца зафиксировано:**
 
-Выберите одно:
+- **A:** локальные тесты разрешены; **автозачёт как staging — нет**.
+- **B:** remote staging DNS пуст — не найден; не используем.
+- **C:** пакет предложения хоста готов — `2026-10-15-staging-host-proposal.md`. **Покупка/создание только после отдельного GO.**
 
-- **A.** ACK: локальный изолированный compose/SQLite harness считается staging для MVP gates после успешной репетиции.
-- **B.** Дать remote staging URL + engine + test roles + backup path (не `5.45.112.180`).
-- **C.** Разрешить создание отдельного небоевого хоста (платный ресурс) — отдельное GO.
-
-Без A/B/C баллы staging **не** начисляются.
+Hardened local package: preflight fail-closed, standalone compose, secrets вне Git, API+web start — см. `2026-10-15-staging-hardened.md`.
 
 ## 2. SMTP / security mail (часть S06 / T07)
 

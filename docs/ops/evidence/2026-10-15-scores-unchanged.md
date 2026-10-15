@@ -9,3 +9,5 @@ Confirmed: `docs/PROJECT_PROGRESS.md` criteria T10/T12/P06/O05/T07/S06 remain �
 | Design | 15/100 | **0 п.п.** |
 
 LOCAL package/rehearsal/tests do not inflate staging or SMTP criteria.
+
+Harden wave + T09/T11 local suites: still **0 п.п.** (owner A: local ≠ staging score).

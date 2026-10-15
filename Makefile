@@ -1,4 +1,4 @@
-.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow e2e-smoke staging-up staging-down staging-sqlite-rehearsal
+.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow e2e-smoke staging-up staging-down staging-sqlite-rehearsal staging-preflight test-staging-preflight
 
 PYTHON ?= $(CURDIR)/.venv/bin/python
 
@@ -53,7 +53,11 @@ merge-venues-moscow:
 migrate:
 	cd apps/api && $(PYTHON) -m alembic upgrade head
 
+# Local docker-compose.yml (port 5432). Script has no silent URL default.
+# Override: BOOKER_DATABASE_URL=... make migrate-docker
 migrate-docker:
+	BOOKER_MIGRATE_PROFILE=local-docker \
+	BOOKER_DATABASE_URL="$${BOOKER_DATABASE_URL:-postgresql+psycopg://booker:booker@127.0.0.1:5432/booker}" \
 	./infra/migrate-postgres-docker.sh
 
 deploy:
@@ -62,13 +66,23 @@ deploy:
 wait-dns:
 	bash infra/wait-dns.sh
 
-# Isolated staging harness (loopback). Never uses production VPS.
+# Isolated staging harness (loopback). Requires BOOKER_STAGING_ENV_FILE outside Git.
+# LOCAL level — does not close T10/T12 without owner ACK.
 staging-up:
-	bash infra/staging-up.sh
+	@test -n "$$BOOKER_STAGING_ENV_FILE" || (echo "Set BOOKER_STAGING_ENV_FILE=/tmp/booker-staging/secrets.env" >&2; exit 2)
+	BOOKER_MIGRATE_PROFILE=staging bash infra/staging-up.sh
 
 staging-down:
 	bash infra/staging-down.sh
 
+staging-preflight:
+	@test -n "$$BOOKER_STAGING_ENV_FILE" || (echo "Set BOOKER_STAGING_ENV_FILE=..." >&2; exit 2)
+	python3 infra/staging_preflight.py --env-file "$$BOOKER_STAGING_ENV_FILE"
+
 # LOCAL SQLite fallback when Docker is unavailable (does not close T10/O05).
 staging-sqlite-rehearsal:
 	bash infra/staging-sqlite-rehearsal.sh
+
+test-staging-preflight:
+	apps/api/.venv/bin/python -m pytest -q infra/test_staging_preflight.py
+
