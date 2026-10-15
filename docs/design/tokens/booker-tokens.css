@@ -1,0 +1,56 @@
+/**
+ * Booker design tokens — proposal only (D02 pending).
+ * Do not @import into production layouts until owner approves D02.
+ * Sources: SCREEN_REFERENCE_ATLAS.md + MOTION_PREVIEW_SLOT_FRAME_V2_UNAPPROVED.md
+ */
+
+:root {
+  /* Atlas dark canvas (marketing / glass chrome) */
+  --bk-canvas-dark: #0d100f;
+  --bk-chrome-dark: #101312;
+  --bk-surface-1: #141817;
+  --bk-surface-2: #1b211e;
+  --bk-surface-3: #232b27;
+  --bk-text-primary: #f4f1e8;
+  --bk-text-secondary: #b8c0bc;
+  --bk-accent: #62d2a2;
+  --bk-gold: #e4b96a;
+  --bk-motion-scene: #0b100f;
+
+  /* Document / legal light paper */
+  --bk-paper: #f3f0e9;
+  --bk-paper-surface: #faf8f3;
+  --bk-paper-border: #e0dbd2;
+  --bk-ink: #151817;
+  --bk-brand: #2d6a66;
+  --bk-danger: #c24156;
+  --bk-warning: #b7791f;
+  --bk-success: #159b68;
+
+  /* Geometry */
+  --bk-radius: 16px;
+  --bk-radius-sm: 12px;
+  --bk-focus-ring: 0 0 0 2px var(--bk-accent);
+
+  /* Motion (transform/opacity only) */
+  --bk-motion-duration: 480ms;
+  --bk-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --bk-slot-lift: 10px;
+
+  /* Type */
+  --bk-font-sans: "Manrope", "Segoe UI", sans-serif;
+  --bk-font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --bk-motion-duration: 0ms;
+    --bk-slot-lift: 0px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --bk-glass-opaque: #141817;
+  }
+}
