@@ -331,3 +331,56 @@ def test_webhook_rejected_when_default_secret_disallowed(client, monkeypatch):
         },
     )
     assert res.status_code == 503
+
+
+def test_rapid_replay_webhooks_confirm_once_no_500(client, SessionLocal):
+    """Sandbox race gap: rapid identical succeeded webhooks stay idempotent, no 500."""
+    ctx = _awaiting_payment(client)
+    payload = {
+        "event_id": "evt-race-same",
+        "payment_id": ctx["payment_id"],
+        "status": "succeeded",
+        "signature": _sign("evt-race-same", ctx["payment_id"], "succeeded"),
+    }
+    statuses = [client.post("/payments/webhook", json=payload).status_code for _ in range(8)]
+    assert all(code in {200, 409} for code in statuses), statuses
+    assert statuses.count(500) == 0
+    room = client.get(
+        f"/deal-room/{ctx['booking_id']}",
+        headers=auth_header(ctx["customer"]["token"]),
+    ).json()
+    assert room["status"] == "Confirmed"
+    with SessionLocal() as db:
+        assert db.query(MoneyMovement).filter_by(payment_id=ctx["payment_id"]).count() == 1
+        assert db.get(Payment, ctx["payment_id"]).status == "succeeded"
+        assert db.query(PaymentWebhookEvent).filter_by(event_id="evt-race-same").count() == 1
+
+
+def test_succeeded_then_failed_event_ids_stay_monotonic(client, SessionLocal):
+    """Distinct event_ids: succeeded wins; later failed does not reopen money."""
+    ctx = _awaiting_payment(client)
+    ok = {
+        "event_id": "evt-race-ok",
+        "payment_id": ctx["payment_id"],
+        "status": "succeeded",
+        "signature": _sign("evt-race-ok", ctx["payment_id"], "succeeded"),
+    }
+    bad = {
+        "event_id": "evt-race-fail",
+        "payment_id": ctx["payment_id"],
+        "status": "failed",
+        "signature": _sign("evt-race-fail", ctx["payment_id"], "failed"),
+    }
+    assert client.post("/payments/webhook", json=ok).status_code == 200
+    late = client.post("/payments/webhook", json=bad)
+    assert late.status_code == 200
+    assert late.json()["payment_status"] == "succeeded"
+    assert late.json().get("ignored_terminal_event") is True
+    with SessionLocal() as db:
+        assert db.get(Payment, ctx["payment_id"]).status == "succeeded"
+        assert db.get(Booking, ctx["booking_id"]).status == "Confirmed"
+        assert db.query(MoneyMovement).filter_by(payment_id=ctx["payment_id"]).count() == 1
+
+
+# Threaded SQLite+StaticPool webhook races are not a reliable LOCAL harness
+# (connection misuse). PG staging race remains open after Infrastructure GO.

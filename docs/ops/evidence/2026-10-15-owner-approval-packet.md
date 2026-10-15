@@ -10,7 +10,8 @@
 - **B:** remote staging DNS пуст — не найден; не используем.
 - **C:** пакет предложения хоста готов — `2026-10-15-staging-host-proposal.md`. **Покупка/создание только после отдельного GO.**
 
-Hardened local package: preflight fail-closed, standalone compose, secrets вне Git, API+web start — см. `2026-10-15-staging-hardened.md`.
+Hardened local package: preflight fail-closed, standalone compose, secrets вне Git, API+web start — см. `2026-10-15-staging-hardened.md`.  
+Provision playbook (после GO): `docs/ops/STAGING_PROVISION_PLAYBOOK.md`. **Покупка VPS запрещена без GO.**
 
 ## 2. SMTP / security mail (часть S06 / T07)
 

@@ -1,13 +1,11 @@
-# Score freeze check — 2026-10-15 master-completion wave
+# Scores unchanged checkpoint
 
-Confirmed: `docs/PROJECT_PROGRESS.md` criteria T10/T12/P06/O05/T07/S06 remain ○ where previously ○.
+Date: 2026-10-15 (autonomous completion wave after `c32fd89`)
 
-| Scale | Value | Change this wave |
-|---|---:|---|
-| FULL | 59/100 | **0 п.п.** |
-| Technical MVP | 56/100 | **0 п.п.** |
-| Design | 15/100 | **0 п.п.** |
+| Scale | Score | Reason unchanged |
+| --- | --- | --- |
+| FULL | **59** | No staging T10/T12/O05; no prod |
+| MVP | **56** | Same gates open |
+| Design | **15** | D02 / motion still UNAPPROVED |
 
-LOCAL package/rehearsal/tests do not inflate staging or SMTP criteria.
-
-Harden wave + T09/T11 local suites: still **0 п.п.** (owner A: local ≠ staging score).
+Local progress (launcher, security gate, bench, legal pack, design branch) does **not** meet PROJECT_PROGRESS criteria for score movement.
