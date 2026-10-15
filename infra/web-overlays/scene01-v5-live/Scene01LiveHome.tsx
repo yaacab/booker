@@ -1,5 +1,7 @@
 "use client";
 
+import { installSceneRecovery } from "@/lib/scene01Recovery";
+
 import {
   useCallback, useEffect, useMemo, useRef, useState,
   type CSSProperties, type ReactNode,
@@ -824,7 +826,7 @@ function Scene({ orient, startAt, onPhase, onReplay, onChoose }: {
                     onPointerLeave={() => api.current?.hover(null)}
                     onClick={(e) => pick(role, e.currentTarget.querySelector(".bk-role-inner"))}>
                     <div className={`bk-role-inner${selected === role ? " is-selected" : ""}`}
-                      role="button" tabIndex={phase === "reg" && selected === null ? 0 : -1} aria-pressed={selected === role}
+                      role="button" tabIndex={phase === "reg" && selected === null ? 0 : -1} aria-disabled={phase !== "reg" || selected !== null} aria-pressed={selected === role}
                       aria-label={`${ROLES[role].title} — ${ROLES[role].kicker}`}
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(role, e.currentTarget); } }}>
                       <div className="bk-role-photo"><img src={ROLES[role].photo} alt="" draggable={false} /></div>
@@ -908,6 +910,7 @@ export default function LiveSceneHome() {
   const [mounted, setMounted] = useState(false);
   const [run, setRun] = useState(0);
   const phaseRef = useRef<Phase>("intro");
+  const recoveryRef = useRef<ReturnType<typeof installSceneRecovery> | null>(null);
   const [startAt, setStartAt] = useState<StartAt>("intro");
   const onPhase = useCallback((phase: Phase) => { phaseRef.current = phase; }, []);
   useEffect(() => {
@@ -917,17 +920,29 @@ export default function LiveSceneHome() {
     };
     setOrient(window.innerWidth / window.innerHeight < 0.95 || window.innerWidth < 760 ? "port" : "land");
     setMounted(true);
+    const recovery = installSceneRecovery(window, mode => {
+      phaseRef.current = mode === "reg" ? "reg" : "ready";
+      setStartAt(mode);
+      setRun(value => value + 1);
+      setMounted(true);
+    });
+    recoveryRef.current = recovery;
     window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      recovery.dispose();
+      recoveryRef.current = null;
+    };
   }, []);
   const onChoose = useCallback((info: ChooseInfo) => {
     const roles = ["customer", "artist", "venue"];
     const next = info.role === 0 ? "/events/new" : info.role === 1 ? "/cabinet/performer" : "/cabinet/venue";
+    recoveryRef.current?.markRoleNavigation();
     window.location.assign(`/login?mode=register&role=${roles[info.role]}&next=${encodeURIComponent(next)}`);
   }, []);
   return <main className="bk-live-home" data-release="scene01-v5-live">
     {mounted && <Scene key={`${orient}-${run}`} orient={orient} startAt={startAt} onPhase={onPhase} onChoose={onChoose}
-      onReplay={() => { setStartAt("intro"); setRun(n => n + 1); }} />}
+      onReplay={() => { recoveryRef.current?.clearReturn(); phaseRef.current = "intro"; setStartAt("intro"); setRun(n => n + 1); }} />}
     <nav className="bk-live-nav" aria-label="Основная навигация" onKeyDown={event => event.stopPropagation()}>
       <a href="/search?kind=artist">Артисты</a><a href="/search?kind=venue">Площадки</a><a href="/events/new">Создать событие</a><a href="/login">Войти</a>
     </nav>

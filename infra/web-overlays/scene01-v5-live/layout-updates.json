@@ -1,0 +1,8 @@
+{
+  "baseline_sha256": "844944006a56f28601be0d1809f7bad11851df21b14f9e6617015660d2aa3685",
+  "replacements": [
+    ["import \"./artist-welcome.css\";", "import \"./artist-welcome.css\";\nimport \"./scene01-continuity.css\";"],
+    ["<html lang=\"ru\" suppressHydrationWarning>", "<html lang=\"ru\" data-booker-theme=\"cream\" suppressHydrationWarning>"],
+    ["themeColor: \"#edf1eb\"", "themeColor: \"#f2ede5\""]
+  ]
+}

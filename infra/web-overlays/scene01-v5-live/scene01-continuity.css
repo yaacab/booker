@@ -1,0 +1,78 @@
+/* One palette from Scene 01 through the real application. Layered important
+   colors outrank legacy edition rules without changing layouts or API states. */
+@layer booker-cream {
+  html[data-booker-theme="cream"] {
+    color-scheme: light !important;
+    --edition-bg: #f2ede5 !important;
+    --edition-panel: #fbf8f3 !important;
+    --edition-text: #1c1915 !important;
+    --edition-muted: #6d6358 !important;
+    --edition-line: #d8cbb9 !important;
+    --edition-lime: #e2cfac !important;
+    --canvas: #f2ede5 !important;
+    --surface: #fbf8f3 !important;
+    --surface-2: #f4eee5 !important;
+    --ink: #1c1915 !important;
+    --muted: #6d6358 !important;
+    --border: #d8cbb9 !important;
+    --brand: #80601e !important;
+    --brand-dark: #61471b !important;
+    --gold: #b8955a !important;
+    --workspace-paper: #fbf8f3 !important;
+    --workspace-ink: #1c1915 !important;
+    --workspace-muted: #6d6358 !important;
+    --workspace-line: #d8cbb9 !important;
+    --workspace-lime: #e2cfac !important;
+    --workspace-gold: #80601e !important;
+    --glass-bg: #fbf8f3f2 !important;
+    --glass-bg-strong: #fbf8f3 !important;
+    --glass-border: #e1d6c7 !important;
+    --glass-border-dim: #d8cbb9 !important;
+    --ui-ink: #1c1915 !important;
+    --ui-paper: #fbf8f3 !important;
+    --ui-line: #d8cbb9 !important;
+    --login-role-ink: #1c1915 !important;
+    --login-role-muted: #6d6358 !important;
+  }
+  html[data-booker-theme="cream"] body {
+    background: #f2ede5 !important; color: #1c1915 !important;
+  }
+  html[data-booker-theme="cream"] :is(.site-content,.studio-fullscreen-root,.event-studio-map,.workspace-layout) {
+    background: #f2ede5 !important; color: #1c1915 !important;
+  }
+  html[data-booker-theme="cream"] :is(.top,.bottom-nav,.workspace-sidebar,.site-footer) {
+    background: #fbf8f3f5 !important; color: #1c1915 !important; border-color: #d8cbb9 !important;
+  }
+  html[data-booker-theme="cream"] :is(.edition-toggle) { display: none !important; }
+  html[data-booker-theme="cream"] :is(.card,.filters,.map-card,.catalog-searchbar,.catalog-result,.legal-doc,.legal-doc-content,.reference-info-card,.login-fields,.workspace-help,.studio-sidebar,.studio-header,.drawer,.modal-card,.saved-search-card,.deal-rail,.deal-aside,.accordion,.catalog-filter-group,.search-empty,.event-studio-summary,.talent-card,.studio-bottom-bar,.talent-panel,.panel-header,.event-summary,.search-box,.profile-calendar-panel,.profile-booking-panel,.profile-rider-card,.profile-facts-strip,.legal-reference-content,.legal-reference-nav,.operator-workspace,.saved-searches-shell,.assembly-editor) {
+    background: #fbf8f3 !important; color: #1c1915 !important; border-color: #d8cbb9 !important;
+  }
+  html[data-booker-theme="cream"] :is(.login-story,.home-process,.home-supply,.discovery-form,.studio-basics,.puzzle-stage,.venue-card,.workspace-design,.legal-banner) {
+    background: #f4eee5 !important; color: #1c1915 !important; border-color: #d8cbb9 !important;
+  }
+  html[data-booker-theme="cream"] .login-fields { border-radius: 24px !important; box-shadow: 0 18px 60px -36px #5b402848 !important; }
+  html[data-booker-theme="cream"] .login-fields form.card { background: transparent !important; box-shadow: none !important; border: 0 !important; }
+  html[data-booker-theme="cream"] :is(h1,h2,h3,h4,strong,label,legend,dt,dd,.brand-word,.brand-tagline,.piece-label,.catalog-count) { color: #1c1915 !important; }
+  html[data-booker-theme="cream"] body:not(:has(.bk-live-home)) :is(h1,h2,h3) { font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif !important; font-weight: 400 !important; letter-spacing: -.025em !important; }
+  html[data-booker-theme="cream"] :is(.brand-dot,.brand-lockup>span[aria-hidden="true"]) { background: #b8955a !important; }
+  html[data-booker-theme="cream"] :is(a,.linkish,.text-button,.nav-public a,.bottom-nav a,.workspace-sidebar a,.reference-footer a) { color: #61471b !important; }
+  html[data-booker-theme="cream"] :is(input,select,textarea) { background: #fffdf9 !important; color: #1c1915 !important; border-color: #bca98d !important; accent-color: #80601e !important; }
+  html[data-booker-theme="cream"] :is(button,.btn):not(.bk-cta,.bk-replay) { background: #1c1915 !important; color: #fbf8f3 !important; border-color: #1c1915 !important; box-shadow: none !important; }
+  html[data-booker-theme="cream"] :is(button.secondary,.btn.secondary,.role-option,.chip,.category-chip,.text-button,.linkish) { background: #fbf8f3 !important; color: #1c1915 !important; border-color: #c6b496 !important; }
+  html[data-booker-theme="cream"] :is(.role-option.on,.role-option[aria-pressed="true"],.chip.on,.category-chip.on,.assembly-choices button[aria-pressed="true"],.stage-rail .active button,.role-tabs button.selected) { background: #ecdfc9 !important; color: #1c1915 !important; border-color: #80601e !important; }
+  html[data-booker-theme="cream"] .login-fields .role-option { --login-role-ink: #1c1915 !important; --login-role-muted: #6d6358 !important; }
+  html[data-booker-theme="cream"] .login-fields .role-option :is(span,strong,small) { color: #1c1915 !important; }
+  html[data-booker-theme="cream"] :is(.login-secondary-actions button,.linkish,.text-button) { background: transparent !important; color: #61471b !important; border-color: transparent !important; }
+  html[data-booker-theme="cream"] .login-fields button[type="submit"] { background: #1c1915 !important; color: #fbf8f3 !important; border-color: #1c1915 !important; }
+  html[data-booker-theme="cream"] .bottom-nav a.on { background: #ecdfc9 !important; color: #1c1915 !important; }
+  html[data-booker-theme="cream"] .event-studio-shell { --es-ink: #1c1915 !important; --es-muted: #6d6358 !important; --es-border: #d8cbb9 !important; --es-paper: #fbf8f3 !important; --es-canvas: #f2ede5 !important; color-scheme: light !important; background: radial-gradient(ellipse at 45% 35%,#fbf8f3,transparent 65%),#f2ede5 !important; }
+  html[data-booker-theme="cream"] .puzzle-label button { background: #f4eee5 !important; color: #1c1915 !important; border-color: #dcc394 !important; }
+  html[data-booker-theme="cream"] .login-story img { filter: grayscale(1) sepia(.3); }
+  html[data-booker-theme="cream"] :is(.nav-public,.nav-reference-public,.nav-mobile-auth) { background: transparent !important; }
+  html[data-booker-theme="cream"] :is(.nav-public a,.nav-mobile-auth a) { background: #fbf8f3 !important; color: #1c1915 !important; border: 1px solid #d8cbb9 !important; }
+  html[data-booker-theme="cream"] .brand-lime-dot { color: #b8955a !important; background: transparent !important; }
+  html[data-booker-theme="cream"] :focus-visible { outline: 2px solid #80601e !important; outline-offset: 3px !important; }
+  html[data-booker-theme="cream"] :is(.error,.danger,[role="alert"]) { color: #9c2835 !important; }
+  html[data-booker-theme="cream"] [aria-invalid="true"] { border-color: #9c2835 !important; }
+  html[data-booker-theme="cream"] .assembly-next { background: #1c1915 !important; color: #fbf8f3 !important; }
+}
