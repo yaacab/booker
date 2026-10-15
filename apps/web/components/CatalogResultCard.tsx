@@ -8,6 +8,8 @@ import { api } from "@/lib/api";
 import { FavoriteToggle, type FavoriteTargetType } from "@/components/FavoriteToggle";
 import { CHIP, categoryLabel } from "@/lib/copy";
 import { formatDay, formatWhen, money, guestsLabel } from "@/lib/format";
+import { saveHandoff } from "@/lib/motion";
+import { usePaperTilt } from "@/components/scene/usePaperTilt";
 
 type CatalogItem = {
   sponsored?: boolean; sponsored_label?: string; promotion_touch_id?: string;
@@ -54,6 +56,8 @@ function slotState(item: CatalogItem): { label: string; cls: string } {
 
 export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardProps) {
   const cardRef = useRef<HTMLElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
+  usePaperTilt(cardRef);
   const touch = item.sponsored ? item.promotion_touch_id : undefined;
   const targetHref = touch ? `${href}${href.includes("?") ? "&" : "?"}promotion_touch_id=${encodeURIComponent(touch)}` : href;
   useEffect(() => {
@@ -69,6 +73,8 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
     return () => observer.disconnect();
   }, [touch, kind, item.id]);
   function onProfileClick() {
+    const media = mediaRef.current?.querySelector(".profile-media");
+    if (media) saveHandoff("profile", media.getBoundingClientRect(), { id: item.id });
     if (touch) void api(`/commerce/promotion-touches/${touch}`, { method: "POST", body: JSON.stringify({ action: "click" }), keepalive: true }).catch(() => {});
   }
   const st = slotState(item);
@@ -84,7 +90,7 @@ export function CatalogResultCard({ item, kind, href, date }: CatalogResultCardP
   return (
     <article ref={cardRef} className={`card catalog-result catalog-result--${kind}`}>
       {item.sponsored ? <span className="chip">{item.sponsored_label || "Продвижение"}</span> : null}
-      <div className="catalog-card-media">
+      <div ref={mediaRef} className="catalog-card-media">
         <Link className="catalog-image-link" href={targetHref} onClick={onProfileClick} aria-label={`Открыть профиль: ${item.name}`}>
           <ProfileMedia src={kind === "venue" ? item.cover_photo?.url || item.media_url : item.media_url} name={item.name} compact />
         </Link>

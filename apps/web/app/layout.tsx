@@ -19,6 +19,8 @@ import "./login-layout.css";
 import "./home-refinement.css";
 import "./venue-discovery.css";
 import "./artist-welcome.css";
+import "./booker-scene-system.css";
+import "./scene01-continuity.css";
 
 const siteUrl = "https://bukergo.ru";
 
@@ -40,14 +42,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#101112",
+  themeColor: "#f2ede5",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" data-edition="black" suppressHydrationWarning>
+    <html lang="ru" data-edition="black" data-booker-theme="cream" suppressHydrationWarning>
       <head>
         <style dangerouslySetInnerHTML={{ __html: 'html{background:#101112;color-scheme:dark}html[data-edition="light"]{background:#edf1eb;color-scheme:light}' }} />
         <script dangerouslySetInnerHTML={{ __html: 'try{if(localStorage.getItem("booker.edition")==="light")document.documentElement.dataset.edition="light"}catch(e){};var syncBookerThemeColor=function(){var color=document.documentElement.dataset.edition==="light"?"#edf1eb":"#101112";document.querySelectorAll("meta[name=theme-color]").forEach(function(meta){if(meta.content!==color)meta.content=color})};syncBookerThemeColor();new MutationObserver(syncBookerThemeColor).observe(document.head,{childList:true,subtree:true,attributes:true,attributeFilter:["content"]})' }} />

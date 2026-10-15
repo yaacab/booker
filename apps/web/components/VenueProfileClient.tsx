@@ -14,6 +14,7 @@ import { ProfileCompareButton } from "@/components/ProfileCompareButton";
 import { observeDiscovery } from "@/lib/discovery";
 import { SlotList } from "@/components/SlotList";
 import { ProfileMedia } from "@/components/ProfileMedia";
+import { HandoffArrival } from "@/components/scene/HandoffArrival";
 
 type Venue = {
   id: string;
@@ -225,6 +226,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
     return (
       <main className="public-profile-reference">
         <h1>Площадка</h1>
+        {!error ? <div className="public-profile-layout" aria-hidden="true"><div className="profile-media bk-cover-skeleton" /><div className="bk-cover-skeleton is-text" /></div> : null}
         <p>{error || ""}</p>
         {!error ? (
           <div className="grid">
@@ -249,7 +251,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
       <Link className="profile-back" href={catalogHref}><span aria-hidden="true">←</span> К поиску площадок</Link>
       <div className="public-profile-layout">
         <aside className="public-profile-rail">
-          <ProfileMedia src={data.photos?.[0]?.url || data.media_url} name={data.name} />
+          <HandoffArrival channel="profile" id={data.id} className="bk-profile-cover"><ProfileMedia src={data.photos?.[0]?.url || data.media_url} name={data.name} /></HandoffArrival>
           {data.photos && data.photos.length > 1 ? <div className="venue-photo-gallery">{data.photos.slice(1).map(photo => <img key={photo.url} src={photo.url} alt={data.name} loading="lazy" referrerPolicy="no-referrer" />)}</div> : null}
           <section className="profile-calendar-panel" aria-labelledby="venue-calendar-heading">
             <div className="profile-section-heading"><h2 id="venue-calendar-heading">Ближайшие даты</h2><span>МСК</span></div>

@@ -15,6 +15,7 @@ import type { ArtistPresentation } from "@/lib/presentation";
 import { ArtistCover, ArtistShowcase, ArtistTechnicalFacts, ArtistReviews, ArtistCompareButton } from "@/components/presentation/ArtistShowcase";
 import { SlotList } from "@/components/SlotList";
 import { ProfileMedia } from "@/components/ProfileMedia";
+import { HandoffArrival } from "@/components/scene/HandoffArrival";
 
 type Slot = { id: string; starts_at: string; ends_at: string; status: string };
 type Artist = {
@@ -187,6 +188,7 @@ export function ArtistProfileClient() {
     return (
       <main className="public-profile-reference">
         <h1>Профиль</h1>
+        {!error ? <div className="public-profile-layout" aria-hidden="true"><div className="profile-media bk-cover-skeleton" /><div className="bk-cover-skeleton is-text" /></div> : null}
         {error ? (
           <div className="card" role="alert">
             <p>{error}</p>
@@ -218,7 +220,7 @@ export function ArtistProfileClient() {
       <Link className="profile-back" href={catalogHref}><span aria-hidden="true">←</span> К поиску артистов</Link>
       <div className="public-profile-layout">
         <aside className="public-profile-rail">
-          <ProfileMedia src={data.media_url} name={data.name} />
+          <HandoffArrival channel="profile" id={data.id} className="bk-profile-cover"><ProfileMedia src={data.media_url} name={data.name} /></HandoffArrival>
           <section className="profile-calendar-panel" aria-labelledby="artist-calendar-heading">
             <div className="profile-section-heading"><h2 id="artist-calendar-heading">Ближайшие даты</h2><span>МСК</span></div>
             <SlotList slots={data.slots} value={slotId} onChange={setSlotId} selectable highlightDay={wantedDay} />
