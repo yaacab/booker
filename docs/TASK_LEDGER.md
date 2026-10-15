@@ -5,7 +5,7 @@
 
 Статусы: `NOT_STARTED` | `IMPLEMENTED` | `VERIFIED` | `BLOCKED` | `FAILED` | `ACCEPTED`
 
-Обновлено: 2026-10-15 (autonomous completion wave). Кандидат: `bb61e998`. Ветка: `cursor/delivery-mvp-acceptance-cbf8`. Design: `cursor/design-system-cbf8`.
+Обновлено: 2026-10-15 (FINAL HANDOFF). Кандидаты CI PASS: delivery `402d812`, design `080fd4b`, MVP `bb61e998`. Handoff: `docs/ops/FINAL_DELIVERY_HANDOFF.md`.
 
 | ID | Задача | Pri | Status | Evidence / note |
 |---|---|---|---|---|
@@ -29,13 +29,17 @@
 | D02 | Design tokens + motion packet | P1 | IMPLEMENTED | branch `cursor/design-system-cbf8` — UNAPPROVED |
 | OWN1 | Owner packet | P0 | ACCEPTED | A/B/C recorded; wait C GO |
 | F1 | Production GO/NO-GO | P0 | ACCEPTED | **NO-GO** |
+| CI22 | Mandatory CI #22 `402d812` | P0 | VERIFIED | run 38681811296 — PASS 5/5 |
+| CI23 | Mandatory CI #23 `080fd4b` | P0 | VERIFIED | run 38681816268 — PASS 5/5 |
+| HANDOFF | Final engineering handoff | P0 | ACCEPTED | `docs/ops/FINAL_DELIVERY_HANDOFF.md` |
 
 ## Scores (frozen)
 
 FULL **59** / MVP **56** / Design **15**. Staging criteria ○ until host GO + evidence. No score bump without criteria.
 
-## Next
+## Next (owner only)
 
-1. Owner GO on option C (or change A to ACK local-as-staging).
-2. Then remote/local docker staging-up → E2E → score T10/T12.
-3. Owner D02 / two-approver / SMTP / legal / pay partner GOs from approval packet.
+1. Owner GO on Infrastructure C (or change A to ACK local-as-staging).
+2. Then remote staging-up → E2E → score T10/T12.
+3. Owner D02 / two-approver / SMTP / legal / pay partner / operator GOs from handoff §8.  
+No further autonomous LOCAL engineering queue.
