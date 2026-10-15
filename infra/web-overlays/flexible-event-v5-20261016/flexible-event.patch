@@ -31,7 +31,7 @@
  test("studio never assigns reference portraits or venue photos to real suppliers", () => {
 --- /dev/null
 +++ b/apps/web/components/event-studio/flexible-event-v5.css
-@@ -0,0 +1,1292 @@
+@@ -0,0 +1,1296 @@
 +html[data-booker-theme="cream"] .jr-root.v5-live button {background:transparent!important;color:inherit!important;border:0!important;box-shadow:none!important;backdrop-filter:none;min-height:0;padding:0;display:inline-block;font-weight:inherit;border-radius:0;}
 +/* ================================================================
 +   BUKER — continuous journey (Scenes 02–16)
@@ -1324,6 +1324,10 @@
 + html[data-booker-theme="cream"] .jr-root.v5-live .jr-rev-edit {display:none;}
 + html[data-booker-theme="cream"] .jr-root.v5-live .jr-rev-cap {max-width:calc(100% - 18px);left:9px;letter-spacing:.05em;line-height:1.4;}
 +}
++
++/* Short desktop windows scroll the summary instead of shrinking text into adjacent fields. */
++html[data-booker-theme="cream"] .jr-root.v5-live .jr-rev-side {justify-content:flex-start;}
++html[data-booker-theme="cream"] .jr-root.v5-live .jr-rev-side > * {flex-shrink:0;}
 --- /dev/null
 +++ b/apps/web/components/event-studio/V5DateTimeField.tsx
 @@ -0,0 +1,114 @@

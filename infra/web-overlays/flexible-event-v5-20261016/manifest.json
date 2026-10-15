@@ -4,7 +4,7 @@
   "base_build_id": "PwOJPvTDOzc7nxvREQwiI",
   "prototype_archive_sha256": "7d7b3b74edd63595f4ffbf695df0c1edd0854f69835402cc5ca5bdd54091b12e",
   "prototype_app_sha256": "2204ee8fd85b29246c7195e270560a81e03e22cc15beb84bcab13ca3bbfc23fe",
-  "patch_sha256": "c5f394768fca9a50f103e08d761f3d88df54e8f6e80278d1d7617cdc8cd25dc6",
+  "patch_sha256": "f2d44635de2358b92df6d3ac31d42dba5a2eb8392a9695d010f7ff604489e3c4",
   "files": [
     {
       "path": "apps/web/package.json",
@@ -19,7 +19,7 @@
     {
       "path": "apps/web/components/event-studio/flexible-event-v5.css",
       "before_sha256": null,
-      "after_sha256": "d66336b71078df31b946a0dbefb88836d473aab9f10d494a0b3c3a32c7073d03"
+      "after_sha256": "bd234cfedb969826a142bea4919caf88785085676ba9630b6f33f3d82798e7f1"
     },
     {
       "path": "apps/web/components/event-studio/V5DateTimeField.tsx",
