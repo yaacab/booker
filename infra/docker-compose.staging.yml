@@ -1,0 +1,31 @@
+# Isolated staging harness — loopback only. Does not touch production.
+# Usage: docker compose -f infra/docker-compose.yml -f infra/docker-compose.staging.yml --profile staging up -d
+# Project name isolates volumes: COMPOSE_PROJECT_NAME=booker-staging
+
+services:
+  postgres:
+    profiles: ["staging"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: booker_staging
+      POSTGRES_PASSWORD: booker_staging
+      POSTGRES_DB: booker_staging
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - booker_pg_staging:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booker_staging -d booker_staging"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    profiles: ["staging"]
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:16379:6379"
+
+volumes:
+  booker_pg_staging:
+    name: booker_pg_staging

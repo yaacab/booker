@@ -40,8 +40,8 @@
 | ID | Этап | Цель | Статус (см. ledger) |
 |---|---|---|---|
 | A | Review кандидата | ACCEPT / FIX_REQUIRED / BLOCKED на `bb61e998` | **ACCEPT** |
-| B | Staging discovery | Адрес, версия, БД, миграции, роли, backup/rollback; без recreate | **BLOCKED** (нет отдельного staging) |
-| C | Сквозная приёмка | 10 обязательных сценариев с evidence | **VERIFIED** локально |
+| B | Staging discovery | Адрес, версия, БД, миграции, роли, backup/rollback; без recreate | **BLOCKED** remote; **IMPLEMENTED** local package + SQLite rehearsal |
+| C | Сквозная приёмка | 10 обязательных сценариев с evidence | **VERIFIED** локально; C04/C08 deepened |
 | D | Дефекты | Только воспроизводимые FAIL; минимальный diff | **N/A** (нет FAIL) |
 | E | Пилотный доступ | Роли, поддержка, правила ограниченного пилота — без реального GO | **IMPLEMENTED** (без реальных users) |
 | F | Release readiness | Пакет GO / NO-GO; **не** production deploy | **NO-GO** production |

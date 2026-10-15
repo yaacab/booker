@@ -1,4 +1,4 @@
-.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow e2e-smoke
+.PHONY: init test-api lint web-build web-lint check seed seed-venues-moscow seed-founding-artists deploy wait-dns migrate migrate-docker fetch-venues-moscow merge-venues-moscow e2e-smoke staging-up staging-down staging-sqlite-rehearsal
 
 PYTHON ?= $(CURDIR)/.venv/bin/python
 
@@ -61,3 +61,14 @@ deploy:
 
 wait-dns:
 	bash infra/wait-dns.sh
+
+# Isolated staging harness (loopback). Never uses production VPS.
+staging-up:
+	bash infra/staging-up.sh
+
+staging-down:
+	bash infra/staging-down.sh
+
+# LOCAL SQLite fallback when Docker is unavailable (does not close T10/O05).
+staging-sqlite-rehearsal:
+	bash infra/staging-sqlite-rehearsal.sh
