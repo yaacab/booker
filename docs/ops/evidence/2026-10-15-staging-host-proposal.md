@@ -31,6 +31,8 @@ Owner decision: local tests (A) do **not** auto-count as staging scores. Separat
 
 ## Launch plan (after GO)
 
+Full command sequence: `docs/ops/STAGING_PROVISION_PLAYBOOK.md`.
+
 1. Owner purchases/creates VPS and shares SSH user + IP (or grants agent key).
 2. Agent installs docker, clones candidate SHA, places secrets under `/etc/booker-staging/` (0600).
 3. `BOOKER_STAGING_ENV_FILE=... make staging-up` after preflight PASS.

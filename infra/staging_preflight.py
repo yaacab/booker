@@ -67,8 +67,8 @@ class CheckResult:
     detail: str
 
 
-def _parse_db_url(url: str) -> tuple[str, str, int | None, str, str]:
-    """Return scheme, host, port, database name, username (may be empty)."""
+def _parse_db_url(url: str) -> tuple[str, str, int | None, str, str, str]:
+    """Return scheme, host, port, database name, username, password (may be empty)."""
     raw = url.strip()
     if not raw:
         raise ValueError("empty DATABASE_URL")
@@ -80,7 +80,7 @@ def _parse_db_url(url: str) -> tuple[str, str, int | None, str, str]:
             path = raw[len("sqlite:///") :]
         else:
             raise ValueError("unsupported sqlite URL form")
-        return "sqlite", "localhost", None, path, ""
+        return "sqlite", "localhost", None, path, "", ""
     # Normalize SQLAlchemy driver URLs: postgresql+psycopg://...
     normalized = re.sub(r"^([a-z0-9]+)\+[a-z0-9]+://", r"\1://", raw, flags=re.I)
     parsed = urlparse(normalized)
@@ -90,7 +90,29 @@ def _parse_db_url(url: str) -> tuple[str, str, int | None, str, str]:
     port = parsed.port
     dbname = unquote((parsed.path or "").lstrip("/"))
     user = unquote(parsed.username or "")
-    return parsed.scheme, host, port, dbname, user
+    password = unquote(parsed.password or "")
+    return parsed.scheme, host, port, dbname, user, password
+
+
+def _is_unreplaced_secret_template(value: str) -> bool:
+    """True for example placeholders that must never be used to start staging."""
+    stripped = (value or "").strip()
+    if not stripped:
+        return True
+    if "{{" in stripped or "}}" in stripped:
+        return True
+    upper = stripped.upper()
+    return any(
+        marker in upper
+        for marker in (
+            "REPLACE_WITH_",
+            "CHANGE_ME",
+            "YOUR_PASSWORD",
+            "TODO_PASSWORD",
+            "<SET",
+            "PASSWORD_HERE",
+        )
+    )
 
 
 def check_runtime(runtime: str | None) -> CheckResult:
@@ -203,7 +225,7 @@ def check_database_url(url: str | None) -> CheckResult:
         if marker in raw:
             return CheckResult(False, "database_production_path", f"URL mentions production path {marker}")
     try:
-        scheme, host, port, dbname, user = _parse_db_url(raw)
+        scheme, host, port, dbname, user, password = _parse_db_url(raw)
     except ValueError as exc:
         return CheckResult(False, "database_unparseable", str(exc))
 
@@ -218,6 +240,13 @@ def check_database_url(url: str | None) -> CheckResult:
                 f"sqlite path must be under /tmp/booker-staging, got {abs_path}",
             )
         return CheckResult(True, "sqlite_ok", abs_path)
+
+    if _is_unreplaced_secret_template(password):
+        return CheckResult(
+            False,
+            "database_password_template",
+            "BOOKER_DATABASE_URL still has an unreplaced password placeholder",
+        )
 
     if host not in {"127.0.0.1", "localhost"}:
         return CheckResult(False, "pg_host_not_loopback", f"postgres host must be loopback, got {host!r}")
@@ -243,6 +272,20 @@ def check_database_url(url: str | None) -> CheckResult:
     if user == "booker" or dbname == "booker":
         return CheckResult(False, "pg_prod_shaped", "user/db 'booker' is not allowed for staging")
     return CheckResult(True, "pg_ok", f"{host}:{port}/{dbname}")
+
+
+def check_staging_password_env(password: str | None) -> CheckResult:
+    value = (password or "").strip()
+    if not value:
+        # Optional when only SQLITE; run_checks includes this only if key present
+        return CheckResult(True, "pgpassword_absent", "ok")
+    if _is_unreplaced_secret_template(value):
+        return CheckResult(
+            False,
+            "pgpassword_template",
+            "BOOKER_STAGING_PGPASSWORD still has an unreplaced placeholder",
+        )
+    return CheckResult(True, "pgpassword_ok", "set")
 
 
 def check_demo_seed(allow: str | None, runtime: str | None) -> CheckResult:
@@ -303,13 +346,11 @@ def collect_secret_values(env: dict[str, str]) -> list[str]:
                 # Also redact password segment inside URLs
                 if "://" in stripped and "@" in stripped:
                     try:
-                        _, _, _, _, user = _parse_db_url(stripped)
+                        _, _, _, _, _user, pwd = _parse_db_url(stripped)
                     except ValueError:
                         continue
-                    # password between : and @
-                    m = re.search(r"://[^:/@]+:([^@]+)@", stripped)
-                    if m and m.group(1):
-                        values.append(m.group(1))
+                    if pwd and not _is_unreplaced_secret_template(pwd):
+                        values.append(pwd)
     return values
 
 
@@ -371,6 +412,8 @@ def run_checks(env: dict[str, str]) -> list[CheckResult]:
         check_database_url(env.get("BOOKER_DATABASE_URL")),
         check_demo_seed(env.get("BOOKER_ALLOW_DEMO_SEED"), env.get("BOOKER_RUNTIME_ENV")),
     ]
+    if "BOOKER_STAGING_PGPASSWORD" in env:
+        results.append(check_staging_password_env(env.get("BOOKER_STAGING_PGPASSWORD")))
     env_file = env.get("BOOKER_STAGING_ENV_FILE") or env.get("_PREFLIGHT_ENV_FILE")
     if env_file:
         results.append(check_env_file_path(env_file))

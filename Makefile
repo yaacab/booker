@@ -53,12 +53,13 @@ merge-venues-moscow:
 migrate:
 	cd apps/api && $(PYTHON) -m alembic upgrade head
 
-# Local docker-compose.yml (port 5432). Script has no silent URL default.
-# Override: BOOKER_DATABASE_URL=... make migrate-docker
+# Local docker-compose.yml (port 5432). No credential defaults in Git.
+# Example (secrets stay in your shell, not in the Makefile):
+#   export BOOKER_DATABASE_URL='postgresql+psycopg://USER:{{LOCAL_PG_PASSWORD}}@127.0.0.1:5432/booker'
+#   # replace {{LOCAL_PG_PASSWORD}} before running
 migrate-docker:
-	BOOKER_MIGRATE_PROFILE=local-docker \
-	BOOKER_DATABASE_URL="$${BOOKER_DATABASE_URL:-postgresql+psycopg://booker:booker@127.0.0.1:5432/booker}" \
-	./infra/migrate-postgres-docker.sh
+	@test -n "$$BOOKER_DATABASE_URL" || (echo "Set BOOKER_DATABASE_URL (no Makefile default)" >&2; exit 2)
+	BOOKER_MIGRATE_PROFILE=local-docker ./infra/migrate-postgres-docker.sh
 
 deploy:
 	bash infra/deploy-vps.sh

@@ -3,8 +3,9 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, InterfaceError, OperationalError
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from booker_api.config import settings
 from booker_api.contract_ack import (
@@ -850,7 +851,12 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         )
     except PaymentAdapterError as exc:
         raise HTTPException(401 if "подпись" in str(exc).lower() else 400, str(exc)) from exc
-    payment = db.get(Payment, event.payment_id)
+    payment = (
+        db.query(Payment)
+        .filter(Payment.id == event.payment_id)
+        .with_for_update()
+        .one_or_none()
+    )
     if not payment:
         raise HTTPException(404, "Платёж не найден")
     if payment.provider != adapter.name:
@@ -862,6 +868,35 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         return json.loads(seen.response_json)
     booking = db.get(Booking, payment.booking_id)
     obligation = db.get(PaymentObligation, payment.obligation_id) if payment.obligation_id else None
+
+    def _record_webhook(response: dict, *, action: str) -> dict:
+        db.add(
+            PaymentWebhookEvent(
+                event_id=event.event_id,
+                payment_id=payment.id,
+                status=event.status,
+                response_json=json.dumps(response),
+            )
+        )
+        audit(
+            db,
+            actor_user_id=None,
+            action=action,
+            entity_type="payment",
+            entity_id=payment.id,
+            payload=response,
+        )
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            # Concurrent duplicate event_id: return the winner's stored response.
+            existing = db.get(PaymentWebhookEvent, event.event_id)
+            if existing and existing.payment_id == payment.id:
+                return json.loads(existing.response_json)
+            raise HTTPException(409, "Конфликт обработки webhook") from None
+        return response
+
     terminal_statuses = {
         "succeeded",
         "failed",
@@ -879,32 +914,24 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
             "obligation_status": obligation.status if obligation else None,
             "ignored_terminal_event": True,
         }
-        db.add(
-            PaymentWebhookEvent(
-                event_id=event.event_id,
-                payment_id=payment.id,
-                status=event.status,
-                response_json=json.dumps(response),
-            )
-        )
-        audit(
-            db,
-            actor_user_id=None,
-            action="payment.webhook_ignored_terminal",
-            entity_type="payment",
-            entity_id=payment.id,
-            payload=response,
-        )
-        db.commit()
-        return response
+        return _record_webhook(response, action="payment.webhook_ignored_terminal")
     claimed = db.execute(
         update(Payment)
         .where(Payment.id == payment.id, Payment.status == "pending")
         .values(status=event.status)
     ).rowcount
     if claimed != 1:
-        db.expire(payment)
-        db.refresh(payment)
+        # Re-load instead of refresh — concurrent sessions can invalidate identity.
+        db.expire_all()
+        payment = db.get(Payment, event.payment_id)
+        booking = db.get(Booking, payment.booking_id) if payment else None
+        obligation = (
+            db.get(PaymentObligation, payment.obligation_id)
+            if payment and payment.obligation_id
+            else None
+        )
+        if not payment or not booking:
+            raise HTTPException(404, "Платёж не найден")
         response = {
             "ok": True,
             "payment_id": payment.id,
@@ -914,24 +941,7 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
             "obligation_status": obligation.status if obligation else None,
             "ignored_terminal_event": True,
         }
-        db.add(
-            PaymentWebhookEvent(
-                event_id=event.event_id,
-                payment_id=payment.id,
-                status=event.status,
-                response_json=json.dumps(response),
-            )
-        )
-        audit(
-            db,
-            actor_user_id=None,
-            action="payment.webhook_ignored_terminal",
-            entity_type="payment",
-            entity_id=payment.id,
-            payload=response,
-        )
-        db.commit()
-        return response
+        return _record_webhook(response, action="payment.webhook_ignored_terminal")
     payment.status = event.status
     if event.status == "succeeded":
         mark_obligation_satisfied(obligation)
@@ -969,24 +979,7 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         "obligation_id": obligation.id if obligation else None,
         "obligation_status": obligation.status if obligation else None,
     }
-    db.add(
-        PaymentWebhookEvent(
-            event_id=event.event_id,
-            payment_id=payment.id,
-            status=event.status,
-            response_json=json.dumps(response),
-        )
-    )
-    audit(
-        db,
-        actor_user_id=None,
-        action="payment.webhook",
-        entity_type="payment",
-        entity_id=payment.id,
-        payload=response,
-    )
-    db.commit()
-    return response
+    return _record_webhook(response, action="payment.webhook")
 
 
 @router.post("/payments/webhook")
@@ -997,7 +990,37 @@ def payment_webhook(body: WebhookIn, request: Request, db: Session = Depends(get
         and settings.webhook_secret == "dev-webhook-secret"
     ):
         raise HTTPException(503, "Webhook-секрет не настроен")
-    return _apply_payment_webhook(body, db)
+    try:
+        return _apply_payment_webhook(body, db)
+    except (IntegrityError, StaleDataError, InterfaceError, OperationalError):
+        # Concurrent sandbox races must stay fail-closed without 500.
+        try:
+            db.rollback()
+        except Exception:  # noqa: BLE001 — connection may already be broken
+            pass
+        try:
+            existing = db.get(PaymentWebhookEvent, body.event_id)
+            if existing:
+                return json.loads(existing.response_json)
+            payment = db.get(Payment, body.payment_id)
+            if payment and payment.status in {
+                "succeeded",
+                "failed",
+                "external_recorded",
+                "refunded",
+                "partially_refunded",
+            }:
+                booking = db.get(Booking, payment.booking_id)
+                return {
+                    "ok": True,
+                    "payment_id": payment.id,
+                    "payment_status": payment.status,
+                    "booking_status": booking.status if booking else None,
+                    "ignored_terminal_event": True,
+                }
+        except Exception:  # noqa: BLE001
+            pass
+        raise HTTPException(409, "Конфликт обработки webhook") from None
 
 
 @router.post("/payments/{payment_id}/stub-complete")

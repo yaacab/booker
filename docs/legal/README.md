@@ -19,6 +19,8 @@
 | `OWNER_INPUTS.md` | нет | Решения и реквизиты, которые должен дать владелец |
 | `LEGAL_SOURCES.md` | нет | Официальные источники и дата проверки |
 | `REVIEW_REPORT_2026-10-01.md` | нет | Состав пакета, блокеры и результат проверки |
+| `CONSISTENCY_REVIEW_2026-10-15.md` | нет | Cross-file consistency (no publish) |
+| `OWNER_PUBLISH_CHECKLIST.md` | нет | Owner gate before M06 publish |
 | `NEXT_CHAT_SERVICE_LEGAL_HANDOFF.md` | нет | Приоритетные доработки сервиса для следующего чата |
 | `HOSTING_152FZ.md` | нет | Инфраструктура РФ |
 | `PAYMENTS_SHORTLIST.md` | нет | Партнёр эквайринга |
