@@ -104,6 +104,10 @@ FAKE_FIXTURE_SHA256: dict[str, frozenset[str]] = {
     "infra/migrate-postgres-docker.sh": frozenset(
         {"09f025915c1b54a80b69ac25f9bfac6c6993a6fa4dee5d25ccdfa1d30fe9ea04"}
     ),
+    # Synthetic local-only password used solely by staging preflight unit tests.
+    "infra/test_staging_preflight.py": frozenset(
+        {"c5d0c7a34d155a6d21f9216cbeb95a6af2e76208a00b157683f762a2efaf0929"}
+    ),
 }
 
 
