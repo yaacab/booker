@@ -72,7 +72,7 @@ export function flipKeyframes(from: HandoffRect, to: HandoffRect): Keyframe[] {
 }
 
 /** Plays the shared-element arrival. Returns the Animation (or null when skipped). */
-export function playArrival(el: HTMLElement, from: HandoffRect | null, duration: number = MOTION.related): Animation | null {
+export function playArrival(el: HTMLElement, from: HandoffRect | null, duration: number = MOTION.related, opts: { depth?: boolean } = { depth: true }): Animation | null {
   if (typeof el.animate !== "function") return null;
   if (prefersReducedMotion() || !from) {
     return el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: MOTION.reduced, easing: "linear" });
@@ -84,5 +84,19 @@ export function playArrival(el: HTMLElement, from: HandoffRect | null, duration:
   if (Math.abs(from.w / to.w) > 6 || Math.abs(from.h / to.h) > 6) {
     return el.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: MOTION.field, easing: EASE.settle });
   }
-  return el.animate(flipKeyframes(from, to), { duration, easing: EASE.settle });
+  const flip = el.animate(flipKeyframes(from, to), { duration, easing: EASE.settle });
+  if (opts.depth) {
+    /* volume: the paper lifts toward the viewer and turns slightly while travelling,
+       then lands flat. Added on top of the FLIP; light stays top-left. */
+    const phone = typeof window !== "undefined" && window.innerWidth < 700;
+    const turn = phone ? 4 : 9, lift = phone ? 14 : 32;
+    try {
+      el.animate([
+        { transform: "perspective(1200px)", boxShadow: "6px 14px 30px -18px #3a281459" },
+        { offset: 0.42, transform: `perspective(1200px) translateZ(${lift}px) rotateY(${-turn}deg) rotateX(${turn * 0.45}deg)`, boxShadow: "18px 34px 60px -24px #3a281470" },
+        { transform: "perspective(1200px)", boxShadow: "6px 14px 30px -18px #3a281459" },
+      ], { duration, easing: EASE.inOut, composite: "add" });
+    } catch { /* composite unsupported: plain FLIP */ }
+  }
+  return flip;
 }
