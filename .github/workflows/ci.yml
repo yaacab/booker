@@ -3,7 +3,12 @@ on:
   push:
     branches: [master, main]
   pull_request:
-    branches: [master, main]
+    # Stacked integration: #20→master, #22→#20 branch, #23→#22 branch.
+    branches:
+      - master
+      - main
+      - codex/booker-integrated-mvp-20261003
+      - cursor/delivery-mvp-acceptance-cbf8
 
 jobs:
   secret-source:

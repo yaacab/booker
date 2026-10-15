@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     composition_v2: bool = True
     workspace_switcher: bool = True
     require_admin_2fa_enforced: bool = False
+    # Multi-admin TOTP recovery via two-approver procedure. OFF until owner policy GO.
+    # When false, multi-admin self-recovery with offline codes stays 403 (fail-closed).
+    two_approver_recovery_enabled: bool = False
     # Comma-separated Fernet keys, newest first. Local/test use a fixed test-only key if empty.
     totp_encryption_keys: str = ""
     admin_2fa_step_up_minutes: int = 15
