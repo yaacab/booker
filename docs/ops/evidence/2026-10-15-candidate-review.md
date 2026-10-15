@@ -52,6 +52,19 @@ Grounds:
 - Staging gates (T10/T12/P06/O05) remain open — see staging discovery evidence.
 - Design / live payments / legal remain out of scope per DEVELOPMENT_GOAL.
 
+## Independent blocking review (follow-up)
+
+Second pass ([Stage A blocking review](bc-152920f3-1720-5ce5-9236-f9eb64578abd)): **ACCEPT**, blocking findings **none**.
+
+Non-blocking notes retained for staging backlog (not FIX_REQUIRED):
+
+1. `test_hold_race.py` — exclusivity, not OS-thread concurrent race; no Postgres same-slot concurrent hold suite yet.
+2. `create_slot` check-then-insert — theoretical TOCTOU on overlapping `open` slots; hold on one `slot_id` still CAS + `FOR UPDATE`.
+3. Payment prod profile: live without merchant fail-closed; stub/external only for pilot.
+4. quote_id coverage adequate (stale/missing ack, OfferVersion bind, hold on mutually acked version).
+
+No code change from these notes on this run.
+
 ## Progress evidence refresh (0 п.п.)
 
 T08 / P08 / O04 remain ✓; evidence pointer may cite PR #20 `bb61e998` in addition to prior PR #18 `ce06681`. Percentage unchanged.
