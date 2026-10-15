@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import socket
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -13,9 +15,15 @@ if ROOT not in sys.path:
 
 from staging_preflight import (  # noqa: E402
     check_database_url,
+    check_env_file_path,
+    check_port_available,
     check_runtime,
     check_uploads,
+    check_web_build_stamp,
+    pid_owned_by_booker_staging,
+    redact_secrets,
     run_checks,
+    write_web_build_stamp,
 )
 
 
@@ -111,3 +119,106 @@ def test_cli_main_exit_codes(tmp_path):
 
     # Refuse reading /opt/booker env even if file existed — path check before read
     assert main(["--env-file", "/opt/booker/data/fake.env"]) == 2
+
+
+def test_env_file_path_rejects_production():
+    result = check_env_file_path("/opt/booker/data/booker-api.env")
+    assert not result.ok
+    assert result.code == "env_file_production"
+
+
+def test_env_file_path_allows_tmp(tmp_path):
+    path = tmp_path / "secrets.env"
+    path.write_text("x=1\n", encoding="utf-8")
+    result = check_env_file_path(str(path))
+    assert result.ok, result
+
+
+def test_uploads_symlink_escape(tmp_path):
+    staging = Path("/tmp/booker-staging-symlink-test")
+    staging.mkdir(parents=True, exist_ok=True)
+    link = staging / "escape"
+    target = tmp_path / "opt-booker-lookalike"
+    # Simulate escape toward /opt/booker via symlink when possible
+    forbidden = Path("/opt/booker")
+    if forbidden.exists() or os.geteuid() == 0:
+        pytest.skip("cannot safely create /opt/booker symlink fixture")
+    # Use a path that resolves outside allowlist
+    outside = tmp_path / "outside-uploads"
+    outside.mkdir()
+    if link.exists() or link.is_symlink():
+        link.unlink()
+    link.symlink_to(outside)
+    result = check_uploads(str(link))
+    assert not result.ok
+    assert result.code == "uploads_symlink_escape"
+    link.unlink()
+    try:
+        staging.rmdir()
+    except OSError:
+        pass
+
+
+def test_redact_secrets_masks_password_and_url():
+    sample = (
+        "services:\n"
+        "  postgres:\n"
+        "    environment:\n"
+        "      POSTGRES_PASSWORD: supersecret99\n"
+        "    image: postgres\n"
+        "DATABASE_URL: postgresql://booker_staging:supersecret99@127.0.0.1:15432/booker_staging\n"
+    )
+    redacted = redact_secrets(sample, extra_values=["supersecret99"])
+    assert "supersecret99" not in redacted
+    assert "***" in redacted
+    assert "15432" in redacted
+
+
+def test_port_available_detects_conflict():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(1)
+    port = sock.getsockname()[1]
+    try:
+        result = check_port_available("127.0.0.1", port)
+        assert not result.ok
+        assert result.code == "port_in_use"
+    finally:
+        sock.close()
+    free = check_port_available("127.0.0.1", port)
+    assert free.code in {"port_ok", "port_in_use"}
+
+
+def test_web_build_stamp_refuse_unknown(tmp_path, monkeypatch):
+    next_dir = tmp_path / ".next"
+    next_dir.mkdir()
+    stamp_dir = Path("/tmp/booker-staging")
+    stamp_dir.mkdir(parents=True, exist_ok=True)
+    stamp = stamp_dir / "web-build.sha"
+    if stamp.exists():
+        stamp.unlink()
+    result = check_web_build_stamp(str(next_dir), "abc123deadbeef")
+    assert not result.ok
+    assert result.code == "web_build_stamp_missing"
+
+    write_web_build_stamp("abc123deadbeef")
+    ok = check_web_build_stamp(str(next_dir), "abc123deadbeef")
+    assert ok.ok, ok
+
+    mismatch = check_web_build_stamp(str(next_dir), "ffffffffffffffff")
+    assert not mismatch.ok
+    assert mismatch.code == "web_build_stamp_mismatch"
+
+
+def test_pid_ownership_rejects_missing_and_self():
+    assert pid_owned_by_booker_staging(0) is False
+    # Current pytest process is not a booker staging app
+    assert pid_owned_by_booker_staging(os.getpid()) is False
+
+
+def test_cli_redact_file(tmp_path):
+    from staging_preflight import main
+
+    raw = tmp_path / "compose.yml"
+    raw.write_text("POSTGRES_PASSWORD: hunter2secret\nport: 15432\n", encoding="utf-8")
+    assert main(["--redact-file", str(raw)]) == 0
