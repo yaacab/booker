@@ -1,6 +1,7 @@
 "use client";
 
 import { installSceneRecovery } from "@/lib/scene01Recovery";
+import { saveHandoff } from "@/lib/motion";
 
 import {
   useCallback, useEffect, useMemo, useRef, useState,
@@ -938,6 +939,8 @@ export default function LiveSceneHome() {
     const roles = ["customer", "artist", "venue"];
     const next = info.role === 0 ? "/events/new" : info.role === 1 ? "/cabinet/performer" : "/cabinet/venue";
     recoveryRef.current?.markRoleNavigation();
+    /* Hand the tapped photo to the registration header (shared-element continuation). */
+    saveHandoff("role", info.photo, { id: roles[info.role] });
     window.location.assign(`/login?mode=register&role=${roles[info.role]}&next=${encodeURIComponent(next)}`);
   }, []);
   return <main className="bk-live-home" data-release="scene01-v5-live">

@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLockup } from "@/components/BrandLockup";
 import { api, createOrgWithConfirm, setActiveOrg, setToken } from "@/lib/api";
 import { cabinetPathForKind } from "@/lib/cabinetRoutes";
 import { safeNext } from "@/lib/next";
+import { RoleHandoffCard } from "@/components/scene/RoleHandoffCard";
+import { isSceneRole } from "@/lib/sceneRoles";
 
 type AuthPageProps = {
   artistWelcome?: boolean;
@@ -25,6 +27,16 @@ export default function AuthPage({
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState("");
   const [selectedRole, setSelectedRole] = useState(artistWelcome ? "artist" : "customer");
+  const [queryRead, setQueryRead] = useState(false);
+  const [arrival, setArrival] = useState<"none" | "handoff" | "plain">("none");
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const onRoleArrive = useCallback((hadHandoff: boolean) => {
+    setArrival((cur) => {
+      if (cur !== "none") return cur;
+      if (hadHandoff) requestAnimationFrame(() => headingRef.current?.focus({ preventScroll: true }));
+      return hadHandoff ? "handoff" : "plain";
+    });
+  }, []);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -38,6 +50,7 @@ export default function AuthPage({
       setResetToken(token);
       setMode("reset");
     }
+    setQueryRead(true);
   }, [publicRegistrationEnabled]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -143,7 +156,7 @@ export default function AuthPage({
           : "Новый аккаунт";
 
   return (
-    <main className={`login-layout ${artistWelcome ? "artist-welcome" : ""}`}>
+    <main className={`login-layout bk-scene-auth ${artistWelcome ? "artist-welcome" : ""}${arrival === "handoff" ? " is-arriving" : ""}`}>
       {artistWelcome ? <aside className="artist-benefits" aria-label="Букер для артистов">
         <p className="kicker">Твоя следующая сцена</p>
         <h1>Ты создаёшь атмосферу.<br /><em>Мы помогаем встретиться.</em></h1>
@@ -158,13 +171,13 @@ export default function AuthPage({
         <p className="artist-benefits-foot">{publicRegistrationEnabled
           ? "Сначала кабинет. Фото, программу и свободные даты добавишь следующим шагом."
           : "Новые участники подключаются по приглашению команды пилота."}</p>
-      </aside> : <aside className="login-story" aria-label="О Букере"><p className="kicker">Артисты. События. Букер.</p><h2>Хорошие события<br />начинаются с людей.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Находите артистов и заказы, обсуждайте детали и сохраняйте договорённости в одном месте.</p></aside>}
+      </aside> : mode === "register" && queryRead && isSceneRole(selectedRole) ? <RoleHandoffCard role={selectedRole} onArrive={onRoleArrive} /> : <aside className="login-story" aria-label="О Букере"><p className="kicker">Артисты. События. Букер.</p><h2>Хорошие события<br />начинаются с людей.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Находите артистов и заказы, обсуждайте детали и сохраняйте договорённости в одном месте.</p></aside>}
       <section className="login-fields">
       {!artistWelcome && <p className="brand-lockup-wrap">
         <BrandLockup />
       </p>}
       <p className="kicker">{kicker}</p>
-      {artistWelcome ? <h2>{mode === "register" ? "Начни с простого" : heading}</h2> : <h1>{heading}</h1>}
+      {artistWelcome ? <h2>{mode === "register" ? "Начни с простого" : heading}</h2> : <h1 ref={headingRef} tabIndex={-1}>{heading}</h1>}
       {!publicRegistrationEnabled && mode === "login" ? (
         <div className="registration-closed-note" role="status">
           <strong>Саморегистрация временно закрыта</strong>
@@ -257,9 +270,9 @@ export default function AuthPage({
             </label>}
           </>
         ) : null}
-        {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
-        {notice ? <p className="timeline">{notice}</p> : null}
-        <button type="submit" disabled={pending}>
+        {error ? <p className="bk-form-error" role="alert" style={{ color: "var(--danger)" }}>{error}</p> : null}
+        {notice ? <p className="timeline" role="status">{notice}</p> : null}
+        <button type="submit" disabled={pending} aria-busy={pending}>
           {pending
             ? "Обрабатываем…"
             : mode === "reset"

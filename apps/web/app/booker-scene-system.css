@@ -1,0 +1,235 @@
+/* =====================================================================
+   Букер · Scene system (BK-DESIGN-TYPE-017, delivery 1)
+   Continuation of Scene 01: same cream paper, ink, gold, serif and
+   motion character. Loaded BEFORE scene01-continuity.css so that the
+   `booker-scene` cascade layer is declared first: its !important rules
+   then outrank both legacy editions and the continuity layer.
+   ===================================================================== */
+@layer booker-scene, booker-cream;
+
+:root {
+  /* palette (brief) */
+  --bk-bg: #f2ede5;
+  --bk-paper: #fbf8f3;
+  --bk-paper-2: #f4eee5;
+  --bk-ink: #1c1915;
+  --bk-ink-2: #6d6358;
+  --bk-gold: #b8955a;
+  --bk-gold-ink: #80601e;
+  --bk-highlight: #ecdfc9;
+  --bk-line: #d8cbb9;
+  /* type — same stacks as Scene 01 */
+  --bk-serif: "Cormorant Garamond", "Cormorant", "Times New Roman", Georgia, serif;
+  --bk-sans: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* material: single light source top-left → shadows fall bottom-right */
+  --bk-edge: inset 0 1px 0 #ffffffb3, inset 0 0 0 1px #b8955a1f;
+  --bk-contact: 0 1px 1px #3a281408, 6px 14px 30px -18px #3a281459;
+  --bk-contact-lift: 0 1px 1px #3a28140a, 10px 26px 44px -22px #3a28146b;
+  /* motion presets (mirrors lib/motion.ts) */
+  --bk-t-press: 150ms;
+  --bk-t-field: 220ms;
+  --bk-t-related: 550ms;
+  --bk-t-cover: 600ms;
+  --bk-ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+  --bk-ease-press: cubic-bezier(0.2, 0, 0, 1);
+  --bk-perspective: 1200px;
+}
+
+/* ---------- reusable paper surface ---------- */
+.bk-paper {
+  background: var(--bk-paper);
+  border: 1px solid var(--bk-line);
+  border-radius: 28px;
+  box-shadow: var(--bk-edge), var(--bk-contact);
+  color: var(--bk-ink);
+}
+
+/* =====================================================================
+   SCENE 1 → 2 · role card becomes the registration header
+   ===================================================================== */
+.bk-role-handoff {
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  min-height: 560px;
+}
+.bk-arrival { will-change: auto; }
+.bk-role-handoff-photo {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 300px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(140deg, #cdbba4, #7e6b58); /* same as intro .bk-role-photo */
+  box-shadow: inset 0 0 0 1px #b8955a2e;
+}
+.bk-role-handoff-photo img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  filter: sepia(0.2) saturate(0.78) contrast(1.04); /* intro photo grade */
+  animation: bk-fade var(--bk-t-field) ease-out both;
+}
+.bk-role-handoff-body { position: relative; display: grid; gap: 8px; padding: 22px 12px 8px; }
+.bk-role-handoff-kicker { margin: 0; font: 600 10px/1 var(--bk-sans); letter-spacing: .2em; text-transform: uppercase; color: var(--bk-ink-2); }
+.bk-role-handoff-title { margin: 0; font: 500 clamp(36px, 3.4vw, 48px)/1 var(--bk-serif); letter-spacing: -.02em; color: var(--bk-ink); }
+.bk-role-handoff-text { margin: 0; max-width: 42ch; font: 400 15px/1.55 var(--bk-sans); color: var(--bk-ink-2); }
+.bk-role-handoff-back {
+  justify-self: start; display: inline-flex; gap: 8px; align-items: center; min-height: 44px; margin-top: 4px;
+  font: 600 13px/1 var(--bk-sans); text-decoration: none;
+  transition: transform var(--bk-t-press) var(--bk-ease-press);
+}
+.bk-role-handoff-back:hover span { transform: translateX(-3px); }
+.bk-role-handoff-back span { display: inline-block; transition: transform var(--bk-t-press) var(--bk-ease-press); }
+
+/* fields settle in after the photo has landed (only on a real handoff) */
+.bk-scene-auth.is-arriving .login-fields > * {
+  animation: bk-field-in var(--bk-t-field) var(--bk-ease-settle) both;
+  animation-delay: 300ms;
+}
+.bk-scene-auth.is-arriving .login-fields > :nth-child(2) { animation-delay: 330ms; }
+.bk-scene-auth.is-arriving .login-fields > :nth-child(3) { animation-delay: 360ms; }
+.bk-scene-auth.is-arriving .login-fields > :nth-child(n+4) { animation-delay: 390ms; }
+/* heading receives programmatic focus only (tabIndex=-1): announce, don't draw a control ring */
+.bk-scene-auth .login-fields h1[tabindex="-1"]:focus { outline: none; }
+.bk-form-error { margin: 0; padding: 10px 12px; border-radius: 12px; background: #9c28350d; border: 1px solid #9c283533; font-size: 14px; line-height: 1.45; }
+
+@media (max-width: 900px) {
+  /* phone/tablet: photo becomes a compact header above the form; first input stays near the fold */
+  .bk-role-handoff { min-height: 0; flex-direction: row; align-items: center; gap: 14px; padding: 10px; border-radius: 22px; }
+  .bk-role-handoff-photo { flex: 0 0 auto; width: clamp(92px, 28vw, 168px); min-height: 0; aspect-ratio: 1 / 1; border-radius: 14px; }
+  .bk-role-handoff-body { flex: 1; min-width: 0; padding: 2px 4px 2px 0; gap: 4px; }
+  .bk-role-handoff-kicker { font-size: 9px; }
+  .bk-role-handoff-title { font-size: clamp(26px, 7vw, 34px); }
+  .bk-role-handoff-text { display: none; }
+  .bk-role-handoff-back { min-height: 36px; margin-top: 0; font-size: 12px; }
+}
+@media (min-width: 560px) and (max-width: 900px) { .bk-role-handoff-text { display: block; font-size: 13px; } }
+
+/* =====================================================================
+   SCENE 4 · catalog — paper cards, light volume on interaction
+   ===================================================================== */
+.catalog-result.bk-tilt {
+  transform: perspective(var(--bk-perspective)) rotateX(var(--bk-rx, 0deg)) rotateY(var(--bk-ry, 0deg)) translateZ(0);
+  transition: transform 160ms var(--bk-ease-press), box-shadow 160ms var(--bk-ease-press);
+}
+.catalog-result.bk-tilt:hover { --bk-lift: -4px; box-shadow: var(--bk-edge), var(--bk-contact-lift); }
+.catalog-result.bk-tilt:hover { transform: perspective(var(--bk-perspective)) rotateX(var(--bk-rx, 0deg)) rotateY(var(--bk-ry, 0deg)) translateY(-4px); }
+
+/* paper panel for the filters drawer (field timing) */
+@keyframes bk-paper-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.catalog-filters .filter-body.open { animation: bk-paper-open var(--bk-t-field) var(--bk-ease-settle) both; transform-origin: top center; }
+
+/* calm paper skeleton (no animated blur) */
+@keyframes bk-sheen { from { background-position: 120% 0; } to { background-position: -20% 0; } }
+
+/* =====================================================================
+   SCENE 5 · profile — catalog photo grows into the cover
+   ===================================================================== */
+.bk-profile-cover { min-width: 0; position: relative; z-index: 1; }
+
+@keyframes bk-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bk-field-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* =====================================================================
+   Overrides of legacy/editions styles (layered !important, see header)
+   ===================================================================== */
+@layer booker-scene {
+  /* login grid: handoff card occupies the story column */
+  html[data-booker-theme="cream"] .site-content .login-layout.bk-scene-auth { align-items: stretch !important; }
+  @media (max-width: 900px) {
+    html[data-booker-theme="cream"] .site-content .login-layout.bk-scene-auth { grid-template-columns: minmax(0, 1fr) !important; max-width: 560px !important; margin-inline: auto !important; gap: 14px !important; }
+  }
+  html[data-booker-theme="cream"] .bk-role-handoff-back { color: var(--bk-gold-ink) !important; background: transparent !important; border: 0 !important; }
+  html[data-booker-theme="cream"] .bk-scene-auth .login-fields h1[tabindex="-1"]:focus { outline: none !important; }
+  html[data-booker-theme="cream"] .bk-role-handoff-title { font-family: var(--bk-serif) !important; color: var(--bk-ink) !important; }
+
+  /* placeholders: no graphite Black Edition slabs — neutral paper with a gold monogram */
+  html[data-booker-theme="cream"] :is(.profile-media-empty, .talent-initials, .catalog-media-placeholder) {
+    background:
+      radial-gradient(ellipse at 22% 12%, #fffdf9 0, transparent 62%),
+      linear-gradient(150deg, #f4eee5 0%, #ecdfc9 100%) !important;
+    color: var(--bk-ink-2) !important;
+  }
+  html[data-booker-theme="cream"] .profile-media-monogram {
+    background: #fbf8f3cc !important; color: var(--bk-gold-ink) !important; border: 1px solid #b8955a59 !important;
+    font-family: var(--bk-serif) !important; font-weight: 500 !important; box-shadow: var(--bk-contact) !important;
+  }
+  html[data-booker-theme="cream"] .profile-media-empty > span:last-child { color: var(--bk-ink-2) !important; }
+  html[data-booker-theme="cream"] .profile-media { background: var(--bk-paper-2) !important; border-color: var(--bk-line) !important; }
+  html[data-booker-theme="cream"] .profile-media.has-media::after { border-color: #fbf8f399 !important; }
+  html[data-booker-theme="cream"] .profile-media img { filter: sepia(.12) saturate(.88) contrast(1.02); }
+
+  /* verified marks: gold, not lime */
+  html[data-booker-theme="cream"] :is(.catalog-verified-mark, .profile-verified-mark) {
+    background: var(--bk-gold) !important; color: var(--bk-paper) !important; border-color: var(--bk-gold) !important; box-shadow: none !important;
+  }
+  html[data-booker-theme="cream"] .catalog-availability.chip { background: #fbf8f3eb !important; color: var(--bk-ink) !important; border: 1px solid #d8cbb9 !important; }
+  html[data-booker-theme="cream"] .catalog-availability.chip.ok svg { stroke: var(--bk-gold-ink) !important; }
+
+  /* catalog cards: paper with edge and contact shadow */
+  html[data-booker-theme="cream"] .catalog-result {
+    border-radius: 22px !important; box-shadow: var(--bk-edge), var(--bk-contact) !important;
+  }
+  html[data-booker-theme="cream"] .catalog-result.bk-tilt:hover { box-shadow: var(--bk-edge), var(--bk-contact-lift) !important; }
+
+  /* mobile filters toggle: paper panel, not a black bar */
+  html[data-booker-theme="cream"] .catalog-filters .filter-toggle {
+    background: var(--bk-paper) !important; color: var(--bk-ink) !important; border: 1px solid var(--bk-line) !important;
+    border-radius: 16px !important; box-shadow: var(--bk-edge), var(--bk-contact) !important; min-height: 48px;
+  }
+  html[data-booker-theme="cream"] .catalog-filters .filter-toggle[aria-expanded="true"] { background: var(--bk-highlight) !important; border-color: var(--bk-gold) !important; }
+
+  /* remaining Black Edition slabs in profile/catalog → paper + gold highlight */
+  html[data-booker-theme="cream"] :is(.profile-fact-chips > span, .catalog-card-facts > span) {
+    background: var(--bk-paper-2) !important; color: var(--bk-ink) !important; border: 1px solid var(--bk-line) !important;
+  }
+  html[data-booker-theme="cream"] .profile-tariff-list > li { background: var(--bk-paper) !important; color: var(--bk-ink) !important; border: 1px solid var(--bk-line) !important; }
+  html[data-booker-theme="cream"] .profile-tariff-list > li * { color: inherit !important; }
+  html[data-booker-theme="cream"] .slot-groups > section { background: var(--bk-paper-2) !important; color: var(--bk-ink) !important; border-color: var(--bk-line) !important; }
+  html[data-booker-theme="cream"] .slot-groups > section :is(h3, h4, p, span, strong) { color: inherit !important; }
+  html[data-booker-theme="cream"] .slot-btn { background: var(--bk-paper) !important; color: var(--bk-ink) !important; border: 1px solid var(--bk-line) !important; transition: background var(--bk-t-press) var(--bk-ease-press), border-color var(--bk-t-press) var(--bk-ease-press); }
+  html[data-booker-theme="cream"] .slot-btn :is(span, small, strong) { color: inherit !important; }
+  html[data-booker-theme="cream"] .slot-btn.on { background: var(--bk-highlight) !important; border-color: var(--bk-gold-ink) !important; box-shadow: 0 0 0 1px #b8955a55 !important; }
+  /* readable secondary text on paper (≥4.5:1) */
+  html[data-booker-theme="cream"] .public-profile-reference :is(.card p, .card li, .timeline, .profile-small-note, .profile-location, .profile-eyebrow) { color: var(--bk-ink-2) !important; }
+
+  /* one light source, warm shadows: replace remaining green-tinted legacy shadows */
+  html[data-booker-theme="cream"] :is(.public-profile-reference .card, .profile-booking-panel, .catalog-searchbar) { box-shadow: var(--bk-edge), var(--bk-contact) !important; }
+  html[data-booker-theme="cream"] .catalog-availability.chip { box-shadow: 0 1px 2px #3a281412 !important; }
+  html[data-booker-theme="cream"] .profile-hall-icon { background: var(--bk-paper-2) !important; border-color: var(--bk-line) !important; color: var(--bk-gold-ink) !important; }
+  html[data-booker-theme="cream"] .profile-hall-icon :is(span, svg) { color: var(--bk-gold-ink) !important; stroke: currentColor; }
+
+  /* loading / empty / error */
+  html[data-booker-theme="cream"] .reference-loading .skeleton {
+    background: linear-gradient(100deg, #f4eee5 30%, #fbf8f3 50%, #f4eee5 70%) 0 0 / 200% 100% !important;
+    border: 1px solid var(--bk-line) !important; border-radius: 22px !important; animation: bk-sheen 1.4s linear infinite;
+  }
+  html[data-booker-theme="cream"] .catalog-reference .card.empty { border-style: dashed !important; text-align: center; }
+
+  /* profile: mobile cover sits on top, information follows */
+  @media (max-width: 680px) {
+    html[data-booker-theme="cream"] .public-profile-rail { display: contents !important; }
+    html[data-booker-theme="cream"] .public-profile-layout > .public-profile-rail > .bk-profile-cover { grid-row: 1 !important; }
+    html[data-booker-theme="cream"] .public-profile-heading { grid-row: 2 !important; }
+    html[data-booker-theme="cream"] .public-profile-rail > .profile-calendar-panel { grid-row: 3 !important; }
+    html[data-booker-theme="cream"] .public-profile-reference .profile-media { width: 100% !important; max-width: none !important; margin: 0 !important; aspect-ratio: 16 / 10 !important; max-height: 260px !important; }
+  }
+
+  /* touch: shallow lift + scale instead of tilt */
+  @media (hover: none) {
+    html[data-booker-theme="cream"] .catalog-result { transition: transform var(--bk-t-press) var(--bk-ease-press) !important; }
+    html[data-booker-theme="cream"] .catalog-result:active { transform: translateY(-2px) scale(.99) !important; }
+  }
+
+  /* reduced motion: no tilt, no flights, no staggered entrance */
+  @media (prefers-reduced-motion: reduce) {
+    html[data-booker-theme="cream"] .catalog-result,
+    html[data-booker-theme="cream"] .catalog-result:hover,
+    html[data-booker-theme="cream"] .catalog-result:active { transform: none !important; transition: box-shadow 120ms linear !important; }
+    html[data-booker-theme="cream"] .bk-scene-auth.is-arriving .login-fields > *,
+    html[data-booker-theme="cream"] .catalog-filters .filter-body.open,
+    html[data-booker-theme="cream"] .bk-role-handoff-photo img { animation: bk-fade 120ms linear both !important; animation-delay: 0ms !important; }
+    html[data-booker-theme="cream"] .reference-loading .skeleton { animation: none !important; }
+  }
+}

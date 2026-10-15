@@ -19,6 +19,7 @@ import "./login-layout.css";
 import "./home-refinement.css";
 import "./venue-discovery.css";
 import "./artist-welcome.css";
+import "./booker-scene-system.css";
 import "./scene01-continuity.css";
 
 const siteUrl = "https://bukergo.ru";
