@@ -1,3 +1,4 @@
+import contextlib
 import json
 from datetime import datetime, timezone
 
@@ -994,11 +995,9 @@ def payment_webhook(body: WebhookIn, request: Request, db: Session = Depends(get
         return _apply_payment_webhook(body, db)
     except (IntegrityError, StaleDataError, InterfaceError, OperationalError):
         # Concurrent sandbox races must stay fail-closed without 500.
-        try:
+        with contextlib.suppress(Exception):
             db.rollback()
-        except Exception:  # noqa: BLE001 — connection may already be broken
-            pass
-        try:
+        with contextlib.suppress(Exception):
             existing = db.get(PaymentWebhookEvent, body.event_id)
             if existing:
                 return json.loads(existing.response_json)
@@ -1018,8 +1017,6 @@ def payment_webhook(body: WebhookIn, request: Request, db: Session = Depends(get
                     "booking_status": booking.status if booking else None,
                     "ignored_terminal_event": True,
                 }
-        except Exception:  # noqa: BLE001
-            pass
         raise HTTPException(409, "Конфликт обработки webhook") from None
 
 
