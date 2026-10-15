@@ -39,12 +39,12 @@
 
 | ID | Этап | Цель | Статус (см. ledger) |
 |---|---|---|---|
-| A | Review кандидата | ACCEPT / FIX_REQUIRED / BLOCKED на `bb61e998` | в ledger |
-| B | Staging discovery | Адрес, версия, БД, миграции, роли, backup/rollback; без recreate | в ledger |
-| C | Сквозная приёмка | 10 обязательных сценариев с evidence | в ledger |
-| D | Дефекты | Только воспроизводимые FAIL; минимальный diff | в ledger |
-| E | Пилотный доступ | Роли, поддержка, правила ограниченного пилота — без реального GO | в ledger |
-| F | Release readiness | Пакет GO / NO-GO; **не** production deploy | в ledger |
+| A | Review кандидата | ACCEPT / FIX_REQUIRED / BLOCKED на `bb61e998` | **ACCEPT** |
+| B | Staging discovery | Адрес, версия, БД, миграции, роли, backup/rollback; без recreate | **BLOCKED** (нет отдельного staging) |
+| C | Сквозная приёмка | 10 обязательных сценариев с evidence | **VERIFIED** локально |
+| D | Дефекты | Только воспроизводимые FAIL; минимальный diff | **N/A** (нет FAIL) |
+| E | Пилотный доступ | Роли, поддержка, правила ограниченного пилота — без реального GO | **IMPLEMENTED** (без реальных users) |
+| F | Release readiness | Пакет GO / NO-GO; **не** production deploy | **NO-GO** production |
 
 ## Запреты без отдельного согласования
 

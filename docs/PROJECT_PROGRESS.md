@@ -21,7 +21,7 @@
 | T05 | Переписка, поддержка и операторская очередь работают локально | 6 | ✓ | P05; support-срез в `PROJECT_STATE.md` |
 | T06 | Объектные права, публичные данные и вложения защищены локально | 8 | ✓ | S01 и S05; локальные отрицательные и browser тесты |
 | T07 | Восстановление доступа администратора, email и TOTP принято | 8 | ○ | S06; offline codes локально проверены, два утверждающих, реальная SMTP и staging ещё открыты |
-| T08 | Полный API/web/browser/security CI зелёный на точном SHA | 10 | ✓ | 02.10.2026, PR #18 `ce0668176793f4546b640466f82fb4056967e26b`: GitHub CI secret-source, dependency-audit, API, web, e2e-critical SUCCESS; API 725 PASS/9 SKIP, browser 80 PASS/1 SKIP, отдельный staff recovery 1 PASS. Это CI-кандидат, не staging/production. |
+| T08 | Полный API/web/browser/security CI зелёный на точном SHA | 10 | ✓ | 02.10.2026, PR #18 `ce06681` (исторический CI-кандидат). Обновление evidence 15.10.2026: текущий интеграционный кандидат PR #20 `bb61e998f52b4eafd5a13efbb39567a57e7435d2` — те же 5 jobs SUCCESS (run 38480746776); локальная приёмка C01–C10 PASS (API 72 + browser 18 focused). Балл уже ✓ — **0,00 п.п.**; это не staging/production. |
 | T09 | Каталог измерен на представительном supply и мобильных устройствах | 5 | ○ | P07; staging p95, EXPLAIN и mobile HAR |
 | T10 | Миграции и DB+uploads restore проверены на staging | 10 | ○ | O05; фактическая БД и rollback proof |
 | T11 | Межорганизационный staging, AV и retention проверены | 7 | ○ | S07; две организации, реальный scanner и политика |
@@ -60,7 +60,7 @@
 | P05 | Поддержка, очередь оператора и споры работают локально | 4 | ✓ | `docs/ops/SUPPORT_OPERATOR_QUEUE_2026-10-02.md`, `docs/ops/SLA.md`; отдельная роль и кабинет оператора локально проверены, баллы повторно не начисляются |
 | P06 | Мобильный путь всех ролей пройден на staging | 4 | ○ | Заказчик → поставщик → оффер → расчёт → спор/поддержка с реальной доставкой |
 | P07 | Каталог измерен на представительном supply и мобильных устройствах | 2 | ○ | Локальная курсорная пагинация и batch gate: 150 профилей, 6/10 SQL на страницу; staging p95, EXPLAIN реального supply и mobile image HAR ещё нужны |
-| P08 | Полный API/web/browser/CI прогон выполнен на точном кандидате | 2 | ✓ | 02.10.2026, PR #18 `ce0668176793f4546b640466f82fb4056967e26b`: API 725 PASS/9 SKIP, web SUCCESS, browser 80 PASS/1 SKIP и отдельный recovery 1 PASS в GitHub CI. |
+| P08 | Полный API/web/browser/CI прогон выполнен на точном кандидате | 2 | ✓ | 02.10.2026, PR #18 `ce06681`. Evidence 15.10.2026: PR #20 `bb61e998` — 5/5 CI SUCCESS (run 38480746776). Балл уже ✓ — **0,00 п.п.** |
 | S01 | Объектные права и вложения имеют локальные отрицательные тесты | 2 | ✓ | `apps/api/tests/test_authz_regressions.py`, `test_attachments.py` |
 | S02 | Журнал согласий и технический workflow запросов о данных есть локально | 3 | ✓ | `docs/ops/LEGAL_CONSENT_LEDGER_2026-10-02.md`, `DATA_SUBJECT_LIFECYCLE_2026-10-02.md` |
 | S03 | Серверный критерий публикации реализован локально | 2 | ✓ | `apps/api/booker_api/publication_eligibility.py`; реальная аттестация — отдельно |
@@ -85,7 +85,7 @@
 | O01 | Локальный sealed backup/SQLite restore evidence v2 проверен | 2 | ✓ | `docs/ops/BACKUP_SEALED.md`, `RESTORE_DRILL_LOG.md` |
 | O02 | Локальные rollback и schema release gates проверены | 3 | ✓ | `docs/ops/RELEASE_TRANSACTION_2026-10-02.md`, `SCHEMA_RELEASE_PLAN_2026-10-02.md` |
 | O03 | Локальный монитор и сигналы подготовлены | 2 | ✓ | `docs/ops/OBSERVABILITY_2026-10-02.md`; transport в production выключен |
-| O04 | Точный кандидат имеет зелёный полный CI/security gate | 2 | ✓ | 02.10.2026, PR #18 `ce0668176793f4546b640466f82fb4056967e26b`: все пять jobs SUCCESS, включая secret-source и dependency-audit. PR остаётся черновым; релиз отдельно. |
+| O04 | Точный кандидат имеет зелёный полный CI/security gate | 2 | ✓ | 02.10.2026, PR #18 `ce06681`. Evidence 15.10.2026: PR #20 `bb61e998` — 5/5 CI SUCCESS. Draft PR; релиз отдельно. Балл уже ✓ — **0,00 п.п.** |
 | O05 | Миграция и восстановление выбранной БД доказаны на staging | 4 | ○ | Фактический source revision, manual_block review, DB+uploads restore, RTO/RPO |
 | O06 | Реальные nginx/systemd/cron/оповещения проверены | 3 | ○ | VPS/staging config, адресат, проба аварии и восстановление |
 | O07 | Авторизованная сделка, роли и деньги пройдены на staging | 3 | ○ | Положительные и отрицательные сценарии, мобильный браузер |
