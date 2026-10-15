@@ -281,3 +281,9 @@
 @layer booker-scene { html[data-booker-theme="cream"] .assembly-page :is(em, i) { color: var(--bk-gold-ink) !important; -webkit-text-fill-color: var(--bk-gold-ink) !important; background: none !important; } }
 /* existing constructor puzzle: warm metal instead of green chrome (same SVG, tinted) */
 .assembly-page .puzzle-board-svg { filter: sepia(.7) saturate(.75) hue-rotate(-8deg) brightness(1.04); }
+
+/* profile loading: cover-shaped paper keeps the catalog → profile transition continuous */
+.bk-cover-skeleton { width: 100%; aspect-ratio: .92; max-height: 490px; border-radius: 22px; border: 1px solid var(--bk-line); background: linear-gradient(100deg, #f4eee5 30%, #fbf8f3 50%, #f4eee5 70%) 0 0 / 200% 100%; animation: bk-sheen 1.4s linear infinite; }
+.bk-cover-skeleton.is-text { aspect-ratio: auto; height: 160px; }
+@media (max-width: 680px) { .bk-cover-skeleton { aspect-ratio: 16 / 10; max-height: 260px; } }
+@media (prefers-reduced-motion: reduce) { .bk-cover-skeleton { animation: none; } }

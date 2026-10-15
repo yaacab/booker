@@ -226,6 +226,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
     return (
       <main className="public-profile-reference">
         <h1>Площадка</h1>
+        {!error ? <div className="public-profile-layout" aria-hidden="true"><div className="profile-media bk-cover-skeleton" /><div className="bk-cover-skeleton is-text" /></div> : null}
         <p>{error || ""}</p>
         {!error ? (
           <div className="grid">

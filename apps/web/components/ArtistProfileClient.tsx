@@ -188,6 +188,7 @@ export function ArtistProfileClient() {
     return (
       <main className="public-profile-reference">
         <h1>Профиль</h1>
+        {!error ? <div className="public-profile-layout" aria-hidden="true"><div className="profile-media bk-cover-skeleton" /><div className="bk-cover-skeleton is-text" /></div> : null}
         {error ? (
           <div className="card" role="alert">
             <p>{error}</p>
