@@ -734,3 +734,12 @@
 
 body:has(.bk-live-home) :is(header.top,footer.site-footer,.bottom-nav,.skip,.scroll-progress) { display: none !important; }
 body:has(.bk-live-home) { overflow: hidden; }
+
+/* The brand scene keeps its approved cream palette in either saved site edition. */
+html[data-edition] .bk-live-home :is(h1,h2,h3,h4,strong) { color: var(--buker-ink) !important; }
+html[data-edition] .bk-live-home p { color: var(--buker-ink-2); }
+html[data-edition] .bk-live-home .bk-cta { background: var(--buker-ink); color: var(--buker-paper); border-color: var(--buker-ink); }
+html[data-edition] .bk-live-home .bk-replay { background: transparent; color: var(--buker-ink-3); border: 0; }
+html[data-edition] .bk-live-home .bk-live-nav a { color: #1c1915; background: #fbf8f3ed; }
+html[data-edition] .bk-live-home .bk-live-legal { color: #51422f; background: #fbf8f3ed; }
+@media(max-width:360px) { .bk-live-nav { gap: 4px; } .bk-live-nav a { padding: 8px 6px; font-size: 10px; min-width: 44px; justify-content: center; } }
