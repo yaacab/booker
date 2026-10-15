@@ -1,0 +1,75 @@
+{
+  "task": "BK-WEB-FLEX-020",
+  "base_working_directory": "/opt/booker/web-releases/20261015-mobile-layout-019/apps/web",
+  "base_build_id": "PwOJPvTDOzc7nxvREQwiI",
+  "prototype_archive_sha256": "7d7b3b74edd63595f4ffbf695df0c1edd0854f69835402cc5ca5bdd54091b12e",
+  "prototype_app_sha256": "2204ee8fd85b29246c7195e270560a81e03e22cc15beb84bcab13ca3bbfc23fe",
+  "patch_sha256": "f2d44635de2358b92df6d3ac31d42dba5a2eb8392a9695d010f7ff604489e3c4",
+  "files": [
+    {
+      "path": "apps/web/package.json",
+      "before_sha256": "5ddb362dafdc447ebb78116e687c3b6f8928a2919ab922e5a0f6369f473b8995",
+      "after_sha256": "945e5acaab9f480ef9eca245555c5eb17ab30cedb92ba879c5d3a237b89468d1"
+    },
+    {
+      "path": "apps/web/lib/immersiveDesign.test.ts",
+      "before_sha256": "767180d25cda40366e09abb996133d01ba0c5f35db7a877287ee11216aabfaa8",
+      "after_sha256": "5f37bc7ea4b78ed0a5ae0d2d68ad3101dcbca7215ad5d985608987c5b14b4e83"
+    },
+    {
+      "path": "apps/web/components/event-studio/flexible-event-v5.css",
+      "before_sha256": null,
+      "after_sha256": "bd234cfedb969826a142bea4919caf88785085676ba9630b6f33f3d82798e7f1"
+    },
+    {
+      "path": "apps/web/components/event-studio/V5DateTimeField.tsx",
+      "before_sha256": null,
+      "after_sha256": "2031e2d323f17224905cbc01810f5ffb78a2625508dd7da572c85a4628406ef4"
+    },
+    {
+      "path": "apps/web/components/event-studio/FlexibleEventV5.tsx",
+      "before_sha256": null,
+      "after_sha256": "9d8cbd403fa1bd6c4ced878c34a6350a7edbea5984735873b4fb1d98efdcfa16"
+    },
+    {
+      "path": "apps/web/components/event-studio/v5Adapter.ts",
+      "before_sha256": null,
+      "after_sha256": "ec810831a32555a86111f650e0e6063b39fccecb1e3a91ccf0daf0a337cb0426"
+    },
+    {
+      "path": "apps/web/components/event-studio/v5Adapter.test.ts",
+      "before_sha256": null,
+      "after_sha256": "03249ac183dd1d71cbf34d067d0d87d5cf44a93672494f62375f909d8838e5f1"
+    },
+    {
+      "path": "apps/web/components/event-studio/adapter.test.ts",
+      "before_sha256": "ddfd189f2b86206c1454af1540056f470687f2f754354b50f1ce863b11db09ef",
+      "after_sha256": "3d25ecf215f6f1317fda943bbc2cf0fc1f491eb052a5e8cc710c06fc65984e0b"
+    },
+    {
+      "path": "apps/web/components/event-studio/adapter.ts",
+      "before_sha256": "69cbb432e2b2c670acf85737fc34d932de6725debcf7b2b399814e2fe0226881",
+      "after_sha256": "488e8ad13fea1fdbe1dcb6b6eb25fef5c0ff0fa3cf4d8ab3d1ba94052b77ca24"
+    },
+    {
+      "path": "apps/web/components/event-studio/types.ts",
+      "before_sha256": "17abea8086115a35d1ced547b519a6829c42687abc00001a7be2bccc5699ac02",
+      "after_sha256": "ea2a00cb7c44bd09eaa7f40bb2528e7c5ad5845e114afe7e2599ae13257138e2"
+    },
+    {
+      "path": "apps/web/components/event-studio/EventStudioShell.tsx",
+      "before_sha256": "b2b2c32021f7e923b402d8e678ca0f1ef4082be35c2da6b670713effcd9e901d",
+      "after_sha256": "21e8007e78d21e18a087ab0117105df43a16cf3fdf3233709f3c228c4e36fcae"
+    },
+    {
+      "path": "apps/web/app/assemble/page.tsx",
+      "before_sha256": "c3b185f6f2c85e59b2029152a128703a6d043791bd3b44867dc4918fa44a24ff",
+      "after_sha256": "a9729dfa6b016e53a82d4df5538571e7cbd2dfb89658e3d117eb5b1c6367f5c5"
+    },
+    {
+      "path": "apps/web/app/events/new/page.tsx",
+      "before_sha256": "b8473574e7a7c7eb45c7b100218fc79a58648361d7c5c43364a788f405338e02",
+      "after_sha256": "89f36778da03c445764dea63dd00f01eb5f0c19a64f081812a86c8e2dea0273d"
+    }
+  ]
+}
