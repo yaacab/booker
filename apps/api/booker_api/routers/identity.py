@@ -71,6 +71,7 @@ from booker_api.security import (
 )
 from booker_api.staff_recovery import recovery_code_hash, replace_recovery_codes
 from booker_api.totp import verify_totp_code
+from booker_api.two_approver_recovery import evaluate_staff_totp_recovery
 
 ADMIN_TOTP_PROOF_TTL_MINUTES = 10
 EMAIL_VERIFICATION_TTL_HOURS = 24
@@ -729,8 +730,10 @@ def recover_staff_totp(
         or not user.totp_enabled or not verify_password(body.password, user.password_hash)
     ):
         raise HTTPException(403, "Подтверждение недействительно")
-    # A multi-admin reset needs the separately approved two-person procedure.
-    if user.is_platform_admin and db.query(User).filter(User.is_platform_admin.is_(True)).count() != 1:
+    # Multi-admin reset needs the separately approved two-person procedure.
+    # Gate is fail-closed and OFF by default (BOOKER_TWO_APPROVER_RECOVERY_ENABLED).
+    decision = evaluate_staff_totp_recovery(db, subject=user)
+    if not decision.allowed:
         raise HTTPException(403, "Восстановление требует проверки двух уполномоченных лиц")
     otp_limiter.check(f"staff-totp-recover:user:{user.id}")
     code_hash = recovery_code_hash(body.recovery_code)

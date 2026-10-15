@@ -576,3 +576,103 @@ def test_create_event_missing_fields_400(client):
     user = register(client, "ev-400@booker.test", "Клиент")
     res = client.post("/events", json={}, headers=auth_header(user["token"]))
     assert res.status_code == 400
+
+
+def test_outsider_cannot_get_deal_room(client):
+    ctx = setup_negotiation(client)
+    outsider = register(client, "deal-get-out@booker.test", "Посторонний")
+    denied = client.get(
+        f"/deal-room/{ctx['booking_id']}",
+        headers=auth_header(outsider["token"]),
+    )
+    assert denied.status_code in {403, 404}
+
+
+def test_outsider_cannot_read_foreign_org(client):
+    ctx = setup_negotiation(client)
+    outsider = register(client, "org-get-out@booker.test", "Посторонний")
+    denied = client.get(
+        f"/orgs/{ctx['cust_org']['id']}",
+        headers=auth_header(outsider["token"]),
+    )
+    assert denied.status_code in {403, 404}
+
+
+def test_outsider_cannot_revoke_foreign_shortlist(client):
+    from datetime import datetime, timedelta, timezone
+
+    from tests.conftest import publish_artist
+
+    customer = register(client, "sl-cust@booker.test", "Заказчик")
+    owner = register(client, "sl-own@booker.test", "Снабжение")
+    cust_h = auth_header(customer["token"])
+    own_h = auth_header(owner["token"])
+    cust_org = client.post(
+        "/orgs", json={"name": "Клиент SL", "kind": "customer"}, headers=cust_h
+    ).json()
+    artist_org = client.post(
+        "/orgs", json={"name": "Артисты SL", "kind": "artist"}, headers=own_h
+    ).json()
+    fav_ids = []
+    start = datetime.now(timezone.utc) + timedelta(days=10)
+    for name in ("DJ One", "DJ Two"):
+        artist = client.post(
+            "/artists",
+            json={"organization_id": artist_org["id"], "name": name, "category": "dj"},
+            headers=own_h,
+        ).json()
+        slot = client.post(
+            "/slots",
+            json={
+                "resource_type": "artist",
+                "resource_id": artist["id"],
+                "starts_at": start.isoformat(),
+                "ends_at": (start + timedelta(hours=4)).isoformat(),
+            },
+            headers=own_h,
+        )
+        assert slot.status_code == 200
+        publish_artist(client, owner, artist["id"])
+        fav = client.post(
+            "/favorites",
+            json={
+                "target_type": "artist",
+                "target_id": artist["id"],
+                "organization_id": cust_org["id"],
+            },
+            headers=cust_h,
+        )
+        assert fav.status_code == 201, fav.text
+        fav_ids.append(fav.json()["id"])
+    created = client.post(
+        "/shortlists",
+        json={
+            "organization_id": cust_org["id"],
+            "target_type": "artist",
+            "title": "Private",
+            "favorite_ids": fav_ids,
+        },
+        headers=cust_h,
+    )
+    assert created.status_code == 201, created.text
+    outsider = register(client, "shortlist-revoke-out@booker.test", "Посторонний")
+    denied = client.post(
+        f"/shortlists/{created.json()['id']}/revoke",
+        headers=auth_header(outsider["token"]),
+    )
+    assert denied.status_code == 404
+
+
+def test_supplier_cannot_invite_into_customer_org(client, monkeypatch):
+    monkeypatch.setattr(settings, "email_provider", "dev")
+    ctx = setup_negotiation(client)
+    denied = client.post(
+        f"/orgs/{ctx['cust_org']['id']}/invitations",
+        json={
+            "email": "intruder@booker.test",
+            "role": "viewer",
+            "idempotency_key": "cross-org-invite-denied",
+        },
+        headers=auth_header(ctx["owner"]["token"]),
+    )
+    assert denied.status_code == 403

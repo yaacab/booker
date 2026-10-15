@@ -17,6 +17,12 @@ Hardened local package: preflight fail-closed, standalone compose, secrets вн�
 Нужны: тестовый SMTP host, From, mailbox для admin recovery notifications.  
 Без этого delivery security notices остаётся LOCAL/disabled.
 
+## 2b. Two-approver recovery policy (S06 / T07)
+
+Design + fail-closed tests ready (`2026-10-15-two-approver-design.md`).  
+Flag `BOOKER_TWO_APPROVER_RECOVERY_ENABLED=false` (default).  
+**Нужно GO:** утвердить процедуру двух уполномоченных → затем отдельный ticket на arm execution (сейчас даже при flag=true execution `procedure_not_armed`).
+
 ## 3. Дежурный оператор (Stage E / SLA)
 
 Павел указан как duty owner. Нужны: зарегистрированный email, канал сигнала, резервный оператор, праздничные исключения.  
