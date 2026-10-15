@@ -50,8 +50,8 @@
   html[data-booker-theme="cream"] :is(.login-story,.home-process,.home-supply,.discovery-form,.studio-basics,.puzzle-stage,.venue-card,.workspace-design,.legal-banner) {
     background: #f4eee5 !important; color: #1c1915 !important; border-color: #d8cbb9 !important;
   }
-  html[data-booker-theme="cream"] .login-fields { border-radius: 24px !important; box-shadow: 0 18px 60px -36px #5b402848 !important; }
-  html[data-booker-theme="cream"] .login-fields form.card { background: transparent !important; box-shadow: none !important; border: 0 !important; }
+  html[data-booker-theme="cream"] .login-fields { padding: clamp(22px,3vw,40px) !important; display: block !important; min-height: 0 !important; border-radius: 24px !important; box-shadow: 0 18px 60px -36px #5b402848 !important; }
+  html[data-booker-theme="cream"] .login-fields form.card { padding: 0 !important; background: transparent !important; box-shadow: none !important; border: 0 !important; }
   html[data-booker-theme="cream"] :is(h1,h2,h3,h4,strong,label,legend,dt,dd,.brand-word,.brand-tagline,.piece-label,.catalog-count) { color: #1c1915 !important; }
   html[data-booker-theme="cream"] body:not(:has(.bk-live-home)) :is(h1,h2,h3) { font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif !important; font-weight: 400 !important; letter-spacing: -.025em !important; }
   html[data-booker-theme="cream"] :is(.brand-dot,.brand-lockup>span[aria-hidden="true"]) { background: #b8955a !important; }
