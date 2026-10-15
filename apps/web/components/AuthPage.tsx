@@ -29,7 +29,10 @@ export default function AuthPage({
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     if (query.get("mode") === "register" && publicRegistrationEnabled) setMode("register");
-    if (query.get("role") === "artist") setSelectedRole("artist");
+    const requestedRole = query.get("role");
+    if (requestedRole === "customer" || requestedRole === "artist" || requestedRole === "venue") {
+      setSelectedRole(requestedRole);
+    }
     const token = new URLSearchParams(window.location.search).get("reset");
     if (token) {
       setResetToken(token);
