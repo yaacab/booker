@@ -265,7 +265,7 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
                   : artistWelcome ? "Создать кабинет артиста →" : "Создать аккаунт"}
         </button>
       </form>
-      <p className="login-secondary-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <p className="login-secondary-actions">
         {mode === "reset" ? (
           <button type="button" className="secondary" onClick={() => setMode("login")}>
             Вернуться ко входу

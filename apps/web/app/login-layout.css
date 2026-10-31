@@ -25,6 +25,22 @@ html .site-content .login-fields { background:transparent !important; width:100%
 .site-content .login-fields form .unknown { font-size:13px; line-height:1.6; color:var(--edition-text); }
 .site-content .login-fields .unknown input { flex:0 0 20px; width:20px; height:20px; margin:1px 0 0; }
 .site-content .login-fields form button[type="submit"] { width:100%; border-radius:14px; }
+.site-content .login-fields .login-secondary-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  width: 100%;
+  margin: 16px 0 0;
+  padding: 0;
+  text-align: left;
+  box-sizing: border-box;
+}
+.site-content .login-fields .login-secondary-actions button {
+  flex: 0 1 auto;
+  margin: 0;
+}
 html[data-edition="black"] .site-content .login-fields .role-option { --login-role-ink:#f1f4ef; --login-role-muted:#c0c8c0; background:#252c27 !important; border-color:#4b574d !important; }
 html[data-edition="black"] .site-content .login-fields .role-option.on { --login-role-ink:#1b2c12; --login-role-muted:#344c24; background:#d9fa79 !important; border-color:#d9fa79 !important; box-shadow:none; }
 @media(max-width:900px) {
