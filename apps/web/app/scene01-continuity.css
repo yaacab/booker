@@ -40,11 +40,11 @@
   html[data-booker-theme="cream"] :is(.site-content,.studio-fullscreen-root,.event-studio-map,.workspace-layout) {
     background: #f2ede5 !important; color: #1c1915 !important;
   }
-  html[data-booker-theme="cream"] :is(.bottom-nav,.workspace-sidebar,.site-footer) {
+  html[data-booker-theme="cream"] :is(.bottom-nav,.workspace-sidebar) {
     background: #fbf8f3f5 !important; color: #1c1915 !important; border-color: #d8cbb9 !important;
   }
-  /* Header sits on the page cream — no glass plate behind brand/nav. */
-  html[data-booker-theme="cream"] :is(header.top, .top, .top.surface-glass) {
+  /* Header/footer sit on page cream — no glass plates inside .wrap. */
+  html[data-booker-theme="cream"] :is(header.top, .top, .top.surface-glass, footer.site-footer, .site-footer, .site-footer.surface-glass, .reference-footer) {
     background: transparent !important;
     background-color: transparent !important;
     color: #1c1915 !important;
@@ -68,24 +68,8 @@
   html[data-booker-theme="cream"] :is(.brand-dot,.brand-lockup>span[aria-hidden="true"]) { background: #b8955a !important; }
   html[data-booker-theme="cream"] :is(a,.linkish,.text-button,.nav-public a,.bottom-nav a,.workspace-sidebar a,.reference-footer a) { color: #61471b !important; }
   html[data-booker-theme="cream"] :is(input,select,textarea) { background: #fffdf9 !important; color: #1c1915 !important; border-color: #bca98d !important; accent-color: #80601e !important; }
-  html[data-booker-theme="cream"] :is(button,.btn):not(.bk-cta,.bk-replay,.role-picked-change) { background: #1c1915 !important; color: #fbf8f3 !important; border-color: #1c1915 !important; box-shadow: none !important; }
+  html[data-booker-theme="cream"] :is(button,.btn):not(.bk-cta,.bk-replay) { background: #1c1915 !important; color: #fbf8f3 !important; border-color: #1c1915 !important; box-shadow: none !important; }
   html[data-booker-theme="cream"] :is(button.secondary,.btn.secondary,.role-option,.chip,.category-chip,.text-button,.linkish) { background: #fbf8f3 !important; color: #1c1915 !important; border-color: #c6b496 !important; }
-  html[data-booker-theme="cream"] .login-fields .role-picked {
-    background: #f4eee5 !important;
-    border-color: #d8cbb9 !important;
-    color: #1c1915 !important;
-  }
-  html[data-booker-theme="cream"] .login-fields .role-picked-label { color: #6d6358 !important; }
-  html[data-booker-theme="cream"] .login-fields .role-picked-change {
-    background: #fbf8f3 !important;
-    color: #1c1915 !important;
-    border-color: #c6b496 !important;
-  }
-  html[data-booker-theme="cream"] .login-fields .role-picked-change:hover,
-  html[data-booker-theme="cream"] .login-fields .role-picked-change:focus-visible {
-    background: #ecdfc9 !important;
-    border-color: #80601e !important;
-  }
   html[data-booker-theme="cream"] :is(.role-option.on,.role-option[aria-pressed="true"],.chip.on,.category-chip.on,.assembly-choices button[aria-pressed="true"],.stage-rail .active button,.role-tabs button.selected) { background: #ecdfc9 !important; color: #1c1915 !important; border-color: #80601e !important; }
   html[data-booker-theme="cream"] .login-fields .role-option { --login-role-ink: #1c1915 !important; --login-role-muted: #6d6358 !important; }
   html[data-booker-theme="cream"] .login-fields .role-option :is(span,strong,small) { color: #1c1915 !important; }

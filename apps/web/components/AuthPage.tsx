@@ -181,12 +181,9 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
               Имя
               <input name="full_name" autoComplete="name" placeholder={artistWelcome ? "Как тебя зовут?" : undefined} required />
             </label>
-            {artistWelcome ? <input type="hidden" name="kind" value="artist" /> : roleFromQuery ? <p className="role-picked" data-testid="role-picked">
+            {artistWelcome ? <input type="hidden" name="kind" value="artist" /> : roleFromQuery ? (
               <input type="hidden" name="kind" value={selectedRole} />
-              <span className="role-picked-label">Роль</span>
-              <strong className="role-picked-value">{({ customer: "Заказчик", artist: "Артист / менеджер", venue: "Площадка" } as Record<string, string>)[selectedRole]}</strong>
-              <button type="button" className="role-picked-change" onClick={() => setRoleFromQuery(false)}>Изменить</button>
-            </p> : <fieldset className="role-picker" data-testid="role-picker">
+            ) : <fieldset className="role-picker" data-testid="role-picker">
               <legend>Роль</legend>
               <input type="hidden" name="kind" value={selectedRole} />
               {[
