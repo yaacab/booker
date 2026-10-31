@@ -42,7 +42,7 @@ export function ReferencePuzzleHero() {
       </div>
       <div className="reference-action">
         <p id="puzzle-help">Нажмите на пазл — почувствуйте, как всё складывается</p>
-        <Link className="btn reference-cta" href="/events/new?event_studio_map_v1=1">Собрать событие <span aria-hidden="true">→</span></Link>
+        <Link className="btn reference-cta" href="/assemble">Собрать событие <span aria-hidden="true">→</span></Link>
         <p className="reference-footnote">Москва · Образы категорий, не реальные предложения</p>
       </div>
     </section>

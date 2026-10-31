@@ -11,6 +11,7 @@ type OpenSlotsWidgetProps = {
   role: string;
   orgName?: string;
   supplyKind?: "artist" | "venue";
+  onChanged?: () => void;
 };
 
 function eveningIso(day: string, hour: number, minute = 0): string {
@@ -28,7 +29,7 @@ function addDaysIso(from: Date, days: number): string {
   return `${y}-${m}-${day}`;
 }
 
-export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }: OpenSlotsWidgetProps) {
+export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist", onChanged }: OpenSlotsWidgetProps) {
   const [targets, setTargets] = useState<CalendarTarget[]>([]);
   const [targetId, setTargetId] = useState("");
   const [days, setDays] = useState(14);
@@ -84,6 +85,7 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
         });
       }
       await reloadTargets();
+      onChanged?.();
       setResult("Профиль в каталоге создан — можно открывать свободные слоты.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось создать профиль");
@@ -125,6 +127,7 @@ export function OpenSlotsWidget({ orgId, role, orgName, supplyKind = "artist" }:
       }
       trackClientEvent("cabinet.slots_opened", { created, skipped, days });
       if (created > 0) setConstellationDays(created);
+      if (created > 0) onChanged?.();
       setResult(
         created > 0
           ? `Открыто свободных вечеров: ${created}${skipped ? ` · уже занято: ${skipped}` : ""}.`

@@ -45,8 +45,6 @@ test.describe("W2-ONBOARD role entry §5", () => {
       await page.locator('input[name="password"]').fill("password1");
       await page.locator("#accept_offer").check();
       await page.locator("#accept_privacy").check();
-      await page.locator("#accept_consent_texts").check();
-      await page.locator("#draft_test_acknowledgement").check();
       await page.getByRole("button", { name: "Создать аккаунт" }).click();
 
       await expect(page).toHaveURL(role.cabinet, { timeout: 20_000 });
@@ -66,8 +64,6 @@ test.describe("W2-ONBOARD role entry §5", () => {
     await page.locator('input[name="password"]').fill("password1");
     await page.locator("#accept_offer").check();
     await page.locator("#accept_privacy").check();
-    await page.locator("#accept_consent_texts").check();
-    await page.locator("#draft_test_acknowledgement").check();
     await page.getByRole("button", { name: "Создать аккаунт" }).click();
 
     await expect(page).toHaveURL(/\/search/, { timeout: 20_000 });

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { categoryLabel } from "@/lib/copy";
 import { money } from "@/lib/format";
 import { DashboardWidget } from "../../DashboardWidget";
@@ -12,10 +13,11 @@ type PortfolioRiderWidgetProps = {
 };
 
 export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps) {
-  const { profile, loading, error, canManage, publicHref, tariffBusy, addTariff } = usePerformerProfile(
+  const { profile, loading, error, canManage, publicHref, tariffBusy, addTariff, updateTariff, deleteTariff } = usePerformerProfile(
     orgId,
     role,
   );
+  const [editing, setEditing] = useState<string | null>(null);
 
   const rider = profile?.rider || {};
   const hasRider = Boolean(rider.format || rider.lineup || rider.tech);
@@ -67,9 +69,19 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
             <ul className="dashboard-list" style={{ marginTop: 12 }}>
               {profile.tariffs.map((t) => (
                 <li key={t.id}>
-                  <span>
-                    {t.title} · {money(t.honorarium_rub)}
-                  </span>
+                  {editing === t.id ? (
+                    <form className="cabinet-inline-form tariff-edit" onSubmit={async (e) => { e.preventDefault(); const d = new FormData(e.currentTarget); if (await updateTariff(t.id, { title: String(d.get("title") || ""), honorarium_rub: Number(d.get("honorarium") || 0) })) setEditing(null); }}>
+                      <label>Название<input name="title" defaultValue={t.title} required /></label>
+                      <label>Гонорар, ₽<input name="honorarium" type="number" min={1} defaultValue={t.honorarium_rub} required /></label>
+                      <button type="submit" disabled={tariffBusy}>Сохранить</button>
+                      <button type="button" className="secondary" onClick={() => setEditing(null)}>Отмена</button>
+                    </form>
+                  ) : (
+                    <span>
+                      {t.title} · {money(t.honorarium_rub)}
+                      {canManage ? <> <button type="button" className="linkish" onClick={() => setEditing(t.id)}>Изменить</button> <button type="button" className="linkish" disabled={tariffBusy} onClick={() => { if (window.confirm(`Удалить тариф «${t.title}»?`)) void deleteTariff(t.id); }}>Удалить</button></> : null}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -77,11 +89,11 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
 
           {publicHref ? (
             <div className="cabinet-hero-actions" style={{ marginTop: 12 }}>
-              <Link className="btn secondary" href={`/cabinet/preview/artist/${encodeURIComponent(profile.id)}`} data-testid="performer-public-link">
-                Предпросмотр витрины
+              <Link className="btn secondary" href={publicHref} data-testid="performer-public-link">
+                Открыть публичную витрину
               </Link>
-              <Link className="btn secondary" href={`/cabinet/preview/artist/${encodeURIComponent(profile.id)}#rider`}>
-                Предпросмотр райдера
+              <Link className="btn secondary" href={`${publicHref}#rider`}>
+                Райдер на сайте
               </Link>
               <Link className="btn" href={`${publicHref}/share`} data-testid="performer-share-link">
                 Поделиться / QR

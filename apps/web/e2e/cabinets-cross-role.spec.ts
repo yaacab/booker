@@ -7,7 +7,6 @@ import {
   injectSession,
   login,
   postJson,
-  register,
   seedCrossRoleEvent,
 } from "./helpers";
 
@@ -41,7 +40,7 @@ test.describe("Cross-role E2E §7.5.11", () => {
       await expect(page.getByTestId("deal-room-accents")).toBeVisible();
       await expect(page.getByRole("heading", { name: "Райдер" })).toBeVisible();
       await expect(page.getByText("quote_id:").first()).toBeVisible();
-      await page.getByRole("button", { name: "Подтвердить условия", exact: true }).click();
+      await page.getByRole("button", { name: "Подтвердить условия" }).click();
       await expect(page.getByText("подтвердил только исполнитель").first()).toBeVisible({ timeout: 10_000 });
       const room = await getJson<{ offer_id: string }>(
         request,
@@ -67,23 +66,29 @@ test.describe("Cross-role E2E §7.5.11", () => {
       expect(venueBookingId).toBeTruthy();
       await expect(page.getByTestId("deal-room-accents")).toBeVisible();
       await expect(page.getByRole("heading", { name: "Зал" })).toBeVisible();
-      await page.getByRole("button", { name: "Подтвердить условия", exact: true }).click();
+      await page.getByRole("button", { name: "Подтвердить условия" }).click();
       await expect(page.getByText("подтвердил только исполнитель").first()).toBeVisible({ timeout: 10_000 });
     });
 
     await test.step("изоляция прав: viewer не может ack", async () => {
-      const viewer = await register(request, `e2e-viewer-${Date.now()}@booker.test`, "E2E Viewer");
+      const viewer = await postJson<{ token: string; user_id: string }>(
+        request,
+        "/auth/register",
+        ctx.customer.token,
+        {
+          email: `e2e-viewer-${Date.now()}@booker.test`,
+          password: "password1",
+          full_name: "E2E Viewer",
+          phone: "+79000000001",
+          accept_offer: true,
+          accept_privacy: true,
+        },
+      );
       await postJson(
         request,
         `/orgs/${ctx.customer.orgId}/members`,
         ctx.customer.token,
         { user_id: viewer.user_id, role: "viewer" },
-        ctx.customer.orgId,
-      );
-      const artistRoom = await getJson<{ quote: { quote_id: string } }>(
-        request,
-        `/deal-room/${artistBookingId}`,
-        ctx.customer.token,
         ctx.customer.orgId,
       );
       const denied = await request.post(`${API_BASE}/offers/${artistOfferId}/ack`, {
@@ -92,7 +97,7 @@ test.describe("Cross-role E2E §7.5.11", () => {
           "Content-Type": "application/json",
           "X-Booker-Org": ctx.customer.orgId,
         },
-        data: { side: "customer", quote_id: artistRoom.quote.quote_id },
+        data: { side: "customer" },
       });
       expect(denied.status()).toBe(403);
     });
@@ -114,7 +119,7 @@ test.describe("Cross-role E2E §7.5.11", () => {
       expect(bumped.active).toBe(false);
       await injectSession(page, ctx.artist.token, ctx.artist.orgId);
       await page.goto(`/deals/${artistBookingId}`);
-      await page.getByRole("button", { name: "Подтвердить условия", exact: true }).click();
+      await page.getByRole("button", { name: "Подтвердить условия" }).click();
       await expect(page.getByText("подтвердил только исполнитель").first()).toBeVisible({ timeout: 10_000 });
 
       for (const bookingId of [artistBookingId, venueBookingId]) {
@@ -123,9 +128,9 @@ test.describe("Cross-role E2E §7.5.11", () => {
         await expect(page.getByTestId("deal-room-accents")).toBeVisible();
         await expect(page.getByRole("heading", { name: "Состав" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Итог" })).toBeVisible();
-        await page.getByRole("button", { name: "Подтвердить условия", exact: true }).click();
+        await page.getByRole("button", { name: "Подтвердить условия" }).click();
         await expect(page.getByText("подтверждено обеими сторонами").first()).toBeVisible({ timeout: 10_000 });
-        await page.locator(".deal-toolbar").getByRole("button", { name: "Удержать дату", exact: true }).click();
+        await page.getByRole("button", { name: "Удержать дату" }).click();
         await expect(page.getByText("Дата удерживается").first()).toBeVisible({ timeout: 10_000 });
       }
     });

@@ -35,6 +35,8 @@ export type DealRoomAccentSource = {
   status: string;
   event_id?: string;
   event_title?: string;
+  hall_name?: string | null;
+  venue_name?: string | null;
   requirement_id?: string | null;
   next_step: string;
   quote: {
@@ -95,9 +97,9 @@ function ackSummary(q: DealRoomAccentSource["quote"]): string {
 
 function contractSummary(c: DealRoomAccentSource["contract"]): string {
   if (!c) return "договор ещё не создан";
-  if (c.customer_signed && c.supplier_signed) return "черновик технически подтверждён обеими сторонами";
-  if (c.customer_signed || c.supplier_signed) return "ожидается второе техническое подтверждение";
-  return "черновик готов к техническому подтверждению";
+  if (c.customer_signed && c.supplier_signed) return "договор подписан обеими сторонами";
+  if (c.customer_signed || c.supplier_signed) return "ожидается вторая подпись";
+  return "черновик договора готов к подписанию";
 }
 
 function paymentSummary(p: DealRoomAccentSource["payment"]): string {
@@ -108,14 +110,14 @@ function paymentSummary(p: DealRoomAccentSource["payment"]): string {
 function riderSummary(docs: DealRoomAccentSource["documents"]): string {
   const riders = (docs ?? []).filter((d) => /райдер|rider/i.test(d.label));
   if (riders.length === 0) return "райдер уточняется в чате и вкладке «Документы»";
-  return riders.map((d) => `${d.label}${d.signed ? " · подтверждено" : ""}`).join("; ");
+  return riders.map((d) => `${d.label}${d.signed ? " · подписано" : ""}`).join("; ");
 }
 
 function taskLines(status: string): string {
   const map: Record<string, string> = {
     Negotiation: "Подтвердить условия · проверить quote_id",
-    DateHeld: "Технически подтвердить черновик · подготовить райдер",
-    AwaitingContract: "Технически подтвердить черновик по коду",
+    DateHeld: "Подписать договор · подготовить райдер",
+    AwaitingContract: "Подписать договор OTP",
     AwaitingPayment: "Дождаться оплаты заказчика",
     Confirmed: "Подготовиться к событию · проверить логистику",
   };
@@ -158,8 +160,8 @@ function buildAccentBody(id: DealRoomAccentId, room: DealRoomAccentSource): { bo
       };
     case "hall":
       return {
-        body: room.event_title || "Зал и слот",
-        detail: room.booking_id ? `deal_id: ${room.booking_id}` : undefined,
+        body: room.hall_name || "Зал уточняется",
+        detail: room.venue_name || undefined,
       };
     case "resources":
       return {

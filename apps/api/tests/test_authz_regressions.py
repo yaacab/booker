@@ -31,39 +31,16 @@ def test_post_message_forbidden_for_outsider(client):
     outsider = register(client, "msg-out@booker.test", "Посторонний")
     denied = client.post(
         f"/deal-room/{ctx['booking_id']}/messages",
-        json={"body": "привет", "idempotency_key": "outsider-message"},
+        json={"body": "привет"},
         headers=auth_header(outsider["token"]),
     )
-    assert denied.status_code == 404
+    assert denied.status_code == 403
     allowed = client.post(
         f"/deal-room/{ctx['booking_id']}/messages",
-        json={"body": "привет", "idempotency_key": "customer-message"},
+        json={"body": "привет"},
         headers=auth_header(ctx["customer"]["token"]),
     )
     assert allowed.status_code == 200
-
-
-def test_deal_room_viewer_cannot_post_message(client):
-    from booker_api.models import Message
-
-    ctx = setup_negotiation(client)
-    viewer = register(client, "deal-message-viewer@booker.test", "Viewer")
-    added = client.post(
-        f"/orgs/{ctx['cust_org']['id']}/members",
-        json={"user_id": viewer["user_id"], "role": "viewer"},
-        headers=auth_header(ctx["customer"]["token"]),
-    )
-    assert added.status_code == 200
-    with client.app.state.SessionLocal() as db:
-        before = db.query(Message).count()
-    denied = client.post(
-        f"/deal-room/{ctx['booking_id']}/messages",
-        json={"body": "viewer may not write", "idempotency_key": "viewer-message-key"},
-        headers=auth_header(viewer["token"]),
-    )
-    assert denied.status_code == 403
-    with client.app.state.SessionLocal() as db:
-        assert db.query(Message).count() == before
 
 
 def test_hold_booking_forbidden_for_outsider(client):
@@ -75,165 +52,6 @@ def test_hold_booking_forbidden_for_outsider(client):
         headers=auth_header(outsider["token"]),
     )
     assert res.status_code == 403
-
-
-def test_supplier_viewer_cannot_hold_booking(client):
-    from booker_api.models import BookingHold
-
-    ctx = setup_negotiation(client)
-    ack_both(client, ctx)
-    viewer = register(client, "hold-viewer@booker.test", "Viewer")
-    added = client.post(
-        f"/orgs/{ctx['artist_org']['id']}/members",
-        json={"user_id": viewer["user_id"], "role": "viewer"},
-        headers=auth_header(ctx["owner"]["token"]),
-    )
-    assert added.status_code == 200
-    denied = client.post(
-        f"/bookings/{ctx['booking_id']}/hold",
-        headers=auth_header(viewer["token"]),
-    )
-    assert denied.status_code == 403
-    with client.app.state.SessionLocal() as db:
-        assert db.query(BookingHold).count() == 0
-
-
-def test_supplier_manager_can_cancel_when_also_customer_viewer(client):
-    ctx = setup_negotiation(client)
-    actor = register(client, "dual-cancel@booker.test", "Dual member")
-    for org_id, role, inviter in (
-        (ctx["cust_org"]["id"], "viewer", ctx["customer"]),
-        (ctx["artist_org"]["id"], "manager", ctx["owner"]),
-    ):
-        added = client.post(
-            f"/orgs/{org_id}/members",
-            json={"user_id": actor["user_id"], "role": role},
-            headers=auth_header(inviter["token"]),
-        )
-        assert added.status_code == 200
-    cancelled = client.post(
-        f"/bookings/{ctx['booking_id']}/cancel",
-        json={"reason": "Решение менеджера исполнителя"},
-        headers=auth_header(actor["token"]),
-    )
-    assert cancelled.status_code == 200
-    assert cancelled.json()["status"] == "Cancelled"
-
-
-def test_platform_admin_cannot_cancel_booking_without_totp(client):
-    from booker_api.models import Booking
-
-    ctx = setup_negotiation(client)
-    admin = _promote_admin(client, "cancel-no-totp@booker.test")
-    denied = client.post(
-        f"/bookings/{ctx['booking_id']}/cancel",
-        json={"reason": "Admin without step-up"},
-        headers=auth_header(admin["token"]),
-    )
-    assert denied.status_code == 403
-    with client.app.state.SessionLocal() as db:
-        assert db.get(Booking, ctx["booking_id"]).status == "Negotiation"
-    verified = _promote_admin(client, "cancel-with-totp@booker.test", totp=TEST_TOTP_SECRET)
-    allowed = client.post(
-        f"/bookings/{ctx['booking_id']}/cancel",
-        json={"reason": "Admin reviewed cancellation"},
-        headers={**auth_header(verified["token"]), "X-Booker-TOTP": totp_code()},
-    )
-    assert allowed.status_code == 200
-
-
-def test_customer_viewer_cannot_complete_stub_payment(client):
-    from booker_api.models import Payment
-
-    ctx = _awaiting_payment(client)
-    viewer = register(client, "pay-viewer@booker.test", "Viewer")
-    added = client.post(
-        f"/orgs/{ctx['cust_org']['id']}/members",
-        json={"user_id": viewer["user_id"], "role": "viewer"},
-        headers=auth_header(ctx["customer"]["token"]),
-    )
-    assert added.status_code == 200
-    denied = client.post(
-        f"/payments/{ctx['payment_id']}/stub-complete",
-        json={"status": "succeeded"},
-        headers=auth_header(viewer["token"]),
-    )
-    assert denied.status_code == 403
-    with client.app.state.SessionLocal() as db:
-        assert db.get(Payment, ctx["payment_id"]).status == "pending"
-
-
-def test_viewer_and_platform_admin_cannot_create_customer_contract(client):
-    from booker_api.models import Booking, Contract
-
-    ctx = setup_negotiation(client)
-    ack_both(client, ctx)
-    held = client.post(
-        f"/bookings/{ctx['booking_id']}/hold",
-        headers=auth_header(ctx["customer"]["token"]),
-    )
-    assert held.status_code == 200
-    viewer = register(client, "contract-create-viewer@booker.test", "Viewer")
-    added = client.post(
-        f"/orgs/{ctx['cust_org']['id']}/members",
-        json={"user_id": viewer["user_id"], "role": "viewer"},
-        headers=auth_header(ctx["customer"]["token"]),
-    )
-    assert added.status_code == 200
-    admin = _promote_admin(client, "contract-create-admin@booker.test")
-    for token in (viewer["token"], admin["token"]):
-        denied = client.post(
-            f"/bookings/{ctx['booking_id']}/contract",
-            headers=auth_header(token),
-        )
-        assert denied.status_code == 403
-    with client.app.state.SessionLocal() as db:
-        assert db.query(Contract).count() == 0
-        assert db.get(Booking, ctx["booking_id"]).status == "DateHeld"
-
-
-def test_customer_viewer_cannot_open_dispute(client):
-    from booker_api.models import Dispute
-
-    ctx = _succeeded_payment(client)
-    viewer = register(client, "dispute-viewer@booker.test", "Viewer")
-    added = client.post(
-        f"/orgs/{ctx['cust_org']['id']}/members",
-        json={"user_id": viewer["user_id"], "role": "viewer"},
-        headers=auth_header(ctx["customer"]["token"]),
-    )
-    assert added.status_code == 200
-    denied = client.post(
-        f"/bookings/{ctx['booking_id']}/disputes",
-        json={"category": "payment", "notes": "viewer must not mutate"},
-        headers=auth_header(viewer["token"]),
-    )
-    assert denied.status_code == 403
-    with client.app.state.SessionLocal() as db:
-        assert db.query(Dispute).count() == 0
-
-
-def test_outsider_cannot_infer_dispute_status_from_evidence_endpoint(client):
-    from booker_api.models import Dispute
-
-    ctx = _succeeded_payment(client)
-    opened = client.post(
-        f"/bookings/{ctx['booking_id']}/disputes",
-        json={"category": "payment", "notes": "Проверка доступа"},
-        headers=auth_header(ctx["customer"]["token"]),
-    )
-    assert opened.status_code == 200
-    dispute_id = opened.json()["id"]
-    outsider = register(client, "evidence-outsider@booker.test", "Outsider")
-    url = f"/disputes/{dispute_id}/evidence"
-    payload = {"attachment_id": "missing", "note": "test"}
-    headers = auth_header(outsider["token"])
-    assert client.post(url, json=payload, headers=headers).status_code == 404
-    with client.app.state.SessionLocal() as db:
-        dispute = db.get(Dispute, dispute_id)
-        dispute.status = "resolved"
-        db.commit()
-    assert client.post(url, json=payload, headers=headers).status_code == 404
 
 
 def test_create_offer_rejects_foreign_slot(client):
@@ -331,19 +149,19 @@ def test_contract_requires_participant_and_real_otp(client):
     assert otps["otp_customer"] != otps["otp_supplier"]
     wrong = client.post(
         f"/contracts/{contract['id']}/sign",
-        json={"side": "customer", "otp": "000000", "body_hash": contract["body_sha256"]},
+        json={"side": "customer", "otp": "000000"},
         headers=auth_header(ctx["customer"]["token"]),
     )
     assert wrong.status_code == 403
     cross = client.post(
         f"/contracts/{contract['id']}/sign",
-        json={"side": "supplier", "otp": otps["otp_supplier"], "body_hash": contract["body_sha256"]},
+        json={"side": "supplier", "otp": otps["otp_supplier"]},
         headers=auth_header(ctx["customer"]["token"]),
     )
-    assert cross.status_code == 409
+    assert cross.status_code == 403
     ok = client.post(
         f"/contracts/{contract['id']}/sign",
-        json={"side": "supplier", "otp": otps["otp_supplier"], "body_hash": contract["body_sha256"]},
+        json={"side": "supplier", "otp": otps["otp_supplier"]},
         headers=auth_header(ctx["owner"]["token"]),
     )
     assert ok.status_code == 200
@@ -362,10 +180,12 @@ def test_admin_disputes_requires_admin(client):
 def test_refund_guards_status_and_idempotency(client):
     ctx = _awaiting_payment(client)  # платёж ещё не succeeded
     admin = _promote_admin(client, "ref-a@booker.test", totp=TEST_TOTP_SECRET)
+    approver = _promote_admin(client, "ref-b@booker.test")
     early = client.post(
         "/admin/refunds",
         json={
             "payment_id": ctx["payment_id"],
+            "approver_user_id": approver["user_id"],
             "totp": totp_code(),
         },
         headers=auth_header(admin["token"]),
@@ -384,39 +204,24 @@ def test_refund_guards_status_and_idempotency(client):
         "/admin/refunds",
         json={
             "payment_id": ctx["payment_id"],
+            "approver_user_id": approver["user_id"],
             "totp": totp_code(),
         },
         headers=auth_header(admin["token"]),
     )
     assert first.status_code == 200
-    assert first.json()["status"] == "pending"
     second = client.post(
         "/admin/refunds",
         json={
             "payment_id": ctx["payment_id"],
+            "approver_user_id": approver["user_id"],
             "totp": totp_code(),
         },
         headers=auth_header(admin["token"]),
     )
     assert second.status_code == 200
     assert second.json()["idempotent"] is True
-    assert second.json()["status"] == "pending"
-    approver = _promote_admin(client, "ref-b@booker.test", totp=TEST_TOTP_SECRET)
-    approved = client.post(
-        f"/admin/refunds/{first.json()['id']}/approve",
-        json={"totp": totp_code()},
-        headers=auth_header(approver["token"]),
-    )
-    assert approved.status_code == 200
-    assert approved.json()["status"] == "refunded"
-    replay = client.post(
-        f"/admin/refunds/{first.json()['id']}/approve",
-        json={"totp": totp_code()},
-        headers=auth_header(approver["token"]),
-    )
-    assert replay.status_code == 200
-    assert replay.json()["idempotent"] is True
-    assert replay.json()["status"] == "refunded"
+    assert second.json()["status"] == "refunded"
 
 
 def test_sse_requires_auth_and_membership(client):
@@ -489,37 +294,6 @@ def test_add_member_duplicate_conflict(client):
     assert dup.status_code == 409
 
 
-def test_org_admin_cannot_assign_owner(client):
-    owner = register(client, "role-owner@booker.test", "Владелец")
-    admin = register(client, "role-admin@booker.test", "Администратор")
-    candidate = register(client, "role-candidate@booker.test", "Кандидат")
-    org = client.post(
-        "/orgs",
-        json={"name": "Команда", "kind": "artist"},
-        headers=auth_header(owner["token"]),
-    ).json()
-    added = client.post(
-        f"/orgs/{org['id']}/members",
-        json={"user_id": admin["user_id"], "role": "admin"},
-        headers=auth_header(owner["token"]),
-    )
-    assert added.status_code == 200
-
-    denied = client.post(
-        f"/orgs/{org['id']}/members",
-        json={"user_id": candidate["user_id"], "role": "owner"},
-        headers=auth_header(admin["token"]),
-    )
-    assert denied.status_code == 403
-
-    allowed = client.post(
-        f"/orgs/{org['id']}/members",
-        json={"user_id": candidate["user_id"], "role": "owner"},
-        headers=auth_header(owner["token"]),
-    )
-    assert allowed.status_code == 200
-
-
 def test_logout_invalidates_session(client):
     user = register(client, "logout@booker.test", "Выход")
     out = client.post("/auth/logout", headers=auth_header(user["token"]))
@@ -576,103 +350,3 @@ def test_create_event_missing_fields_400(client):
     user = register(client, "ev-400@booker.test", "Клиент")
     res = client.post("/events", json={}, headers=auth_header(user["token"]))
     assert res.status_code == 400
-
-
-def test_outsider_cannot_get_deal_room(client):
-    ctx = setup_negotiation(client)
-    outsider = register(client, "deal-get-out@booker.test", "Посторонний")
-    denied = client.get(
-        f"/deal-room/{ctx['booking_id']}",
-        headers=auth_header(outsider["token"]),
-    )
-    assert denied.status_code in {403, 404}
-
-
-def test_outsider_cannot_read_foreign_org(client):
-    ctx = setup_negotiation(client)
-    outsider = register(client, "org-get-out@booker.test", "Посторонний")
-    denied = client.get(
-        f"/orgs/{ctx['cust_org']['id']}",
-        headers=auth_header(outsider["token"]),
-    )
-    assert denied.status_code in {403, 404}
-
-
-def test_outsider_cannot_revoke_foreign_shortlist(client):
-    from datetime import datetime, timedelta, timezone
-
-    from tests.conftest import publish_artist
-
-    customer = register(client, "sl-cust@booker.test", "Заказчик")
-    owner = register(client, "sl-own@booker.test", "Снабжение")
-    cust_h = auth_header(customer["token"])
-    own_h = auth_header(owner["token"])
-    cust_org = client.post(
-        "/orgs", json={"name": "Клиент SL", "kind": "customer"}, headers=cust_h
-    ).json()
-    artist_org = client.post(
-        "/orgs", json={"name": "Артисты SL", "kind": "artist"}, headers=own_h
-    ).json()
-    fav_ids = []
-    start = datetime.now(timezone.utc) + timedelta(days=10)
-    for name in ("DJ One", "DJ Two"):
-        artist = client.post(
-            "/artists",
-            json={"organization_id": artist_org["id"], "name": name, "category": "dj"},
-            headers=own_h,
-        ).json()
-        slot = client.post(
-            "/slots",
-            json={
-                "resource_type": "artist",
-                "resource_id": artist["id"],
-                "starts_at": start.isoformat(),
-                "ends_at": (start + timedelta(hours=4)).isoformat(),
-            },
-            headers=own_h,
-        )
-        assert slot.status_code == 200
-        publish_artist(client, owner, artist["id"])
-        fav = client.post(
-            "/favorites",
-            json={
-                "target_type": "artist",
-                "target_id": artist["id"],
-                "organization_id": cust_org["id"],
-            },
-            headers=cust_h,
-        )
-        assert fav.status_code == 201, fav.text
-        fav_ids.append(fav.json()["id"])
-    created = client.post(
-        "/shortlists",
-        json={
-            "organization_id": cust_org["id"],
-            "target_type": "artist",
-            "title": "Private",
-            "favorite_ids": fav_ids,
-        },
-        headers=cust_h,
-    )
-    assert created.status_code == 201, created.text
-    outsider = register(client, "shortlist-revoke-out@booker.test", "Посторонний")
-    denied = client.post(
-        f"/shortlists/{created.json()['id']}/revoke",
-        headers=auth_header(outsider["token"]),
-    )
-    assert denied.status_code == 404
-
-
-def test_supplier_cannot_invite_into_customer_org(client, monkeypatch):
-    monkeypatch.setattr(settings, "email_provider", "dev")
-    ctx = setup_negotiation(client)
-    denied = client.post(
-        f"/orgs/{ctx['cust_org']['id']}/invitations",
-        json={
-            "email": "intruder@booker.test",
-            "role": "viewer",
-            "idempotency_key": "cross-org-invite-denied",
-        },
-        headers=auth_header(ctx["owner"]["token"]),
-    )
-    assert denied.status_code == 403

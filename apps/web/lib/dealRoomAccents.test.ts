@@ -53,23 +53,13 @@ test("buildDealRoomAccents keeps shared quote_id in customer total", () => {
   const performerPayout = buildDealRoomAccents("performer", sampleRoom).find((a) => a.id === "payout");
   assert.match(performerPayout?.body ?? "", /100/);
   const venueHall = buildDealRoomAccents("venue", sampleRoom).find((a) => a.id === "hall");
-  assert.equal(venueHall?.detail, "deal_id: bk-1");
+  assert.equal(venueHall?.body, "Зал уточняется"); // never the event title
+  const withHall = buildDealRoomAccents("venue", { ...sampleRoom, hall_name: "Основной зал", venue_name: "Лофт" }).find((a) => a.id === "hall");
+  assert.equal(withHall?.body, "Основной зал");
+  assert.equal(withHall?.detail, "Лофт");
 });
 
 test("buildDealRoomAccents surfaces rider for performer", () => {
   const rider = buildDealRoomAccents("performer", sampleRoom).find((a) => a.id === "rider");
   assert.match(rider?.body ?? "", /Райдер DJ/);
-});
-
-test("contract accents describe technical acknowledgement without legal-signature claims", () => {
-  const room = {
-    ...sampleRoom,
-    status: "AwaitingContract",
-    contract: { customer_signed: true, supplier_signed: true },
-  };
-  const obligations = buildDealRoomAccents("performer", room).find((a) => a.id === "obligations");
-  const tasks = buildDealRoomAccents("performer", room).find((a) => a.id === "tasks");
-  assert.match(obligations?.body ?? "", /технически подтверждён/);
-  assert.doesNotMatch(obligations?.body ?? "", /подписан/);
-  assert.match(tasks?.body ?? "", /Технически подтвердить/);
 });

@@ -1,0 +1,61 @@
+/* BK-WEB-LAYOUT-019: separate scene chrome from animated card geometry.
+   Only the finished role scene changes; the intro choreography is preserved. */
+.bk-live-home .bk-reg { overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y; }
+.bk-live-home .bk-reg .bk-world { top: env(safe-area-inset-top, 0px); height: var(--bk-role-content-height); bottom: auto; overflow: clip; transform: none !important; }
+.bk-live-home .bk-reg .bk-brand { left: 50%; top: 12px; transform: translateX(-50%) !important; }
+.bk-live-home .bk-reg .bk-wordmark { margin: 0; padding: 0; font-size: 24px; line-height: 1.15; }
+.bk-live-home .bk-reg :is(.bk-tag,.bk-cta-wrap) { display: none; }
+.bk-live-home .bk-reg .bk-reg-head { margin-top: env(safe-area-inset-top, 0px); padding-inline: 18px; }
+.bk-live-home .bk-reg .bk-reg-head h2 { margin: 0; line-height: 1.15; }
+.bk-live-home .bk-reg .bk-reg-head p { margin: 10px auto 0; max-width: 36ch; line-height: 1.45; }
+.bk-live-home .bk-reg .bk-reg-actions { margin-top: env(safe-area-inset-top, 0px); padding: 0 16px calc(24px + env(safe-area-inset-bottom, 0px)); gap: 8px; text-align: center; }
+.bk-live-home .bk-reg .bk-pick-hint { font-size: 14px; line-height: 1.45; }
+.bk-live-home .bk-reg .bk-replay { min-height: 44px; padding: 10px 12px; max-width: 100%; line-height: 1.4; letter-spacing: .12em; }
+.bk-live-home:has(.bk-stacked.bk-reg) .bk-live-nav { top: calc(48px + env(safe-area-inset-top, 0px)); left: 12px; right: 12px; justify-content: center; }
+.bk-live-home .bk-stacked.bk-reg .bk-role-body { min-width: 0; padding: 14px; gap: 5px; }
+.bk-live-home .bk-stacked.bk-reg .bk-role-title { font-size: 25px; line-height: 1.1; }
+.bk-live-home .bk-stacked.bk-reg .bk-role-text { font-size: 13px; line-height: 1.45; max-width: calc(100% - 24px); display: block; -webkit-line-clamp: unset; overflow: visible; }
+.bk-live-home .bk-stacked.bk-reg .bk-role-arrow { width: 24px; height: 24px; bottom: 12px; right: 10px; }
+@media (max-width: 360px) {
+  .bk-live-home .bk-stacked.bk-reg .bk-role-title { font-size: 22px; }
+  .bk-live-home .bk-stacked.bk-reg .bk-role-photo { flex-basis: 32%; }
+}
+/* A mobile date and supplier name need a full line, not a 60px column. */
+@media (max-width: 480px) {
+  .bk-compose .bk-compose-table { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .bk-compose .bk-slot { min-height: 96px; }
+  .bk-compose .bk-slot.is-empty { align-items: flex-start; text-align: left; padding: 16px; gap: 8px; }
+  .bk-compose .bk-slot.is-filled { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px; }
+  .bk-compose .bk-slot-photo { width: 72px; height: 72px; min-height: 0; aspect-ratio: 1; border-radius: 10px; overflow: hidden; }
+  .bk-compose .bk-slot-body { min-width: 0; padding: 0; gap: 4px; }
+  .bk-compose .bk-slot-body strong { font-size: 19px; line-height: 1.25; overflow-wrap: anywhere; }
+  .bk-compose .bk-slot-label { font-size: 10px; line-height: 1.4; }
+  .bk-compose .bk-slot-hint { font-size: 13px; line-height: 1.5; }
+  .bk-compose .bk-date-leaf { width: 72px; height: 72px; margin: 0; }
+  .bk-compose .bk-compose-kicker { line-height: 1.5; letter-spacing: .12em; }
+}
+@layer booker-scene {
+  html[data-booker-theme="cream"] :is(input,textarea)::placeholder { color: #6d6358 !important; opacity: 1 !important; }
+  html[data-booker-theme="cream"] .catalog-query-summary { color: #6d6358 !important; }
+  @media (max-width: 480px) {
+    html[data-booker-theme="cream"] .catalog-reference .catalog-searchbar { grid-template-columns: minmax(0, 1fr) !important; }
+    html[data-booker-theme="cream"] .catalog-reference .catalog-kind-switch { grid-column: 1 !important; }
+    html[data-booker-theme="cream"] .catalog-reference .catalog-search-field { min-width: 0 !important; }
+    html[data-booker-theme="cream"] .catalog-reference .catalog-search-field input { min-width: 0 !important; width: 100% !important; }
+    html[data-booker-theme="cream"] .catalog-reference .catalog-find { width: 100% !important; }
+  }
+}
+
+.bk-live-home:has(.bk-reg) > .bk-live-legal { display: none; }
+.bk-live-home .bk-reg-legal { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 12px; border-radius: 18px; background: #fbf8f3ed; color: #51422f; font: 11px/1.4 var(--buker-sans); text-align: center; text-decoration: none; }
+.bk-live-home .bk-stacked .bk-reg-head h2 { font-size: clamp(24px, 6.7vw, 28px); }
+@layer booker-scene {
+  @media (max-width: 480px) {
+    html[data-booker-theme="cream"] .assembly-page .puzzle-label button { min-width: 0 !important; padding: 6px 2px !important; background: #f4eee5 !important; color: #1c1915 !important; border: 1px solid #d8cbb9 !important; }
+    html[data-booker-theme="cream"] .assembly-page .puzzle-label :is(strong,span) { font-size: 10px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis; overflow-wrap: normal !important; }
+  }
+}
+@layer booker-scene {
+  html[data-booker-theme="cream"] .catalog-reference .catalog-find { color: #fbf8f3 !important; -webkit-text-fill-color: #fbf8f3 !important; }
+  html[data-booker-theme="cream"] .catalog-reference .catalog-find > svg { stroke: currentColor !important; }
+}

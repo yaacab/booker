@@ -1,12 +1,5 @@
-export default function VenueLoading() {
-  return (
-    <main>
-      <p className="kicker">Профиль площадки</p>
-      <h1>Площадка</h1>
-      <div className="grid">
-        <div className="skeleton" />
-        <div className="skeleton" />
-      </div>
-    </main>
-  );
+import { PageLoading } from "@/components/PageLoading";
+
+export default function Loading() {
+  return <PageLoading title="Профиль площадки" />;
 }

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import { CATEGORY, KIND_LABEL, categoryLabel } from "@/lib/copy";
-import { formatWhen, guestsLabel, moscowDate } from "@/lib/format";
+import { formatWhen, guestsLabel, money, moscowDate } from "@/lib/format";
 import { loginHref } from "@/lib/next";
 import {
   BLOCKER_LABEL,
@@ -23,7 +23,7 @@ import {
 } from "@/lib/eventDayOps";
 import { STATUS_LABEL } from "@/lib/status";
 
-type Requirement = RequirementLite & { notes?: string; required?: boolean };
+type Requirement = RequirementLite & { notes?: string };
 
 type DraftItem = {
   id?: string;
@@ -35,14 +35,9 @@ type DraftItem = {
 type EventRequest = EventRequestLite & {
   resource_type?: string;
   resource_id?: string;
+  resource_name?: string;
   booking_status?: string | null;
-};
-
-type EventReadiness = {
-  state: "empty" | "incomplete" | "ready";
-  required_total: number;
-  ready_total: number;
-  missing_total: number;
+  offer_total_rub?: number | null;
 };
 
 type EventDetail = {
@@ -52,10 +47,11 @@ type EventDetail = {
   city?: string;
   event_date: string;
   guest_count?: number;
+  budget_rub?: number | null; // the customer's limit, not a price
+  brief?: { rider: string[]; wishes: string; hall: string | null };
   organization_id?: string;
   requirements?: Requirement[];
   requests?: EventRequest[];
-  readiness?: EventReadiness;
 };
 
 const WRITE_ROLES = new Set(["owner", "admin", "manager"]);
@@ -314,6 +310,35 @@ function ReplacementPanel({
   );
 }
 
+// a role is secured only by a confirmed deal; a held date or an accepted offer is still "in progress"
+const SECURED = new Set(["Confirmed", "Completed"]);
+function isSecured(item: EventRequest): boolean {
+  return SECURED.has(item.booking_status || "") || SECURED.has(item.status);
+}
+
+// requests sent from a profile carry no role: attach them to the matching role so the team view is not "empty"
+function attachLoose(requests: EventRequest[], requirements: Requirement[]): EventRequest[] {
+  const ids = new Set(requirements.map((r) => r.id).filter(Boolean));
+  const venueRoles = requirements.filter((r) => r.category_code === "venue" && r.id);
+  const artistRoles = requirements.filter((r) => r.category_code !== "venue" && r.id);
+  return requests.map((item) => {
+    if (item.requirement_id && ids.has(item.requirement_id)) return item;
+    const pool = item.resource_type === "venue" || item.resource_type === "hall" ? venueRoles : item.resource_type === "artist" ? artistRoles : [];
+    return pool.length === 1 ? { ...item, requirement_id: pool[0].id } : item;
+  });
+}
+
+function securedRate(requirements: Requirement[], requests: EventRequest[]): { closed: number; total: number } {
+  let total = 0;
+  let closed = 0;
+  for (const req of requirements) {
+    const need = qtyOf(req.qty);
+    total += need;
+    closed += Math.min(need, requestsForRole(requests, req.id).filter((r) => isSecured(r as EventRequest)).length);
+  }
+  return { closed, total };
+}
+
 function fillRate(requirements: Requirement[], requests: EventRequest[]): { closed: number; total: number } {
   let total = 0;
   let closed = 0;
@@ -340,9 +365,12 @@ function toDraft(items: Requirement[]): DraftItem[] {
 }
 
 function RequestDeal({ item }: { item: EventRequest }) {
+  const status = item.booking_status || item.status;
   return (
     <p className="timeline">
-      <span className={`chip ${chipCls(item.status)}`}>{STATUS_LABEL[item.status] || item.status}</span>
+      {item.resource_name ? <strong>{item.resource_name} </strong> : null}
+      <span className={`chip ${chipCls(status)}`}>{STATUS_LABEL[status] || status}</span>
+      {item.offer_total_rub ? <span> · предложение {money(item.offer_total_rub)}</span> : null}
       {item.booking_id ? (
         <>
           {" "}
@@ -366,6 +394,7 @@ export default function EventPage() {
   const [editError, setEditError] = useState("");
   const [saving, setSaving] = useState(false);
   const [packError, setPackError] = useState("");
+  const [editingRoles, setEditingRoles] = useState(false);
 
   async function loadEvent(id: string) {
     const [data, me] = await Promise.all([
@@ -469,28 +498,33 @@ export default function EventPage() {
   }
 
   const requirements = event.requirements ?? [];
-  const requests = event.requests ?? [];
+  const requests = attachLoose(event.requests ?? [], requirements);
   const looseRequests = unmatchedRequests(requests, requirements);
   const looseOpen = openLooseRequests(requests, requirements);
   const nextSteps = buildNextSteps(requirements, requests, roleLabel);
-  const fallbackFill = fillRate(requirements.filter((item) => item.required !== false), requests);
-  const filledPositions = event.readiness?.ready_total ?? fallbackFill.closed;
-  const totalPositions = event.readiness?.required_total ?? fallbackFill.total;
+  const { closed: inWorkPositions } = fillRate(requirements, requests);
+  const { closed: filledPositions, total: totalPositions } = securedRate(requirements, requests);
+  const offersTotal = requests.filter((r) => !["Cancelled", "Declined", "Expired"].includes(r.booking_status || r.status)).reduce((sum, r) => sum + (r.offer_total_rub || 0), 0);
   const date = moscowDate(event.event_date);
 
   return (
-    <main>
-      <p className="kicker">Состав события</p>
-      <h1>{event.title}</h1>
-      <div>
-        <span className={`chip ${chipCls(event.status)}`}>{STATUS_LABEL[event.status] || event.status}</span>
-      </div>
-      <p className="mono">
-        {formatWhen(event.event_date)}
-        {event.city ? ` · ${event.city}` : ""}
-        {event.guest_count ? ` · ${guestsLabel(event.guest_count)}` : ""}
-      </p>
-      <p>
+    <main className="event-reference-page">
+      <header className="event-control-hero">
+        <div><Link className="deal-back" href="/cabinet">← Мои события</Link><p className="studio-eyebrow">Событие / {event.id.slice(0, 8)}</p><h1>{event.title}</h1><p className="event-control-meta"><span>{formatWhen(event.event_date)}</span>{event.city ? <span>{event.city}</span> : null}{event.guest_count ? <span>{guestsLabel(event.guest_count)}</span> : null}</p><span className={`chip ${chipCls(event.status)}`}>{STATUS_LABEL[event.status] || event.status}</span></div>
+        <aside className="event-readiness"><span className="kicker">Команда события</span><strong>{filledPositions}<span> / {totalPositions}</span></strong><p>{totalPositions === 0 ? "Добавьте роли для вашего события" : filledPositions === totalPositions ? "Все позиции подтверждены договором" : inWorkPositions > filledPositions ? `подтверждено договором · ещё ${inWorkPositions - filledPositions} в работе` : "подтверждено договором"}</p>{totalPositions > 0 ? <progress max={totalPositions} value={filledPositions} aria-label="Закрытие состава" /> : null}</aside>
+      </header>
+      <section className="event-brief card tint" aria-label="Параметры события">
+        <dl className="request-detail-facts">
+          <div><dt>Бюджет (лимит)</dt><dd>{event.budget_rub ? `до ${money(event.budget_rub)}` : "не указан"}</dd></div>
+          <div><dt>Предложения исполнителей</dt><dd>{offersTotal ? money(offersTotal) : "пока нет"}</dd></div>
+          {event.brief?.hall ? <div><dt>Зал</dt><dd>{event.brief.hall}</dd></div> : null}
+          <div><dt>Райдер</dt><dd>{event.brief?.rider?.length ? event.brief.rider.join(", ") : "без особых требований"}</dd></div>
+          {event.brief?.wishes ? <div><dt>Пожелания</dt><dd>{event.brief.wishes}</dd></div> : null}
+        </dl>
+        {event.budget_rub && offersTotal > event.budget_rub ? <p className="timeline" role="status">Сумма предложений больше вашего лимита на {money(offersTotal - event.budget_rub)} — обсудите условия в сделках или измените лимит.</p> : null}
+      </section>
+      <div className="event-control-actions">
+        {canWrite ? <button type="button" className="secondary" onClick={() => { setEditingRoles(true); requestAnimationFrame(() => document.getElementById("event-role-editor")?.scrollIntoView({ block: "center" })); }}>Редактировать состав</button> : null}
         <button
           type="button"
           className="secondary"
@@ -511,32 +545,107 @@ export default function EventPage() {
               });
           }}
         >
-          Скачать offline-pack
+          Скачать план события
         </button>
-      </p>
+      </div>
       {packError ? (
         <p className="timeline" role="alert">
           {packError}
         </p>
       ) : null}
-      {totalPositions > 0 ? (
-        <article className="card tint reveal">
-          <strong>Готовность обязательных позиций</strong>
-          <p className="timeline">
-            {filledPositions} из {totalPositions} подтверждено
-            {filledPositions < totalPositions
-              ? " — событие ещё не готово"
-              : " — обязательный состав готов"}
-          </p>
-        </article>
-      ) : null}
       <DayStatusPanel eventId={event.id} canWrite={canWrite} onUpdated={() => void loadEvent(event.id)} />
+      <div className="event-control-body">
+      <section className="event-team-section"><div className="event-section-title"><h2>Команда события</h2><span>{requirements.length} ролей</span></div>
+      {canWrite ? (
+        <details id="event-role-editor" className="card event-role-editor" open={editingRoles} onToggle={(e) => setEditingRoles(e.currentTarget.open)}>
+          <summary>Состав и роли <span aria-hidden="true">+</span></summary>
+          <p className="timeline">Добавьте роли и укажите, сколько участников нужно.</p>
+          {draft.length === 0 ? <p className="timeline">Пока нет позиций — добавьте роль.</p> : null}
+          {draft.map((row, index) => (
+            <div className="event-role-edit-row" key={row.id || `draft-${index}`}>
+              <label>
+                Категория{" "}
+                <select
+                  value={row.category_code}
+                  onChange={(e) => updateRow(index, { category_code: e.target.value })}
+                >
+                  {CATEGORY_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {categoryLabel(code)}
+                    </option>
+                  ))}
+                </select>
+              </label>{" "}
+              <label>
+                Кол-во{" "}
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={row.qty}
+                  onChange={(e) => updateRow(index, { qty: qtyOf(Number(e.target.value)) })}
+                />
+              </label>{" "}
+              <label>
+                Подпись{" "}
+                <input
+                  type="text"
+                  placeholder="необязательно"
+                  value={row.role_label}
+                  onChange={(e) => updateRow(index, { role_label: e.target.value })}
+                />
+              </label>{" "}
+              <button type="button" className="secondary" onClick={() => removeRow(index)}>
+                Убрать
+              </button>
+            </div>
+          ))}
+          <p>
+            <button type="button" className="secondary" onClick={addRow}>
+              Добавить роль
+            </button>{" "}
+            <button type="button" disabled={saving} onClick={() => void saveRequirements()}>
+              {saving ? "Сохраняем…" : "Сохранить состав"}
+            </button>
+          </p>
+          {editError ? (
+            <p className="timeline" role="alert">
+              {editError}
+            </p>
+          ) : null}
+        </details>
+      ) : null}
+      {requirements.length === 0 ? (
+        <p className="timeline">Состав пока не указан. Добавьте роли в заявке — цена на этом экране не считается.</p>
+      ) : (
+        <div className="event-team-list">
+          {requirements.map((req, i) => {
+            const code = req.category_code;
+            const label = categoryLabel(code) || req.role_label || code;
+            const roleRequests = requestsForRole(requests, req.id);
+            return (
+              <article className="card event-role-card" key={req.id || `${code}-${i}`}>
+                <div className="event-role-name"><span className="event-role-symbol" aria-hidden="true">{code === "dj" ? "♫" : code === "photo" ? "◎" : code === "host" ? "♧" : "✧"}</span><strong>{label}</strong><span className="event-role-quantity">{roleRequests.filter(isSecured).length} / {qtyOf(req.qty)}{roleRequests.some((r) => isClosedRequest(r) && !isSecured(r)) ? " · в работе" : ""}</span></div>
+
+                {req.notes && roleRequests.length === 0 ? <p className="timeline">{req.notes}</p> : null}
+                {roleRequests.map((item) => (
+                  <RequestDeal key={item.id} item={item} />
+                ))}
+                <p>
+                  <Link className="event-role-search" href={searchHref(date, code, event.city, event.id, req.id)}>Найти на эту дату <span aria-hidden="true">→</span></Link>
+                </p>
+              </article>
+            );
+          })}
+        </div>
+      )}
+      </section>
       {requirements.length > 0 || looseOpen.length > 0 ? (
-        <section className="reveal">
-          <h2>Следующие шаги</h2>
+        <section className="event-next-steps">
+          <div className="event-section-title"><h2>Следующие шаги</h2><span>К событию</span></div>
           <article className="card tint">
             {nextSteps.length === 0 && looseOpen.length === 0 ? (
-              <p className="timeline">Все роли в составе закрыты — можно сосредоточиться на дне события.</p>
+              <p className="timeline">{filledPositions === totalPositions ? "Все роли подтверждены договором — можно сосредоточиться на дне события." : "Исполнители по всем ролям найдены. Осталось завершить сделки: подписать договор и оплатить — в комнате каждой сделки."}</p>
             ) : (
               <>
                 {nextSteps.length > 0 ? (
@@ -548,7 +657,7 @@ export default function EventPage() {
                           <span className="timeline"> — нужно ещё {step.openSlots}</span>
                         ) : null}
                         <p className="timeline">
-                          Блокирует: {BLOCKER_LABEL[step.blocker]}
+                          Следующий шаг: {BLOCKER_LABEL[step.blocker]}
                           {step.filled > 0 ? ` (${step.filled} из ${step.need} закрыто)` : null}
                         </p>
                         {step.openRequests.map((item) => (
@@ -597,103 +706,18 @@ export default function EventPage() {
           </article>
         </section>
       ) : null}
-      <p className="timeline">Каждая позиция — своя сделка.</p>
-      <h2>Роли</h2>
-      {canWrite ? (
-        <article className="card">
-          <p className="timeline">Редактирование состава. Цена на этом экране не считается.</p>
-          {draft.length === 0 ? <p className="timeline">Пока нет позиций — добавьте роль.</p> : null}
-          {draft.map((row, index) => (
-            <p key={row.id || `draft-${index}`}>
-              <label>
-                Категория{" "}
-                <select
-                  value={row.category_code}
-                  onChange={(e) => updateRow(index, { category_code: e.target.value })}
-                >
-                  {CATEGORY_CODES.map((code) => (
-                    <option key={code} value={code}>
-                      {categoryLabel(code)}
-                    </option>
-                  ))}
-                </select>
-              </label>{" "}
-              <label>
-                Кол-во{" "}
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={row.qty}
-                  onChange={(e) => updateRow(index, { qty: qtyOf(Number(e.target.value)) })}
-                />
-              </label>{" "}
-              <label>
-                Подпись{" "}
-                <input
-                  type="text"
-                  placeholder="необязательно"
-                  value={row.role_label}
-                  onChange={(e) => updateRow(index, { role_label: e.target.value })}
-                />
-              </label>{" "}
-              <button type="button" className="secondary" onClick={() => removeRow(index)}>
-                Убрать
-              </button>
-            </p>
-          ))}
-          <p>
-            <button type="button" className="secondary" onClick={addRow}>
-              Добавить роль
-            </button>{" "}
-            <button type="button" disabled={saving} onClick={() => void saveRequirements()}>
-              {saving ? "Сохраняем…" : "Сохранить состав"}
-            </button>
-          </p>
-          {editError ? (
-            <p className="timeline" role="alert">
-              {editError}
-            </p>
-          ) : null}
-        </article>
-      ) : null}
-      {requirements.length === 0 ? (
-        <p className="timeline">Состав пока не указан. Добавьте роли в заявке — цена на этом экране не считается.</p>
-      ) : (
-        <div className="grid">
-          {requirements.map((req, i) => {
-            const code = req.category_code;
-            const label = categoryLabel(code) || req.role_label || code;
-            const roleRequests = requestsForRole(requests, req.id);
-            return (
-              <article className="card" key={req.id || `${code}-${i}`}>
-                <strong>{label}</strong>
-                {req.qty && req.qty > 1 ? <p className="timeline">{req.qty} чел.</p> : null}
-                {req.notes ? <p className="timeline">{req.notes}</p> : null}
-                {roleRequests.map((item) => (
-                  <RequestDeal key={item.id} item={item} />
-                ))}
-                <p>
-                  <Link href={searchHref(date, code, event.city, event.id, req.id)}>Найти на эту дату</Link>
-                </p>
-              </article>
-            );
-          })}
-        </div>
-      )}
+      </div>
       {looseRequests.length > 0 ? (
         <>
-          <h2>Заявки без роли в составе</h2>
+          <h2>Приглашённые отдельно</h2>
           <article className="card tint">
             <p className="timeline">
-              {looseRequests.length} заявок не привязаны к позициям состава — их не видно в карточках ролей выше.
-              Привяжите через каталог («Найти на эту дату» у нужной роли) или закройте лишние в Deal Room.
+              Здесь ваши прямые приглашения из профилей. Ответы и договорённости сохраняются в каждой заявке.
             </p>
             <div className="grid">
               {looseRequests.map((item) => (
                 <article className="card" key={item.id}>
-                  <strong>{KIND_LABEL[item.resource_type || ""] || item.resource_type || "Заявка"}</strong>
-                  <p className="timeline mono">id {item.id.slice(0, 8)}…</p>
+                  <strong>{item.resource_name || KIND_LABEL[item.resource_type || ""] || "Заявка"}</strong>
                   <RequestDeal item={item} />
                 </article>
               ))}

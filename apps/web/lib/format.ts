@@ -1,12 +1,12 @@
 const TZ = "Europe/Moscow";
-/** Moscow has no DST since 2014; naive API datetimes are pilot wall clock in MSK. */
+/** Date-only selections denote a Moscow calendar day. API instants use UTC. */
 const MSK_OFFSET = "+03:00";
 
 /**
  * Parse Booker API datetimes for display.
- * Naive ISO (no `Z`/offset) must be treated as Europe/Moscow wall time: Node on UTC
- * servers otherwise parses them as UTC while browsers in MSK use local time, which
- * desyncs SSR vs client text and throws React #418 on /search.
+ * Explicit offsets are authoritative. Legacy API timestamps without an offset
+ * are UTC, like database/server clocks; parsing never depends on the browser TZ.
+ * Date-only values are calendar selections, so remain Moscow midnight.
  */
 export function parseBookerDate(iso: string): Date {
   const trimmed = iso.trim();
@@ -18,7 +18,7 @@ export function parseBookerDate(iso: string): Date {
     return new Date(trimmed);
   }
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(trimmed)) {
-    return new Date(`${trimmed}${MSK_OFFSET}`);
+    return new Date(`${trimmed}Z`);
   }
   return new Date(trimmed);
 }

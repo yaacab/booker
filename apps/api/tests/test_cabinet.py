@@ -1,6 +1,4 @@
-from datetime import datetime, timedelta, timezone
-
-from tests.conftest import auth_header, publish_artist, register
+from tests.conftest import auth_header, register
 
 
 def test_quick_request_and_inbox(client):
@@ -26,18 +24,16 @@ def test_quick_request_and_inbox(client):
         json={"title": "Сет", "honorarium_rub": 80000},
         headers=auth_header(owner["token"]),
     )
-    starts = datetime.now(timezone.utc) + timedelta(days=10)
     slot = client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": starts.isoformat(),
-            "ends_at": (starts + timedelta(hours=4)).isoformat(),
+            "starts_at": "2026-09-10T18:00:00+00:00",
+            "ends_at": "2026-09-10T22:00:00+00:00",
         },
         headers=auth_header(owner["token"]),
     ).json()
-    publish_artist(client, owner, artist["id"], add_tariff=False)
     quick = client.post(
         "/quick-request",
         json={"artist_id": artist["id"], "slot_id": slot["id"], "title": "День рождения"},

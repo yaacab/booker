@@ -69,11 +69,45 @@ export function usePerformerProfile(orgId: string, role: string) {
     }
   }
 
+  async function updateTariff(id: string, patch: { title?: string; honorarium_rub?: number }) {
+    if (!artistId || !isWriteRole(role)) return false;
+    if (patch.title !== undefined && !patch.title.trim()) { setError("Название тарифа не может быть пустым"); return false; }
+    if (patch.honorarium_rub !== undefined && !(patch.honorarium_rub > 0)) { setError("Гонорар должен быть больше нуля"); return false; }
+    setTariffBusy(true);
+    setError("");
+    try {
+      await api(`/artists/${encodeURIComponent(artistId)}/tariffs/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch) });
+      await reload();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось сохранить тариф");
+      return false;
+    } finally {
+      setTariffBusy(false);
+    }
+  }
+
+  async function deleteTariff(id: string) {
+    if (!artistId || !isWriteRole(role)) return;
+    setTariffBusy(true);
+    setError("");
+    try {
+      await api(`/artists/${encodeURIComponent(artistId)}/tariffs/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось удалить тариф");
+    } finally {
+      setTariffBusy(false);
+    }
+  }
+
   return {
     artistId,
     profile,
     loading,
     tariffBusy,
+    updateTariff,
+    deleteTariff,
     error,
     canManage: isWriteRole(role),
     publicHref: artistId ? `/artists/${artistId}` : null,

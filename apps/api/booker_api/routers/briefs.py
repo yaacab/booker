@@ -8,9 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
-from booker_api.models import BriefResponse, Event, Organization, PublicBrief, User, utcnow
-from booker_api.publication_eligibility import organization_publication_eligibility
-from booker_api.rate_limit import request_creation_limiter
+from booker_api.models import Artist, BriefResponse, Event, Organization, PublicBrief, User, utcnow
 from booker_api.security import audit, current_user, membership, require_org_writer
 
 router = APIRouter(tags=["briefs"])
@@ -58,6 +56,14 @@ class BriefPublishIn(BaseModel):
 class BriefRespondIn(BaseModel):
     supplier_org_id: str
     message: str = Field(default="", max_length=4000)
+
+
+@router.get("/brief-responses/mine")
+def my_brief_responses(organization_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    if not _membership_ok(db, user, organization_id):
+        raise HTTPException(403, "Нет доступа к откликам")
+    rows = db.query(BriefResponse).filter(BriefResponse.supplier_org_id == organization_id).order_by(BriefResponse.created_at.desc()).all()
+    return {"items": [{**_response_out(row), "brief": _brief_public(brief)} for row in rows if (brief := db.get(PublicBrief, row.brief_id)) is not None]}
 
 
 def _membership_ok(db: Session, user: User, org_id: str) -> bool:
@@ -115,7 +121,6 @@ def publish_brief(
     db: Session = Depends(get_db),
 ):
     require_org_writer(db, user, body.organization_id)
-    request_creation_limiter.check(f"brief:u:{user.id}:org:{body.organization_id}")
     org = db.get(Organization, body.organization_id)
     if not org:
         raise HTTPException(404, "Организация не найдена")
@@ -246,17 +251,11 @@ def respond_to_brief(
         raise HTTPException(409, "Бриф закрыт")
 
     require_org_writer(db, user, body.supplier_org_id)
-    request_creation_limiter.check(
-        f"brief-response:u:{user.id}:org:{body.supplier_org_id}"
-    )
     supplier = db.get(Organization, body.supplier_org_id)
     if not supplier:
         raise HTTPException(404, "Организация не найдена")
     if supplier.kind not in {"artist", "venue"} and not user.is_platform_admin:
         raise HTTPException(403, "Откликаться могут артист или площадка")
-    eligibility = organization_publication_eligibility(db, supplier.id)
-    if not eligibility or not eligibility.eligible:
-        raise HTTPException(409, "Сначала подготовьте и опубликуйте профиль поставщика")
     if body.supplier_org_id == brief.organization_id:
         raise HTTPException(403, "Нельзя откликаться на свой бриф")
 
@@ -316,4 +315,9 @@ def list_brief_responses(
         .order_by(BriefResponse.created_at.desc())
         .all()
     )
-    return {"items": [_response_out(r) for r in rows]}
+    items = []
+    for row in rows:
+        supplier = db.get(Organization, row.supplier_org_id)
+        artist = db.query(Artist).filter(Artist.organization_id == row.supplier_org_id).first()
+        items.append({**_response_out(row), "supplier_name": supplier.name if supplier else "Артист", "artist_id": artist.id if artist else None})
+    return {"items": items}

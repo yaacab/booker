@@ -2,12 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  distDir: process.env.BOOKER_E2E_NEXT_DIST_DIR ?? ".next",
-  poweredByHeader: false,
-  // Keep metadata in <head> and preserve real HTTP 404 statuses for missing
-  // public profiles. Streaming not-found responses are otherwise soft 200s.
-  htmlLimitedBots: /.*/,
   eslint: { ignoreDuringBuilds: true },
+  // Demo cabinets only on dev/stage builds; production inlines "0" so the links are stripped from bundles.
+  env: { NEXT_PUBLIC_DEMO_CABINETS: process.env.NEXT_PUBLIC_DEMO_CABINETS === "1" ? "1" : "0" },
 };
 
 export default nextConfig;

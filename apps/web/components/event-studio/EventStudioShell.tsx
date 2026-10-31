@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { getToken, trackClientEvent } from "@/lib/api";
 import { moscowToday } from "@/lib/format";
 import { loginHref } from "@/lib/next";
@@ -14,15 +14,14 @@ import {
   getOrCreateSubmitIdempotencyKey,
   isDraftVersionConflict,
   loadCatalog,
-  loadPreferredTalent,
-  loadPreferredVenue,
   loadStoredDraft,
   mapCatalogTalent,
   mapCatalogVenue,
   saveStoredDraft,
   submitEventStudioDraft,
 } from "./adapter";
-import EventStudioMap from "./EventStudioMap";
+import FlexibleEventV5 from "./FlexibleEventV5";
+import M04Puzzle, { type M04Submitted } from "./M04Puzzle";
 import type { EventStudioDraft, SaveStatus, TalentItem, VenueItem } from "./types";
 import { EMPTY_DRAFT } from "./types";
 
@@ -31,9 +30,6 @@ const CATALOG_DEBOUNCE_MS = 400;
 
 export default function EventStudioShell() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const preferredArtistId = searchParams.get("artist") || "";
-  const preferredVenueId = searchParams.get("venue") || "";
   const [draft, setDraft] = useState<EventStudioDraft>(EMPTY_DRAFT);
   const [hydrated, setHydrated] = useState(false);
   const [talents, setTalents] = useState<TalentItem[]>([]);
@@ -44,6 +40,8 @@ export default function EventStudioShell() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
+  const [submitted, setSubmitted] = useState<M04Submitted>(null);
+  const [useV5, setUseV5] = useState(false);
   const idempotencyRef = useRef("");
   const catalogAbortRef = useRef<AbortController | null>(null);
   const submitLockRef = useRef(false);
@@ -57,6 +55,7 @@ export default function EventStudioShell() {
       clearSubmitIdempotency();
     }
     idempotencyRef.current = getOrCreateSubmitIdempotencyKey();
+    setUseV5(new URLSearchParams(window.location.search).get("m04") === "0");
     setHydrated(true);
     trackClientEvent("event.studio.started");
   }, []);
@@ -116,38 +115,8 @@ export default function EventStudioShell() {
     try {
       const data = await loadCatalog(draft.city || "Москва", draft.date, undefined, controller.signal);
       if (catalogAbortRef.current !== controller) return;
-      const mappedTalents = data.items.map((item) => mapCatalogTalent(item, draft.date));
-      const mappedVenues = data.venues.map(mapCatalogVenue);
-      const [preferredTalent, preferredVenue] = await Promise.all([
-        preferredArtistId && !mappedTalents.some((item) => item.id === preferredArtistId)
-          ? loadPreferredTalent(preferredArtistId, draft.date, controller.signal).catch(() => null)
-          : Promise.resolve(null),
-        preferredVenueId && !mappedVenues.some((item) => item.id === preferredVenueId)
-          ? loadPreferredVenue(preferredVenueId, controller.signal).catch(() => null)
-          : Promise.resolve(null),
-      ]);
-      if (catalogAbortRef.current !== controller) return;
-      if (preferredTalent) mappedTalents.unshift(preferredTalent);
-      if (preferredVenue) mappedVenues.unshift(preferredVenue);
-      setTalents(mappedTalents);
-      setVenues(mappedVenues);
-      if (
-        (preferredArtistId && mappedTalents.some((item) => item.id === preferredArtistId)) ||
-        (preferredVenueId && mappedVenues.some((item) => item.id === preferredVenueId))
-      ) {
-        setDraft((current) => {
-          const talentIds =
-            preferredArtistId && !current.talentIds.includes(preferredArtistId)
-              ? [preferredArtistId, ...current.talentIds]
-              : current.talentIds;
-          const venueId =
-            preferredVenueId && mappedVenues.some((item) => item.id === preferredVenueId)
-              ? preferredVenueId
-              : current.venueId;
-          if (talentIds === current.talentIds && venueId === current.venueId) return current;
-          return bumpDraftVersion({ ...current, talentIds, venueId });
-        });
-      }
+      setTalents(data.items.map((item) => mapCatalogTalent(item, draft.date)));
+      setVenues(data.venues.map(mapCatalogVenue));
     } catch (err) {
       if (catalogAbortRef.current !== controller) return;
       setTalentsError(err instanceof Error ? err.message : "Каталог недоступен");
@@ -156,7 +125,7 @@ export default function EventStudioShell() {
     } finally {
       if (catalogAbortRef.current === controller) setLoadingTalents(false);
     }
-  }, [draft.city, draft.date, preferredArtistId, preferredVenueId]);
+  }, [draft.city, draft.date]);
 
   // Город набирается вручную — не дёргаем /catalog/search на каждый символ.
   useEffect(() => {
@@ -169,9 +138,9 @@ export default function EventStudioShell() {
 
   async function handleContinue() {
     if (submitLockRef.current) return;
+    try { saveStoredDraft(draft); } catch { setSubmitError("Не удалось сохранить черновик. Проверьте доступ к хранилищу браузера."); return; }
     if (!getToken()) {
-      const query = searchParams.toString();
-      router.push(loginHref(`/events/new?${query || "event_studio_map_v1=1"}`));
+      router.push(loginHref("/events/new?event_studio_map_v1=1"));
       return;
     }
     if (!draft.title.trim()) {
@@ -190,6 +159,11 @@ export default function EventStudioShell() {
         idempotencyRef.current = getOrCreateSubmitIdempotencyKey();
       }
       const { eventId, reused } = await submitEventStudioDraft(draft, talents, idempotencyRef.current);
+      if (!useV5) {
+        // M04: the finale plays only after the server confirmed; the user then opens the event or goes home.
+        setSubmitted({ eventId, reused });
+        return;
+      }
       if (reused) {
         setSubmitError("Заявка уже отправлена — открываем событие.");
       }
@@ -205,15 +179,52 @@ export default function EventStudioShell() {
   if (!hydrated) {
     return (
       <main className="event-studio-shell">
-        <p className="kicker">Event Studio Map</p>
-        <h1 className="event-studio-loading-title">Загрузка карты события</h1>
-        <div className="skeleton" style={{ minHeight: 240 }} />
+        <div className="studio-loading-panel" aria-busy="true">
+          <p className="studio-eyebrow">Конструктор события</p>
+          <h1 className="event-studio-loading-title">Загружаем ваши планы</h1>
+          <div className="skeleton" style={{ minHeight: 240 }} />
+        </div>
       </main>
     );
   }
 
+  const studioProps = {
+      draft,
+      onDraftChange: (next: EventStudioDraft) =>
+        setDraft((prev) => bumpDraftVersion({ ...next, version: prev.version || 1 })),
+      talents,
+      venues,
+      budgetHint,
+      loadingTalents,
+      talentsError,
+      saveStatus,
+      onRetrySave: () => {
+        try {
+          saveStoredDraft(draft);
+          setSaveStatus(online ? "saved" : "offline");
+        } catch {
+          setSaveStatus("error");
+        }
+      },
+      onReloadCatalog: () => void reloadCatalog(),
+      onContinue: () => void handleContinue(),
+      submitting,
+      submitError,
+      legacyLink: <Link href="/events/new?event_studio_map_v1=0">Классический мастер</Link>,
+  };
+  if (!useV5) {
+    return (
+      <M04Puzzle
+        {...studioProps}
+        submitted={submitted}
+        onGoEvent={() => submitted && router.push(`/events/${submitted.eventId}`)}
+        onGoHome={() => router.push("/")}
+      />
+    );
+  }
+
   return (
-    <EventStudioMap
+    <FlexibleEventV5
       draft={draft}
       onDraftChange={(next) =>
         setDraft((prev) => bumpDraftVersion({ ...next, version: prev.version || 1 }))

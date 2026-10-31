@@ -10,12 +10,16 @@ import type {
 } from "./types";
 import { EMPTY_DRAFT } from "./types";
 
+function draftStorage(): Storage { return typeof sessionStorage !== "undefined" && sessionStorage.getItem("booker.demo.token") ? sessionStorage : localStorage; }
+
 const DRAFT_KEY = "booker.eventStudioMapDraft";
 
 export const EVENT_STUDIO_DRAFT_STORAGE_KEY = DRAFT_KEY;
 const IDEMPOTENCY_KEY = "booker.eventStudioSubmitKey";
 
 type CatalogItem = {
+  media_url?: string;
+  cover_photo?: { url?: string };
   id: string;
   name: string;
   city: string;
@@ -23,8 +27,13 @@ type CatalogItem = {
   verified?: boolean;
   open_slots?: number;
   next_open_at?: string | null;
+  calendar_status?: "open" | "unfilled";
   tariffs?: { honorarium_rub: number }[];
   availability_mode?: string;
+  district?: string;
+  address?: string;
+  metro?: string;
+  matching_halls?: { id: string; name: string; capacity?: number | null }[];
 };
 
 type CatalogResponse = {
@@ -48,6 +57,7 @@ function minHonorarium(tariffs?: { honorarium_rub: number }[]): number | null {
 
 function availabilityOf(item: CatalogItem, date?: string): { state: AvailabilityState; label: string } {
   const slots = item.open_slots ?? 0;
+  if (item.calendar_status === "unfilled") return { state: "on_request", label: "● Календарь не заполнен" };
   if (slots > 0 && item.verified) {
     const day = date ? formatDay(`${date}T12:00:00+03:00`) : "на дату";
     return { state: "available", label: `Свободен: ${day.split(",")[0]}` };
@@ -69,6 +79,7 @@ function catalogDateParam(date: string): string | undefined {
 export function mapCatalogTalent(item: CatalogItem, date?: string): TalentItem {
   const avail = availabilityOf(item, date);
   return {
+    mediaUrl: item.cover_photo?.url || item.media_url,
     id: item.id,
     name: item.name,
     categoryCode: item.category,
@@ -86,11 +97,14 @@ export function mapCatalogTalent(item: CatalogItem, date?: string): TalentItem {
 export function mapCatalogVenue(item: CatalogItem): VenueItem {
   const synthetic = item.availability_mode === "synthetic";
   return {
+    mediaUrl: item.cover_photo?.url || item.media_url,
     id: item.id,
     name: item.name,
     city: item.city,
+    district: item.district, address: item.address, metro: item.metro,
     honorariumFrom: minHonorarium(item.tariffs),
     availabilityLabel: synthetic ? "Календарь ориентировочный" : undefined,
+    halls: item.matching_halls?.map((h) => ({ id: h.id, name: h.name, capacity: h.capacity ?? null })),
   };
 }
 
@@ -105,20 +119,6 @@ export async function loadCatalog(
   if (iso) params.set("date", iso);
   if (category) params.set("category", category);
   return api<CatalogResponse>(`/catalog/search?${params.toString()}`, { signal });
-}
-
-export async function loadPreferredTalent(
-  id: string,
-  date: string,
-  signal?: AbortSignal,
-): Promise<TalentItem> {
-  const item = await api<CatalogItem>(`/artists/${encodeURIComponent(id)}`, { signal });
-  return mapCatalogTalent(item, date);
-}
-
-export async function loadPreferredVenue(id: string, signal?: AbortSignal): Promise<VenueItem> {
-  const item = await api<CatalogItem>(`/venues/${encodeURIComponent(id)}`, { signal });
-  return mapCatalogVenue(item);
 }
 
 export function budgetHintFromSelection(
@@ -145,7 +145,7 @@ export type StoredDraft = {
 export function loadStoredDraft(): StoredDraft | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(DRAFT_KEY);
+    const raw = draftStorage().getItem(DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredDraft;
     if (!parsed.draft) return null;
@@ -160,12 +160,12 @@ export function loadStoredDraft(): StoredDraft | null {
 
 export function saveStoredDraft(draft: EventStudioDraft): StoredDraft {
   const payload: StoredDraft = { draft, savedAt: new Date().toISOString() };
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+  draftStorage().setItem(DRAFT_KEY, JSON.stringify(payload));
   return payload;
 }
 
 export function clearStoredDraft(): void {
-  localStorage.removeItem(DRAFT_KEY);
+  draftStorage().removeItem(DRAFT_KEY);
 }
 
 export function bumpDraftVersion(draft: EventStudioDraft): EventStudioDraft {
@@ -261,13 +261,17 @@ export async function submitEventStudioDraft(
       city: draft.city || "Москва",
       event_date: eventIso(draft),
       guest_count: draft.guests || 50,
-      budget_rub: draft.budgetRub,
+      budget_rub: draft.assemblyV5?.budget ?? null,
       requirements,
       notes: [
         `формат:${draft.kind}`,
+        `окончание:${draft.endsAt}`,
+        ...(draft.assemblyV5?.rider?.requirements?.length ? [`райдер:${draft.assemblyV5.rider.requirements.join(",")}`] : []),
+        ...(draft.assemblyV5?.rider?.notes ? [`пожелания:${draft.assemblyV5.rider.notes}`] : []),
         draft.date ? `дата:${draft.date}` : "дата:позже",
         `состав:${draft.talentIds.length || 0}`,
         draft.venueId ? `площадка:${draft.venueId}` : "площадка:не выбрана",
+        ...((draft.assemblyV5 as { hall?: string | null } | undefined)?.hall ? [`зал:${(draft.assemblyV5 as { hall?: string | null }).hall}`] : []),
         `требования:${draft.requirements.join(",")}`,
         `idempotency:${idempotencyKey}`,
       ].join("; "),

@@ -1,6 +1,4 @@
-from datetime import datetime, timedelta, timezone
-
-from tests.conftest import auth_header, publish_artist, register
+from tests.conftest import auth_header, register
 
 
 def _setup(client):
@@ -24,25 +22,22 @@ def _setup(client):
         json={"organization_id": artist_org["id"], "name": "DJ Nova", "category": "dj"},
         headers=oh,
     ).json()
-    starts_at = datetime.now(timezone.utc) + timedelta(days=10)
-    starts_at = starts_at.replace(hour=18, minute=0, second=0, microsecond=0)
     slot = client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": starts_at.isoformat(),
-            "ends_at": (starts_at + timedelta(hours=4)).isoformat(),
+            "starts_at": "2026-09-10T18:00:00+00:00",
+            "ends_at": "2026-09-10T22:00:00+00:00",
         },
         headers=oh,
     ).json()
-    publish_artist(client, owner, artist["id"])
     event = client.post(
         "/events",
         json={
             "organization_id": cust_org["id"],
             "title": "Корпоратив",
-            "event_date": starts_at.isoformat(),
+            "event_date": "2026-09-10T18:00:00+00:00",
         },
         headers=ch,
     ).json()
@@ -51,7 +46,7 @@ def _setup(client):
         json={
             "organization_id": cust_org["id"],
             "title": "Другое",
-            "event_date": (starts_at + timedelta(days=1)).isoformat(),
+            "event_date": "2026-09-11T18:00:00+00:00",
         },
         headers=ch,
     ).json()

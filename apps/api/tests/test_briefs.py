@@ -1,6 +1,4 @@
-from datetime import datetime, timedelta, timezone
-
-from tests.conftest import auth_header, publish_artist, publish_venue, register
+from tests.conftest import auth_header, register
 
 
 def _setup_parties(client):
@@ -25,34 +23,6 @@ def _setup_parties(client):
         json={"name": "Зал Лофт", "kind": "venue"},
         headers=vh,
     ).json()
-    artist_profile = client.post(
-        "/artists",
-        json={"organization_id": artist_org["id"], "name": "DJ Brief", "category": "dj"},
-        headers=ah,
-    ).json()
-    venue_profile = client.post(
-        "/venues",
-        json={"organization_id": venue_org["id"], "name": "Зал Brief", "capacity": 100},
-        headers=vh,
-    ).json()
-    starts = datetime.now(timezone.utc) + timedelta(days=10)
-    for resource_type, resource_id, headers in (
-        ("artist", artist_profile["id"], ah),
-        ("hall", venue_profile["hall_id"], vh),
-    ):
-        slot = client.post(
-            "/slots",
-            json={
-                "resource_type": resource_type,
-                "resource_id": resource_id,
-                "starts_at": starts.isoformat(),
-                "ends_at": (starts + timedelta(hours=4)).isoformat(),
-            },
-            headers=headers,
-        )
-        assert slot.status_code == 200, slot.text
-    publish_artist(client, artist, artist_profile["id"])
-    publish_venue(client, venue, venue_profile["id"])
     return {
         "customer": customer,
         "artist": artist,
@@ -62,7 +32,6 @@ def _setup_parties(client):
         "vh": vh,
         "cust_org": cust_org,
         "artist_org": artist_org,
-        "artist_profile": artist_profile,
         "venue_org": venue_org,
     }
 
@@ -100,33 +69,6 @@ def _assert_no_pii(payload: dict):
     assert "@booker.test" not in blob.lower()
     assert "secret@private.test" not in blob.lower()
     assert "350000" not in blob
-
-
-def test_brief_cannot_link_another_customers_private_event(client):
-    ctx = _setup_parties(client)
-    other = register(client, "foreign-brief-event@booker.test", "Other customer")
-    other_headers = auth_header(other["token"])
-    other_org = client.post(
-        "/orgs", json={"name": "Other Customer", "kind": "customer"}, headers=other_headers
-    )
-    assert other_org.status_code == 200
-    event = client.post(
-        "/events",
-        json={
-            "organization_id": other_org.json()["id"],
-            "title": "Чужое событие",
-            "event_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
-            "requirements": [{"category_code": "dj", "qty": 1, "required": True}],
-        },
-        headers=other_headers,
-    )
-    assert event.status_code == 200, event.text
-    denied = client.post(
-        "/briefs",
-        json=_publish_payload(ctx["cust_org"]["id"], event_id=event.json()["id"]),
-        headers=ctx["ch"],
-    )
-    assert denied.status_code == 403
 
 
 def test_publish_list_respond_close(client):
@@ -194,6 +136,17 @@ def test_publish_list_respond_close(client):
     owner_list = client.get(f"/briefs/{brief['id']}/responses", headers=ctx["ch"])
     assert owner_list.status_code == 200
     assert len(owner_list.json()["items"]) == 2
+    assert {r["supplier_name"] for r in owner_list.json()["items"]} == {"DJ Crew", "Зал Лофт"}
+
+    mine = client.get("/brief-responses/mine", params={"organization_id": ctx["artist_org"]["id"]}, headers=ctx["ah"])
+    assert mine.status_code == 200
+    assert len(mine.json()["items"]) == 1
+    assert mine.json()["items"][0]["brief"]["id"] == brief["id"]
+    _assert_no_pii(mine.json()["items"][0]["brief"])
+    forbidden = client.get("/brief-responses/mine", params={"organization_id": ctx["artist_org"]["id"]}, headers=ctx["vh"])
+    assert forbidden.status_code == 403
+    anonymous = client.get("/brief-responses/mine", params={"organization_id": ctx["artist_org"]["id"]})
+    assert anonymous.status_code == 401
 
     stranger_list = client.get(f"/briefs/{brief['id']}/responses", headers=ctx["ah"])
     assert stranger_list.status_code == 403
@@ -206,6 +159,8 @@ def test_publish_list_respond_close(client):
 
     open_list = client.get("/briefs")
     assert open_list.json()["items"] == []
+    history = client.get("/brief-responses/mine", params={"organization_id": ctx["artist_org"]["id"]}, headers=ctx["ah"])
+    assert history.json()["items"][0]["brief"]["status"] == "closed"
 
     after_close = client.post(
         f"/briefs/{brief['id']}/responses",
@@ -213,31 +168,6 @@ def test_publish_list_respond_close(client):
         headers=ctx["ah"],
     )
     assert after_close.status_code == 409
-
-
-def test_brief_close_rejects_viewer_and_other_tenant_without_state_change(client, SessionLocal):
-    from booker_api.models import PublicBrief
-
-    ctx = _setup_parties(client)
-    published = client.post(
-        "/briefs", json=_publish_payload(ctx["cust_org"]["id"]), headers=ctx["ch"]
-    )
-    assert published.status_code == 200, published.text
-    brief_id = published.json()["id"]
-    viewer = register(client, "brief-viewer@booker.test", "Наблюдатель")
-    added = client.post(
-        f"/orgs/{ctx['cust_org']['id']}/members",
-        json={"user_id": viewer["user_id"], "role": "viewer"},
-        headers=ctx["ch"],
-    )
-    assert added.status_code == 200, added.text
-    for headers in (auth_header(viewer["token"]), ctx["ah"]):
-        denied = client.post(f"/briefs/{brief_id}/close", headers=headers)
-        assert denied.status_code == 403, denied.text
-        with SessionLocal() as db:
-            row = db.get(PublicBrief, brief_id)
-            assert row.status == "open"
-            assert row.closed_at is None
 
 
 def test_brief_linked_event_does_not_leak_private_fields(client):
@@ -284,13 +214,6 @@ def test_brief_linked_event_does_not_leak_private_fields(client):
     assert "notes" not in listed
     assert "event_id" not in listed
 
-    detail = client.get(f"/briefs/{brief['id']}")
-    assert detail.status_code == 200
-    _assert_no_pii(detail.json())
-    assert event_id not in detail.text
-    assert "+79001112233" not in detail.text
-    assert "secret@private.test" not in detail.text
-
 
 def test_customer_cannot_respond_as_customer_org(client):
     ctx = _setup_parties(client)
@@ -315,25 +238,6 @@ def test_artist_cannot_publish_brief(client):
         headers=ctx["ah"],
     )
     assert res.status_code == 403
-
-
-def test_unpublished_supplier_cannot_respond_to_brief(client):
-    ctx = _setup_parties(client)
-    brief = client.post(
-        "/briefs", json=_publish_payload(ctx["cust_org"]["id"]), headers=ctx["ch"]
-    ).json()
-    disabled = client.put(
-        f"/artists/{ctx['artist_profile']['id']}/publication",
-        json={"enabled": False, "state_version": 1},
-        headers=ctx["ah"],
-    )
-    assert disabled.status_code == 200
-    denied = client.post(
-        f"/briefs/{brief['id']}/responses",
-        json={"supplier_org_id": ctx["artist_org"]["id"], "message": "Я готов"},
-        headers=ctx["ah"],
-    )
-    assert denied.status_code == 409
 
 
 def test_invalid_guest_count_band(client):

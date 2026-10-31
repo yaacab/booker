@@ -41,9 +41,9 @@ test.describe("Performer cabinet §12 scenarios", () => {
         .first(),
     ).toBeVisible();
 
-    const previewLink = page.getByTestId("performer-public-link");
-    if (await previewLink.count()) {
-      await expect(previewLink).toHaveAttribute("href", /\/cabinet\/preview\/artist\//);
+    const publicLink = page.getByTestId("performer-public-link");
+    if (await publicLink.count()) {
+      await expect(publicLink).toHaveAttribute("href", /\/artists\//);
     }
 
     await page.goto("/cabinet/performer/requests");

@@ -47,11 +47,11 @@ export function useVenueCabinetData() {
     }
     try {
       const me = await api<{
-        email: string | null;
+        email: string;
         organizations?: { id: string; name: string; kind: string; role?: string }[];
         active_organization_id?: string;
       }>("/me");
-      setEmail(me.email || "");
+      setEmail(me.email);
       const activeOrgId = getActiveOrg() || me.active_organization_id || me.organizations?.[0]?.id;
       const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
       if (!org) {
@@ -217,16 +217,21 @@ export function useVenueCabinetData() {
     halls.length === 0 &&
     !profileIncomplete;
 
-  async function sendOffer(item: VenueRequest) {
+  async function sendOffer(item: VenueRequest, amount?: number) {
     if (!item.slot_id) {
       setError("Нет свободного слота для оффера");
+      return;
+    }
+    const honorarium = amount ?? item.honorarium_rub;
+    if (!honorarium || honorarium <= 0) {
+      setError("Укажите сумму предложения");
       return;
     }
     setOfferBusy(item.id);
     try {
       const res = await api<{ booking_id: string }>(`/requests/${item.id}/offers`, {
         method: "POST",
-        body: JSON.stringify({ honorarium_rub: item.honorarium_rub, slot_id: item.slot_id }),
+        body: JSON.stringify({ honorarium_rub: honorarium, slot_id: item.slot_id }),
       });
       trackClientEvent("cabinet.offer_sent", { request_id: item.id });
       window.location.href = `/deals/${res.booking_id}`;
@@ -251,11 +256,13 @@ export function useVenueCabinetData() {
     upcomingEvents,
     calendarConflicts,
     profileIncomplete,
+    profileCompleteness: completeness?.applicable ? completeness : null,
     halls,
     venueId,
     bookings,
     bookingStats,
     requestCount: requests.length,
+    requests,
     empty,
     offerBusy,
     sendOffer,

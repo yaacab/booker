@@ -27,7 +27,7 @@ body { background: #edf1eb; }
 .team-legend small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
 .team-legend button[aria-pressed="true"] .team-index { background: #263b24; color: #e3fb97; }
 .reference-pieces { display: flex; min-width: 0; padding-block: 22px 28px; align-items: center; isolation: isolate; }
-.reference-piece { position: relative; display: block; background: none; border: 0; padding: 0; width: 38%; flex: 0 0 38%; cursor: pointer; color: white; -webkit-tap-highlight-color: transparent; transition: transform 420ms cubic-bezier(.2,.75,.2,1); will-change: transform; filter: drop-shadow(0 18px 10px rgba(51,65,20,.16)); transform-origin: 50% 75%; }
+.reference-piece { position: relative; display: block; background: none; border: 0; padding: 0; width: 38%; flex: 0 0 38%; cursor: pointer; color: white; -webkit-tap-highlight-color: transparent; transition: transform 420ms cubic-bezier(.2,.75,.2,1); filter: drop-shadow(0 18px 10px rgba(51,65,20,.16)); transform-origin: 50% 75%; }
 .reference-piece + .reference-piece { margin-left: -7%; }
 .reference-piece img { display: block; width: 100%; height: auto; }
 .reference-piece, .reference-piece:hover, .team-legend button, .team-legend button:hover { box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
