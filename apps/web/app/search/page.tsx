@@ -231,17 +231,21 @@ export default async function SearchPage({
           {error ? <article className="card empty" role="alert"><h2>Не получилось загрузить каталог</h2><p>{error} Попробуйте открыть страницу ещё раз.</p><Link className="btn secondary" href={`/search?${new URLSearchParams(Object.entries(q).filter((entry): entry is [string, string] => Boolean(entry[1]))).toString()}`}>Попробовать ещё раз</Link></article> : null}
           {empty ? (
             <article className="card empty">
-              <h2>{q.date ? "На выбранную дату свободных вариантов нет" : "По заданным условиям ничего не найдено"}</h2>
+              <h2>
+                {q.date
+                  ? "На выбранную дату свободных вариантов нет"
+                  : "В публичном каталоге пока нет доступных артистов"}
+              </h2>
               <p>
                 {q.date
-                  ? "Попробуйте соседнюю дату, измените формат или отправьте заявку оператору."
-                  : "Измените город, формат или другие параметры поиска."}
+                  ? "Попробуйте соседнюю дату или отправьте заявку оператору. Если каталог пуст целиком — смена даты не поможет."
+                  : "Это не из‑за города или бюджета: в выдачу попадают только профили с аккаунтом участника (не QA). Можно создать заявку — подберём вручную."}
               </p>
               <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                 <Link className="btn" href="/events/new">
                   Создать заявку
                 </Link>
-                <a className="btn secondary" href="mailto:hello@bukergo.ru?subject=Дата%20занята">
+                <a className="btn secondary" href="mailto:hello@bukergo.ru?subject=%D0%9A%D0%B0%D1%82%D0%B0%D0%BB%D0%BE%D0%B3%20%D0%B0%D1%80%D1%82%D0%B8%D1%81%D1%82%D0%BE%D0%B2">
                   Связаться с оператором
                 </a>
               </p>

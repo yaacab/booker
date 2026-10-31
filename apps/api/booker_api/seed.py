@@ -1,6 +1,7 @@
 """Демо-данные для локального контура Букер."""
 
 import os
+import secrets
 from datetime import timedelta
 
 from sqlalchemy.orm import Session
@@ -21,6 +22,60 @@ from booker_api.models import (
 from booker_api.security import hash_password, now
 
 DEMO_PASSWORD = "password1"
+# Shared owner for founding/catalog artists that were seeded without TeamMember rows.
+# Not @qa.bukergo.ru — those orgs stay excluded from public search by design.
+CATALOG_STEWARD_EMAIL = "catalog-steward@bukergo.ru"
+
+
+def ensure_catalog_steward(db: Session) -> User:
+    user = db.query(User).filter(User.email == CATALOG_STEWARD_EMAIL).one_or_none()
+    if user:
+        return user
+    password = os.environ.get("BOOKER_CATALOG_STEWARD_PASSWORD") or (
+        DEMO_PASSWORD if os.environ.get("BOOKER_ALLOW_DEMO_SEED") == "1" else secrets.token_urlsafe(24)
+    )
+    user = User(
+        email=CATALOG_STEWARD_EMAIL,
+        full_name="Каталог Букер",
+        phone="+79000000001",
+        password_hash=hash_password(password),
+    )
+    db.add(user)
+    db.flush()
+    return user
+
+
+def link_orphan_verified_artists(db: Session) -> int:
+    """Attach a steward account to verified artist orgs that have zero members.
+
+    Production founding catalog (~30 artists) was created without TeamMember rows;
+    public search and booking require an account behind the org. Idempotent.
+    """
+    steward = ensure_catalog_steward(db)
+    linked = 0
+    artists = db.query(Artist).filter(Artist.verified.is_(True)).all()
+    for artist in artists:
+        has_member = (
+            db.query(TeamMember.id)
+            .filter(TeamMember.organization_id == artist.organization_id)
+            .first()
+            is not None
+        )
+        if has_member:
+            continue
+        org = db.get(Organization, artist.organization_id)
+        if not org or org.kind != "artist":
+            continue
+        db.add(
+            TeamMember(
+                user_id=steward.id,
+                organization_id=org.id,
+                role="owner",
+                can_confirm_offer=True,
+            )
+        )
+        linked += 1
+    return linked
 
 
 def _ensure_venue_user(db: Session) -> bool:
@@ -446,6 +501,15 @@ def enrich_catalog(db: Session) -> int:
         org = Organization(name=pack["org"], kind="artist", city="Москва")
         db.add(org)
         db.flush()
+        steward = ensure_catalog_steward(db)
+        db.add(
+            TeamMember(
+                user_id=steward.id,
+                organization_id=org.id,
+                role="owner",
+                can_confirm_offer=True,
+            )
+        )
         artist = Artist(
             organization_id=org.id,
             name=pack["name"],

@@ -96,7 +96,7 @@ export function CabinetPageShell({
           <h1 id="cabinet-heading">{title || cabinetHeadline(mode)}</h1>
           <p className="cabinet-lede">{subtitle || roleBlurb(mode)}</p>
         </div>
-        {actions && actions.length > 0 ? (
+        {actions && actions.length > 0 && ready && !error ? (
           <div className="cabinet-hero-actions">
             {actions.map((a) => (
               <Link
@@ -119,7 +119,7 @@ export function CabinetPageShell({
 
       {leadBeforeMetrics && lead && ready && !error ? <div className="cabinet-lead">{lead}</div> : null}
 
-      {ready && metrics && metrics.length > 0 ? (
+      {ready && !error && metrics && metrics.length > 0 ? (
         <section className="cabinet-metrics" aria-label="Сводка кабинета">
           {metrics.map((m, index) => (
             <article
@@ -145,9 +145,20 @@ export function CabinetPageShell({
       ) : null}
 
       {error ? (
-        <p className="cabinet-alert" role="alert">
-          {error}. <Link href={loginHref(cabinetPath)}>Войти</Link>
-        </p>
+        <div className="cabinet-alert" role="alert">
+          <p>
+            {error === "Нужен вход"
+              ? "Чтобы открыть кабинет, войдите в аккаунт. Сводка и виджеты появятся после входа."
+              : `${error}.`}{" "}
+            <Link href={loginHref(cabinetPath)}>Войти</Link>
+            {error === "Нужен вход" ? (
+              <>
+                {" · "}
+                <Link href={`/login?mode=register&next=${encodeURIComponent(cabinetPath)}`}>Создать аккаунт</Link>
+              </>
+            ) : null}
+          </p>
+        </div>
       ) : null}
 
       {!leadBeforeMetrics && lead && ready && !error ? <div className="cabinet-lead">{lead}</div> : null}
@@ -162,20 +173,22 @@ export function CabinetPageShell({
 
       {footer && ready && !error ? <div className="cabinet-footer-block">{footer}</div> : null}
 
-      <p className="cabinet-signout">
-        <button
-          type="button"
-          className="secondary"
-          aria-label="Выйти из аккаунта"
-          onClick={() => {
-            setToken(null);
-            localStorage.removeItem("booker.admin");
-            window.location.href = "/login";
-          }}
-        >
-          Выйти
-        </button>
-      </p>
+      {ready && !error ? (
+        <p className="cabinet-signout">
+          <button
+            type="button"
+            className="secondary"
+            aria-label="Выйти из аккаунта"
+            onClick={() => {
+              setToken(null);
+              localStorage.removeItem("booker.admin");
+              window.location.href = "/login";
+            }}
+          >
+            Выйти
+          </button>
+        </p>
+      ) : null}
     </main>
   );
 }

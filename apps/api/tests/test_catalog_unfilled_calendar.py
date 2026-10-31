@@ -118,3 +118,37 @@ def test_qa_cabinets_are_bookable_but_not_listed(client, SessionLocal):
     event = client.post("/events", json={"organization_id": org["id"], "title": "QA", "city": "Москва", "event_date": (now() + timedelta(days=20)).isoformat()}, headers=h).json()
     res = client.post(f"/events/{event['id']}/requests", json={"resource_type": "artist", "resource_id": qa_artist["id"]}, headers=h)
     assert res.status_code == 200, res.text
+
+
+def test_link_orphan_verified_artists_makes_founding_catalog_public(client, SessionLocal):
+    from booker_api.models import Organization, TeamMember
+    from booker_api.seed import link_orphan_verified_artists
+
+    with SessionLocal() as db:
+        org = Organization(name="Орфан Каталог", kind="artist", city="Москва")
+        db.add(org)
+        db.flush()
+        orphan = Artist(
+            organization_id=org.id,
+            name="Орфан Артист",
+            city="Москва",
+            category="cover",
+            verified=True,
+            verified_status="approved",
+        )
+        db.add(orphan)
+        db.commit()
+        orphan_id = orphan.id
+        org_id = org.id
+
+    before = {i["id"] for i in client.get("/catalog/search", params={"category": "cover"}).json()["items"]}
+    assert orphan_id not in before
+
+    with SessionLocal() as db:
+        assert link_orphan_verified_artists(db) >= 1
+        db.commit()
+        assert db.query(TeamMember.id).filter(TeamMember.organization_id == org_id).first()
+
+    after = {i["id"] for i in client.get("/catalog/search", params={"category": "cover"}).json()["items"]}
+    assert orphan_id in after
+    assert client.get(f"/artists/{orphan_id}").status_code == 200

@@ -245,7 +245,13 @@ export default function M04Puzzle(p: Props) {
         const list: Opt[] = sec === "artist"
           ? p.talents.map((t) => ({ key: t.id, title: t.name, sub: t.roleLabel, img: t.mediaUrl, talent: t }))
           : p.venues.map((x) => ({ key: x.id, title: x.name, sub: x.metro || x.district || x.city, img: x.mediaUrl, venue: x }));
-        if (!list.length) list.push({ key: "empty", title: "На эту дату пока никого", sub: "попробуйте другую дату", kind: "empty" });
+        if (!list.length) {
+          list.push(
+            sec === "artist"
+              ? { key: "empty", title: "Пока нет доступных артистов", sub: "в публичном каталоге нет профилей · не из‑за даты", kind: "empty" }
+              : { key: "empty", title: "Площадки пока не в витрине", sub: "публичный каталог площадок отключён · можно позже", kind: "empty" },
+          );
+        }
         list.push({ key: "defer", title: "Подобрать позже", sub: "предложим варианты", kind: "defer" });
         return list;
       }
