@@ -96,3 +96,17 @@
   html[data-booker-theme="cream"] input[type="radio"]:checked + span,
   html[data-booker-theme="cream"] button:is(.on,.active,.selected,[aria-pressed="true"],[aria-selected="true"]) { background: #ecdfc9 !important; color: #1c1915 !important; border-color: #80601e !important; box-shadow: 0 0 0 1px #b8955a55 !important; }
 }
+
+/* REGRESSION GUARD (do not weaken): header/footer must never regain a cream glass plate.
+   Unlayered !important outranks @layer booker-cream and legacy `:is(.top,.site-footer)` paints.
+   SiteChrome: className="top" / "site-footer reference-footer" without surface-glass.
+   See docs/ops/UI_CHROME_NO_PLATE.md and apps/web/lib/chromeNoPlate.test.ts. */
+html[data-booker-theme="cream"] :is(header.top, .top, .top.surface-glass, footer.site-footer, .site-footer, .site-footer.surface-glass, .reference-footer),
+:is(header.top, footer.site-footer, .top.surface-glass, .site-footer.surface-glass) {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

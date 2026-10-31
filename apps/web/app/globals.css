@@ -774,12 +774,14 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
   border-left: 0;
   border-right: 0;
 }
+/* REGRESSION GUARD: never reintroduce glass/cream plate behind sticky chrome. */
 .top.surface-glass,
 header.top,
 .site-footer.surface-glass,
 footer.site-footer {
-  border: 0;
+  border: 0 !important;
   background: transparent !important;
+  background-color: transparent !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
