@@ -1,7 +1,7 @@
 /* Reference direction: silver-white, forest ink and translucent lime. */
 body { background: #edf1eb; }
 .wrap { max-width: 1488px; padding-inline: clamp(20px, 4.5vw, 68px); }
-.top.surface-glass { background: rgba(237, 241, 235, .88); border-bottom: 0; padding-block: 24px; gap: 24px; }
+.top.surface-glass { background: transparent; border-bottom: 0; padding-block: 24px; gap: 24px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .brand { display: inline-flex; align-items: center; gap: 24px; }
 .brand-word { font-size: 44px; font-weight: 800; letter-spacing: -.065em; }
 .brand-lime-dot { color: #c8f13c; display: inline-block; font-size: 42px; line-height: .5; vertical-align: top; margin-left: 2px; }

@@ -40,8 +40,17 @@
   html[data-booker-theme="cream"] :is(.site-content,.studio-fullscreen-root,.event-studio-map,.workspace-layout) {
     background: #f2ede5 !important; color: #1c1915 !important;
   }
-  html[data-booker-theme="cream"] :is(.top,.bottom-nav,.workspace-sidebar,.site-footer) {
+  html[data-booker-theme="cream"] :is(.bottom-nav,.workspace-sidebar,.site-footer) {
     background: #fbf8f3f5 !important; color: #1c1915 !important; border-color: #d8cbb9 !important;
+  }
+  /* Header sits on the page cream — no glass plate behind brand/nav. */
+  html[data-booker-theme="cream"] :is(.top, .top.surface-glass) {
+    background: transparent !important;
+    color: #1c1915 !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
   html[data-booker-theme="cream"] :is(.edition-toggle) { display: none !important; }
   html[data-booker-theme="cream"] :is(.card,.filters,.map-card,.catalog-searchbar,.catalog-result,.legal-doc,.legal-doc-content,.reference-info-card,.login-fields,.workspace-help,.studio-sidebar,.studio-header,.drawer,.modal-card,.saved-search-card,.deal-rail,.deal-aside,.accordion,.catalog-filter-group,.search-empty,.event-studio-summary,.talent-card,.studio-bottom-bar,.talent-panel,.panel-header,.event-summary,.search-box,.profile-calendar-panel,.profile-booking-panel,.profile-rider-card,.profile-facts-strip,.legal-reference-content,.legal-reference-nav,.operator-workspace,.saved-searches-shell,.assembly-editor) {

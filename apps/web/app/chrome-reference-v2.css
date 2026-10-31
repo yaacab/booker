@@ -1,6 +1,6 @@
 /* Reference compositions: information, account and shared chrome. */
 body { background: #edf1ef; }
-.top.surface-glass { background: #edf1eff2; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.top.surface-glass { background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; }
 .workspace-sidebar nav a { gap: 10px; padding-inline: 12px; font-size: 13px; }
 .workspace-sidebar nav svg { flex-shrink: 0; }
 .workspace-help { background: linear-gradient(140deg,#e8eedf,#f5f8ed); border: 1px solid #fff; border-radius: 16px; padding: 18px 14px; }

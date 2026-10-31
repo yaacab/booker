@@ -155,11 +155,11 @@ button.btn-glass:hover {
 .top {
   display: flex; justify-content: space-between; align-items: center;
   min-height: 64px; padding: 10px 4px; position: sticky; top: 0; z-index: 30;
-  background: var(--glass-bg);
-  border-bottom: 1px solid var(--glass-border-dim);
-  box-shadow: var(--glass-highlight);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.2);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.2);
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .nav-mobile-auth { display: none; align-items: center; }
 .nav-public { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -774,7 +774,13 @@ button:disabled, .btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; tr
   border-left: 0;
   border-right: 0;
 }
-.top.surface-glass { border-top: 0; }
+.top.surface-glass {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
 .site-footer.surface-glass,
 .bottom-nav.surface-glass { border-bottom: 0; }
 .bottom-nav a {

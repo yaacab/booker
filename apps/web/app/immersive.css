@@ -33,7 +33,7 @@ input, select, textarea { color: var(--ink); }
 input::placeholder, textarea::placeholder { color: #65705d; opacity: 1; }
 option { background: var(--surface); color: var(--ink); }
 :focus-visible { outline: 3px solid var(--cyan); outline-offset: 4px; }
-.top.surface-glass { background: rgba(237, 241, 235, .9); border-radius: 0; box-shadow: none; border: 0; border-bottom: 1px solid var(--border); padding: 18px 0; }
+.top.surface-glass { background: transparent; border-radius: 0; box-shadow: none; border: 0; padding: 18px 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .nav-public a { font-size: 13px; }
 .brand-lockup > img { filter: grayscale(1) brightness(0) invert(1); opacity: .9; }
 .nav-public a:hover, .nav-public a[aria-current="page"] { color: #263b24; }
