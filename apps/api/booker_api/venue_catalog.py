@@ -16,7 +16,7 @@ from booker_api.models import Venue, VenuePhoto, VenueSource, VenueStatusHistory
 PARTNERSHIP_STATUSES = frozenset({"unverified_listing", "claimed", "verified", "partner"})
 MODERATION_STATUSES = frozenset({"published", "needs_review", "rejected", "archived"})
 PUBLICATION_THRESHOLD = 55
-PUBLISHABLE_PHOTO_RIGHTS = frozenset({"licensed", "official_permission"})
+PUBLISHABLE_PHOTO_RIGHTS = frozenset({"owned", "licensed", "official_permission"})
 PRICE_FIELDS = frozenset(
     {"price", "tariff", "tariff_from_rub", "minimum_spend_rub", "price_per_person_rub"}
 )
@@ -253,6 +253,12 @@ def record_photos(db: Session, venue: Venue, row: dict) -> None:
             .one_or_none()
         )
         if existing:
+            if (
+                existing.photo_source_url != source_url
+                or existing.photo_rights_status != rights
+            ):
+                existing.rights_attested_at = None
+                existing.rights_attested_by_user_id = None
             existing.photo_source_url = source_url
             existing.photo_rights_status = rights
             existing.sort_order = order

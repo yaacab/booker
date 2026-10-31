@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from booker_api.event_readiness import build_event_readiness
 from booker_api.models import Artist, Booking, Event, Offer, Request, Venue
 from booker_api.security import now
 
@@ -60,13 +61,19 @@ def build_day_status(db: Session, event: Event) -> dict:
             }
         )
     total_active = confirmed + in_progress + completed
-    can_event_check_in = event.status in EVENT_CHECKIN_FROM and confirmed > 0
+    readiness = build_event_readiness(db, event)
+    can_event_check_in = (
+        event.status in EVENT_CHECKIN_FROM
+        and confirmed > 0
+        and readiness["state"] == "ready"
+    )
     can_event_check_out = event.status in EVENT_CHECKOUT_FROM and in_progress > 0
     return {
         "event_id": event.id,
         "event_status": event.status,
         "can_event_check_in": can_event_check_in,
         "can_event_check_out": can_event_check_out,
+        "readiness": readiness,
         "bookings": bookings_payload,
         "summary": {
             "confirmed": confirmed,
@@ -79,6 +86,10 @@ def build_day_status(db: Session, event: Event) -> dict:
 
 
 def check_in_booking(booking: Booking) -> str:
+    if booking.payout_blocked and booking.payout_block_reason in {
+        "legacy_external_unverified", "external_payment_correction"
+    }:
+        raise ValueError("Внешний перевод требует ручной сверки до check-in")
     if booking.status not in BOOKING_CHECKIN_FROM:
         raise ValueError(f"Нельзя check-in из статуса {booking.status}")
     booking.status = "InProgress"
@@ -95,6 +106,9 @@ def check_out_booking(booking: Booking) -> str:
 def check_in_event(db: Session, event: Event) -> dict:
     if event.status not in EVENT_CHECKIN_FROM:
         raise ValueError(f"Нельзя начать день события из статуса {event.status}")
+    readiness = build_event_readiness(db, event, lock=True)
+    if readiness["state"] != "ready":
+        raise ValueError("Обязательный состав события не готов")
     checked: list[str] = []
     for _req, booking in event_bookings(db, event.id):
         if booking and booking.status in BOOKING_CHECKIN_FROM:
@@ -103,7 +117,11 @@ def check_in_event(db: Session, event: Event) -> dict:
     if not checked:
         raise ValueError("Нет подтверждённых сделок для check-in")
     event.status = "InProgress"
-    return {"event_status": event.status, "checked_in_bookings": checked}
+    return {
+        "event_status": event.status,
+        "checked_in_bookings": checked,
+        "readiness": readiness,
+    }
 
 
 def check_out_event(db: Session, event: Event) -> dict:

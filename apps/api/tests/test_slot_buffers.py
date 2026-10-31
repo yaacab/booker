@@ -65,7 +65,9 @@ def test_adjacent_slots_ok_without_buffer_conflict_with_after_buffer(client):
         headers=auth_header(owner2["token"]),
     )
     assert clash.status_code == 409
-    page = client.get(f"/artists/{artist2['id']}")
+    page = client.get(
+        f"/artists/{artist2['id']}", headers=auth_header(owner2["token"])
+    )
     assert page.status_code == 200
     buffered_row = next(s for s in page.json()["slots"] if s["id"] == buffered.json()["id"])
     assert buffered_row["buffer_after_min"] == 60

@@ -1,15 +1,17 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { demoTotp } from "./totp-fixture";
 
 const API_BASE = process.env.BOOKER_API_URL ?? "http://127.0.0.1:8000";
 const DEMO_PASSWORD = "password1";
-const TOKEN_CACHE = path.resolve(__dirname, ".demo-tokens.json");
+const TOKEN_CACHE = process.env.BOOKER_E2E_TOKEN_CACHE ?? path.resolve(__dirname, ".demo-tokens.json");
 
 const DEMO_EMAILS = [
   "customer@booker.test",
   "artist@booker.test",
   "venue@booker.test",
+  "admin@booker.test",
 ] as const;
 
 async function loginDemo(email: string): Promise<{ token: string; user_id: string }> {
@@ -17,7 +19,8 @@ async function loginDemo(email: string): Promise<{ token: string; user_id: strin
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: DEMO_PASSWORD }),
+      body: JSON.stringify({ email, password: DEMO_PASSWORD,
+        ...(email === "admin@booker.test" ? { totp: demoTotp() } : {}) }),
     });
     if (res.status === 429 && attempt < 7) {
       await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
@@ -33,8 +36,9 @@ async function loginDemo(email: string): Promise<{ token: string; user_id: strin
 
 export default async function globalSetup() {
   const apiDir = path.resolve(__dirname, "../../api");
-  const venvPython = path.resolve(apiDir, "../../.venv/bin/python");
-  const pythonBin = fs.existsSync(venvPython) ? venvPython : "python3";
+  const venvPython = path.resolve(apiDir, ".venv/bin/python");
+  const pythonBin =
+    process.env.BOOKER_E2E_PYTHON ?? (fs.existsSync(venvPython) ? venvPython : "python3");
   execSync(`${pythonBin} -m booker_api.seed`, {
     cwd: apiDir,
     stdio: "inherit",
@@ -44,9 +48,17 @@ export default async function globalSetup() {
     },
   });
 
-  const tokens: Record<string, { token: string; user_id: string }> = {};
+  const tokens: Record<string, { token: string; user_id: string; artist_id?: string }> = {};
   for (const email of DEMO_EMAILS) {
     tokens[email] = await loginDemo(email);
   }
+  const catalog = await fetch(`${API_BASE}/catalog/search?city=${encodeURIComponent("Москва")}&category=dj`, {
+    headers: { Authorization: `Bearer ${tokens["customer@booker.test"].token}` },
+  });
+  if (!catalog.ok) throw new Error(`globalSetup catalog: ${catalog.status} ${await catalog.text()}`);
+  const body = (await catalog.json()) as { items?: { id: string; name: string }[] };
+  const nova = body.items?.find((item) => item.name === "DJ Nova");
+  if (!nova) throw new Error("globalSetup: DJ Nova is not published after seed");
+  tokens["artist@booker.test"].artist_id = nova.id;
   fs.writeFileSync(TOKEN_CACHE, JSON.stringify(tokens));
 }

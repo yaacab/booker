@@ -1,6 +1,8 @@
 """W3-SHARE / W3-COMPARE / E22: shared shortlist revoke + compare."""
 
-from tests.conftest import auth_header, register
+from datetime import datetime, timedelta, timezone
+
+from tests.conftest import auth_header, publish_artist, register
 
 
 def _seed(client):
@@ -27,6 +29,20 @@ def _seed(client):
                 headers=own_h,
             ).json()
         )
+    start = datetime.now(timezone.utc) + timedelta(days=10)
+    for artist in artists:
+        slot = client.post(
+            "/slots",
+            json={
+                "resource_type": "artist",
+                "resource_id": artist["id"],
+                "starts_at": start.isoformat(),
+                "ends_at": (start + timedelta(hours=4)).isoformat(),
+            },
+            headers=own_h,
+        )
+        assert slot.status_code == 200, slot.text
+        publish_artist(client, owner, artist["id"])
     fav_ids = []
     for artist in artists[:3]:
         fav = client.post(
@@ -102,6 +118,39 @@ def test_stranger_cannot_revoke(client):
         headers=ctx["stranger"],
     )
     assert denied.status_code == 404
+
+
+def test_viewer_cannot_publish_organization_shortlist(client):
+    ctx = _seed(client)
+    viewer = register(client, "share-viewer@booker.test", "Viewer")
+    owner_headers = ctx["cust_h"]
+    assert client.post(
+        f"/orgs/{ctx['cust_org']['id']}/members",
+        json={"user_id": viewer["user_id"], "role": "viewer"},
+        headers=owner_headers,
+    ).status_code == 200
+    viewer_headers = auth_header(viewer["token"])
+    favorite_ids = []
+    for artist in ctx["artists"][:2]:
+        favorite = client.post(
+            "/favorites",
+            json={
+                "organization_id": ctx["cust_org"]["id"],
+                "target_type": "artist", "target_id": artist["id"],
+            },
+            headers=viewer_headers,
+        )
+        assert favorite.status_code == 201
+        favorite_ids.append(favorite.json()["id"])
+    denied = client.post(
+        "/shortlists",
+        json={
+            "organization_id": ctx["cust_org"]["id"],
+            "target_type": "artist", "favorite_ids": favorite_ids,
+        },
+        headers=viewer_headers,
+    )
+    assert denied.status_code == 403
 
 
 def test_compare_artists(client):
