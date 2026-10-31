@@ -44,9 +44,11 @@
     background: #fbf8f3f5 !important; color: #1c1915 !important; border-color: #d8cbb9 !important;
   }
   /* Header sits on the page cream — no glass plate behind brand/nav. */
-  html[data-booker-theme="cream"] :is(.top, .top.surface-glass) {
+  html[data-booker-theme="cream"] :is(header.top, .top, .top.surface-glass) {
     background: transparent !important;
+    background-color: transparent !important;
     color: #1c1915 !important;
+    border: 0 !important;
     border-color: transparent !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
