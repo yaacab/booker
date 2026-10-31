@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from booker_api.config import settings
 from tests.conftest import auth_header
 from tests.test_calendar import _owner_artist
-from tests.test_offers import setup_negotiation, ack_both
+from tests.test_offers import ack_both, setup_negotiation
 
 
 def test_moscow_slot_roundtrip_and_equivalent_utc_overlap(client, engine):

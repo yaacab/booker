@@ -9,10 +9,9 @@ from sqlalchemy.orm import Session
 from booker_api.calendar import MSK, calendar_day_bounds, open_slots_unmasked, overlapping_slots
 from booker_api.composition import seed_categories
 from booker_api.db import get_db
-from booker_api.ical_import import calendar_targets, import_ical_source
 from booker_api.demo_calendar import ensure_demo_day
+from booker_api.ical_import import calendar_targets, import_ical_source
 from booker_api.models import (
-    TeamMember,
     Artist,
     ArtistTariff,
     AvailabilitySlot,
@@ -21,6 +20,7 @@ from booker_api.models import (
     Offer,
     Organization,
     Request,
+    TeamMember,
     User,
     Venue,
     VenueHall,

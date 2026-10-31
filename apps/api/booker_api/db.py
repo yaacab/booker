@@ -2,8 +2,8 @@ from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.engine import make_url
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from booker_api.config import settings
