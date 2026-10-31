@@ -33,3 +33,18 @@ test("globals force transparent sticky chrome", () => {
   assert.match(globals, /header\.top[\s\S]*background:\s*transparent\s*!important/);
   assert.match(globals, /footer\.site-footer[\s\S]*background:\s*transparent\s*!important/);
 });
+
+test("cream nav never regains a white glass contour", () => {
+  assert.match(
+    continuity,
+    /REGRESSION GUARD: public nav[\s\S]*\.nav-public[\s\S]*border:\s*0\s*!important/,
+  );
+  assert.match(
+    continuity,
+    /html\[data-booker-theme="cream"\] \.reference-login a[\s\S]*border:\s*1px solid #d8cbb9\s*!important/,
+  );
+  assert.doesNotMatch(
+    continuity,
+    /html\[data-booker-theme="cream"\] \.reference-login a[\s\S]*rgba\(255,\s*255,\s*255/,
+  );
+});

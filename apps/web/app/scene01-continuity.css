@@ -110,3 +110,20 @@ html[data-booker-theme="cream"] :is(header.top, .top, .top.surface-glass, footer
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* REGRESSION GUARD: public nav must not regain a white glass contour on cream.
+   CDP on prod showed border/inset highlight from legacy reference styles. */
+html[data-booker-theme="cream"] :is(.nav-public, .nav-reference-public, .nav-mobile-auth) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+html[data-booker-theme="cream"] .reference-login a {
+  background: #fbf8f3 !important;
+  border: 1px solid #d8cbb9 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: #1c1915 !important;
+}
