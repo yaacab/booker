@@ -163,7 +163,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         К содержанию
       </a>
       <div className="wrap">
-        <header className="top surface-glass">
+        <header className="top">
           <Link className="brand" href="/" aria-label="Букер">
             <BrandLockup />
             <span className="brand-tagline">Люди. Места. События.</span>
