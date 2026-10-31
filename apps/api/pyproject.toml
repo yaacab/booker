@@ -17,6 +17,8 @@ dependencies = [
   "httpx>=0.27",
   "python-multipart>=0.0.9",
   "pyotp>=2.9",
+  # Required for Fernet TOTP-at-rest (booker_api.totp_storage); keep in prod graph.
+  "cryptography>=43",
 ]
 
 [project.optional-dependencies]
