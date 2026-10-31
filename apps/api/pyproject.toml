@@ -18,6 +18,8 @@ dependencies = [
   "python-multipart>=0.0.9",
   "pyotp>=2.9",
   "cryptography>=46.0.7",
+  "certifi>=2026.10.18",
+  "opentelemetry-api>=1.45.1",
 ]
 
 [project.optional-dependencies]
