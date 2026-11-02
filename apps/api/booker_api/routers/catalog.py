@@ -21,6 +21,7 @@ from booker_api.models import (
     ArtistTariff,
     AvailabilitySlot,
     Booking,
+    BookingHold,
     CatalogCategory,
     Offer,
     Organization,
@@ -795,6 +796,77 @@ def create_slot(body: SlotIn, user: User = Depends(current_user), db: Session = 
         "buffer_before_min": getattr(slot, "buffer_before_min", 0) or 0,
         "buffer_after_min": getattr(slot, "buffer_after_min", 0) or 0,
     }
+
+
+def _require_slot_writer(db: Session, user: User, slot: AvailabilitySlot) -> None:
+    if slot.resource_type == "artist":
+        artist = db.get(Artist, slot.resource_id)
+        if not artist:
+            raise HTTPException(404, "Артист не найден")
+        require_org_writer(db, user, artist.organization_id)
+        return
+    if slot.resource_type == "hall":
+        hall = db.get(VenueHall, slot.resource_id)
+        if not hall:
+            raise HTTPException(404, "Зал не найден")
+        venue = db.get(Venue, hall.venue_id)
+        if not venue:
+            raise HTTPException(404, "Площадка не найдена")
+        require_org_writer(db, user, venue.organization_id)
+        return
+    raise HTTPException(400, "resource_type: artist|hall")
+
+
+@router.delete("/slots/{slot_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_slot(
+    slot_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Remove an unused open availability window. Held/confirmed/busy stay protected."""
+    slot = db.get(AvailabilitySlot, slot_id)
+    if not slot:
+        raise HTTPException(404, "Слот не найден")
+    _require_slot_writer(db, user, slot)
+    if slot.status != "open":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Можно удалить только открытый слот")
+    active_hold = (
+        db.query(BookingHold)
+        .filter(BookingHold.slot_id == slot.id, BookingHold.status == "active")
+        .first()
+    )
+    if active_hold:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Слот удерживается бронированием")
+    linked = (
+        db.query(Booking)
+        .filter(
+            Booking.slot_id == slot.id,
+            Booking.status.in_(
+                (
+                    "Negotiation",
+                    "DateHeld",
+                    "AwaitingContract",
+                    "AwaitingPayment",
+                    "Confirmed",
+                    "InProgress",
+                )
+            ),
+        )
+        .first()
+    )
+    if linked:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Слот связан с активной сделкой")
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="slot.deleted",
+        entity_type="slot",
+        entity_id=slot.id,
+        payload={"starts_at": str(slot.starts_at), "ends_at": str(slot.ends_at)},
+    )
+    db.delete(slot)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/organizations/{org_id}/calendar-targets")

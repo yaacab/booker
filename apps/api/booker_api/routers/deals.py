@@ -16,7 +16,7 @@ from starlette.requests import Request as HttpRequest
 from starlette.responses import Response
 
 from booker_api.booking_holds import expire_holds
-from booker_api.calendar import overlapping_slots
+from booker_api.calendar import overlapping_slots, slot_is_bookable
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
 from booker_api.config import settings
 from booker_api.db import get_db
@@ -975,7 +975,7 @@ def quick_request(
     if not artist:
         raise HTTPException(404, "Артист не найден")
     slot = db.get(AvailabilitySlot, slot_id)
-    if not slot or slot.status != "open":
+    if not slot or not slot_is_bookable(db, slot):
         raise HTTPException(409, "Слот недоступен")
     if slot.resource_type != "artist" or slot.resource_id != artist.id:
         raise HTTPException(400, "Слот не относится к этому артисту")
@@ -1173,6 +1173,8 @@ def create_offer(
         raise HTTPException(404, "Слот не найден")
     if not _slot_matches_request(db, slot, req):
         raise HTTPException(400, "Слот не относится к ресурсу заявки")
+    if not slot_is_bookable(db, slot):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Слот недоступен")
     offer = Offer(request_id=req.id)
     db.add(offer)
     db.flush()

@@ -58,7 +58,7 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
       { label: "Профиль", value: completenessScore != null ? `${completenessScore}%` : "—", hint: "готовность к бронированию" },
     ] : undefined}
     lead={section === "calendar" && orgId ? <>
-      <CalendarOverviewWidget key={calendarRevision} orgId={orgId} artistId={artistId} bookings={bookings} />
+      <CalendarOverviewWidget key={calendarRevision} orgId={orgId} artistId={artistId} bookings={bookings} role={role} />
       <details className="workspace-disclosure" id="calendar-manage">
         <summary>Открыть свободные даты <span aria-hidden="true">＋</span></summary>
         <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="artist" onChanged={() => { setCalendarRevision(value => value + 1); void reload(); }} />
@@ -78,7 +78,7 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
       <ArtistOpportunities artistId={artistId}/>
       <section className="cabinet-zone-grid workspace-secondary-grid" aria-label="Заявки и профиль">
         {activeHolds.length>0||negotiations.length>0?<UpcomingPerformancesWidget bookings={upcomingPerformances} />:null}
-        {orgId ? <CalendarOverviewWidget orgId={orgId} artistId={artistId} bookings={bookings} compact /> : null}
+        {orgId ? <CalendarOverviewWidget orgId={orgId} artistId={artistId} bookings={bookings} compact role={role} /> : null}
         {profileCompleteness ? <ProfileCompletenessWidget completeness={profileCompleteness} /> : <PerformerOnboardingWidget profileComplete={!profileIncomplete} hasOpenSlots={upcomingPerformances.length > 0 || activeHolds.length > 0} hasRequests={newRequests.length + awaitingResponse.length > 0} />}
       </section>
       {orgId ? <details className="workspace-disclosure">

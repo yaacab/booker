@@ -1,16 +1,47 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { api, isWriteRole } from "@/lib/api";
 import { formatClock, formatWhen, parseBookerDate } from "@/lib/format";
 import { DashboardWidget } from "../../DashboardWidget";
 import { MonthCalendar } from "../../MonthCalendar";
 import type { PerformerBooking } from "../types";
 import { usePerformerCalendarOverview } from "../usePerformerCalendarOverview";
 
-export function CalendarOverviewWidget({ orgId, artistId, bookings, compact = false }: {
-  orgId: string; artistId: string; bookings: PerformerBooking[]; compact?: boolean;
+export function CalendarOverviewWidget({
+  orgId,
+  artistId,
+  bookings,
+  compact = false,
+  role = "",
+}: {
+  orgId: string;
+  artistId: string;
+  bookings: PerformerBooking[];
+  compact?: boolean;
+  role?: string;
 }) {
-  const { slots, openSlots, activeVacation, confirmedDates, loading, error } = usePerformerCalendarOverview(orgId, artistId, bookings);
+  const { slots, openSlots, activeVacation, confirmedDates, loading, error, reload } =
+    usePerformerCalendarOverview(orgId, artistId, bookings);
+  const [busyId, setBusyId] = useState("");
+  const [actionError, setActionError] = useState("");
+  const canManage = isWriteRole(role);
+
+  async function deleteOpenSlot(slotId: string) {
+    if (!canManage) return;
+    if (!window.confirm("Удалить этот открытый слот?")) return;
+    setBusyId(slotId);
+    setActionError("");
+    try {
+      await api(`/slots/${encodeURIComponent(slotId)}`, { method: "DELETE" });
+      await reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Не удалось удалить слот");
+    } finally {
+      setBusyId("");
+    }
+  }
 
   if (compact) return <DashboardWidget title="Открытые слоты" accent="performer">
     <div className="workspace-widget-link"><Link href="/cabinet/performer/calendar">Управлять →</Link></div>
@@ -38,5 +69,27 @@ export function CalendarOverviewWidget({ orgId, artistId, bookings, compact = fa
       {activeVacation ? <span>Отпуск до {activeVacation.ends_at ? formatWhen(activeVacation.ends_at) : "—"}</span> : null}
       <a href="#supply-settings" onClick={() => { const details = document.getElementById("supply-settings"); if (details instanceof HTMLDetailsElement) details.open = true; }}>Импорт календаря и отпуск →</a>
     </div>
+    {openSlots.length ? (
+      <ul className="dashboard-list" data-testid="performer-open-slot-actions">
+        {openSlots.slice(0, 12).map((slot) => (
+          <li key={slot.id}>
+            <span>
+              {formatWhen(slot.starts_at)} — {formatClock(slot.ends_at)}
+            </span>
+            {canManage ? (
+              <button
+                type="button"
+                className="linkish"
+                disabled={busyId === slot.id}
+                onClick={() => void deleteOpenSlot(slot.id)}
+              >
+                {busyId === slot.id ? "…" : "Удалить"}
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    ) : null}
+    {actionError ? <p style={{ color: "var(--danger)" }}>{actionError}</p> : null}
   </div>;
 }
