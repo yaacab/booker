@@ -1028,6 +1028,16 @@ def _ensure_sqlite_payment_deadline_guards(bind) -> None:
                 "BEGIN SELECT RAISE(ABORT, 'offer payment terms are immutable'); END"
             )
         )
+        # Commercial snapshot columns stay frozen; customer_ack/supplier_ack stay mutable.
+        conn.execute(
+            text(
+                "CREATE TRIGGER IF NOT EXISTS offer_versions_commercial_immutable "
+                "BEFORE UPDATE OF offer_id, honorarium_rub, commission_rate, commission_rub, "
+                "total_rub, advance_rub, balance_rub, security_deposit_rub, currency, terms "
+                "ON offer_versions "
+                "BEGIN SELECT RAISE(ABORT, 'offer version commercial fields are immutable'); END"
+            )
+        )
         conn.execute(
             text(
                 "CREATE TRIGGER IF NOT EXISTS payment_obligations_deadlines_immutable "

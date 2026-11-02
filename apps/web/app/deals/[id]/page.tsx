@@ -45,6 +45,21 @@ type Room = {
     supplier_ack: boolean;
     source?: string;
   };
+  active_offer_version_id?: string | null;
+  accepted_offer_version_id?: string | null;
+  renegotiation_pending?: boolean;
+  offer_versions?: {
+    id: string;
+    quote_id: string;
+    honorarium_rub: number;
+    total_rub: number;
+    terms?: string;
+    customer_ack: boolean;
+    supplier_ack: boolean;
+    is_active?: boolean;
+    is_accepted?: boolean;
+    created_at?: string | null;
+  }[];
   contract: { id: string; customer_signed: boolean; supplier_signed: boolean; body: string } | null;
   documents?: { kind: string; id: string; label: string; quote_id?: string; signed: boolean }[];
   payment: { id: string; status: string; amount_rub: number; provider?: string } | null;
@@ -194,7 +209,12 @@ export default function DealPage() {
       return;
     }
     if (action.kind === "ack") {
-      await act(() => api(`/offers/${current.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) }));
+      await act(() =>
+        api(`/offers/${current.offer_id}/ack`, {
+          method: "POST",
+          body: JSON.stringify({ side, quote_id: current.quote.quote_id }),
+        })
+      );
       return;
     }
     if (action.kind === "contract") {
@@ -297,7 +317,10 @@ export default function DealPage() {
               disabled={busy}
               onClick={() =>
                 void act(() =>
-                  api(`/offers/${room.offer_id}/ack`, { method: "POST", body: JSON.stringify({ side }) })
+                  api(`/offers/${room.offer_id}/ack`, {
+                    method: "POST",
+                    body: JSON.stringify({ side, quote_id: room.quote.quote_id }),
+                  })
                 )
               }
             >
@@ -445,6 +468,31 @@ export default function DealPage() {
                 {room.quote.supplier_ack ? "подтвердил" : "ожидается подтверждение"}.
               </p>
               <p>{ackLabel(room.quote)}. Сообщение в чате не заменяет подтверждение актуальной версии.</p>
+              {room.renegotiation_pending ? (
+                <p role="status">Идёт пересогласование: нужна повторная фиксация активной версии.</p>
+              ) : null}
+              {room.offer_versions?.length ? (
+                <ul className="timeline" aria-label="История версий условий">
+                  {room.offer_versions.map((version) => (
+                    <li key={version.id}>
+                      <span className="mono">{version.quote_id}</span>
+                      {" · "}
+                      {money(version.total_rub)}
+                      {version.is_active ? " · активная" : null}
+                      {version.is_accepted ? " · принятая" : null}
+                      {" · "}
+                      {version.customer_ack && version.supplier_ack
+                        ? "обе стороны подтвердили"
+                        : version.customer_ack || version.supplier_ack
+                          ? "частично подтверждена"
+                          : "без подтверждений"}
+                      {version.terms ? <div className="timeline">{version.terms}</div> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mono">quote_id: {room.quote.quote_id}</p>
+              )}
             </section>
           )}
           {tab === "documents" && (

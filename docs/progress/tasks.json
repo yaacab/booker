@@ -1886,10 +1886,16 @@
         "MVP",
         "FULL"
       ],
-      "status": "TODO",
-      "evidence": [],
+      "status": "DONE",
+      "evidence": [
+        "apps/api/booker_api/routers/deals.py",
+        "apps/api/tests/test_deal_offer_audit_v4.py",
+        "apps/web/app/deals/[id]/page.tsx",
+        "apps/web/e2e/deal-path.spec.ts",
+        "docs/ops/evidence/2026-11-02-v4-offer-versions-audit.md"
+      ],
       "blocked_by": [],
-      "notes": "Следующий roadmap slice после V3",
+      "notes": "V4 local PASS: version history, clear accepted, system+audit, immutability, web quote_id",
       "source": "G0 roadmap V4",
       "updated_at": "2026-11-02"
     },

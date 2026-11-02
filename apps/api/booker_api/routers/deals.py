@@ -33,6 +33,7 @@ from booker_api.file_scan import safe_media_type, scan_upload
 from booker_api.models import (
     Artist,
     ArtistTariff,
+    AuditLog,
     AvailabilitySlot,
     Booking,
     BookingHold,
@@ -1279,6 +1280,117 @@ def create_offer(
     }
 
 
+def _offer_version_payload(
+    version: OfferVersion,
+    *,
+    acknowledgements: list[OfferAcknowledgement] | None = None,
+    is_active: bool = False,
+    is_accepted: bool = False,
+) -> dict:
+    acks = acknowledgements or []
+    return {
+        "id": version.id,
+        "quote_id": version.id,
+        "created_at": version.created_at.isoformat() if version.created_at else None,
+        "honorarium_rub": version.honorarium_rub,
+        "commission_rate": version.commission_rate,
+        "commission_rub": version.commission_rub,
+        "total_rub": version.total_rub,
+        "advance_rub": version.advance_rub,
+        "balance_rub": version.balance_rub,
+        "security_deposit_rub": version.security_deposit_rub,
+        "currency": version.currency,
+        "terms": version.terms or "",
+        "customer_ack": version.customer_ack,
+        "supplier_ack": version.supplier_ack,
+        "is_active": is_active,
+        "is_accepted": is_accepted,
+        "acknowledgements": [
+            {
+                "side": row.side,
+                "organization_id": row.organization_id,
+                "actor_user_id": row.actor_user_id,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+            for row in acks
+        ],
+    }
+
+
+def _require_offer_participant(db: Session, user: User, offer: Offer) -> tuple[Request, str, str]:
+    req = db.get(Request, offer.request_id)
+    if not req:
+        raise HTTPException(404, "Заявка не найдена")
+    customer_org_id, supplier_org_id = _request_participant_orgs(db, req)
+    if not (
+        membership_ok(db, user, customer_org_id) or membership_ok(db, user, supplier_org_id)
+    ):
+        raise HTTPException(403, "Нет доступа")
+    return req, customer_org_id, supplier_org_id
+
+
+@router.get("/offers/{offer_id}/versions")
+def list_offer_versions(
+    offer_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    offer = db.get(Offer, offer_id)
+    if not offer:
+        raise HTTPException(404, "Оффер не найден")
+    _require_offer_participant(db, user, offer)
+    booking = db.query(Booking).filter(Booking.offer_id == offer.id).one_or_none()
+    versions = (
+        db.query(OfferVersion)
+        .filter(OfferVersion.offer_id == offer.id)
+        .order_by(OfferVersion.created_at.asc(), OfferVersion.id.asc())
+        .all()
+    )
+    ack_rows = (
+        db.query(OfferAcknowledgement)
+        .filter(OfferAcknowledgement.offer_version_id.in_([row.id for row in versions] or [""]))
+        .order_by(OfferAcknowledgement.created_at.asc(), OfferAcknowledgement.id.asc())
+        .all()
+    )
+    acks_by_version: dict[str, list[OfferAcknowledgement]] = {}
+    for row in ack_rows:
+        acks_by_version.setdefault(row.offer_version_id, []).append(row)
+    accepted_id = booking.accepted_offer_version_id if booking else None
+    return {
+        "offer_id": offer.id,
+        "active_version_id": offer.active_version_id,
+        "accepted_offer_version_id": accepted_id,
+        "renegotiation_pending": bool(
+            accepted_id
+            and offer.active_version_id
+            and accepted_id != offer.active_version_id
+        )
+        or bool(
+            offer.active_version_id
+            and next(
+                (
+                    row
+                    for row in versions
+                    if row.id == offer.active_version_id
+                    and not (row.customer_ack and row.supplier_ack)
+                ),
+                None,
+            )
+            and accepted_id is None
+            and len(versions) > 1
+        ),
+        "versions": [
+            _offer_version_payload(
+                row,
+                acknowledgements=acks_by_version.get(row.id, []),
+                is_active=row.id == offer.active_version_id,
+                is_accepted=row.id == accepted_id,
+            )
+            for row in versions
+        ],
+    }
+
+
 @router.post("/offers/{offer_id}/versions")
 def new_version(
     offer_id: str,
@@ -1325,6 +1437,10 @@ def new_version(
     breakdown = price_breakdown(honorarium, waive_commission=waive)
     if not event:
         raise HTTPException(404, "Событие не найдено")
+    previous_version_id = offer.active_version_id
+    previous = db.get(OfferVersion, previous_version_id) if previous_version_id else None
+    previous_terms = (previous.terms or "") if previous else ""
+    new_terms = body.get("terms", "")
     payment_terms = _payment_terms(body, breakdown["total_rub"], event.event_date)
     version = OfferVersion(
         offer_id=offer.id,
@@ -1333,7 +1449,7 @@ def new_version(
         commission_rub=breakdown["commission_rub"],
         total_rub=breakdown["total_rub"],
         **payment_terms,
-        terms=body.get("terms", ""),
+        terms=new_terms,
         customer_ack=False,
         supplier_ack=False,
     )
@@ -1341,18 +1457,53 @@ def new_version(
     db.flush()
     ensure_payment_plan(db, version)
     offer.active_version_id = version.id
+    if booking and booking.accepted_offer_version_id:
+        booking.accepted_offer_version_id = None
+    honorarium_delta = None
+    if previous is not None:
+        honorarium_delta = breakdown["honorarium_rub"] - previous.honorarium_rub
+    audit_payload = {
+        **breakdown,
+        "previous_version_id": previous_version_id,
+        "terms_changed": previous_terms != (new_terms or ""),
+        "honorarium_delta_rub": honorarium_delta,
+    }
     audit(
         db,
         actor_user_id=user.id,
         action="offer.version",
         entity_type="offer_version",
         entity_id=version.id,
-        payload=breakdown,
+        payload=audit_payload,
     )
+    conv = (
+        db.query(Conversation).filter(Conversation.booking_id == booking.id).one_or_none()
+        if booking
+        else None
+    )
+    if conv is None:
+        conv = db.query(Conversation).filter(Conversation.request_id == req.id).one_or_none()
+    if conv:
+        delta_text = (
+            f" Изменение гонорара: {honorarium_delta:+d} ₽."
+            if honorarium_delta is not None
+            else ""
+        )
+        db.add(
+            Message(
+                conversation_id=conv.id,
+                kind="system",
+                body=(
+                    f"Опубликована новая версия условий. quote_id={version.id}."
+                    f"{delta_text} Предыдущие подтверждения не переносятся."
+                ),
+            )
+        )
     db.commit()
     return {
         "id": version.id,
         "quote_id": version.id,
+        "previous_version_id": previous_version_id,
         **breakdown,
         **_payment_terms_response(version),
         "active": False,
@@ -1991,6 +2142,83 @@ def deal_room(
         if booking.status in {"AwaitingPayment", "Confirmed", "InProgress"}
         else None
     )
+    offer_versions = (
+        db.query(OfferVersion)
+        .filter(OfferVersion.offer_id == offer.id)
+        .order_by(OfferVersion.created_at.asc(), OfferVersion.id.asc())
+        .all()
+    )
+    version_ids = [row.id for row in offer_versions]
+    ack_rows = (
+        db.query(OfferAcknowledgement)
+        .filter(OfferAcknowledgement.offer_version_id.in_(version_ids or [""]))
+        .order_by(OfferAcknowledgement.created_at.asc(), OfferAcknowledgement.id.asc())
+        .all()
+    )
+    acks_by_version: dict[str, list[OfferAcknowledgement]] = {}
+    for row in ack_rows:
+        acks_by_version.setdefault(row.offer_version_id, []).append(row)
+    accepted_id = booking.accepted_offer_version_id
+    active_id = offer.active_version_id
+    renegotiation_pending = bool(
+        (accepted_id and active_id and accepted_id != active_id)
+        or (
+            active_id
+            and version
+            and not (version.customer_ack and version.supplier_ack)
+            and (accepted_id is None)
+            and len(offer_versions) > 1
+        )
+    )
+    timeline_entity_ids = {offer.id, booking.id, *version_ids}
+    timeline_actions = {
+        "offer.created",
+        "offer.version",
+        "offer.ack",
+        "hold.created",
+        "hold.expired",
+        "contract.created",
+        "booking.transition",
+    }
+    audit_rows = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.entity_id.in_(timeline_entity_ids or [""]),
+            AuditLog.action.in_(timeline_actions),
+        )
+        .order_by(AuditLog.created_at.asc(), AuditLog.id.asc())
+        .all()
+    )
+    offer_timeline = []
+    for row in audit_rows:
+        try:
+            payload = json.loads(row.payload or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        safe_payload = {
+            key: payload[key]
+            for key in (
+                "previous_version_id",
+                "honorarium_rub",
+                "total_rub",
+                "commission_rub",
+                "terms_changed",
+                "honorarium_delta_rub",
+                "side",
+                "quote_id",
+            )
+            if key in payload
+        }
+        offer_timeline.append(
+            {
+                "id": row.id,
+                "action": row.action,
+                "entity_type": row.entity_type,
+                "entity_id": row.entity_id,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "payload": safe_payload,
+            }
+        )
     return {
         "booking_id": booking.id,
         "offer_id": offer.id,
@@ -2000,6 +2228,19 @@ def deal_room(
         "role": role,
         "acting_org_id": customer_org_id if role == "customer" else supplier_org_id,
         "workspace_kind": workspace_kind,
+        "active_offer_version_id": active_id,
+        "accepted_offer_version_id": accepted_id,
+        "renegotiation_pending": renegotiation_pending,
+        "offer_versions": [
+            _offer_version_payload(
+                row,
+                acknowledgements=acks_by_version.get(row.id, []),
+                is_active=row.id == active_id,
+                is_accepted=row.id == accepted_id,
+            )
+            for row in offer_versions
+        ],
+        "offer_timeline": offer_timeline,
         "event_title": event.title,
         "tabs": ["chat", "terms", "documents", "payments", "dispute"],
         "dispute_categories": [

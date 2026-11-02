@@ -1,20 +1,20 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-02 14:43 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-02 14:48 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
 
 - Всего: **131** задач
-- Выполнено: **78**
+- Выполнено: **79**
 - В работе: **0**
-- Ожидают: **19**
+- Ожидают: **18**
 - Заблокировано: **27**
 - Отложено: **7**
-- Общая готовность: **59.54%**
-- MVP: **77.94%** (53/68)
+- Общая готовность: **60.31%**
+- MVP: **79.41%** (54/68)
 - Дизайн: **25.00%** (3/12)
-- Полный запуск (FULL): **58.59%** (75/128)
+- Полный запуск (FULL): **59.38%** (76/128)
 - Инфраструктура/релиз (INFRA): **66.67%** (16/24)
 - Следующая задача: **ART-06** / Артист: запрос верификации из кабинета (supply→admin)
 
@@ -34,7 +34,7 @@
 | Кабинет площадки | 3 | 2 | 0 | 1 | 0 | 0 | 66.67% |
 | Каталог и поиск | 8 | 5 | 0 | 3 | 0 | 0 | 62.50% |
 | Календарь и бронирования | 9 | 8 | 0 | 1 | 0 | 0 | 88.89% |
-| Заявки, предложения и Deal Room | 6 | 5 | 0 | 1 | 0 | 0 | 83.33% |
+| Заявки, предложения и Deal Room | 6 | 6 | 0 | 0 | 0 | 0 | 100.00% |
 | Сообщения и уведомления | 3 | 2 | 0 | 0 | 1 | 0 | 66.67% |
 | Платежи, возвраты и выплаты | 12 | 7 | 0 | 1 | 1 | 3 | 58.33% |
 | Споры, арбитраж и поддержка | 5 | 4 | 0 | 0 | 0 | 1 | 80.00% |
@@ -49,11 +49,11 @@
 - ⬜ `ART-06` [MVP,FULL] — Артист: запрос верификации из кабинета (supply→admin)
 - ⬜ `CAL-07` [MVP,FULL] — Port V0+V3 calendar/hold fixes в delivery/live canonical
 - ⬜ `CAT-03` [MVP,FULL] — Публичные услуги /services/public discovery в web
-- ⬜ `DEAL-03` [MVP,FULL] — V4: усиление версий условий, статусов и аудита изменений оффера
 - ⬜ `LEG-03` [FULL] — Хостинг 152-ФЗ / уведомление РКН
 - ⬜ `OWN-DESIGN-ACK` [DESIGN,FULL] — Владелец утвердил статичный дизайн ключевых путей
 - ⬜ `OWN-LEGAL-GO` [FULL] — Юрист/бухгалтер/реквизиты: legal publish GO
 - ⬜ `OWN-MOTION-ACK` [DESIGN,FULL] — Владелец утвердил конкретный motion «Рамка слота»
+- ⬜ `OWN-PAY-PARTNER` [FULL] — Платёжный партнёр письменно подтвердил схему
 
 ## Полный чек-лист
 
@@ -146,8 +146,8 @@
 
 - ✅ **DEAL-01** [MVP, FULL] Заявки, офферы с quote_id, ack обеих сторон  <br/>status=`DONE`; evidence: test_offers.py; LAUNCH_CHECKLIST
 - ✅ **DEAL-02** [MVP, FULL] Deal Room вкладки чат/условия/документы/платежи/спор  <br/>status=`DONE`; evidence: LAUNCH_CHECKLIST; apps/web/app/deals/
-- ⬜ **DEAL-03** [MVP, FULL] V4: усиление версий условий, статусов и аудита изменений оффера  <br/>status=`TODO`; evidence: —
-  - notes: Следующий roadmap slice после V3
+- ✅ **DEAL-03** [MVP, FULL] V4: усиление версий условий, статусов и аудита изменений оффера  <br/>status=`DONE`; evidence: apps/api/booker_api/routers/deals.py; apps/api/tests/test_deal_offer_audit_v4.py; apps/web/app/deals/[id]/page.tsx; apps/web/e2e/deal-path.spec.ts; docs/ops/evidence/2026-11-02-v4-offer-versions-audit.md
+  - notes: V4 local PASS: version history, clear accepted, system+audit, immutability, web quote_id
 - ✅ **M03** [FULL, MVP] Неизменяемый технический снимок договора/ack локально  <br/>status=`DONE`; evidence: CONTRACT_DRAFT_ACK_2026-10-02.md
 - ✅ **P04** [FULL] Deal Room и кабинеты локально (FULL)  <br/>status=`DONE`; evidence: apps/web/app/deals/
 - ✅ **T04** [MVP, FULL] Deal Room и кабинеты сторон работают локально  <br/>status=`DONE`; evidence: apps/web/app/deals/; docs/PROJECT_STATE.md

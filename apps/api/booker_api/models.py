@@ -790,10 +790,28 @@ class PaymentObligation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+_OFFER_VERSION_IMMUTABLE_ATTRS = (
+    "offer_id",
+    "honorarium_rub",
+    "commission_rate",
+    "commission_rub",
+    "total_rub",
+    "advance_rub",
+    "balance_rub",
+    "security_deposit_rub",
+    "payment_terms_json",
+    "currency",
+    "terms",
+)
+
+
 @event.listens_for(OfferVersion, "before_update")
-def _reject_offer_payment_terms_mutation(_mapper, _connection, target: OfferVersion) -> None:
-    if inspect(target).attrs.payment_terms_json.history.has_changes():
-        raise ValueError("Условия платёжного графика версии оффера неизменяемы")
+def _reject_offer_version_commercial_mutation(_mapper, _connection, target: OfferVersion) -> None:
+    """Commercial snapshot is immutable; ack flags remain mutable until mutual accept."""
+    state = inspect(target).attrs
+    for name in _OFFER_VERSION_IMMUTABLE_ATTRS:
+        if getattr(state, name).history.has_changes():
+            raise ValueError("Коммерческие поля версии оффера неизменяемы")
 
 
 @event.listens_for(PaymentObligation, "before_update")
