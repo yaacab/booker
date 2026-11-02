@@ -1,22 +1,22 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-02 14:48 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-02 14:53 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
 
 - Всего: **131** задач
-- Выполнено: **79**
+- Выполнено: **80**
 - В работе: **0**
-- Ожидают: **18**
+- Ожидают: **17**
 - Заблокировано: **27**
 - Отложено: **7**
-- Общая готовность: **60.31%**
-- MVP: **79.41%** (54/68)
+- Общая готовность: **61.07%**
+- MVP: **80.88%** (55/68)
 - Дизайн: **25.00%** (3/12)
-- Полный запуск (FULL): **59.38%** (76/128)
+- Полный запуск (FULL): **60.16%** (77/128)
 - Инфраструктура/релиз (INFRA): **66.67%** (16/24)
-- Следующая задача: **ART-06** / Артист: запрос верификации из кабинета (supply→admin)
+- Следующая задача: **CAL-07** / Port V0+V3 calendar/hold fixes в delivery/live canonical
 
 ### Исторические взвешенные шкалы (не пересчитываются этой формулой)
 
@@ -30,7 +30,7 @@
 | Архитектура и инфраструктура | 9 | 8 | 0 | 0 | 0 | 1 | 88.89% |
 | Авторизация, пользователи, организации и права | 8 | 4 | 0 | 1 | 2 | 1 | 50.00% |
 | Кабинет заказчика | 4 | 4 | 0 | 0 | 0 | 0 | 100.00% |
-| Кабинет артиста | 7 | 5 | 0 | 1 | 0 | 1 | 71.43% |
+| Кабинет артиста | 7 | 6 | 0 | 0 | 0 | 1 | 85.71% |
 | Кабинет площадки | 3 | 2 | 0 | 1 | 0 | 0 | 66.67% |
 | Каталог и поиск | 8 | 5 | 0 | 3 | 0 | 0 | 62.50% |
 | Календарь и бронирования | 9 | 8 | 0 | 1 | 0 | 0 | 88.89% |
@@ -46,7 +46,6 @@
 
 ## Следующие приоритеты
 
-- ⬜ `ART-06` [MVP,FULL] — Артист: запрос верификации из кабинета (supply→admin)
 - ⬜ `CAL-07` [MVP,FULL] — Port V0+V3 calendar/hold fixes в delivery/live canonical
 - ⬜ `CAT-03` [MVP,FULL] — Публичные услуги /services/public discovery в web
 - ⬜ `LEG-03` [FULL] — Хостинг 152-ФЗ / уведомление РКН
@@ -54,6 +53,7 @@
 - ⬜ `OWN-LEGAL-GO` [FULL] — Юрист/бухгалтер/реквизиты: legal publish GO
 - ⬜ `OWN-MOTION-ACK` [DESIGN,FULL] — Владелец утвердил конкретный motion «Рамка слота»
 - ⬜ `OWN-PAY-PARTNER` [FULL] — Платёжный партнёр письменно подтвердил схему
+- ⬜ `OWN-PILOT` [FULL] — Реальный founding supply/demand pilot согласован
 
 ## Полный чек-лист
 
@@ -103,8 +103,8 @@
 - ✅ **ART-03** [MVP, FULL] Артист: publication-evidence + publication toggle в кабинете  <br/>status=`DONE`; evidence: PublicationWidget.tsx; 8019d56
 - ✅ **ART-04** [MVP, FULL] Артист: PATCH профиля/райдера + media_url в search  <br/>status=`DONE`; evidence: test_artist_profile_patch.py; 8019d56
 - ✅ **ART-05** [MVP, FULL] Артист: services PATCH/DELETE, sync-tariff, multi-artist selector  <br/>status=`DONE`; evidence: 1944b37; test_service_crud_v2.py
-- ⬜ **ART-06** [MVP, FULL] Артист: запрос верификации из кабинета (supply→admin)  <br/>status=`TODO`; evidence: —
-  - notes: Верификация сейчас admin-only
+- ✅ **ART-06** [MVP, FULL] Артист: запрос верификации из кабинета (supply→admin)  <br/>status=`DONE`; evidence: apps/api/booker_api/routers/catalog.py POST /artists/{id}/verification-request; apps/api/tests/test_artist_verification_request.py; apps/web/components/cabinet/performer/widgets/PortfolioRiderWidget.tsx; docs/ops/evidence/2026-11-02-art06-verification-request.md
+  - notes: Supply request → Verification queued; admin decide closes queue; cabinet CTA
 - ⏸ **ART-07** [FULL, DESIGN] Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)  <br/>status=`DEFERRED`; evidence: g0 plan D01 DRAFT
   - notes: Artist vNext = DRAFT; CONTRACT канон
 

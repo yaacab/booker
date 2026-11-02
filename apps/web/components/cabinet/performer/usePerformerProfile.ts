@@ -217,6 +217,26 @@ export function usePerformerProfile(orgId: string, role: string) {
     }
   }
 
+  async function requestVerification() {
+    if (!artistId || !isWriteRole(role) || !profile) return false;
+    setTariffBusy(true);
+    setError("");
+    try {
+      await api(`/artists/${encodeURIComponent(artistId)}/verification-request`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      trackClientEvent("cabinet.verification_requested", { artist_id: artistId });
+      await reload();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось отправить запрос на проверку");
+      return false;
+    } finally {
+      setTariffBusy(false);
+    }
+  }
+
   return {
     artistId,
     artistTargets,
@@ -229,6 +249,7 @@ export function usePerformerProfile(orgId: string, role: string) {
     updateRider,
     savePublicationEvidence,
     setPublicationEnabled,
+    requestVerification,
     error,
     canManage: isWriteRole(role),
     publicHref: artistId ? `/artists/${artistId}` : null,

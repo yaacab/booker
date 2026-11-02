@@ -1593,10 +1593,15 @@
         "MVP",
         "FULL"
       ],
-      "status": "TODO",
-      "evidence": [],
+      "status": "DONE",
+      "evidence": [
+        "apps/api/booker_api/routers/catalog.py POST /artists/{id}/verification-request",
+        "apps/api/tests/test_artist_verification_request.py",
+        "apps/web/components/cabinet/performer/widgets/PortfolioRiderWidget.tsx",
+        "docs/ops/evidence/2026-11-02-art06-verification-request.md"
+      ],
       "blocked_by": [],
-      "notes": "Верификация сейчас admin-only",
+      "notes": "Supply request → Verification queued; admin decide closes queue; cabinet CTA",
       "source": "V2 deferred",
       "updated_at": "2026-11-02"
     },

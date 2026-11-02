@@ -26,6 +26,7 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
     updateTariff,
     deleteTariff,
     updateRider,
+    requestVerification,
   } = usePerformerProfile(orgId, role);
   const [editing, setEditing] = useState<string | null>(null);
   const [editingRider, setEditingRider] = useState(false);
@@ -65,7 +66,28 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
             <li>
               <strong>{profile.name}</strong> · {categoryLabel(profile.category)} · {profile.city}
             </li>
-            {profile.verified ? <li>● Верификация пройдена</li> : <li>○ Верификация в процессе</li>}
+            {profile.verified ? (
+              <li>● Верификация пройдена</li>
+            ) : profile.verification_request_queued ? (
+              <li>○ Запрос на проверку отправлен — ждём решение администратора</li>
+            ) : profile.verified_status === "rejected" ? (
+              <li>○ Проверка отклонена — можно отправить повторный запрос</li>
+            ) : (
+              <li>○ Верификация ещё не запрошена</li>
+            )}
+            {canManage && profile.can_request_verification ? (
+              <li>
+                <button
+                  type="button"
+                  className="secondary"
+                  data-testid="performer-request-verification"
+                  disabled={tariffBusy}
+                  onClick={() => void requestVerification()}
+                >
+                  Запросить проверку профиля
+                </button>
+              </li>
+            ) : null}
             {profile.media_url ? (
               <li>
                 ●{" "}

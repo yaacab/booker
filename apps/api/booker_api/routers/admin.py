@@ -383,19 +383,38 @@ def decide_verification(
     else:
         target.verified = body.approve
         target.verified_status = "approved" if body.approve else "rejected"
-    row = Verification(
-        target_type=body.target_type,
-        target_id=body.target_id,
-        status="approved" if body.approve else "rejected",
-        notes=body.notes,
+    decision = "approved" if body.approve else "rejected"
+    queued_rows = (
+        db.query(Verification)
+        .filter(
+            Verification.target_type == body.target_type,
+            Verification.target_id == body.target_id,
+            Verification.status == "queued",
+        )
+        .all()
     )
-    db.add(row)
+    if queued_rows:
+        for queued in queued_rows:
+            queued.status = decision
+            if body.notes:
+                queued.notes = body.notes
+        row = queued_rows[0]
+    else:
+        row = Verification(
+            target_type=body.target_type,
+            target_id=body.target_id,
+            status=decision,
+            notes=body.notes,
+        )
+        db.add(row)
+        db.flush()
     audit(
         db,
         actor_user_id=user.id,
         action="verification.decided",
         entity_type=body.target_type,
         entity_id=body.target_id,
+        payload={"verification_id": row.id, "status": decision},
     )
     db.commit()
     return {"verified": target.verified}

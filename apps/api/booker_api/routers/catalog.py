@@ -32,6 +32,7 @@ from booker_api.models import (
     VenueHall,
     VenuePhoto,
     VenueTariff,
+    Verification,
 )
 from booker_api.publication_eligibility import (
     PUBLIC_MEDIA_RIGHTS,
@@ -294,6 +295,71 @@ def create_artist(body: ArtistIn, user: User = Depends(current_user), db: Sessio
     db.commit()
     db.refresh(artist)
     return {"id": artist.id, "name": artist.name}
+
+
+@router.post("/artists/{artist_id}/verification-request")
+def request_artist_verification(
+    artist_id: str,
+    body: dict | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Supply-initiated verification request for the admin queue."""
+    artist = db.get(Artist, artist_id)
+    if not artist:
+        raise HTTPException(404, "Артист не найден")
+    require_org_writer(db, user, artist.organization_id)
+    if artist.verified and artist.verified_status == "approved":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Профиль уже подтверждён")
+    notes = ""
+    if isinstance(body, dict):
+        raw_notes = body.get("notes")
+        if raw_notes is not None:
+            notes = str(raw_notes).strip()[:2000]
+    existing = (
+        db.query(Verification)
+        .filter(
+            Verification.target_type == "artist",
+            Verification.target_id == artist.id,
+            Verification.status == "queued",
+        )
+        .order_by(Verification.id.asc())
+        .first()
+    )
+    if existing:
+        return {
+            "id": existing.id,
+            "status": existing.status,
+            "verified_status": artist.verified_status,
+            "idempotent": True,
+        }
+    if artist.verified_status != "pending":
+        artist.verified_status = "pending"
+        artist.verified = False
+    row = Verification(
+        target_type="artist",
+        target_id=artist.id,
+        status="queued",
+        notes=notes,
+    )
+    db.add(row)
+    db.flush()
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="verification.requested",
+        entity_type="artist",
+        entity_id=artist.id,
+        payload={"verification_id": row.id},
+    )
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "status": row.status,
+        "verified_status": artist.verified_status,
+        "idempotent": False,
+    }
 
 
 @router.patch("/artists/{artist_id}")
@@ -1662,12 +1728,28 @@ def get_artist(
     }
     if can_view_private:
         eligibility = artist_publication_eligibility(db, artist)
+        queued = (
+            db.query(Verification)
+            .filter(
+                Verification.target_type == "artist",
+                Verification.target_id == artist.id,
+                Verification.status == "queued",
+            )
+            .order_by(Verification.id.desc())
+            .first()
+        )
         payload.update(
             {
                 "publication_enabled": bool(artist.publication_enabled),
                 "publication_state_version": artist.publication_state_version,
                 "publication_eligible": eligibility.eligible,
                 "publication_reason_codes": eligibility.reason_codes,
+                "verification_request_queued": queued is not None,
+                "verification_request_id": queued.id if queued else None,
+                "can_request_verification": not (
+                    artist.verified and artist.verified_status == "approved"
+                )
+                and queued is None,
             }
         )
     return payload

@@ -67,6 +67,7 @@ export type PerformerArtistProfile = {
   city: string;
   category: string;
   verified: boolean;
+  verified_status?: string;
   media_url: string | null;
   rider: Record<string, string>;
   tariffs: { id: string; title: string; honorarium_rub: number }[];
@@ -75,6 +76,9 @@ export type PerformerArtistProfile = {
   publication_state_version?: number;
   publication_eligible?: boolean;
   publication_reason_codes?: string[];
+  verification_request_queued?: boolean;
+  verification_request_id?: string | null;
+  can_request_verification?: boolean;
 };
 
 export type PerformerVacationItem = {
