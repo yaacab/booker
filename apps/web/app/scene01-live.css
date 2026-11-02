@@ -537,6 +537,20 @@
   pointer-events: auto;
   cursor: pointer;
 }
+/* Registration cards are rounded rects — hide jigsaw board/ears so photo
+   fragments no longer leak above the card edges. */
+.bk-reg .bk-piece-board,
+.bk-reg .bk-piece-edge {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+.bk-reg .bk-piece-clip {
+  clip-path: none !important;
+  border-radius: 16px;
+  overflow: hidden;
+  isolation: isolate;
+}
 .bk-role-inner {
   position: absolute;
   left: 0;
@@ -546,8 +560,13 @@
   flex-direction: column;
   border-radius: 16px;
   overflow: hidden;
+  isolation: isolate;
   background: var(--buker-paper);
   outline: none;
+}
+.bk-role-photo,
+.bk-role-photo img {
+  border-radius: inherit;
 }
 .bk-role-inner::after {
   content: "";
