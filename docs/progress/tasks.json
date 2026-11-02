@@ -1840,10 +1840,18 @@
         "MVP",
         "FULL"
       ],
-      "status": "TODO",
-      "evidence": [],
-      "blocked_by": [],
-      "notes": "Feature branches; merge NO-GO без отдельного GO",
+      "status": "BLOCKED",
+      "evidence": [
+        "cherry-pick 94d7ac4/8dd2f67/0066bb6 onto feat/v4-offer-versions-audit",
+        "apps/api/tests/test_hold_expire_v0.py",
+        "apps/api/tests/test_slot_delete_and_bookable.py",
+        "docs/ops/evidence/2026-11-02-v0-safe-hold-expire.md",
+        "docs/ops/evidence/2026-11-02-v3-calendar-requests.md"
+      ],
+      "blocked_by": [
+        "OWN-PROD-GO"
+      ],
+      "notes": "V0+V3 уже в feature-ветке PR #28. Перенос в delivery/live canonical — NO-GO до отдельного разрешения владельца.",
       "source": "roadmap",
       "updated_at": "2026-11-02"
     },

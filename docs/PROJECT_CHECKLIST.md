@@ -1,6 +1,6 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-02 14:53 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-02 14:54 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
@@ -8,15 +8,15 @@
 - Всего: **131** задач
 - Выполнено: **80**
 - В работе: **0**
-- Ожидают: **17**
-- Заблокировано: **27**
+- Ожидают: **16**
+- Заблокировано: **28**
 - Отложено: **7**
 - Общая готовность: **61.07%**
 - MVP: **80.88%** (55/68)
 - Дизайн: **25.00%** (3/12)
 - Полный запуск (FULL): **60.16%** (77/128)
 - Инфраструктура/релиз (INFRA): **66.67%** (16/24)
-- Следующая задача: **CAL-07** / Port V0+V3 calendar/hold fixes в delivery/live canonical
+- Следующая задача: **CAT-03** / Публичные услуги /services/public discovery в web
 
 ### Исторические взвешенные шкалы (не пересчитываются этой формулой)
 
@@ -33,7 +33,7 @@
 | Кабинет артиста | 7 | 6 | 0 | 0 | 0 | 1 | 85.71% |
 | Кабинет площадки | 3 | 2 | 0 | 1 | 0 | 0 | 66.67% |
 | Каталог и поиск | 8 | 5 | 0 | 3 | 0 | 0 | 62.50% |
-| Календарь и бронирования | 9 | 8 | 0 | 1 | 0 | 0 | 88.89% |
+| Календарь и бронирования | 9 | 8 | 0 | 0 | 1 | 0 | 88.89% |
 | Заявки, предложения и Deal Room | 6 | 6 | 0 | 0 | 0 | 0 | 100.00% |
 | Сообщения и уведомления | 3 | 2 | 0 | 0 | 1 | 0 | 66.67% |
 | Платежи, возвраты и выплаты | 12 | 7 | 0 | 1 | 1 | 3 | 58.33% |
@@ -46,7 +46,6 @@
 
 ## Следующие приоритеты
 
-- ⬜ `CAL-07` [MVP,FULL] — Port V0+V3 calendar/hold fixes в delivery/live canonical
 - ⬜ `CAT-03` [MVP,FULL] — Публичные услуги /services/public discovery в web
 - ⬜ `LEG-03` [FULL] — Хостинг 152-ФЗ / уведомление РКН
 - ⬜ `OWN-DESIGN-ACK` [DESIGN,FULL] — Владелец утвердил статичный дизайн ключевых путей
@@ -54,6 +53,7 @@
 - ⬜ `OWN-MOTION-ACK` [DESIGN,FULL] — Владелец утвердил конкретный motion «Рамка слота»
 - ⬜ `OWN-PAY-PARTNER` [FULL] — Платёжный партнёр письменно подтвердил схему
 - ⬜ `OWN-PILOT` [FULL] — Реальный founding supply/demand pilot согласован
+- ⬜ `OWN-PROD-GO` [FULL,INFRA] — Отдельное разрешение владельца на production
 
 ## Полный чек-лист
 
@@ -137,8 +137,9 @@
 - ✅ **CAL-04** [MVP, FULL] V0-SAFE-HOLD-EXPIRE: атомарный expire exclusive states + late payment review  <br/>status=`DONE`; evidence: fix/v0-safe-hold-expire 8dd2f67; test_hold_expire_v0.py; test_hold_expire_postgres.py 6 PASS
 - ✅ **CAL-05** [MVP, FULL, INFRA] PostgreSQL concurrency proofs для hold expire/confirm  <br/>status=`DONE`; evidence: 14 postgres_integration PASS; 8dd2f67
 - ✅ **CAL-06** [MVP, FULL] DELETE open slots + slot_is_bookable для offer/quick-request  <br/>status=`DONE`; evidence: feat/v3-calendar-requests 0066bb6; test_slot_delete_and_bookable.py
-- ⬜ **CAL-07** [MVP, FULL] Port V0+V3 calendar/hold fixes в delivery/live canonical  <br/>status=`TODO`; evidence: —
-  - notes: Feature branches; merge NO-GO без отдельного GO
+- ⛔ **CAL-07** [MVP, FULL] Port V0+V3 calendar/hold fixes в delivery/live canonical  <br/>status=`BLOCKED`; evidence: cherry-pick 94d7ac4/8dd2f67/0066bb6 onto feat/v4-offer-versions-audit; apps/api/tests/test_hold_expire_v0.py; apps/api/tests/test_slot_delete_and_bookable.py; docs/ops/evidence/2026-11-02-v0-safe-hold-expire.md; docs/ops/evidence/2026-11-02-v3-calendar-requests.md
+  - blocked_by: OWN-PROD-GO
+  - notes: V0+V3 уже в feature-ветке PR #28. Перенос в delivery/live canonical — NO-GO до отдельного разрешения владельца.
 - ✅ **P03** [FULL] Оффер/hold/бронь защищены локальными тестами (FULL)  <br/>status=`DONE`; evidence: test_hold_race.py
 - ✅ **T03** [MVP, FULL] Версии оффера, hold и запрет двойной брони проверены локально  <br/>status=`DONE`; evidence: apps/api/tests/test_hold_race.py
 
