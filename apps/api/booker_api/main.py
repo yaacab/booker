@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from booker_api.composition import seed_categories
 from booker_api.config import settings, validate_runtime_config
 from booker_api.db import SessionLocal, engine, init_schema
+from booker_api.seed import link_orphan_verified_artists
 from booker_api.legal_registry import seed_draft_versions
 from booker_api.ops_http import OpsHttpMiddleware
 from booker_api.rate_limit import initialize_rate_limit_store
@@ -42,6 +43,9 @@ async def lifespan(_app: FastAPI):
     try:
         seed_draft_versions(db)
         seed_categories(db)
+        # Founding catalog artists were seeded without org members; link a steward so
+        # public search and booking gates see real accounts (QA orgs untouched).
+        link_orphan_verified_artists(db)
         db.commit()
     finally:
         db.close()

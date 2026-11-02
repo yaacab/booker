@@ -26,6 +26,7 @@ from booker_api.models import (
     Organization,
     Request,
     Service,
+    TeamMember,
     User,
     Venue,
     VenueHall,
@@ -786,6 +787,30 @@ def _min_tariff(tariffs: list) -> int | None:
     return min(amounts) if amounts else None
 
 
+
+def _has_account(db: Session, organization_id: str) -> bool:
+    """Public artist profiles need a real account; seed/demo orgs without members stay hidden."""
+    return (
+        db.query(TeamMember.id).filter(TeamMember.organization_id == organization_id).first()
+        is not None
+    )
+
+
+QA_EMAIL_DOMAIN = "@qa.bukergo.ru"
+
+
+def _qa_only(db: Session, organization_id: str) -> bool:
+    """QA cabinets (every member on @qa.bukergo.ru) stay out of public search."""
+    emails = [
+        e
+        for (e,) in db.query(User.email)
+        .join(TeamMember, TeamMember.user_id == User.id)
+        .filter(TeamMember.organization_id == organization_id)
+        .all()
+    ]
+    return bool(emails) and all(e.lower().endswith(QA_EMAIL_DOMAIN) for e in emails)
+
+
 @router.get("/catalog/search")
 def search_catalog(
     city: str = Query("Москва"),
@@ -821,6 +846,8 @@ def search_catalog(
             q = q.filter(Artist.category == category)
         for artist in q.all():
             if artist.id in excluded:
+                continue
+            if not _has_account(db, artist.organization_id) or _qa_only(db, artist.organization_id):
                 continue
             if not artist_publication_eligibility(
                 db, artist, required_through=required_through
@@ -883,6 +910,8 @@ def search_catalog(
     if include_venues:
         seating_l = (seating or "").strip().lower() or None
         for venue in db.query(Venue).filter(Venue.city == city).all():
+            if _qa_only(db, venue.organization_id):
+                continue
             if not venue_publication_eligibility(
                 db, venue, required_through=required_through
             ).eligible:
@@ -1176,6 +1205,8 @@ def search_catalog_page(
             if row.id in excluded:
                 continue
             if resource_type == "artist":
+                if not _has_account(db, row.organization_id) or _qa_only(db, row.organization_id):
+                    continue
                 if not eligibility[(resource_type, row.id)].eligible:
                     continue
                 rider = _parse_rider(row.rider_json)
@@ -1464,6 +1495,8 @@ def get_artist(
     if not artist:
         raise HTTPException(404, "Артист не найден")
     can_view_private = _can_view_private_profile(request, db, user, artist.organization_id)
+    if not _has_account(db, artist.organization_id) and not can_view_private:
+        raise HTTPException(404, "Артист не найден")
     if not artist_publication_eligibility(db, artist).eligible and not can_view_private:
         raise HTTPException(404, "Артист не найден")
     slots = (

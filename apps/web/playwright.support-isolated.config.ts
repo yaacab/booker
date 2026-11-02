@@ -32,6 +32,9 @@ if (apiPort === webPort || !databaseUrl.startsWith("sqlite:////tmp/") ||
 
 export default defineConfig({
   testDir: "./e2e",
+  // Critical isolated path: support assistant, operator queue, staff recovery.
+  // Full e2e/ suite tracks live-UI drift separately and is not this job's gate.
+  testMatch: /(?:admin-support-queue|support-assistant|staff-recovery)\.spec\.ts/,
   globalSetup: "./e2e/global-setup.ts",
   workers: 1,
   forbidOnly: Boolean(process.env.CI),

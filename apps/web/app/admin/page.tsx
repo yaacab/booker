@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, getToken } from "@/lib/api";
 import { formatWhen } from "@/lib/format";
 import { loginHref } from "@/lib/next";
+import AdminSupportQueue from "@/components/AdminSupportQueue";
 
 type VerifyTarget = { id: string; name: string; status: string };
 
@@ -93,6 +94,7 @@ export default function AdminPage() {
   const [venueReport, setVenueReport] = useState<VenueCatalogReport | null>(null);
   const [catalogBusy, setCatalogBusy] = useState<string | null>(null);
   const [venueComments, setVenueComments] = useState<Record<string, string>>({});
+  const [operatorId, setOperatorId] = useState("");
 
   async function load() {
     if (!getToken()) {
@@ -101,13 +103,14 @@ export default function AdminPage() {
     }
     try {
       const [me, q, a, m, catalogRows, catalogReport] = await Promise.all([
-        api<{ totp_enabled?: boolean }>("/me"),
+        api<{ id: string; totp_enabled?: boolean }>("/me"),
         api<Queue>("/admin/verifications"),
         api<Audit>("/admin/audit"),
         api<Metrics>("/admin/metrics"),
         api<{ items: VenueCatalogRow[] }>("/admin/venue-catalog/venues?limit=50"),
         api<VenueCatalogReport>("/admin/venue-catalog/report"),
       ]);
+      setOperatorId(me.id);
       setTotpEnabled(Boolean(me.totp_enabled));
       setQueue(q);
       setAudit(a.items.slice(0, 20));
@@ -264,6 +267,9 @@ export default function AdminPage() {
           <Link href="/support">Поддержка</Link>
         </nav>
         <div className="operator-panels">
+          <article className="card" style={{ gridColumn: "1 / -1", minWidth: 0 }}>
+            <AdminSupportQueue operatorId={operatorId} canReassign />
+          </article>
 <section id="operator-venues" hidden={section !== "venues"} aria-label="Каталог площадок" className="operator-panel">        <article className="card" style={{ gridColumn: "1 / -1" }}>
           <h2>Каталог площадок</h2>
           {venueReport ? (
