@@ -15,6 +15,8 @@ import { useVenueCabinetData } from "./useVenueCabinetData";
 import { VenueHallsPanel } from "./widgets/VenueHallsPanel";
 import { VenueHallsWidget } from "./widgets/VenueHallsWidget";
 import { VenueOnboardingWidget } from "./widgets/VenueOnboardingWidget";
+import { VenuePhotosWidget } from "./widgets/VenuePhotosWidget";
+import { VenuePublicationWidget } from "./widgets/VenuePublicationWidget";
 import { VenueStatsWidget } from "./widgets/VenueStatsWidget";
 import { VenueMonthCalendar } from "./widgets/VenueMonthCalendar";
 import { RequestsInboxWidget } from "../performer/widgets/RequestsInboxWidget";
@@ -57,6 +59,15 @@ export function VenueCabinetDashboard({ section = "home" }: { section?: VenueCab
       {awaitingResponse.length > 0 ? <AwaitingResponseWidget deals={awaitingResponse} /> : null}{activeHolds.length > 0 ? <HoldsWidget holds={activeHolds} /> : null}{expiringOffers.length > 0 ? <ExpiringOffersWidget deals={expiringOffers} /> : null}
     </div> : null}
     {(section === "home" || section === "calendar") && calendarConflicts.length > 0 ? <CalendarConflictsWidget conflicts={calendarConflicts} /> : null}
+    {section === "home" && venueId ? (
+      <details className="workspace-disclosure" open>
+        <summary>Витрина и публикация <span aria-hidden="true">＋</span></summary>
+        <div className="cabinet-zone-grid workspace-secondary-grid">
+          <VenuePhotosWidget venueId={venueId} role={role} onChanged={() => void reload()} />
+          <VenuePublicationWidget venueId={venueId} role={role} onChanged={() => void reload()} />
+        </div>
+      </details>
+    ) : null}
     {section === "home" ? calendarSetup : null}
   </CabinetPageShell>;
 }

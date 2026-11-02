@@ -40,6 +40,32 @@ export type ProfileCompleteness = {
   score: number;
   items: { id: string; label: string; done: boolean }[];
   applicable?: boolean;
+  publication_enabled?: boolean;
+  publication_eligible?: boolean;
+  publication_reason_codes?: string[];
+};
+
+export type VenuePhoto = {
+  id?: string;
+  url?: string;
+  photo_url?: string;
+  source_url?: string;
+  rights_status?: string;
+};
+
+export type VenueProfile = {
+  id: string;
+  organization_id?: string;
+  name: string;
+  city: string;
+  capacity?: number;
+  verified: boolean;
+  photos: VenuePhoto[];
+  publication_enabled?: boolean;
+  publication_state_version?: number;
+  publication_eligible?: boolean;
+  publication_reason_codes?: string[];
+  calendar_confirmed_through?: string | null;
 };
 
 export type CalendarConflict = {

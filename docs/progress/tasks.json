@@ -1665,12 +1665,18 @@
         "MVP",
         "FULL"
       ],
-      "status": "TODO",
-      "evidence": [],
+      "status": "DONE",
+      "evidence": [
+        "apps/api/booker_api/routers/catalog.py get_venue publication fields",
+        "apps/web/components/cabinet/venue/widgets/VenuePhotosWidget.tsx",
+        "apps/web/components/cabinet/venue/widgets/VenuePublicationWidget.tsx",
+        "apps/api/tests/test_halls.py",
+        "docs/ops/evidence/2026-11-03-ven03-venue-publication-ux.md"
+      ],
       "blocked_by": [],
-      "notes": "API publication для venues есть; кабинетный UX слабее artist V2",
+      "notes": "Cabinet photos+publication widgets; owner GET publication_* parity",
       "source": "gap scan",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "CAT-01",

@@ -1710,7 +1710,7 @@ def get_venue(
         for s in hall_slots:
             if can_view_private or s.id in public_open_ids:
                 slots.append(_slot_item(s, hall=hall.name))
-    return {
+    payload = {
         "id": venue.id,
         "organization_id": venue.organization_id,
         "name": venue.name,
@@ -1743,6 +1743,22 @@ def get_venue(
         "halls": [_hall_item(h) for h in halls],
         "slots": slots,
     }
+    if can_view_private:
+        eligibility = venue_publication_eligibility(db, venue)
+        payload.update(
+            {
+                "publication_enabled": bool(venue.publication_enabled),
+                "publication_state_version": venue.publication_state_version,
+                "publication_eligible": eligibility.eligible,
+                "publication_reason_codes": eligibility.reason_codes,
+                "calendar_confirmed_through": (
+                    venue.calendar_confirmed_through.isoformat()
+                    if venue.calendar_confirmed_through
+                    else None
+                ),
+            }
+        )
+    return payload
 
 
 @router.get("/artists/{artist_id}")

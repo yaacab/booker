@@ -98,7 +98,22 @@ def test_get_venue_includes_halls_without_dropping_fields(client):
     page = client.get(f"/venues/{venue['id']}", headers=auth_header(owner["token"]))
     assert page.status_code == 200
     data = page.json()
-    for key in ("id", "name", "city", "capacity", "verified", "facts", "tariffs", "slots", "halls"):
+    for key in (
+        "id",
+        "name",
+        "city",
+        "capacity",
+        "verified",
+        "facts",
+        "tariffs",
+        "slots",
+        "halls",
+        "publication_enabled",
+        "publication_state_version",
+        "publication_eligible",
+        "publication_reason_codes",
+        "photos",
+    ):
         assert key in data
     assert data["id"] == venue["id"]
     assert data["name"] == "Лофт"
@@ -106,12 +121,45 @@ def test_get_venue_includes_halls_without_dropping_fields(client):
     assert data["capacity"] == 120
     assert data["tariffs"] == []
     assert data["slots"] == []
+    assert data["publication_enabled"] is False
+    assert isinstance(data["publication_reason_codes"], list)
     assert len(data["halls"]) == 1
     assert data["halls"][0] == {
         "id": venue["hall_id"],
         "name": "Основной зал",
         "capacity": 120,
     }
+
+
+def test_venue_owner_can_record_photo_and_calendar_evidence(client):
+    owner, _org, venue = _venue_owner(client)
+    headers = auth_header(owner["token"])
+    photo = client.put(
+        f"/venues/{venue['id']}/photos",
+        json={
+            "photo_url": "/design/puzzle-venue.png",
+            "photo_source_url": "/design/puzzle-venue.png",
+            "photo_rights_status": "owned",
+            "rights_attested": True,
+        },
+        headers=headers,
+    )
+    assert photo.status_code == 200, photo.text
+    evidence = client.put(
+        f"/venues/{venue['id']}/publication-evidence",
+        json={
+            "calendar_confirmed_through": (
+                datetime.now(timezone.utc) + timedelta(days=60)
+            ).isoformat()
+        },
+        headers=headers,
+    )
+    assert evidence.status_code == 200, evidence.text
+    page = client.get(f"/venues/{venue['id']}", headers=headers).json()
+    assert page["photos"]
+    assert page["calendar_confirmed_through"] is not None
+    assert "media" not in page["publication_reason_codes"] or page["publication_eligible"] is False
+
 
 
 def test_create_hall_writes_audit(client):

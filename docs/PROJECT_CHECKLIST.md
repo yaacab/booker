@@ -1,20 +1,20 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-02 23:50 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-02 23:53 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
 
 - Всего: **131** задач
-- Выполнено: **81**
+- Выполнено: **82**
 - В работе: **0**
-- Ожидают: **15**
+- Ожидают: **14**
 - Заблокировано: **28**
 - Отложено: **7**
-- Общая готовность: **61.83%**
-- MVP: **82.35%** (56/68)
+- Общая готовность: **62.60%**
+- MVP: **83.82%** (57/68)
 - Дизайн: **25.00%** (3/12)
-- Полный запуск (FULL): **60.94%** (78/128)
+- Полный запуск (FULL): **61.72%** (79/128)
 - Инфраструктура/релиз (INFRA): **66.67%** (16/24)
 - Следующая задача: **LEG-03** / Хостинг 152-ФЗ / уведомление РКН
 
@@ -31,7 +31,7 @@
 | Авторизация, пользователи, организации и права | 8 | 4 | 0 | 1 | 2 | 1 | 50.00% |
 | Кабинет заказчика | 4 | 4 | 0 | 0 | 0 | 0 | 100.00% |
 | Кабинет артиста | 7 | 6 | 0 | 0 | 0 | 1 | 85.71% |
-| Кабинет площадки | 3 | 2 | 0 | 1 | 0 | 0 | 66.67% |
+| Кабинет площадки | 3 | 3 | 0 | 0 | 0 | 0 | 100.00% |
 | Каталог и поиск | 8 | 6 | 0 | 2 | 0 | 0 | 75.00% |
 | Календарь и бронирования | 9 | 8 | 0 | 0 | 1 | 0 | 88.89% |
 | Заявки, предложения и Deal Room | 6 | 6 | 0 | 0 | 0 | 0 | 100.00% |
@@ -112,8 +112,8 @@
 
 - ✅ **VEN-01** [MVP, FULL] Кабинет площадки: базовый dashboard и залы  <br/>status=`DONE`; evidence: ROADMAP C3; cabinet venue
 - ✅ **VEN-02** [MVP, FULL] Площадка: верификация venues в админке  <br/>status=`DONE`; evidence: ROADMAP C4
-- ⬜ **VEN-03** [MVP, FULL] Площадка: доработки publication/photos UX на уровне артистского паритета  <br/>status=`TODO`; evidence: —
-  - notes: API publication для venues есть; кабинетный UX слабее artist V2
+- ✅ **VEN-03** [MVP, FULL] Площадка: доработки publication/photos UX на уровне артистского паритета  <br/>status=`DONE`; evidence: apps/api/booker_api/routers/catalog.py get_venue publication fields; apps/web/components/cabinet/venue/widgets/VenuePhotosWidget.tsx; apps/web/components/cabinet/venue/widgets/VenuePublicationWidget.tsx; apps/api/tests/test_halls.py; docs/ops/evidence/2026-11-03-ven03-venue-publication-ux.md
+  - notes: Cabinet photos+publication widgets; owner GET publication_* parity
 
 ### 6. Каталог и поиск
 
