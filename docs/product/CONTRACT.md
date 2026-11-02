@@ -56,7 +56,9 @@
 
 ## Инвариант календаря
 
-Пересечение слотов в статусах `held|confirmed` для одного ресурса запрещено. `BookingHold` с TTL. Истечение hold освобождает слот.
+Пересечение слотов в статусах `held|confirmed` для одного ресурса запрещено. `BookingHold` с TTL.
+
+Пока booking находится в `DateHeld`, `AwaitingContract` или `AwaitingPayment` и hold активен, слот не переводится в `open`. Истечение hold атомарно отменяет такой booking (и связанный Request) и освобождает слот, принадлежащий этому hold. Подтверждение оплаты не переводит booking в `Confirmed`, если hold истёк/отменён или слот не принадлежит этой сделке; факт платёжного события при этом сохраняется для сверки (`payment.requires_review`).
 
 ## Документы
 
@@ -79,9 +81,11 @@
 
 **Event** (Control Room): `Draft` → `Planning` → `Confirmed` → `InProgress` → `Completed` | `Cancelled`
 
-**Request** (заявка на позицию): `Open` → `Offered` → `Acknowledged` → `Confirmed` | `Declined` | `Expired`
+**Request** (заявка на позицию): целевая схема `Open` → `Offered` → `Acknowledged` → `Confirmed` | `Declined` | `Expired`. Фактические кодовые статусы на 2026-11-02: `RequestSent` → `Negotiation` | `Cancelled` (полный enum sync — отдельная задача, не V0).
 
-**Booking / Deal Room**: `DateHeld` → `AwaitingPayment` → `Confirmed` → `Completed` | `Dispute` | `Cancelled`
+**Booking / Deal Room**: `DateHeld` → `AwaitingContract` → `AwaitingPayment` → `Confirmed` → `InProgress` → `Completed` | `Dispute` | `Cancelled`
+
+`AwaitingContract` — технический черновик условий и двустороннее подтверждение до инициации платежа (не замена юридической ЭП коммерческого договора до Legal GO).
 
 **OfferVersion**: неизменяема после публикации; новая цена = новая версия + `quote_id`. Клиент не может «принять» оффер без серверного ack.
 

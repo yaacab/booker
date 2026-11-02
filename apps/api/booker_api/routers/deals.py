@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from starlette.requests import Request as HttpRequest
 from starlette.responses import Response
 
+from booker_api.booking_holds import expire_holds
 from booker_api.calendar import overlapping_slots
 from booker_api.composition import ensure_requirements, replace_requirements, requirement_payload
 from booker_api.config import settings
@@ -89,7 +90,6 @@ from booker_api.security import (
     audit,
     auth_context,
     authenticate_token,
-    aware,
     current_user,
     ensure_admin_2fa_session,
     hold_deadline,
@@ -405,44 +405,6 @@ def _transition(booking: Booking, to: str) -> None:
     if to not in allowed and to != booking.status:
         raise HTTPException(status.HTTP_409_CONFLICT, f"Нельзя {booking.status} → {to}")
     booking.status = to
-
-
-def expire_holds(db: Session) -> int:
-    expired = 0
-    holds = db.query(BookingHold).filter(BookingHold.status == "active").all()
-    moment = now()
-    for hold in holds:
-        if aware(hold.expires_at) > moment:
-            continue
-        hold.status = "expired"
-        slot = db.get(AvailabilitySlot, hold.slot_id)
-        booking = db.get(Booking, hold.booking_id)
-        if slot and slot.status == "held":
-            slot.status = "open"
-        if booking and booking.status == "DateHeld":
-            _transition(booking, "Cancelled")
-            offer = db.get(Offer, booking.offer_id)
-            req = db.get(Request, offer.request_id) if offer else None
-            if req:
-                req.status = "Cancelled"
-            conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one_or_none()
-            if conv:
-                db.add(
-                    Message(
-                        conversation_id=conv.id,
-                        kind="system",
-                        body="Удержание даты истекло. Слот снова свободен.",
-                    )
-                )
-        expired += 1
-        audit(
-            db,
-            actor_user_id=None,
-            action="hold.expired",
-            entity_type="booking",
-            entity_id=hold.booking_id,
-        )
-    return expired
 
 
 @router.post("/events")

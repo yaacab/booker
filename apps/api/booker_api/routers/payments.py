@@ -8,6 +8,13 @@ from sqlalchemy.exc import IntegrityError, InterfaceError, OperationalError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
+from booker_api.booking_holds import (
+    consume_hold_on_confirm,
+    expire_holds,
+    require_alive_reservation,
+    reservation_for_booking,
+    slot_owned_by_hold,
+)
 from booker_api.config import settings
 from booker_api.contract_ack import (
     EFFECT,
@@ -66,9 +73,17 @@ from booker_api.schemas import (
     SignIn,
     WebhookIn,
 )
-from booker_api.security import audit, aware, current_user, membership
+from booker_api.security import audit, aware, current_user, membership, now
 
 router = APIRouter(tags=["payments"])
+
+
+def _expire_holds_committed(db: Session) -> int:
+    """Persist due hold expiries before a subsequent operation that may 409/rollback."""
+    expired = expire_holds(db)
+    if expired:
+        db.commit()
+    return expired
 
 
 def _contract_transaction_snapshot(
@@ -186,7 +201,13 @@ def create_contract(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    booking = db.get(Booking, booking_id)
+    _expire_holds_committed(db)
+    booking = (
+        db.query(Booking)
+        .filter(Booking.id == booking_id)
+        .with_for_update()
+        .one_or_none()
+    )
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
     event = (
@@ -203,6 +224,7 @@ def create_contract(
         raise HTTPException(403, "Нет права создавать договор этой брони")
     if booking.status not in {"DateHeld", "AwaitingContract"}:
         raise HTTPException(409, "Сначала удержите дату")
+    require_alive_reservation(db, booking, for_update=True)
     offer = db.query(Offer).filter_by(id=booking.offer_id).with_for_update().one_or_none()
     if offer:
         db.refresh(booking)
@@ -337,14 +359,23 @@ def sign_contract(
     db: Session = Depends(get_db),
     x_booker_org: str | None = Header(default=None, alias="X-Booker-Org"),
 ):
+    _expire_holds_committed(db)
     contract = db.get(Contract, contract_id)
     if not contract:
         raise HTTPException(404, "Договор не найден")
-    booking = db.get(Booking, contract.booking_id)
+    booking = (
+        db.query(Booking)
+        .filter(Booking.id == contract.booking_id)
+        .with_for_update()
+        .one_or_none()
+    )
+    if not booking:
+        raise HTTPException(404, "Бронь не найдена")
     offer = db.query(Offer).filter_by(id=booking.offer_id).with_for_update().one_or_none()
     if offer:
         db.refresh(contract)
         db.refresh(booking)
+    require_alive_reservation(db, booking, for_update=True)
     customer_org_id, supplier_org_id = _booking_participant_orgs(db, booking)
     side, acting_org_id, member = _resolve_acting_party(
         db,
@@ -549,7 +580,13 @@ def create_payment(
         idempotency_key = adapter.normalize_idempotency_key(body.idempotency_key)
     except PaymentAdapterError as exc:
         raise HTTPException(400, str(exc)) from exc
-    booking = db.get(Booking, booking_id)
+    _expire_holds_committed(db)
+    booking = (
+        db.query(Booking)
+        .filter(Booking.id == booking_id)
+        .with_for_update()
+        .one_or_none()
+    )
     if not booking:
         raise HTTPException(404, "Бронь не найдена")
     customer_org_id, _supplier_org_id = _booking_participant_orgs(db, booking)
@@ -606,6 +643,8 @@ def create_payment(
     }
     if booking.status not in allowed_statuses:
         raise HTTPException(409, "Это платежное обязательство сейчас недоступно")
+    if obligation.kind == "advance":
+        require_alive_reservation(db, booking, for_update=True)
     if obligation.status != "pending" or obligation.amount_rub <= 0:
         raise HTTPException(409, "Платежное обязательство уже выполнено или не применяется")
     active_payment = (
@@ -944,7 +983,25 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         }
         return _record_webhook(response, action="payment.webhook_ignored_terminal")
     payment.status = event.status
+    requires_review = False
+    review_reason = None
     if event.status == "succeeded":
+        # Lock order after Payment: Booking → Hold → Slot (matches expire_holds).
+        booking = (
+            db.query(Booking)
+            .filter(Booking.id == payment.booking_id)
+            .with_for_update()
+            .one_or_none()
+        )
+        if not booking:
+            raise HTTPException(404, "Бронь не найдена")
+        hold = reservation_for_booking(db, booking, for_update=True)
+        slot = (
+            db.query(AvailabilitySlot)
+            .filter(AvailabilitySlot.id == booking.slot_id)
+            .with_for_update()
+            .one_or_none()
+        )
         mark_obligation_satisfied(obligation)
         append_money_movement(
             db,
@@ -954,21 +1011,67 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
             amount_rub=payment.amount_rub,
             source_type="provider_event",
             source_id=event.event_id,
-            metadata={"provider_status": event.status},
+            metadata={
+                "provider_status": event.status,
+                "provider_event_received_at": now().isoformat(),
+            },
         )
         adapter.ledger.on_capture(payment.id, payment.amount_rub)
-        if (not obligation or obligation.kind == "advance") and booking.status == "AwaitingPayment":
-            _transition(booking, "Confirmed")
-            slot = db.get(AvailabilitySlot, booking.slot_id)
-            slot.status = "confirmed"
-            conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one()
-            db.add(
-                Message(
-                    conversation_id=conv.id,
-                    kind="system",
-                    body="Аванс получен. Бронирование подтверждено.",
+        is_advance = not obligation or obligation.kind == "advance"
+        if is_advance:
+            owned = hold is not None and slot_owned_by_hold(slot, hold)
+            if booking.status == "AwaitingPayment" and owned:
+                _transition(booking, "Confirmed")
+                slot.status = "confirmed"
+                consume_hold_on_confirm(db, hold, booking_id=booking.id)
+                conv = db.query(Conversation).filter(Conversation.booking_id == booking.id).one()
+                db.add(
+                    Message(
+                        conversation_id=conv.id,
+                        kind="system",
+                        body="Аванс получен. Бронирование подтверждено.",
+                    )
                 )
-            )
+            elif booking.status != "Confirmed":
+                # Money fact preserved; never confirm cancelled/expired/unowned reservations.
+                requires_review = True
+                review_reason = (
+                    "payment_succeeded_without_alive_owned_hold"
+                    if booking.status == "AwaitingPayment"
+                    else "payment_succeeded_after_booking_not_confirmable"
+                )
+                audit(
+                    db,
+                    actor_user_id=None,
+                    action="payment.requires_review",
+                    entity_type="payment",
+                    entity_id=payment.id,
+                    payload={
+                        "booking_id": booking.id,
+                        "booking_status": booking.status,
+                        "hold_id": hold.id if hold else None,
+                        "slot_id": booking.slot_id,
+                        "slot_status": slot.status if slot else None,
+                        "reason": review_reason,
+                        "provider_event_id": event.event_id,
+                    },
+                )
+                conv = (
+                    db.query(Conversation)
+                    .filter(Conversation.booking_id == booking.id)
+                    .one_or_none()
+                )
+                if conv:
+                    db.add(
+                        Message(
+                            conversation_id=conv.id,
+                            kind="system",
+                            body=(
+                                "Поступило платёжное уведомление при отсутствии действующего "
+                                "резервирования даты. Бронь не подтверждена автоматически — нужна сверка."
+                            ),
+                        )
+                    )
     elif event.status == "failed":
         if booking.status != "Confirmed":
             pass
@@ -976,9 +1079,11 @@ def _apply_payment_webhook(body: WebhookIn, db: Session) -> dict:
         "ok": True,
         "payment_id": payment.id,
         "payment_status": payment.status,
-        "booking_status": booking.status,
+        "booking_status": booking.status if booking else None,
         "obligation_id": obligation.id if obligation else None,
         "obligation_status": obligation.status if obligation else None,
+        "requires_review": requires_review,
+        "review_reason": review_reason,
     }
     return _record_webhook(response, action="payment.webhook")
 
