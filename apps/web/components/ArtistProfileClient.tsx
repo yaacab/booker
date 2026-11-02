@@ -12,6 +12,7 @@ import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
 import { SlotList } from "@/components/SlotList";
 import { ProfileMedia } from "@/components/ProfileMedia";
+import { OrgReviewsBlock } from "@/components/profile/OrgReviewsBlock";
 import { HandoffArrival } from "@/components/scene/HandoffArrival";
 
 type Slot = { id: string; starts_at: string; ends_at: string; status: string };
@@ -23,7 +24,14 @@ type Artist = {
   verified?: boolean;
   media_url?: string | null;
   rider?: Record<string, string>;
-  facts: { note: string; deals?: number; response?: string };
+  facts: {
+    note: string;
+    deals?: number;
+    response?: string;
+    reviews?: number;
+    show_rating?: boolean;
+    average_rating?: number;
+  };
   tariffs: { id: string; title: string; honorarium_rub: number }[];
   slots: Slot[];
 };
@@ -225,7 +233,7 @@ export function ArtistProfileClient() {
 
           <dl className="profile-facts-strip">
             <div><dt>Завершённых сделок</dt><dd>{data.facts.deals ?? 0}</dd></div>
-            <div><dt>Свободных слотов</dt><dd>{liveOpenSlots.length}</dd></div>
+            <div><dt>Отзывов</dt><dd>{data.facts.reviews ?? 0}</dd></div>
             <div className="profile-fact-response"><dt>Обычно отвечает</dt><dd>{data.facts.response || "Пока нет данных"}</dd></div>
           </dl>
 
@@ -234,6 +242,8 @@ export function ArtistProfileClient() {
             <p>{rider.about || data.facts.note}</p>
             <div className="profile-fact-chips"><span>{rider.format || CAT[data.category] || categoryLabel(data.category)}</span>{rider.lineup ? <span>{rider.lineup}</span> : null}</div>
           </section>
+
+          <OrgReviewsBlock kind="artist" id={data.id} />
 
           <section className="public-profile-section">
             <div className="profile-section-heading"><h2>Формат и стоимость</h2><span>Предварительные условия</span></div>

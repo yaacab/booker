@@ -12,6 +12,7 @@ import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PromoAttributionBeacon } from "@/components/promo/PromoAttributionBeacon";
 import { SlotList } from "@/components/SlotList";
 import { ProfileMedia } from "@/components/ProfileMedia";
+import { OrgReviewsBlock } from "@/components/profile/OrgReviewsBlock";
 import { HandoffArrival } from "@/components/scene/HandoffArrival";
 
 type Venue = {
@@ -40,7 +41,12 @@ type Venue = {
     source_url?: string;
     rights_status?: "licensed" | "official_permission";
   }[];
-  facts: { note: string };
+  facts: {
+    note: string;
+    reviews?: number;
+    show_rating?: boolean;
+    average_rating?: number;
+  };
   tariffs: { id: string; title: string; honorarium_rub: number }[];
   slots: { id: string; hall: string; starts_at: string; ends_at?: string; status: string }[];
   halls?: { id?: string; name?: string; capacity?: number }[];
@@ -275,7 +281,7 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
 
           <dl className="profile-facts-strip">
             <div><dt>Вместимость</dt><dd>{data.capacity ? `До ${guestsLabel(data.capacity)}` : "Уточняется"}</dd></div>
-            <div><dt>Залов в профиле</dt><dd>{halls.length}</dd></div>
+            <div><dt>Отзывов</dt><dd>{data.facts.reviews ?? 0}</dd></div>
             <div className="profile-fact-response"><dt>Профиль</dt><dd>{data.verified ? "Подтверждён" : "Не подтверждён"}</dd></div>
           </dl>
 
@@ -286,6 +292,8 @@ export function VenueProfileClient({ params }: { params: Promise<{ id: string }>
             <p>{data.description || (synthetic ? "Детали площадки и доступные даты можно уточнить через оператора." : data.facts.note)}</p>
             {synthetic ? <div className="profile-calendar-notice" role="note"><strong>Календарь ориентировочный</strong><p>Доступность не подтверждена владельцем площадки. Перед бронированием оператор уточнит даты.</p>{data.source_url ? <p className="profile-source-link">Источник: <a href={data.source_url} target="_blank" rel="noreferrer noopener">{data.source_attribution || "открытые данные"} ↗</a></p> : null}</div> : null}
           </section>
+
+          <OrgReviewsBlock kind="venue" id={data.id} />
 
           {halls.length ? <section className="public-profile-section">
             <div className="profile-section-heading"><h2>Залы и вместимость</h2><span>{halls.length} в профиле</span></div>

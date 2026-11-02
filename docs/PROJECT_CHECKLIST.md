@@ -1,22 +1,22 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-02 23:53 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-02 23:59 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
 
-- Всего: **131** задач
-- Выполнено: **82**
+- Всего: **132** задач
+- Выполнено: **83**
 - В работе: **0**
-- Ожидают: **14**
-- Заблокировано: **28**
+- Ожидают: **11**
+- Заблокировано: **31**
 - Отложено: **7**
-- Общая готовность: **62.60%**
-- MVP: **83.82%** (57/68)
+- Общая готовность: **62.88%**
+- MVP: **82.61%** (57/69)
 - Дизайн: **25.00%** (3/12)
-- Полный запуск (FULL): **61.72%** (79/128)
-- Инфраструктура/релиз (INFRA): **66.67%** (16/24)
-- Следующая задача: **T09** / Каталог измерен на представительном supply и мобильных устройствах (staging p95/EXPLAIN/HAR)
+- Полный запуск (FULL): **62.02%** (80/129)
+- Инфраструктура/релиз (INFRA): **64.00%** (16/25)
+- Следующая задача: **OWN-SMTP** / Owner предоставил рабочий SMTP для staging/prod notifications
 
 ### Исторические взвешенные шкалы (не пересчитываются этой формулой)
 
@@ -32,28 +32,28 @@
 | Кабинет заказчика | 4 | 4 | 0 | 0 | 0 | 0 | 100.00% |
 | Кабинет артиста | 7 | 6 | 0 | 0 | 0 | 1 | 85.71% |
 | Кабинет площадки | 3 | 3 | 0 | 0 | 0 | 0 | 100.00% |
-| Каталог и поиск | 8 | 6 | 0 | 2 | 0 | 0 | 75.00% |
+| Каталог и поиск | 8 | 6 | 0 | 0 | 2 | 0 | 75.00% |
 | Календарь и бронирования | 9 | 8 | 0 | 0 | 1 | 0 | 88.89% |
 | Заявки, предложения и Deal Room | 6 | 6 | 0 | 0 | 0 | 0 | 100.00% |
 | Сообщения и уведомления | 3 | 2 | 0 | 0 | 1 | 0 | 66.67% |
 | Платежи, возвраты и выплаты | 12 | 7 | 0 | 1 | 1 | 3 | 58.33% |
 | Споры, арбитраж и поддержка | 5 | 4 | 0 | 0 | 0 | 1 | 80.00% |
-| Отзывы, рейтинг и аналитика | 3 | 2 | 0 | 1 | 0 | 0 | 66.67% |
+| Отзывы, рейтинг и аналитика | 3 | 3 | 0 | 0 | 0 | 0 | 100.00% |
 | UI/UX, адаптивность и дизайн | 16 | 4 | 0 | 4 | 8 | 0 | 25.00% |
 | Безопасность и тестирование | 14 | 12 | 0 | 0 | 2 | 0 | 85.71% |
-| Staging, production и релиз | 15 | 1 | 0 | 3 | 11 | 0 | 6.67% |
+| Staging, production и релиз | 16 | 1 | 0 | 3 | 12 | 0 | 6.25% |
 | Документация и юридические требования | 9 | 5 | 0 | 2 | 2 | 0 | 55.56% |
 
 ## Следующие приоритеты
 
-- ⬜ `T09` [MVP,FULL] — Каталог измерен на представительном supply и мобильных устройствах (staging p95/EXPLAIN/HAR)
 - ⬜ `OWN-SMTP` [MVP,FULL] — Owner предоставил рабочий SMTP для staging/prod notifications
 - ⬜ `OWN-TWO-APPROVER` [MVP,FULL] — Два утверждающих для staff recovery приняты
-- ⬜ `P07` [FULL] — Каталог измерен на представительном supply (staging)
-- ⬜ `REV-02` [FULL] — V9: двусторонние отзывы, репутация, аналитика кабинетов
 - ⬜ `V04` [DESIGN,FULL] — В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей
 - ⬜ `V07` [DESIGN,FULL] — Web принят по адаптивности, доступности и скорости
 - ⬜ `LEG-03` [FULL] — Хостинг 152-ФЗ / уведомление РКН
+- ⬜ `OWN-DESIGN-ACK` [DESIGN,FULL] — Владелец утвердил статичный дизайн ключевых путей
+- ⬜ `OWN-LEGAL-GO` [FULL] — Юрист/бухгалтер/реквизиты: legal publish GO
+- ⬜ `OWN-MOTION-ACK` [DESIGN,FULL] — Владелец утвердил конкретный motion «Рамка слота»
 
 ## Полный чек-лист
 
@@ -122,12 +122,14 @@
 - ✅ **CAT-03** [MVP, FULL] Публичные услуги /services/public discovery в web  <br/>status=`DONE`; evidence: apps/api/booker_api/routers/services.py list_public_services; apps/web/app/search/page.tsx kind=service; apps/web/components/ServiceResultCard.tsx; apps/api/tests/test_services.py::test_public_services_enrich_profile_and_filter_city_budget; docs/ops/evidence/2026-11-03-cat03-public-services-discovery.md
   - notes: Web /search?kind=service + city/budget filters + profile enrichment
 - ✅ **P01** [FULL] Поиск, каталог и профили работают локально (FULL)  <br/>status=`DONE`; evidence: test_catalog_search_filters.py
-- ⬜ **P07** [FULL] Каталог измерен на представительном supply (staging)  <br/>status=`TODO`; evidence: —
-  - notes: Дублирует T09 на FULL-уровне; закрывается тем же evidence
+- ⛔ **P07** [FULL] Каталог измерен на представительном supply (staging)  <br/>status=`BLOCKED`; evidence: —
+  - blocked_by: REL-STAGING
+  - notes: Локальный bench есть; staging.bukergo.ru недоступен (connect fail 2026-11-03). Нужны staging p95/EXPLAIN/mobile HAR на фактическом supply.
 - ✅ **S03** [FULL, MVP] Серверный критерий публикации реализован локально  <br/>status=`DONE`; evidence: publication_eligibility.py
 - ✅ **T01** [MVP, FULL] Каталог, поиск и профили работают локально  <br/>status=`DONE`; evidence: apps/api/tests/test_catalog_search_filters.py; apps/web/e2e/search-filters.spec.ts
-- ⬜ **T09** [MVP, FULL] Каталог измерен на представительном supply и мобильных устройствах (staging p95/EXPLAIN/HAR)  <br/>status=`TODO`; evidence: infra/catalog_bench_local.py
-  - notes: Локальный bench есть; staging measurement нет
+- ⛔ **T09** [MVP, FULL] Каталог измерен на представительном supply и мобильных устройствах (staging p95/EXPLAIN/HAR)  <br/>status=`BLOCKED`; evidence: infra/catalog_bench_local.py
+  - blocked_by: REL-STAGING
+  - notes: Локальный bench есть; staging.bukergo.ru недоступен (connect fail 2026-11-03). Нужны staging p95/EXPLAIN/mobile HAR на фактическом supply.
 
 ### 7. Календарь и бронирования
 
@@ -193,7 +195,8 @@
 
 - ✅ **REV-01** [FULL] Reviews API для Completed bookings  <br/>status=`DONE`; evidence: reviews table migration
   - notes: Cabinet UI voluntary per D09
-- ⬜ **REV-02** [FULL] V9: двусторонние отзывы, репутация, аналитика кабинетов  <br/>status=`TODO`; evidence: —
+- ✅ **REV-02** [FULL] V9: двусторонние отзывы, репутация, аналитика кабинетов  <br/>status=`DONE`; evidence: docs/ops/REVIEWS_REPUTATION_V9_2026-11-03.md; apps/api/booker_api/review_facts.py; apps/api/tests/test_reviews.py (10 PASS); DealReviewPanel + OrgReviewsBlock + ReputationWidget
+  - notes: Local only; stars gated at 10 reviews per CONTRACT
 - ✅ **REV-03** [MVP, FULL] Analytics taxonomy + Control Room polish  <br/>status=`DONE`; evidence: ROADMAP C6
 
 ### 13. UI/UX, адаптивность и дизайн
@@ -263,6 +266,9 @@
   - blocked_by: REL-STAGING-HOST
 - ⛔ **REL-SMTP** [MVP, FULL] Реальная SMTP доставка для recovery/security notifications  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-SMTP
+- ⛔ **REL-STAGING** [MVP, FULL, INFRA] Staging окружение доступно для измерений и E2E  <br/>status=`BLOCKED`; evidence: —
+  - blocked_by: OWN-PROD-GO
+  - notes: staging.bukergo.ru unreachable from this worktree host (2026-11-03)
 - ⛔ **REL-STAGING-HOST** [MVP, FULL, INFRA] Owner GO на Infrastructure C / remote staging host  <br/>status=`BLOCKED`; evidence: docs/ops/STAGING_PROVISION_PLAYBOOK.md
   - blocked_by: OWN1
   - notes: DNS empty; без host нет T10–T13

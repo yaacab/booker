@@ -20,6 +20,7 @@ import { PublicationWidget } from "./widgets/PublicationWidget";
 import { RequestsInboxWidget } from "./widgets/RequestsInboxWidget";
 import { ServicesWidget } from "./widgets/ServicesWidget";
 import { UpcomingPerformancesWidget } from "./widgets/UpcomingPerformancesWidget";
+import { ReputationWidget } from "../widgets/ReputationWidget";
 
 export type PerformerCabinetSection = "home" | "calendar" | "requests" | "services";
 
@@ -79,6 +80,7 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
       <section className="cabinet-zone-grid workspace-secondary-grid" aria-label="Заявки и профиль">
         {activeHolds.length>0||negotiations.length>0?<UpcomingPerformancesWidget bookings={upcomingPerformances} />:null}
         {orgId ? <CalendarOverviewWidget orgId={orgId} artistId={artistId} bookings={bookings} compact role={role} /> : null}
+        {orgId ? <ReputationWidget orgId={orgId} accent="performer" /> : null}
         {profileCompleteness ? <ProfileCompletenessWidget completeness={profileCompleteness} /> : <PerformerOnboardingWidget profileComplete={!profileIncomplete} hasOpenSlots={upcomingPerformances.length > 0 || activeHolds.length > 0} hasRequests={newRequests.length + awaitingResponse.length > 0} />}
       </section>
       {orgId ? <details className="workspace-disclosure">

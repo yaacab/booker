@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { DealRoomSummary } from "@/components/deal-room/DealRoomSummary";
+import { DealReviewPanel, type DealReviewsState } from "@/components/deal-room/DealReviewPanel";
 import { HoldCountdown } from "@/components/HoldCountdown";
 import { api, trackClientEvent } from "@/lib/api";
 import { orgKindToDealRoomAccentKind } from "@/lib/dealRoomAccents";
@@ -64,6 +65,7 @@ type Room = {
   documents?: { kind: string; id: string; label: string; quote_id?: string; signed: boolean }[];
   payment: { id: string; status: string; amount_rub: number; provider?: string } | null;
   messages: { id: string; kind: string; body: string }[];
+  reviews?: DealReviewsState;
 };
 
 function ackLabel(q: Room["quote"]): string {
@@ -407,6 +409,11 @@ export default function DealPage() {
           {tab === "summary" && (
             <div role="tabpanel" id="deal-panel-summary" aria-labelledby="deal-tab-summary">
               <DealRoomSummary accentKind={accentKind} room={room} actionKind={action.kind} />
+              <DealReviewPanel
+                bookingId={room.booking_id}
+                reviews={room.reviews ?? null}
+                onChanged={() => void load()}
+              />
               <section className="deal-recent-messages card"><div className="deal-content-heading"><h2>Последние сообщения</h2><button type="button" className="deal-text-link" onClick={() => { setTab("chat"); requestAnimationFrame(() => document.getElementById("deal-tab-chat")?.focus()); }}>Открыть чат ↗</button></div>{room.messages.length ? room.messages.slice(-2).map((item) => <div className={`msg ${item.kind === "system" ? "system" : "chat"}`} key={item.id}><strong>{item.kind === "system" ? "Система" : item.kind === "operator" ? "Оператор" : "Участник"}</strong><p>{item.body}</p></div>) : <p className="timeline">Обсудите с участниками детали события. Переписка останется в сделке.</p>}</section>
             </div>
           )}

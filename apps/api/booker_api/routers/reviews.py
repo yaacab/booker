@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from booker_api.db import get_db
 from booker_api.models import Artist, Booking, Review, User, Venue
 from booker_api.publication_eligibility import target_is_public
+from booker_api.review_facts import org_reputation
 from booker_api.routers.deals import _booking_participant_orgs
 from booker_api.security import audit, current_user, membership
 
@@ -50,7 +51,15 @@ def _list_for_org(db: Session, org_id: str) -> dict:
         .order_by(Review.created_at.desc())
         .all()
     )
-    return {"items": [_review_out(r, public=True) for r in rows]}
+    return {
+        "items": [_review_out(r, public=True) for r in rows],
+        "reputation": org_reputation(db, org_id),
+    }
+
+
+@router.get("/organizations/{org_id}/reputation")
+def get_org_reputation(org_id: str, db: Session = Depends(get_db)):
+    return org_reputation(db, org_id)
 
 
 @router.post("/bookings/{booking_id}/reviews")

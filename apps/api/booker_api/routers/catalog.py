@@ -41,6 +41,7 @@ from booker_api.publication_eligibility import (
     batch_publication_eligibility,
     venue_publication_eligibility,
 )
+from booker_api.review_facts import org_reputation
 from booker_api.schemas import (
     ArtistIn,
     ArtistPatchIn,
@@ -112,6 +113,17 @@ def _supplier_deals_count(db: Session, org_id: str) -> int:
         .count()
     )
 
+
+def _reputation_facts(db: Session, org_id: str, *, note_override: str | None = None) -> dict:
+    rep = org_reputation(db, org_id)
+    facts: dict = {
+        "reviews": rep["review_count"],
+        "show_rating": rep["show_rating"],
+        "note": note_override or rep["note"],
+    }
+    if rep.get("show_rating") and "average_rating" in rep:
+        facts["average_rating"] = rep["average_rating"]
+    return facts
 
 
 def _catalog_iso(dt: datetime | None) -> str | None:
@@ -1731,13 +1743,15 @@ def get_venue(
         "data_freshness_status": venue.data_freshness_status,
         "official_website": venue.official_website,
         "details": json.loads(venue.details_json or "{}") if can_view_private else {},
-        "facts": {
-            "note": (
+        "facts": _reputation_facts(
+            db,
+            venue.organization_id,
+            note_override=(
                 "Календарь ориентировочный: слоты синтетические, доступность не подтверждена владельцем."
                 if (getattr(venue, "availability_mode", "owner") or "owner") == "synthetic"
-                else "Звёзды повесим после десяти закрытых вечеров. Пока — факты, не магия."
-            )
-        },
+                else None
+            ),
+        ),
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
         "photos": photos,
         "halls": [_hall_item(h) for h in halls],
@@ -1805,7 +1819,7 @@ def get_artist(
         "facts": {
             "deals": _supplier_deals_count(db, artist.organization_id),
             "response": "в пилоте обычно за пару часов",
-            "note": "Рейтинг из восьми факторов подождёт. Сначала десять живых отзывов, потом цирк.",
+            **_reputation_facts(db, artist.organization_id),
         },
         "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
         "slots": [

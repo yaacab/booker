@@ -251,14 +251,16 @@
         "MVP",
         "FULL"
       ],
-      "status": "TODO",
+      "status": "BLOCKED",
       "evidence": [
         "infra/catalog_bench_local.py"
       ],
-      "blocked_by": [],
-      "notes": "Локальный bench есть; staging measurement нет",
+      "blocked_by": [
+        "REL-STAGING"
+      ],
+      "notes": "Локальный bench есть; staging.bukergo.ru недоступен (connect fail 2026-11-03). Нужны staging p95/EXPLAIN/mobile HAR на фактическом supply.",
       "source": "PROJECT_PROGRESS",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "T10",
@@ -488,12 +490,14 @@
       "scopes": [
         "FULL"
       ],
-      "status": "TODO",
+      "status": "BLOCKED",
       "evidence": [],
-      "blocked_by": [],
-      "notes": "Дублирует T09 на FULL-уровне; закрывается тем же evidence",
+      "blocked_by": [
+        "REL-STAGING"
+      ],
+      "notes": "Локальный bench есть; staging.bukergo.ru недоступен (connect fail 2026-11-03). Нужны staging p95/EXPLAIN/mobile HAR на фактическом supply.",
       "source": "PROJECT_PROGRESS",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "S06",
@@ -2144,12 +2148,17 @@
       "scopes": [
         "FULL"
       ],
-      "status": "TODO",
-      "evidence": [],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/REVIEWS_REPUTATION_V9_2026-11-03.md",
+        "apps/api/booker_api/review_facts.py",
+        "apps/api/tests/test_reviews.py (10 PASS)",
+        "DealReviewPanel + OrgReviewsBlock + ReputationWidget"
+      ],
       "blocked_by": [],
-      "notes": "",
+      "notes": "Local only; stars gated at 10 reviews per CONTRACT",
       "source": "roadmap V9",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "REV-03",
@@ -2344,6 +2353,24 @@
       "notes": "Task-count formula; historical 59/56/15 preserved separately",
       "source": "this slice",
       "updated_at": "2026-11-02"
+    },
+    {
+      "id": "REL-STAGING",
+      "title": "Staging окружение доступно для измерений и E2E",
+      "direction": "release",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-PROD-GO"
+      ],
+      "notes": "staging.bukergo.ru unreachable from this worktree host (2026-11-03)",
+      "source": "ops check",
+      "updated_at": "2026-11-03"
     }
   ],
   "scope_change_log": []

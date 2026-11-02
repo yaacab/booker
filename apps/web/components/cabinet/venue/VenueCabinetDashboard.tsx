@@ -20,6 +20,7 @@ import { VenuePublicationWidget } from "./widgets/VenuePublicationWidget";
 import { VenueStatsWidget } from "./widgets/VenueStatsWidget";
 import { VenueMonthCalendar } from "./widgets/VenueMonthCalendar";
 import { RequestsInboxWidget } from "../performer/widgets/RequestsInboxWidget";
+import { ReputationWidget } from "../widgets/ReputationWidget";
 
 export type VenueCabinetSection = "home" | "calendar" | "requests" | "halls" | "stats";
 const SECTION_COPY = {
@@ -54,7 +55,7 @@ export function VenueCabinetDashboard({ section = "home" }: { section?: VenueCab
             : <div className="workspace-overview-grid"><UpcomingPerformancesWidget bookings={upcomingEvents} title="Ближайшие события" />{profileCompleteness ? <ProfileCompletenessWidget completeness={profileCompleteness} /> : <VenueOnboardingWidget hasHalls={realHalls.length > 0} profileComplete={!profileIncomplete} hasRequests={newRequests.length + awaitingResponse.length > 0} />}</div>}
     footer={orgId ? <details className="workspace-disclosure workspace-settings" id="supply-settings"><summary>Настройки площадки, календаря и услуг <span aria-hidden="true">＋</span></summary><SupplyCabinetSection orgId={orgId} role={role} /></details> : null}
   >
-    {section === "home" ? <div className="cabinet-zone-grid workspace-secondary-grid"><NewRequestsWidget requests={newRequests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} /><VenueHallsWidget halls={halls} role={role} onChanged={() => void reload()} /></div> : null}
+    {section === "home" ? <div className="cabinet-zone-grid workspace-secondary-grid"><NewRequestsWidget requests={newRequests} role={role} offerBusy={offerBusy} onSendOffer={item => void sendOffer(item)} /><VenueHallsWidget halls={halls} role={role} onChanged={() => void reload()} />{orgId ? <ReputationWidget orgId={orgId} accent="venue" /> : null}</div> : null}
     {(section === "home" || section === "requests") && (awaitingResponse.length > 0 || activeHolds.length > 0 || expiringOffers.length > 0) ? <div className="cabinet-zone-grid workspace-secondary-grid">
       {awaitingResponse.length > 0 ? <AwaitingResponseWidget deals={awaitingResponse} /> : null}{activeHolds.length > 0 ? <HoldsWidget holds={activeHolds} /> : null}{expiringOffers.length > 0 ? <ExpiringOffersWidget deals={expiringOffers} /> : null}
     </div> : null}
