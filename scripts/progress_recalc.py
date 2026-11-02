@@ -96,9 +96,24 @@ def direction_rows(data: dict) -> list[dict]:
 
 
 def next_priorities(tasks: list[dict], limit: int = 8) -> list[dict]:
-    order = {"IN PROGRESS": 0, "TODO": 1, "BLOCKED": 2, "DEFERRED": 3}
-    candidates = [t for t in tasks if t["status"] in order]
-    candidates.sort(key=lambda t: (order[t["status"]], t["id"]))
+    """Prefer in-flight and executable MVP tech work over owner/legal waits."""
+    status_order = {"IN PROGRESS": 0, "TODO": 1, "BLOCKED": 2, "DEFERRED": 3}
+
+    def rank(task: dict) -> tuple:
+        tid = task["id"]
+        scopes = set(task.get("scopes") or [])
+        external = tid.startswith(("OWN-", "LEG-")) or tid in {"OWN-DESIGN-ACK", "OWN-LEGAL-GO"}
+        mvp = "MVP" in scopes
+        return (
+            status_order[task["status"]],
+            0 if (task["status"] == "TODO" and mvp and not external) else 1,
+            0 if mvp else 1,
+            0 if not external else 1,
+            tid,
+        )
+
+    candidates = [t for t in tasks if t["status"] in status_order]
+    candidates.sort(key=rank)
     return candidates[:limit]
 
 

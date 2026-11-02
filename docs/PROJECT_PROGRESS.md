@@ -165,10 +165,10 @@
 
 ### Следующие задачи
 
-- ⬜ `LEG-03` — Хостинг 152-ФЗ / уведомление РКН (`TODO`)
-- ⬜ `OWN-DESIGN-ACK` — Владелец утвердил статичный дизайн ключевых путей (`TODO`)
-- ⬜ `OWN-LEGAL-GO` — Юрист/бухгалтер/реквизиты: legal publish GO (`TODO`)
-- ⬜ `OWN-MOTION-ACK` — Владелец утвердил конкретный motion «Рамка слота» (`TODO`)
-- ⬜ `OWN-PAY-PARTNER` — Платёжный партнёр письменно подтвердил схему (`TODO`)
+- ⬜ `T09` — Каталог измерен на представительном supply и мобильных устройствах (staging p95/EXPLAIN/HAR) (`TODO`)
+- ⬜ `OWN-SMTP` — Owner предоставил рабочий SMTP для staging/prod notifications (`TODO`)
+- ⬜ `OWN-TWO-APPROVER` — Два утверждающих для staff recovery приняты (`TODO`)
+- ⬜ `P07` — Каталог измерен на представительном supply (staging) (`TODO`)
+- ⬜ `REV-02` — V9: двусторонние отзывы, репутация, аналитика кабинетов (`TODO`)
 
 <!-- END AUTO-GENERATED TASK-COUNT PROGRESS -->
