@@ -1,0 +1,2321 @@
+{
+  "version": 1,
+  "updated_at": "2026-11-02",
+  "updated_at_iso": "2026-11-02T14:42:06Z",
+  "formula": "readiness = DONE / (DONE+TODO+IN PROGRESS+BLOCKED+DEFERRED) * 100; CANCELLED excluded",
+  "historical_weighted_scores": {
+    "as_of": "2026-10-02",
+    "note": "Фиксированные веса PROJECT_PROGRESS.md до введения task-count формулы. Сохраняются как история, не пересчитываются.",
+    "full_launch_pct": 59.0,
+    "mvp_pct": 56.0,
+    "design_pct": 15.0
+  },
+  "scopes": {
+    "MVP": "Технический MVP без реальных денег и production",
+    "DESIGN": "Красивый сайт с дизайном",
+    "FULL": "Полный коммерческий запуск",
+    "INFRA": "Инфраструктура, CI, staging, production ops"
+  },
+  "directions": [
+    {
+      "id": "arch",
+      "title": "Архитектура и инфраструктура",
+      "order": 1
+    },
+    {
+      "id": "auth",
+      "title": "Авторизация, пользователи, организации и права",
+      "order": 2
+    },
+    {
+      "id": "customer",
+      "title": "Кабинет заказчика",
+      "order": 3
+    },
+    {
+      "id": "artist",
+      "title": "Кабинет артиста",
+      "order": 4
+    },
+    {
+      "id": "venue",
+      "title": "Кабинет площадки",
+      "order": 5
+    },
+    {
+      "id": "catalog",
+      "title": "Каталог и поиск",
+      "order": 6
+    },
+    {
+      "id": "calendar",
+      "title": "Календарь и бронирования",
+      "order": 7
+    },
+    {
+      "id": "deal",
+      "title": "Заявки, предложения и Deal Room",
+      "order": 8
+    },
+    {
+      "id": "messaging",
+      "title": "Сообщения и уведомления",
+      "order": 9
+    },
+    {
+      "id": "payments",
+      "title": "Платежи, возвраты и выплаты",
+      "order": 10
+    },
+    {
+      "id": "support",
+      "title": "Споры, арбитраж и поддержка",
+      "order": 11
+    },
+    {
+      "id": "reviews",
+      "title": "Отзывы, рейтинг и аналитика",
+      "order": 12
+    },
+    {
+      "id": "design",
+      "title": "UI/UX, адаптивность и дизайн",
+      "order": 13
+    },
+    {
+      "id": "security",
+      "title": "Безопасность и тестирование",
+      "order": 14
+    },
+    {
+      "id": "release",
+      "title": "Staging, production и релиз",
+      "order": 15
+    },
+    {
+      "id": "legal",
+      "title": "Документация и юридические требования",
+      "order": 16
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "Каталог, поиск и профили работают локально",
+      "direction": "catalog",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/api/tests/test_catalog_search_filters.py",
+        "apps/web/e2e/search-filters.spec.ts"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T02",
+      "title": "Event Studio и Control Room работают локально",
+      "direction": "customer",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/PROJECT_STATE.md",
+        "apps/web/app/events/"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T03",
+      "title": "Версии оффера, hold и запрет двойной брони проверены локально",
+      "direction": "calendar",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/api/tests/test_hold_race.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T04",
+      "title": "Deal Room и кабинеты сторон работают локально",
+      "direction": "deal",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/web/app/deals/",
+        "docs/PROJECT_STATE.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T05",
+      "title": "Переписка, поддержка и операторская очередь работают локально",
+      "direction": "support",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/SUPPORT_OPERATOR_QUEUE_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T06",
+      "title": "Объектные права, публичные данные и вложения защищены локально",
+      "direction": "security",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/api/tests/test_authz_regressions.py",
+        "S05 evidence"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T07",
+      "title": "Восстановление доступа администратора, email и TOTP принято (два утверждающих + SMTP + staging)",
+      "direction": "auth",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [
+        "docs/ops/STAFF_RECOVERY_2026-10-02.md"
+      ],
+      "blocked_by": [
+        "REL-SMTP",
+        "REL-STAGING-HOST"
+      ],
+      "notes": "Локальные offline codes есть; SMTP/two-approver/staging открыты",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T08",
+      "title": "Полный API/web/browser/security CI зелёный на точном SHA",
+      "direction": "security",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "PR #20 bb61e998 CI run 38480746776"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T09",
+      "title": "Каталог измерен на представительном supply и мобильных устройствах (staging p95/EXPLAIN/HAR)",
+      "direction": "catalog",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [
+        "infra/catalog_bench_local.py"
+      ],
+      "blocked_by": [],
+      "notes": "Локальный bench есть; staging measurement нет",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T10",
+      "title": "Миграции и DB+uploads restore проверены на staging",
+      "direction": "release",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T11",
+      "title": "Межорганизационный staging, AV и retention проверены",
+      "direction": "security",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T12",
+      "title": "Мобильный путь всех ролей пройден на staging с тестовыми данными",
+      "direction": "release",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "T13",
+      "title": "Staging nginx/systemd/мониторинг и аварийное восстановление проверены",
+      "direction": "release",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "V01",
+      "title": "Атлас экранов и карта переходов созданы",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/design/SCREEN_REFERENCE_ATLAS.md",
+        "docs/design/SCREEN_FLOW_MAP.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "V02",
+      "title": "Визуальное направление и черновик motion сформулированы",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/design/MOTION_PREVIEW_SLOT_FRAME_V2_UNAPPROVED.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "V03",
+      "title": "Владелец явно утвердил дизайн ключевых путей",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-DESIGN-ACK"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "V04",
+      "title": "В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "V05",
+      "title": "Утверждённый дизайн точно перенесён в работающий web",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "V03",
+        "V04"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "V06",
+      "title": "Motion утверждён, права на ассеты проверены и интеграция выполнена",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-MOTION-ACK"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "V07",
+      "title": "Web принят по адаптивности, доступности и скорости",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "V08",
+      "title": "Визуальный и функциональный путь подтверждён browser E2E на staging",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST",
+        "V05"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "P06",
+      "title": "Мобильный путь всех ролей пройден на staging (полный запуск)",
+      "direction": "release",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "P07",
+      "title": "Каталог измерен на представительном supply (staging)",
+      "direction": "catalog",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "Дублирует T09 на FULL-уровне; закрывается тем же evidence",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "S06",
+      "title": "Сброс пароля, email и первичный TOTP администратора безопасны end-to-end",
+      "direction": "auth",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [
+        "docs/ops/STAFF_RECOVERY_2026-10-02.md"
+      ],
+      "blocked_by": [
+        "REL-SMTP",
+        "OWN-TWO-APPROVER"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "S07",
+      "title": "Межорганизационный staging и реальный AV/retention",
+      "direction": "security",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "M06",
+      "title": "Оператор, договоры, простая ЭП и документы утверждены и опубликованы",
+      "direction": "legal",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-LEGAL-GO"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "M07",
+      "title": "Партнёр письменно подтвердил схему платежей/чеков/получателей",
+      "direction": "payments",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-PAY-PARTNER"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "M08",
+      "title": "Live adapter, refund recovery и sandbox money E2E приняты",
+      "direction": "payments",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DEFERRED",
+      "evidence": [],
+      "blocked_by": [
+        "M07",
+        "M06"
+      ],
+      "notes": "stub/external only до Payment Architecture GO",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "D02",
+      "title": "Статичный дизайн ключевых путей явно утверждён владельцем",
+      "direction": "design",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-DESIGN-ACK"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "D03",
+      "title": "Согласованные экраны и состояния перенесены в Figma и web",
+      "direction": "design",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "D02"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "D05",
+      "title": "Конкретный motion утверждён и интегрирован",
+      "direction": "design",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-MOTION-ACK"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "D06",
+      "title": "Motion принят по доступности и мобильному E2E",
+      "direction": "design",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "D05"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "O01",
+      "title": "Локальный sealed backup/SQLite restore evidence v2 проверен",
+      "direction": "arch",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/BACKUP_SEALED.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "O02",
+      "title": "Локальные rollback и schema release gates проверены",
+      "direction": "arch",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/SCHEMA_RELEASE_PLAN_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "O03",
+      "title": "Локальный монитор и сигналы подготовлены",
+      "direction": "arch",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/OBSERVABILITY_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "O04",
+      "title": "Точный кандидат имеет зелёный полный CI/security gate",
+      "direction": "security",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "PR #20 bb61e998"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "O05",
+      "title": "Миграция и восстановление выбранной БД доказаны на staging",
+      "direction": "release",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "O06",
+      "title": "Реальные nginx/systemd/cron/оповещения проверены",
+      "direction": "release",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "O07",
+      "title": "Авторизованная сделка, роли и деньги пройдены на staging",
+      "direction": "release",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "O08",
+      "title": "Production выпущен с rollback evidence и live E2E",
+      "direction": "release",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-PROD-GO",
+        "O05",
+        "O06",
+        "O07"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "O09",
+      "title": "Реальный concierge pilot и supply приняты по метрикам",
+      "direction": "release",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "O08",
+        "OWN-PILOT"
+      ],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "P01",
+      "title": "Поиск, каталог и профили работают локально (FULL)",
+      "direction": "catalog",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_catalog_search_filters.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "P02",
+      "title": "Event Studio и Control Room локально (FULL)",
+      "direction": "customer",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/web/app/events/"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "P03",
+      "title": "Оффер/hold/бронь защищены локальными тестами (FULL)",
+      "direction": "calendar",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_hold_race.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "P04",
+      "title": "Deal Room и кабинеты локально (FULL)",
+      "direction": "deal",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/web/app/deals/"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "P05",
+      "title": "Поддержка и споры локально (FULL)",
+      "direction": "support",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "SUPPORT_OPERATOR_QUEUE_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "P08",
+      "title": "Полный CI на точном кандидате (FULL)",
+      "direction": "security",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "PR #20"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "S01",
+      "title": "Объектные права и вложения — локальные отрицательные тесты",
+      "direction": "security",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_authz_regressions.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "S02",
+      "title": "Журнал согласий и data-subject workflow локально",
+      "direction": "legal",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "LEGAL_CONSENT_LEDGER_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "S03",
+      "title": "Серверный критерий публикации реализован локально",
+      "direction": "catalog",
+      "scopes": [
+        "FULL",
+        "MVP"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "publication_eligibility.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "S04",
+      "title": "Админский step-up для claim и лимиты iCal локально",
+      "direction": "security",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "SECURITY_SCAN_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "S05",
+      "title": "Публичные исследования, busy-слоты и фото без прав закрыты",
+      "direction": "security",
+      "scopes": [
+        "FULL",
+        "MVP"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "PUBLIC_CATALOG_PRIVACY_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "M01",
+      "title": "Серверный расчёт цены и привязка принятой версии",
+      "direction": "payments",
+      "scopes": [
+        "FULL",
+        "MVP"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "pricing.py",
+        "CONTRACT.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "M02",
+      "title": "Черновой legal pack и consent ledger локально",
+      "direction": "legal",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "LEGAL_CONSENT_LEDGER_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "M03",
+      "title": "Неизменяемый технический снимок договора/ack локально",
+      "direction": "deal",
+      "scopes": [
+        "FULL",
+        "MVP"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "CONTRACT_DRAFT_ACK_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "M04",
+      "title": "External evidence отделяет сообщения сторон от денежного факта",
+      "direction": "payments",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "EXTERNAL_PAYMENT_CORRECTION_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "M05",
+      "title": "Отмена и возврат блокируют повтор и сохраняют денежный след локально",
+      "direction": "payments",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "CANCELLATION_REFUND_GATES_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "D01",
+      "title": "Атлас экранов и карта переходов (FULL)",
+      "direction": "design",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "SCREEN_REFERENCE_ATLAS.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "D04",
+      "title": "Направление «Рамка слота» и интерактивный черновик motion",
+      "direction": "design",
+      "scopes": [
+        "FULL",
+        "DESIGN"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "MOTION_PREVIEW_SLOT_FRAME_V2_UNAPPROVED.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ARCH-01",
+      "title": "Базовый стек Next.js + FastAPI + SQLAlchemy/Alembic в репозитории",
+      "direction": "arch",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/api",
+        "apps/web"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ARCH-02",
+      "title": "Alembic цепочка single-head и schema-release manifest",
+      "direction": "arch",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "infra/schema-release-manifest.v1.json",
+        "test_schema_release.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ARCH-03",
+      "title": "Локальный PostgreSQL 16 test runtime + TEST_POSTGRES_DSN harness",
+      "direction": "arch",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/api/tests/postgres_harness.py",
+        "docs/ops/evidence/2026-11-02-v0-safe-hold-expire.md"
+      ],
+      "blocked_by": [],
+      "notes": "User-space PG 16.15 :55432; не production",
+      "source": "V0 worktree",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ARCH-04",
+      "title": "PostgreSQL cutover production/staging выбранной БД",
+      "direction": "arch",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DEFERRED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-STAGING-HOST"
+      ],
+      "notes": "SQLite pilot допустим; restore выбранного engine обязателен",
+      "source": "DEVELOPMENT_GOAL",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ARCH-05",
+      "title": "Fail-closed staging preflight + негативные тесты",
+      "direction": "arch",
+      "scopes": [
+        "INFRA",
+        "MVP"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "infra/test_staging_preflight.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "TASK_LEDGER B1c",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ARCH-06",
+      "title": "Staging package hardened (локальный пакет)",
+      "direction": "arch",
+      "scopes": [
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/evidence/2026-10-15-staging-hardened.md"
+      ],
+      "blocked_by": [],
+      "notes": "Host GO ещё нужен",
+      "source": "TASK_LEDGER B1b",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "REL-STAGING-HOST",
+      "title": "Owner GO на Infrastructure C / remote staging host",
+      "direction": "release",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "BLOCKED",
+      "evidence": [
+        "docs/ops/STAGING_PROVISION_PLAYBOOK.md"
+      ],
+      "blocked_by": [
+        "OWN1"
+      ],
+      "notes": "DNS empty; без host нет T10–T13",
+      "source": "TASK_LEDGER B1a/B1d",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "REL-SMTP",
+      "title": "Реальная SMTP доставка для recovery/security notifications",
+      "direction": "release",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-SMTP"
+      ],
+      "notes": "",
+      "source": "TASK_LEDGER S06c",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "OWN1",
+      "title": "Owner packet A/B/C записан; ждать Infrastructure C GO",
+      "direction": "release",
+      "scopes": [
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/FINAL_DELIVERY_HANDOFF.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "TASK_LEDGER",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "OWN-DESIGN-ACK",
+      "title": "Владелец утвердил статичный дизайн ключевых путей",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS D02",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "OWN-MOTION-ACK",
+      "title": "Владелец утвердил конкретный motion «Рамка слота»",
+      "direction": "design",
+      "scopes": [
+        "DESIGN",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS D05",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "OWN-LEGAL-GO",
+      "title": "Юрист/бухгалтер/реквизиты: legal publish GO",
+      "direction": "legal",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS M06",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "OWN-PAY-PARTNER",
+      "title": "Платёжный партнёр письменно подтвердил схему",
+      "direction": "payments",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS M07",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "OWN-TWO-APPROVER",
+      "title": "Два утверждающих для staff recovery приняты",
+      "direction": "auth",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [
+        "docs/ops/evidence/2026-10-15-two-approver-design.md"
+      ],
+      "blocked_by": [],
+      "notes": "Design+tests flag OFF; SMTP BLOCKED",
+      "source": "TASK_LEDGER S06b",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "OWN-SMTP",
+      "title": "Owner предоставил рабочий SMTP для staging/prod notifications",
+      "direction": "release",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "",
+      "source": "TASK_LEDGER",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "OWN-PROD-GO",
+      "title": "Отдельное разрешение владельца на production",
+      "direction": "release",
+      "scopes": [
+        "FULL",
+        "INFRA"
+      ],
+      "status": "TODO",
+      "evidence": [
+        "F1 NO-GO"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "TASK_LEDGER F1",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "OWN-PILOT",
+      "title": "Реальный founding supply/demand pilot согласован",
+      "direction": "release",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS O09",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "AUTH-01",
+      "title": "Регистрация с legal pack / draft acknowledgement",
+      "direction": "auth",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/api/tests/",
+        "0bd7aa0 registration wiring"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "AUTH-02",
+      "title": "Организации, роли owner/admin/manager/viewer, переключение workspace",
+      "direction": "auth",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "ROADMAP.md phase 1"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "ROADMAP",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "AUTH-03",
+      "title": "Сессии, 2FA/TOTP storage (hashed/encrypted) локально",
+      "direction": "auth",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "alembic a04f56b78c90",
+        "test_totp_storage.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "AUTH-04",
+      "title": "Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт",
+      "direction": "auth",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DEFERRED",
+      "evidence": [
+        "IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md"
+      ],
+      "blocked_by": [],
+      "notes": "Частичные миграции a09–a11 есть; полный UX/провайдеры не закрыты",
+      "source": "IDENTITY_GOAL",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "AUTH-05",
+      "title": "Object-level authz regressions покрыты тестами",
+      "direction": "auth",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_authz_regressions.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CUST-01",
+      "title": "Кабинет заказчика: события, заявки, holds widgets",
+      "direction": "customer",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "apps/web/app/cabinet/",
+        "e2e cabinets"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CUST-02",
+      "title": "Event Studio: состав/requirements qty и PUT",
+      "direction": "customer",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "ROADMAP C1"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "ROADMAP",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ART-01",
+      "title": "Кабинет артиста: базовый dashboard, заявки, календарь overview",
+      "direction": "artist",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "PerformerCabinetDashboard.tsx"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ART-02",
+      "title": "Артист: PATCH/DELETE тарифов API + UI",
+      "direction": "artist",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "feat/v2-artist-profile-services 8019d56",
+        "test_artist_tariff_crud.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V2",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ART-03",
+      "title": "Артист: publication-evidence + publication toggle в кабинете",
+      "direction": "artist",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "PublicationWidget.tsx",
+        "8019d56"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V2",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ART-04",
+      "title": "Артист: PATCH профиля/райдера + media_url в search",
+      "direction": "artist",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_artist_profile_patch.py",
+        "8019d56"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V2",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ART-05",
+      "title": "Артист: services PATCH/DELETE, sync-tariff, multi-artist selector",
+      "direction": "artist",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "1944b37",
+        "test_service_crud_v2.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V2",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ART-06",
+      "title": "Артист: запрос верификации из кабинета (supply→admin)",
+      "direction": "artist",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "Верификация сейчас admin-only",
+      "source": "V2 deferred",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "ART-07",
+      "title": "Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)",
+      "direction": "artist",
+      "scopes": [
+        "FULL",
+        "DESIGN"
+      ],
+      "status": "DEFERRED",
+      "evidence": [
+        "g0 plan D01 DRAFT"
+      ],
+      "blocked_by": [],
+      "notes": "Artist vNext = DRAFT; CONTRACT канон",
+      "source": "G0/G1",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "VEN-01",
+      "title": "Кабинет площадки: базовый dashboard и залы",
+      "direction": "venue",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "ROADMAP C3",
+        "cabinet venue"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "ROADMAP",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "VEN-02",
+      "title": "Площадка: верификация venues в админке",
+      "direction": "venue",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "ROADMAP C4"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "ROADMAP",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "VEN-03",
+      "title": "Площадка: доработки publication/photos UX на уровне артистского паритета",
+      "direction": "venue",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "API publication для venues есть; кабинетный UX слабее artist V2",
+      "source": "gap scan",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAT-01",
+      "title": "Публичный поиск/фильтры и пагинация локально",
+      "direction": "catalog",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_catalog_search_pagination.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAT-02",
+      "title": "Publication eligibility gate для artist/venue",
+      "direction": "catalog",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "publication_eligibility.py",
+        "test_publication_eligibility.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAT-03",
+      "title": "Публичные услуги /services/public discovery в web",
+      "direction": "catalog",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [
+        "services.py list_public_services"
+      ],
+      "blocked_by": [],
+      "notes": "API есть; web discovery через catalog search",
+      "source": "V2 deferred",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAL-01",
+      "title": "Создание open-слотов и буферы overlap",
+      "direction": "calendar",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_slot_buffers.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAL-02",
+      "title": "Vacation/iCal busy overlays",
+      "direction": "calendar",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_vacation.py",
+        "SupplyCabinetSection"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAL-03",
+      "title": "Hold exclusivity: один победитель на слот",
+      "direction": "calendar",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_hold_race.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAL-04",
+      "title": "V0-SAFE-HOLD-EXPIRE: атомарный expire exclusive states + late payment review",
+      "direction": "calendar",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "fix/v0-safe-hold-expire 8dd2f67",
+        "test_hold_expire_v0.py",
+        "test_hold_expire_postgres.py 6 PASS"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V0",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAL-05",
+      "title": "PostgreSQL concurrency proofs для hold expire/confirm",
+      "direction": "calendar",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "14 postgres_integration PASS",
+        "8dd2f67"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V0",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAL-06",
+      "title": "DELETE open slots + slot_is_bookable для offer/quick-request",
+      "direction": "calendar",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "feat/v3-calendar-requests 0066bb6",
+        "test_slot_delete_and_bookable.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V3",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "CAL-07",
+      "title": "Port V0+V3 calendar/hold fixes в delivery/live canonical",
+      "direction": "calendar",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "Feature branches; merge NO-GO без отдельного GO",
+      "source": "roadmap",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "DEAL-01",
+      "title": "Заявки, офферы с quote_id, ack обеих сторон",
+      "direction": "deal",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_offers.py",
+        "LAUNCH_CHECKLIST"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "DEAL-02",
+      "title": "Deal Room вкладки чат/условия/документы/платежи/спор",
+      "direction": "deal",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "LAUNCH_CHECKLIST",
+        "apps/web/app/deals/"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "DEAL-03",
+      "title": "V4: усиление версий условий, статусов и аудита изменений оффера",
+      "direction": "deal",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "Следующий roadmap slice после V3",
+      "source": "G0 roadmap V4",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "MSG-01",
+      "title": "Коммерческий чат deal conversation",
+      "direction": "messaging",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "deals conversation routes"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "MSG-02",
+      "title": "User notifications inbox (recipient-indexed)",
+      "direction": "messaging",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "alembic a05f67c89d01"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "MSG-03",
+      "title": "Внешняя доставка уведомлений (email/Telegram) включена и проверена",
+      "direction": "messaging",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [],
+      "blocked_by": [
+        "REL-SMTP"
+      ],
+      "notes": "",
+      "source": "IDENTITY_GOAL",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "PAY-01",
+      "title": "Stub/external payment + signed webhook + idempotency локально",
+      "direction": "payments",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_payments.py",
+        "LAUNCH_CHECKLIST"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "PAY-02",
+      "title": "Отказ платежа не подтверждает бронь",
+      "direction": "payments",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_payments.py"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "PAY-03",
+      "title": "Cancellation/refund gates локально",
+      "direction": "payments",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "CANCELLATION_REFUND_GATES"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "PROJECT_PROGRESS M05",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "PAY-04",
+      "title": "Reconciliation/provider report tables и гонки import",
+      "direction": "payments",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "test_postgres_integration reconciliation"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "PAY-05",
+      "title": "V6 Payment Foundation live adapter (после Legal+Payment GO)",
+      "direction": "payments",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DEFERRED",
+      "evidence": [],
+      "blocked_by": [
+        "OWN-LEGAL-GO",
+        "OWN-PAY-PARTNER"
+      ],
+      "notes": "",
+      "source": "roadmap V6",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "PAY-06",
+      "title": "V7 Payouts eligibility и реквизиты",
+      "direction": "payments",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DEFERRED",
+      "evidence": [],
+      "blocked_by": [
+        "PAY-05"
+      ],
+      "notes": "",
+      "source": "roadmap V7",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "SUP-01",
+      "title": "Support tickets, operator queue, CAS, SLA window config",
+      "direction": "support",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "SUPPORT_OPERATOR_QUEUE",
+        "SLA.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "SUP-02",
+      "title": "Disputes queue/evidence/SLA локально",
+      "direction": "support",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "disputes migration/API"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "SUP-03",
+      "title": "V8: полный арбитражный контур с уведомлениями и связью с возвратами",
+      "direction": "support",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DEFERRED",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "База есть; расширение после payments",
+      "source": "roadmap V8",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "REV-01",
+      "title": "Reviews API для Completed bookings",
+      "direction": "reviews",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "reviews table migration"
+      ],
+      "blocked_by": [],
+      "notes": "Cabinet UI voluntary per D09",
+      "source": "codebase",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "REV-02",
+      "title": "V9: двусторонние отзывы, репутация, аналитика кабинетов",
+      "direction": "reviews",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [],
+      "blocked_by": [],
+      "notes": "",
+      "source": "roadmap V9",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "REV-03",
+      "title": "Analytics taxonomy + Control Room polish",
+      "direction": "reviews",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "ROADMAP C6"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "ROADMAP",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "SEC-01",
+      "title": "Secret exposure gate source/build/deploy-payload",
+      "direction": "security",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "scripts/check_secret_exposure.py",
+        "SECRET_EXPOSURE_GATE.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "ops",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "SEC-02",
+      "title": "R19/security review V0 hold expire без CRITICAL/HIGH",
+      "direction": "security",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/evidence/2026-11-02-v0-safe-hold-expire.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V0",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "SEC-03",
+      "title": "Security review V2 artist supply PASS",
+      "direction": "security",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/evidence/2026-11-02-v2-artist-profile-services.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V2",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "SEC-04",
+      "title": "Security review V3 calendar PASS",
+      "direction": "security",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/evidence/2026-11-02-v3-calendar-requests.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V3",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "SEC-05",
+      "title": "Полный backend pytest suite зелёный на feature SHA с PG DSN",
+      "direction": "security",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "860 PASS after schema fix on V0 worktree"
+      ],
+      "blocked_by": [],
+      "notes": "На fix/v0-safe-hold-expire; не merged",
+      "source": "V0",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "LEG-01",
+      "title": "CONTRACT.md как продуктовый канон; Artist vNext DRAFT",
+      "direction": "legal",
+      "scopes": [
+        "FULL",
+        "MVP"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/product/CONTRACT.md",
+        "G1 D01 ACK"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "G1",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "LEG-02",
+      "title": "ADR-HOLD-001 atomic expire",
+      "direction": "legal",
+      "scopes": [
+        "MVP",
+        "FULL"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/adr/ADR-HOLD-001-atomic-expire.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "V0",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "LEG-03",
+      "title": "Хостинг 152-ФЗ / уведомление РКН",
+      "direction": "legal",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [
+        "HOSTING_152FZ.md"
+      ],
+      "blocked_by": [],
+      "notes": "",
+      "source": "LAUNCH_CHECKLIST P0",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "LEG-04",
+      "title": "Оферта проверена юристом (U5)",
+      "direction": "legal",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "BLOCKED",
+      "evidence": [
+        "docs/legal/"
+      ],
+      "blocked_by": [
+        "OWN-LEGAL-GO"
+      ],
+      "notes": "",
+      "source": "LAUNCH_CHECKLIST",
+      "updated_at": "2026-11-02"
+    },
+    {
+      "id": "DOC-01",
+      "title": "Единый tasks.json + автопересчёт PROJECT_CHECKLIST",
+      "direction": "legal",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "DONE",
+      "evidence": [
+        "docs/progress/tasks.json",
+        "scripts/progress_recalc.py",
+        "docs/PROJECT_CHECKLIST.md",
+        "docs/PROJECT_PROGRESS.md AUTO block"
+      ],
+      "blocked_by": [],
+      "notes": "Task-count formula; historical 59/56/15 preserved separately",
+      "source": "this slice",
+      "updated_at": "2026-11-02"
+    }
+  ],
+  "scope_change_log": []
+}
