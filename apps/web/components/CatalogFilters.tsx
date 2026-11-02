@@ -133,7 +133,7 @@ export function CatalogFilters(props: CatalogFilterValues) {
               <input type="radio" name="category" value="" defaultChecked={!category} />
               <span>Все категории</span>
             </label>
-            {cats.filter((c) => kind === "venue" ? c.code === "venue" : kind === "artist" ? c.code !== "venue" : true).map((c) => (
+            {cats.filter((c) => kind === "venue" ? c.code === "venue" : kind === "artist" || kind === "service" ? c.code !== "venue" : true).map((c) => (
               <label key={c.code} className="catalog-filter-option">
                 <input type="radio" name="category" value={c.code} defaultChecked={category === c.code} />
                 <span>{c.title || categoryLabel(c.code)}</span>

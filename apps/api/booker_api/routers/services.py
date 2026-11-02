@@ -265,13 +265,23 @@ def sync_service_to_artist_tariff(
 @router.get("/services/public")
 def list_public_services(
     category: str | None = Query(None),
+    city: str | None = Query(None),
+    budget_max: int | None = Query(None, ge=0),
     db: Session = Depends(get_db),
 ):
+    """Public discovery of published services bound to eligible supply profiles."""
     q = db.query(Service).filter(Service.published.is_(True))
     if category:
         q = q.filter(Service.category_code == category.strip().lower())
+    if city and city.strip():
+        q = q.filter(Service.city == city.strip())
+    if budget_max is not None:
+        q = q.filter(
+            Service.honorarium_rub.is_not(None),
+            Service.honorarium_rub <= budget_max,
+        )
     items = []
-    for row in q.all():
+    for row in q.order_by(Service.title.asc(), Service.id.asc()).all():
         profile = _service_profile(db, row)
         if isinstance(profile, Artist):
             eligible = artist_publication_eligibility(db, profile).eligible
@@ -279,8 +289,22 @@ def list_public_services(
             eligible = venue_publication_eligibility(db, profile).eligible
         else:
             eligible = False
-        if eligible:
-            items.append(_out(row))
+        if not eligible:
+            continue
+        payload = _out(row)
+        payload.update(
+            {
+                "profile_name": profile.name,
+                "profile_verified": bool(getattr(profile, "verified", False)),
+                "media_url": getattr(profile, "media_url", None),
+                "profile_href": (
+                    f"/artists/{profile.id}"
+                    if isinstance(profile, Artist)
+                    else f"/venues/{profile.id}"
+                ),
+            }
+        )
+        items.append(payload)
     return {"items": items}
 
 

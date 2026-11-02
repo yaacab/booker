@@ -334,6 +334,57 @@ def test_public_hides_unpublished(client):
     assert any(i["id"] == draft["id"] for i in internal)
 
 
+def test_public_services_enrich_profile_and_filter_city_budget(client):
+    user = register(client, "svcpublic@booker.test", "Public")
+    h = auth_header(user["token"])
+    org = client.post("/orgs", json={"name": "Публичные услуги", "kind": "artist"}, headers=h).json()
+    artist = client.post(
+        "/artists",
+        json={"organization_id": org["id"], "name": "DJ Public", "category": "dj", "city": "Москва"},
+        headers=h,
+    ).json()
+    start = datetime.now(timezone.utc) + timedelta(days=12)
+    assert client.post(
+        "/slots",
+        json={
+            "resource_type": "artist",
+            "resource_id": artist["id"],
+            "starts_at": start.isoformat(),
+            "ends_at": (start + timedelta(hours=4)).isoformat(),
+        },
+        headers=h,
+    ).status_code == 200
+    publish_artist(client, user, artist["id"])
+    created = client.post(
+        "/services",
+        json={
+            "organization_id": org["id"],
+            "category_code": "dj",
+            "title": "Сет на корпоратив",
+            "city": "Москва",
+            "honorarium_rub": 90000,
+            "resource_type": "artist",
+            "resource_id": artist["id"],
+        },
+        headers=h,
+    )
+    assert created.status_code == 200, created.text
+    service_id = created.json()["id"]
+
+    public = client.get("/services/public?category=dj&city=Москва&budget_max=100000")
+    assert public.status_code == 200, public.text
+    match = next(item for item in public.json()["items"] if item["id"] == service_id)
+    assert match["profile_name"] == "DJ Public"
+    assert match["profile_href"] == f"/artists/{artist['id']}"
+    assert match["profile_verified"] is True
+    assert "media_url" in match
+
+    over_budget = client.get("/services/public?category=dj&city=Москва&budget_max=80000")
+    assert all(item["id"] != service_id for item in over_budget.json()["items"])
+    other_city = client.get("/services/public?category=dj&city=Казань")
+    assert all(item["id"] != service_id for item in other_city.json()["items"])
+
+
 def test_create_service_writes_audit(client):
     user = register(client, "svcaudit@booker.test", "Audit")
     h = auth_header(user["token"])

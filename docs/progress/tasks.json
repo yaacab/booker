@@ -1715,14 +1715,18 @@
         "MVP",
         "FULL"
       ],
-      "status": "TODO",
+      "status": "DONE",
       "evidence": [
-        "services.py list_public_services"
+        "apps/api/booker_api/routers/services.py list_public_services",
+        "apps/web/app/search/page.tsx kind=service",
+        "apps/web/components/ServiceResultCard.tsx",
+        "apps/api/tests/test_services.py::test_public_services_enrich_profile_and_filter_city_budget",
+        "docs/ops/evidence/2026-11-03-cat03-public-services-discovery.md"
       ],
       "blocked_by": [],
-      "notes": "API есть; web discovery через catalog search",
+      "notes": "Web /search?kind=service + city/budget filters + profile enrichment",
       "source": "V2 deferred",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "CAL-01",

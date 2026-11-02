@@ -194,6 +194,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             ) : (
               <>
                 <Link href="/search?kind=artist">Найти артиста</Link>
+                <Link href="/search?kind=service">Услуги</Link>
                 <Link href="/for-artists">Артистам</Link>
                 <Link href="/faq">Как это работает</Link>
               </>

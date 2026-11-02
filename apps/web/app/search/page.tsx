@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MoscowMap } from "@/components/MoscowMap";
 import { CatalogFilters, type CategoryChip } from "@/components/CatalogFilters";
 import { CatalogResultCard } from "@/components/CatalogResultCard";
+import { ServiceResultCard, type PublicServiceItem } from "@/components/ServiceResultCard";
 import { CATEGORY, categoryLabel, PILOT_CITIES } from "@/lib/copy";
 import { formatDay, pluralRu } from "@/lib/format";
 
@@ -13,8 +14,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const q = await searchParams;
   const city = (q.city || "").trim();
+  const titleKind = q.kind === "service" ? "Услуги" : "Каталог";
   return {
-    title: city ? `Каталог — ${city}` : "Каталог",
+    title: city ? `${titleKind} — ${city}` : titleKind,
     alternates: { canonical: "/search" },
     ...(q.kind==="venue"?{robots:{index:false,follow:false}}:{}),
   };
@@ -101,8 +103,9 @@ export default async function SearchPage({
       <p>Скоро здесь появятся площадки, которые сами разместились в Букере, с фото и условиями от владельцев. Пока опишите событие — оператор подберёт место под ваш формат и бюджет.</p></header>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}><Link className="btn" href="/events/new">Создать заявку</Link><Link className="btn secondary" href="/search?kind=artist">Найти артиста</Link></p></main>;
   }
-  const q = { ...raw, kind:raw.kind||"artist", category: raw.kind === "venue" || (raw.kind === "artist" && raw.category === "venue") ? undefined : raw.category };
+  const q = { ...raw, kind:raw.kind||"artist", category: raw.kind === "venue" || ((raw.kind === "artist" || raw.kind === "service") && raw.category === "venue") ? undefined : raw.category };
   const city = (q.city || "").trim(); // empty = all cities
+  const serviceMode = q.kind === "service";
   const extra = new URLSearchParams();
   if (city) extra.set("city", city);
   if (q.category) extra.set("category", q.category);
@@ -134,32 +137,49 @@ export default async function SearchPage({
   if(q.metro) params.set("metro",q.metro);
   let items: SearchItem[] = [];
   let venues: SearchItem[] = [];
+  let services: PublicServiceItem[] = [];
   let error: string | null = null;
-  const [catalogRes, categories] = await Promise.all([
-    fetch(`${API}/catalog/search?${params.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(8000) }).catch(() => null),
+  const serviceParams = new URLSearchParams();
+  if (q.category) serviceParams.set("category", q.category);
+  if (city) serviceParams.set("city", city);
+  if (q.budget_max) serviceParams.set("budget_max", q.budget_max);
+  const [catalogRes, servicesRes, categories] = await Promise.all([
+    serviceMode
+      ? Promise.resolve(null)
+      : fetch(`${API}/catalog/search?${params.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(8000) }).catch(() => null),
+    serviceMode
+      ? fetch(`${API}/services/public?${serviceParams.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(8000) }).catch(() => null)
+      : Promise.resolve(null),
     loadCategories(),
   ]);
   try {
-    if (catalogRes?.ok) {
+    if (serviceMode) {
+      if (servicesRes?.ok) {
+        const data = await servicesRes.json();
+        services = Array.isArray(data.items) ? data.items : [];
+      } else error = "Каталог услуг временно недоступен.";
+    } else if (catalogRes?.ok) {
       const data = await catalogRes.json();
       items = Array.isArray(data.items) ? data.items : [];
       venues = Array.isArray(data.venues) ? data.venues : [];
     } else error = "Каталог временно недоступен.";
   } catch {
-    error = "Каталог временно недоступен.";
+    error = serviceMode ? "Каталог услуг временно недоступен." : "Каталог временно недоступен.";
   }
-  const empty = items.length === 0 && venues.length === 0 && !error;
-  const total = items.length + venues.length;
+  const empty = serviceMode
+    ? services.length === 0 && !error
+    : items.length === 0 && venues.length === 0 && !error;
+  const total = serviceMode ? services.length : items.length + venues.length;
   return (
     <main className="page-enter catalog-page catalog-reference">
       <header className="catalog-heading">
-        <h1>Найдите тех,<br /> кто нужен именно вам</h1>
+        <h1>{serviceMode ? <>Услуги для<br />вашего события</> : <>Найдите тех,<br /> кто нужен именно вам</>}</h1>
         <p className="catalog-heading-note">Больше<br />событий<br />для людей<span aria-hidden="true" /></p>
       </header>
       <form key={JSON.stringify(q)} className="catalog-searchbar" action="/search" method="get" aria-label="Быстрый поиск">
         <fieldset className="catalog-kind-switch">
           <legend className="catalog-sr-only">Кого ищем</legend>
-          {[{ value: "artist", label: "Артисты" }].map((choice) => (
+          {[{ value: "artist", label: "Артисты" }, { value: "service", label: "Услуги" }].map((choice) => (
             <label key={choice.value}><input type="radio" name="kind" value={choice.value} defaultChecked={(q.kind || "") === choice.value} /><span>{choice.label}</span></label>
           ))}
         </fieldset>
@@ -232,27 +252,44 @@ export default async function SearchPage({
           {empty ? (
             <article className="card empty">
               <h2>
-                {q.date
-                  ? "На выбранную дату свободных вариантов нет"
-                  : "В публичном каталоге пока нет доступных артистов"}
+                {serviceMode
+                  ? "В публичном каталоге пока нет опубликованных услуг"
+                  : q.date
+                    ? "На выбранную дату свободных вариантов нет"
+                    : "В публичном каталоге пока нет доступных артистов"}
               </h2>
               <p>
-                {q.date
-                  ? "Попробуйте соседнюю дату или отправьте заявку оператору. Если каталог пуст целиком — смена даты не поможет."
-                  : "Это не из‑за города или бюджета: в выдачу попадают только профили с аккаунтом участника (не QA). Можно создать заявку — подберём вручную."}
+                {serviceMode
+                  ? "Показываем только опубликованные услуги привязанных и допущенных к публикации профилей. Можно перейти к артистам или создать заявку."
+                  : q.date
+                    ? "Попробуйте соседнюю дату или отправьте заявку оператору. Если каталог пуст целиком — смена даты не поможет."
+                    : "Это не из‑за города или бюджета: в выдачу попадают только профили с аккаунтом участника (не QA). Можно создать заявку — подберём вручную."}
               </p>
               <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                 <Link className="btn" href="/events/new">
                   Создать заявку
                 </Link>
-                <a className="btn secondary" href="mailto:hello@bukergo.ru?subject=%D0%9A%D0%B0%D1%82%D0%B0%D0%BB%D0%BE%D0%B3%20%D0%B0%D1%80%D1%82%D0%B8%D1%81%D1%82%D0%BE%D0%B2">
-                  Связаться с оператором
-                </a>
+                {serviceMode ? (
+                  <Link className="btn secondary" href="/search?kind=artist">
+                    Смотреть артистов
+                  </Link>
+                ) : (
+                  <a className="btn secondary" href="mailto:hello@bukergo.ru?subject=%D0%9A%D0%B0%D1%82%D0%B0%D0%BB%D0%BE%D0%B3%20%D0%B0%D1%80%D1%82%D0%B8%D1%81%D1%82%D0%BE%D0%B2">
+                    Связаться с оператором
+                  </a>
+                )}
               </p>
             </article>
           ) : null}
-          {(!city || city === "Москва") && q.kind !== "artist" ? <MoscowMap venues={venues} district={q.district || q.metro} /> : null}
-          {items.length > 0 ? (
+          {(!city || city === "Москва") && q.kind !== "artist" && q.kind !== "service" ? <MoscowMap venues={venues} district={q.district || q.metro} /> : null}
+          {serviceMode && services.length > 0 ? (
+            <div className="grid" data-testid="public-services-grid">
+              {services.map((item) => (
+                <ServiceResultCard key={item.id} item={item} querySuffix={itemQs || undefined} />
+              ))}
+            </div>
+          ) : null}
+          {!serviceMode && items.length > 0 ? (
             <>
               {venues.length > 0 ? <h2 className="catalog-section-title">Артисты</h2> : null}
               <div className="grid">
@@ -268,7 +305,7 @@ export default async function SearchPage({
               </div>
             </>
           ) : null}
-          {venues.length > 0 ? (
+          {!serviceMode && venues.length > 0 ? (
             <>
               {items.length > 0 ? <h2 className="catalog-section-title">Площадки</h2> : null}
               <div className="grid">

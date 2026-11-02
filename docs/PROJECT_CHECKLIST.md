@@ -1,22 +1,22 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-02 23:09 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-02 23:50 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
 
 - Всего: **131** задач
-- Выполнено: **80**
+- Выполнено: **81**
 - В работе: **0**
-- Ожидают: **16**
+- Ожидают: **15**
 - Заблокировано: **28**
 - Отложено: **7**
-- Общая готовность: **61.07%**
-- MVP: **80.88%** (55/68)
+- Общая готовность: **61.83%**
+- MVP: **82.35%** (56/68)
 - Дизайн: **25.00%** (3/12)
-- Полный запуск (FULL): **60.16%** (77/128)
+- Полный запуск (FULL): **60.94%** (78/128)
 - Инфраструктура/релиз (INFRA): **66.67%** (16/24)
-- Следующая задача: **CAT-03** / Публичные услуги /services/public discovery в web
+- Следующая задача: **LEG-03** / Хостинг 152-ФЗ / уведомление РКН
 
 ### Исторические взвешенные шкалы (не пересчитываются этой формулой)
 
@@ -32,7 +32,7 @@
 | Кабинет заказчика | 4 | 4 | 0 | 0 | 0 | 0 | 100.00% |
 | Кабинет артиста | 7 | 6 | 0 | 0 | 0 | 1 | 85.71% |
 | Кабинет площадки | 3 | 2 | 0 | 1 | 0 | 0 | 66.67% |
-| Каталог и поиск | 8 | 5 | 0 | 3 | 0 | 0 | 62.50% |
+| Каталог и поиск | 8 | 6 | 0 | 2 | 0 | 0 | 75.00% |
 | Календарь и бронирования | 9 | 8 | 0 | 0 | 1 | 0 | 88.89% |
 | Заявки, предложения и Deal Room | 6 | 6 | 0 | 0 | 0 | 0 | 100.00% |
 | Сообщения и уведомления | 3 | 2 | 0 | 0 | 1 | 0 | 66.67% |
@@ -46,7 +46,6 @@
 
 ## Следующие приоритеты
 
-- ⬜ `CAT-03` [MVP,FULL] — Публичные услуги /services/public discovery в web
 - ⬜ `LEG-03` [FULL] — Хостинг 152-ФЗ / уведомление РКН
 - ⬜ `OWN-DESIGN-ACK` [DESIGN,FULL] — Владелец утвердил статичный дизайн ключевых путей
 - ⬜ `OWN-LEGAL-GO` [FULL] — Юрист/бухгалтер/реквизиты: legal publish GO
@@ -54,6 +53,7 @@
 - ⬜ `OWN-PAY-PARTNER` [FULL] — Платёжный партнёр письменно подтвердил схему
 - ⬜ `OWN-PILOT` [FULL] — Реальный founding supply/demand pilot согласован
 - ⬜ `OWN-PROD-GO` [FULL,INFRA] — Отдельное разрешение владельца на production
+- ⬜ `OWN-SMTP` [MVP,FULL] — Owner предоставил рабочий SMTP для staging/prod notifications
 
 ## Полный чек-лист
 
@@ -119,8 +119,8 @@
 
 - ✅ **CAT-01** [MVP, FULL] Публичный поиск/фильтры и пагинация локально  <br/>status=`DONE`; evidence: test_catalog_search_pagination.py
 - ✅ **CAT-02** [MVP, FULL] Publication eligibility gate для artist/venue  <br/>status=`DONE`; evidence: publication_eligibility.py; test_publication_eligibility.py
-- ⬜ **CAT-03** [MVP, FULL] Публичные услуги /services/public discovery в web  <br/>status=`TODO`; evidence: services.py list_public_services
-  - notes: API есть; web discovery через catalog search
+- ✅ **CAT-03** [MVP, FULL] Публичные услуги /services/public discovery в web  <br/>status=`DONE`; evidence: apps/api/booker_api/routers/services.py list_public_services; apps/web/app/search/page.tsx kind=service; apps/web/components/ServiceResultCard.tsx; apps/api/tests/test_services.py::test_public_services_enrich_profile_and_filter_city_budget; docs/ops/evidence/2026-11-03-cat03-public-services-discovery.md
+  - notes: Web /search?kind=service + city/budget filters + profile enrichment
 - ✅ **P01** [FULL] Поиск, каталог и профили работают локально (FULL)  <br/>status=`DONE`; evidence: test_catalog_search_filters.py
 - ⬜ **P07** [FULL] Каталог измерен на представительном supply (staging)  <br/>status=`TODO`; evidence: —
   - notes: Дублирует T09 на FULL-уровне; закрывается тем же evidence
