@@ -21,6 +21,13 @@ body { background: #edf1ef; }
 .reference-puzzle-strip figure { position: relative; margin: 0; min-width: 0; overflow: hidden; }
 .reference-puzzle-strip img { width: 118%; max-width: none; height: auto; display: block; margin-left: -9%; }
 .reference-puzzle-strip figcaption { position: absolute; left: 11%; right: 13%; bottom: 16%; border-radius: 8px; padding: 8px; background: #10251ccc; color: white; font-size: clamp(9px,1.4vw,17px); line-height: 1.25; font-weight: 600; }
+.site-content .support-assistant { background: #ffffffa6; border: 1px solid #fff; border-radius: 18px; padding: clamp(18px,2.4vw,28px); }
+.site-content .support-assistant textarea,
+.site-content .support-assistant input:not([type="checkbox"]) { width: 100%; }
+.site-content .account-security { display: grid; gap: 12px; max-width: 480px; margin-top: 16px; background: #ffffff9c; border: 1px solid #fff; border-radius: 18px; padding: clamp(18px,2.4vw,28px); }
+.site-content .account-security form { display: grid; gap: 12px; }
+.site-content .account-security textarea,
+.site-content .account-security input:not([type="checkbox"]) { width: 100%; }
 .site-content .support-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; background: #ffffffa6; border: 1px solid #fff; }
 .support-form h2, .support-form > label:last-of-type { grid-column: 1 / -1; }
 .support-form h2 { margin: 0; }

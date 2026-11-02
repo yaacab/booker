@@ -54,13 +54,18 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
-    if (query.get("mode") === "register") setMode("register");
+    const modeParam = query.get("mode");
+    if (modeParam === "register") setMode("register");
+    if (modeParam === "staff-recover") {
+      setEnrollSecret(generateTotpSecret());
+      setMode("staff-recover");
+    }
     const requestedRole = query.get("role");
     if (requestedRole === "customer" || requestedRole === "artist" || requestedRole === "venue") {
       setSelectedRole(requestedRole);
       setRoleFromQuery(true);
     }
-    const token = new URLSearchParams(window.location.search).get("reset");
+    const token = query.get("reset");
     if (token) {
       setResetToken(token);
       setMode("reset");
@@ -401,7 +406,18 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
       )}
       <p className="login-secondary-actions">
         {mode === "staff-recovery-codes" ? null : mode === "staff-recover" ? (
-          <button type="button" className="secondary" onClick={() => { setEnrollSecret(""); setMode("login"); setError(""); }}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              setEnrollSecret("");
+              setMode("login");
+              setError("");
+              const url = new URL(window.location.href);
+              url.searchParams.delete("mode");
+              window.history.replaceState(null, "", url.pathname + url.search);
+            }}
+          >
             Вернуться ко входу
           </button>
         ) : mode === "reset" ? (
@@ -426,6 +442,9 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
                     setError("");
                     setNotice("");
                     setMode("staff-recover");
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("mode", "staff-recover");
+                    window.history.replaceState(null, "", url.pathname + url.search);
                   }}
                 >
                   Потеряли Authenticator?

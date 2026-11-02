@@ -167,7 +167,15 @@ export default function ProfilePage() {
           <Link href="/admin">Панель оператора →</Link>
         </p>
       ) : null}
-      {me.is_platform_admin && me.email ? <StaffRecoverySecurity email={me.email} /> : null}
+      {me.is_platform_admin && me.email ? (
+        <StaffRecoverySecurity email={me.email} />
+      ) : null}
+      {me.is_platform_admin ? (
+        <p className="timeline">
+          Потеряли Authenticator? Восстановление доступно на{" "}
+          <Link href="/login?mode=staff-recover">странице входа</Link>.
+        </p>
+      ) : null}
       <p style={{ display: "flex", gap: 8 }}>
         <Link className="btn" href="/cabinet">
           Сделки

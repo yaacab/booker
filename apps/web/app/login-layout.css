@@ -27,10 +27,10 @@ html .site-content .login-fields { background:transparent !important; width:100%
 .site-content .login-fields form button[type="submit"] { width:100%; border-radius:14px; }
 .site-content .login-fields .login-secondary-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px 16px;
+  gap: 10px 12px;
   width: 100%;
   margin: 16px 0 0;
   padding: 0;
@@ -40,6 +40,22 @@ html .site-content .login-fields { background:transparent !important; width:100%
 .site-content .login-fields .login-secondary-actions button {
   flex: 0 1 auto;
   margin: 0;
+}
+.site-content[data-section="login"] .login-fields :is(form.card, section.card) {
+  width: 100%;
+  padding: clamp(22px, 2.5vw, 34px);
+  background: var(--edition-panel) !important;
+  border: 1px solid var(--edition-line) !important;
+  box-shadow: none;
+  display: grid;
+  gap: 14px;
+}
+.site-content .login-fields :is(form.card, section.card) label {
+  width: 100%;
+  text-align: left;
+}
+.site-content .login-fields :is(form.card, section.card) :is(input, textarea) {
+  width: 100%;
 }
 html[data-edition="black"] .site-content .login-fields .role-option { --login-role-ink:#f1f4ef; --login-role-muted:#c0c8c0; background:#252c27 !important; border-color:#4b574d !important; }
 html[data-edition="black"] .site-content .login-fields .role-option.on { --login-role-ink:#1b2c12; --login-role-muted:#344c24; background:#d9fa79 !important; border-color:#d9fa79 !important; box-shadow:none; }

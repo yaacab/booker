@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { api, ApiError, getActiveOrg, getToken } from "@/lib/api";
 import Link from "next/link";
 import { loginHref } from "@/lib/next";
+import { ReferencePuzzleStrip } from "@/components/ReferencePuzzleStrip";
 import { supportDeadlineLabel, SUPPORT_HOURS_TEXT, SUPPORT_TARGET_TEXT } from "@/lib/supportSla";
 
 type Ticket = {
@@ -454,35 +455,62 @@ function SupportInner({ bookingId }: { bookingId: string | null }) {
 
   if (!authReady) {
     return (
-      <main>
-        <p className="kicker">Букер</p>
-        <h1>Поддержка</h1>
-        <p>Загружаем…</p>
+      <main className="reference-information support-reference">
+        <header className="information-heading">
+          <p className="kicker">На связи с вами</p>
+          <h1>Поддержка</h1>
+          <p>Загружаем…</p>
+        </header>
       </main>
     );
   }
 
   if (!hasToken) {
     return (
-      <main>
-        <p className="kicker">Букер</p>
-        <h1>Поддержка</h1>
-        <p>
+      <main className="reference-information support-reference">
+        <header className="information-heading">
+          <p className="kicker">На связи с вами</p>
+          <h1>Поддержка</h1>
+          <h2>Мы рядом, чтобы помочь.</h2>
+          <p>
+            Расскажите, что случилось. Вопрос о профиле, заявке или вашем событии — начнём с деталей.
+          </p>
+        </header>
+        <ReferencePuzzleStrip />
+        <section className="card support-signin">
+          <div>
+            <h2>Написать в поддержку</h2>
+            <p>Войдите, чтобы отправить обращение и видеть его статус в кабинете.</p>
+          </div>
           <Link className="btn" href={loginHref("/support")}>
-            Войти
+            Войти и написать →
           </Link>
-        </p>
+        </section>
+        <aside className="card support-contact">
+          <div>
+            <h2>Другие способы связи</h2>
+            <a href="mailto:hello@bukergo.ru">hello@bukergo.ru ↗</a>
+          </div>
+          <Link href="/faq">Вопросы и ответы →</Link>
+          <Link href="/legal">Документы →</Link>
+        </aside>
       </main>
     );
   }
 
   return (
-    <main>
-      <p className="kicker">Букер</p>
-      <h1>Поддержка и жалобы</h1>
-      <p className="timeline">{SUPPORT_HOURS_TEXT} {SUPPORT_TARGET_TEXT}</p>
+    <main className="reference-information support-reference">
+      <header className="information-heading">
+        <p className="kicker">На связи с вами</p>
+        <h1>Поддержка</h1>
+        <h2>Мы рядом, чтобы помочь.</h2>
+        <p>
+          {SUPPORT_HOURS_TEXT} {SUPPORT_TARGET_TEXT}
+        </p>
+      </header>
+      <ReferencePuzzleStrip />
       <section
-        className="card"
+        className="card support-assistant"
         style={{ marginTop: 16, display: "grid", gap: 12 }}
         aria-busy={assistantBusy !== null}
       >
@@ -793,6 +821,14 @@ function SupportInner({ bookingId }: { bookingId: string | null }) {
           )}
         </section>
       ) : null}
+      <aside className="card support-contact">
+        <div>
+          <h2>Другие способы связи</h2>
+          <a href="mailto:hello@bukergo.ru">hello@bukergo.ru ↗</a>
+        </div>
+        <Link href="/faq">Вопросы и ответы →</Link>
+        <Link href="/legal">Документы →</Link>
+      </aside>
     </main>
   );
 }
@@ -805,5 +841,19 @@ function SupportWithBookingContext() {
 }
 
 export default function SupportPage() {
-  return <Suspense fallback={<main><p>Загрузка поддержки…</p></main>}><SupportWithBookingContext /></Suspense>;
+  return (
+    <Suspense
+      fallback={
+        <main className="reference-information support-reference">
+          <header className="information-heading">
+            <p className="kicker">На связи с вами</p>
+            <h1>Поддержка</h1>
+            <p>Загрузка поддержки…</p>
+          </header>
+        </main>
+      }
+    >
+      <SupportWithBookingContext />
+    </Suspense>
+  );
 }
