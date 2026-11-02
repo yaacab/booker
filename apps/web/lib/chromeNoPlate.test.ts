@@ -34,6 +34,15 @@ test("globals force transparent sticky chrome", () => {
   assert.match(globals, /footer\.site-footer[\s\S]*background:\s*transparent\s*!important/);
 });
 
+test("header/footer break out of wrap for full-bleed chrome", () => {
+  assert.match(globals, /\.wrap\s*>\s*:is\(header\.top/);
+  assert.match(globals, /margin-left:\s*calc\(-1\s*\*\s*\(100vw\s*-\s*100%\)\s*\/\s*2\)/);
+  assert.match(globals, /margin-right:\s*calc\(-1\s*\*\s*\(100vw\s*-\s*100%\)\s*\/\s*2\)/);
+  assert.match(globals, /padding-inline:\s*max\(/);
+  assert.match(continuity, /Full-bleed chrome[\s\S]*margin-left:\s*calc\(-1\s*\*\s*\(100vw\s*-\s*100%\)\s*\/\s*2\)\s*!important/);
+  assert.match(continuity, /padding-inline:\s*max\([\s\S]*calc\(50vw\s*-\s*744px\)/);
+});
+
 test("cream nav never regains a white glass contour", () => {
   assert.match(
     continuity,

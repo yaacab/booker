@@ -109,6 +109,26 @@ html[data-booker-theme="cream"] :is(header.top, .top, .top.surface-glass, footer
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  border-radius: 0 !important;
+}
+
+/* Full-bleed chrome geometry (even if a legacy plate still paints before deploy):
+   span the viewport; keep brand / Войти off the physical edges.
+   (100vw − 100%)/2 escapes both wrap padding and centered max-width gutters. */
+html[data-booker-theme="cream"] .wrap > :is(header.top, .top, .top.surface-glass, footer.site-footer, .site-footer, .site-footer.surface-glass, .reference-footer),
+.wrap > :is(header.top, .top, footer.site-footer, .site-footer) {
+  box-sizing: border-box !important;
+  width: auto !important;
+  max-width: none !important;
+  margin-left: calc(-1 * (100vw - 100%) / 2) !important;
+  margin-right: calc(-1 * (100vw - 100%) / 2) !important;
+  padding-inline: max(
+    env(safe-area-inset-left, 0px),
+    env(safe-area-inset-right, 0px),
+    clamp(20px, 4.5vw, 68px),
+    calc(50vw - 744px)
+  ) !important;
+  border-radius: 0 !important;
 }
 
 /* REGRESSION GUARD: public nav must not regain a white glass contour on cream.

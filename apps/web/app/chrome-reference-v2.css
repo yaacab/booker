@@ -5,7 +5,7 @@ body { background: #edf1ef; }
 .workspace-sidebar nav svg { flex-shrink: 0; }
 .workspace-help { background: linear-gradient(140deg,#e8eedf,#f5f8ed); border: 1px solid #fff; border-radius: 16px; padding: 18px 14px; }
 .workspace-help p { margin: 10px 0; }
-.reference-footer { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-top: 40px; padding: 28px 0; border: 0; background: transparent; box-shadow: none; }
+.reference-footer { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-top: 40px; padding-block: 28px; border: 0; background: transparent; box-shadow: none; border-radius: 0; }
 .footer-brand { display: flex; align-items: center; gap: 18px; }
 .footer-brand .brand-word { font-size: 28px; }
 .footer-brand .brand-lime-dot { font-size: 26px; }
