@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { api, createOrgWithConfirm, getActiveOrg, getToken, setActiveOrg, setToken } from "@/lib/api";
 import { KIND_LABEL } from "@/lib/copy";
 import { loginHref } from "@/lib/next";
+import StaffRecoverySecurity from "@/components/StaffRecoverySecurity";
 
 type Org = { id: string; name: string; kind: string; role: string };
 
@@ -166,6 +167,7 @@ export default function ProfilePage() {
           <Link href="/admin">Панель оператора →</Link>
         </p>
       ) : null}
+      {me.is_platform_admin && me.email ? <StaffRecoverySecurity email={me.email} /> : null}
       <p style={{ display: "flex", gap: 8 }}>
         <Link className="btn" href="/cabinet">
           Сделки

@@ -9,10 +9,33 @@ import { safeNext } from "@/lib/next";
 import { RoleHandoffCard } from "@/components/scene/RoleHandoffCard";
 import { isSceneRole } from "@/lib/sceneRoles";
 
+type AuthMode = "login" | "register" | "recover" | "reset" | "staff-recover" | "staff-recovery-codes";
+
+function generateTotpSecret(): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const bytes = new Uint8Array(20);
+  window.crypto.getRandomValues(bytes);
+  let value = 0;
+  let bits = 0;
+  let secret = "";
+  for (const byte of bytes) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      secret += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  return secret;
+}
+
 export default function AuthPage({ artistWelcome = false }: { artistWelcome?: boolean }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "register" | "recover" | "reset">(artistWelcome ? "register" : "login");
+  const [mode, setMode] = useState<AuthMode>(artistWelcome ? "register" : "login");
   const [resetToken, setResetToken] = useState("");
+  const [enrollSecret, setEnrollSecret] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [recoverySaved, setRecoverySaved] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState("");
@@ -46,9 +69,46 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
   }, []);
 
   useEffect(() => {
-    const titles = { login: "Вход", register: "Регистрация", recover: "Восстановление доступа", reset: "Новый пароль" } as const;
+    const titles = {
+      login: "Вход",
+      register: "Регистрация",
+      recover: "Восстановление доступа",
+      reset: "Новый пароль",
+      "staff-recover": "Восстановить второй фактор",
+      "staff-recovery-codes": "Новые резервные коды",
+    } as const;
     document.title = `${titles[mode]} · Букер`;
   }, [mode]);
+
+  async function recoverStaffTotp(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    setPending(true);
+    const form = new FormData(e.currentTarget);
+    try {
+      const result = await api<{ recovery_codes: string[] }>("/auth/admin-totp/recover", {
+        method: "POST",
+        body: JSON.stringify({
+          email: String(form.get("email") || "").trim(),
+          password: String(form.get("password") || ""),
+          recovery_code: String(form.get("recovery_code") || "").trim(),
+          secret: enrollSecret,
+          code: String(form.get("code") || "").trim(),
+        }),
+      });
+      setToken(null);
+      localStorage.removeItem("booker.admin");
+      setEnrollSecret("");
+      setRecoveryCodes(result.recovery_codes);
+      setRecoverySaved(false);
+      setMode("staff-recovery-codes");
+      setNotice("Доступ восстановлен. Сохраните новые резервные коды и войдите с новым Authenticator.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось восстановить доступ");
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -82,13 +142,23 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
         email: String(form.get("email") || ""),
         password: String(form.get("password") || ""),
       };
+      if (mode === "login") {
+        const totp = String(form.get("totp") || "").trim();
+        if (totp) payload.totp = totp;
+        setToken(null);
+        localStorage.removeItem("booker.admin");
+      }
       if (mode === "register") {
         payload.full_name = String(form.get("full_name") || "Пользователь");
         payload.accept_offer = form.get("accept_offer") === "on";
         payload.accept_privacy = form.get("accept_privacy") === "on";
         payload.marketing_opt_in = form.get("marketing_opt_in") === "on";
       }
-      const res = await api<{ token: string; is_platform_admin?: boolean }>(path, {
+      const res = await api<{
+        token: string;
+        is_platform_admin?: boolean;
+        is_support_operator?: boolean;
+      }>(path, {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -112,7 +182,17 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
       const me = await api<{
         organizations?: { id: string; kind: string }[];
         active_organization_id?: string;
+        is_support_operator?: boolean;
       }>("/me");
+      if (me.is_support_operator || res.is_support_operator) {
+        router.push("/operator");
+        return;
+      }
+      if (res.is_platform_admin) {
+        const rawNext = new URLSearchParams(window.location.search).get("next");
+        router.push(safeNext(rawNext, "/admin"));
+        return;
+      }
       const activeOrgId = me.active_organization_id || me.organizations?.[0]?.id;
       if (activeOrgId) setActiveOrg(activeOrgId);
       const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
@@ -124,29 +204,42 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
         router.push(next);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка входа");
+      if (mode === "login") {
+        setToken(null);
+        localStorage.removeItem("booker.admin");
+      }
+      const message = err instanceof Error ? err.message : "Ошибка входа";
+      setError(
+        mode === "login" && message === "Нужен код второго фактора"
+          ? "Нужен шестизначный код из приложения-аутентификатора. Введите его и повторите вход."
+          : message,
+      );
     } finally {
       setPending(false);
     }
   }
 
   const heading =
-    mode === "reset"
-      ? "Задайте новый пароль"
-      : mode === "recover"
-        ? "Вернём доступ к кабинету"
-        : mode === "login"
-          ? "Войти в Букер"
-          : "Создать кабинет";
+    mode === "staff-recover" || mode === "staff-recovery-codes"
+      ? "Восстановить второй фактор"
+      : mode === "reset"
+        ? "Задайте новый пароль"
+        : mode === "recover"
+          ? "Вернём доступ к кабинету"
+          : mode === "login"
+            ? "Войти в Букер"
+            : "Создать кабинет";
 
   const kicker =
-    mode === "reset"
-      ? "Подтверждение восстановления"
-      : mode === "recover"
-        ? "Восстановление доступа"
-        : mode === "login"
-          ? "Ваше пространство событий"
-          : "Новый аккаунт";
+    mode === "staff-recover" || mode === "staff-recovery-codes"
+      ? "Служебный доступ"
+      : mode === "reset"
+        ? "Подтверждение восстановления"
+        : mode === "recover"
+          ? "Восстановление доступа"
+          : mode === "login"
+            ? "Ваше пространство событий"
+            : "Новый аккаунт";
 
   return (
     <main className={`login-layout bk-scene-auth ${artistWelcome ? "artist-welcome" : ""}${arrival === "handoff" ? " is-arriving" : ""}`}>
@@ -167,13 +260,36 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
       </p>}
       <p className="kicker">{kicker}</p>
       {artistWelcome ? <h2>{mode === "register" ? "Начни с простого" : heading}</h2> : <h1 ref={headingRef} tabIndex={-1}>{heading}</h1>}
-      {mode === "register" ? (
+      {mode === "staff-recover" ? (
+        <p className="timeline">Используйте заранее сохранённый одноразовый код, пароль и новый код из приложения-аутентификатора.</p>
+      ) : mode === "register" ? (
         <p className="timeline">{artistWelcome ? "Три поля — и у тебя будет кабинет артиста." : "Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи."}</p>
       ) : mode === "reset" ? (
         <p className="timeline">Введите новый пароль для аккаунта.</p>
       ) : mode === "recover" ? (
         <p className="timeline">Укажите email — отправим инструкцию, если аккаунт существует.</p>
       ) : null}
+      {mode === "staff-recover" ? (
+        <form className="card surface-glass" style={{ display: "grid", gap: 16 }} onSubmit={recoverStaffTotp}>
+          <label>Email<input name="email" type="email" autoComplete="username" required /></label>
+          <label>Пароль<input name="password" type="password" autoComplete="current-password" required /></label>
+          <label>Сохранённый резервный код<input name="recovery_code" autoComplete="off" minLength={24} maxLength={40} required /></label>
+          <p className="timeline">Добавьте новый аккаунт Букера в приложение-аутентификатор с этим секретом. После подтверждения старый Authenticator и старые коды перестанут работать.</p>
+          <label htmlFor="staff-new-totp-secret">Новый секрет TOTP</label>
+          <input id="staff-new-totp-secret" value={enrollSecret} readOnly autoComplete="off" spellCheck={false} />
+          <label>Текущий код нового приложения<input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required /></label>
+          {error ? <p className="bk-form-error" role="alert" style={{ color: "var(--danger)" }}>{error}</p> : null}
+          <button type="submit" disabled={pending} aria-busy={pending}>{pending ? "Проверяем…" : "Восстановить доступ"}</button>
+        </form>
+      ) : mode === "staff-recovery-codes" ? (
+        <section className="card surface-glass" style={{ display: "grid", gap: 16 }} aria-label="Новые резервные коды">
+          <p role="status" className="timeline">{notice} Каждый код работает один раз и больше не появится на этой странице.</p>
+          <label htmlFor="new-staff-recovery-codes">Новые резервные коды</label>
+          <textarea id="new-staff-recovery-codes" readOnly rows={10} value={recoveryCodes.join("\n")} autoComplete="off" spellCheck={false} />
+          <label><input type="checkbox" checked={recoverySaved} onChange={(event) => setRecoverySaved(event.target.checked)} /> Я сохранил новые коды вне Букера</label>
+          <button type="button" disabled={!recoverySaved} onClick={() => { setRecoveryCodes([]); setRecoverySaved(false); setMode("login"); setNotice(""); }}>Перейти ко входу</button>
+        </section>
+      ) : (
       <form className="card surface-glass" style={{ display: "grid", gap: 16 }} onSubmit={onSubmit}>
         {mode === "register" ? (
           <>
@@ -225,6 +341,23 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
             />
           </label>
         ) : null}
+        {mode === "login" ? (
+          <div style={{ display: "grid", gap: 4 }}>
+            <label htmlFor="login-totp">Код из приложения-аутентификатора</label>
+            <input
+              id="login-totp"
+              name="totp"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              minLength={6}
+              maxLength={6}
+              aria-describedby="login-totp-help"
+            />
+            <small id="login-totp-help">Шесть цифр. Заполните, если у вас включён второй фактор.</small>
+          </div>
+        ) : null}
         {mode === "register" ? (
           <>
             <div className="unknown">
@@ -265,8 +398,13 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
                   : artistWelcome ? "Создать кабинет артиста →" : "Создать аккаунт"}
         </button>
       </form>
+      )}
       <p className="login-secondary-actions">
-        {mode === "reset" ? (
+        {mode === "staff-recovery-codes" ? null : mode === "staff-recover" ? (
+          <button type="button" className="secondary" onClick={() => { setEnrollSecret(""); setMode("login"); setError(""); }}>
+            Вернуться ко входу
+          </button>
+        ) : mode === "reset" ? (
           <button type="button" className="secondary" onClick={() => setMode("login")}>
             Вернуться ко входу
           </button>
@@ -276,9 +414,23 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
               {mode === "login" ? "Создать аккаунт" : "Вернуться ко входу"}
             </button>
             {mode === "login" ? (
-              <button type="button" className="secondary" onClick={() => setMode("recover")}>
-                Забыли пароль?
-              </button>
+              <>
+                <button type="button" className="secondary" onClick={() => setMode("recover")}>
+                  Забыли пароль?
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setEnrollSecret(generateTotpSecret());
+                    setError("");
+                    setNotice("");
+                    setMode("staff-recover");
+                  }}
+                >
+                  Потеряли Authenticator?
+                </button>
+              </>
             ) : null}
           </>
         )}
