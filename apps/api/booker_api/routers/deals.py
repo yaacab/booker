@@ -1601,9 +1601,17 @@ def hold_booking(
     _assert_hold_ready(db, booking)
     slot = _lock_and_validate_slot(db, booking)
     hold = _apply_hold(db, booking=booking, slot=slot, actor_user_id=user.id)
+    hold_id = hold.id
+    expires_at = hold.expires_at
+    booking_status = booking.status
     db.commit()
-    db.refresh(hold)
-    return {"hold_id": hold.id, "expires_at": hold.expires_at.isoformat(), "status": booking.status}
+    # Avoid post-commit refresh: concurrent SQLite hold races can delete/expire the
+    # row before refresh, surfacing InvalidRequestError instead of a clean 409.
+    return {
+        "hold_id": hold_id,
+        "expires_at": expires_at.isoformat(),
+        "status": booking_status,
+    }
 
 
 @router.post("/events/{event_id}/holds/atomic")

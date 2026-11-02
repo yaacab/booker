@@ -788,27 +788,42 @@ def _min_tariff(tariffs: list) -> int | None:
 
 
 
+QA_EMAIL_DOMAIN = "@qa.bukergo.ru"
+
+
+def _org_account_flags(db: Session, organization_ids: list[str]) -> tuple[set[str], set[str]]:
+    """Batch membership lookup: (orgs_with_account, qa_only_orgs)."""
+    ids = {oid for oid in organization_ids if oid}
+    if not ids:
+        return set(), set()
+    rows = (
+        db.query(TeamMember.organization_id, User.email)
+        .join(User, User.id == TeamMember.user_id)
+        .filter(TeamMember.organization_id.in_(ids))
+        .all()
+    )
+    emails_by_org: dict[str, list[str]] = defaultdict(list)
+    for org_id, email in rows:
+        emails_by_org[org_id].append(email or "")
+    with_account = set(emails_by_org)
+    qa_only = {
+        org_id
+        for org_id, emails in emails_by_org.items()
+        if emails and all(e.lower().endswith(QA_EMAIL_DOMAIN) for e in emails)
+    }
+    return with_account, qa_only
+
+
 def _has_account(db: Session, organization_id: str) -> bool:
     """Public artist profiles need a real account; seed/demo orgs without members stay hidden."""
-    return (
-        db.query(TeamMember.id).filter(TeamMember.organization_id == organization_id).first()
-        is not None
-    )
-
-
-QA_EMAIL_DOMAIN = "@qa.bukergo.ru"
+    with_account, _qa = _org_account_flags(db, [organization_id])
+    return organization_id in with_account
 
 
 def _qa_only(db: Session, organization_id: str) -> bool:
     """QA cabinets (every member on @qa.bukergo.ru) stay out of public search."""
-    emails = [
-        e
-        for (e,) in db.query(User.email)
-        .join(TeamMember, TeamMember.user_id == User.id)
-        .filter(TeamMember.organization_id == organization_id)
-        .all()
-    ]
-    return bool(emails) and all(e.lower().endswith(QA_EMAIL_DOMAIN) for e in emails)
+    _with_account, qa_only = _org_account_flags(db, [organization_id])
+    return organization_id in qa_only
 
 
 @router.get("/catalog/search")
@@ -844,10 +859,17 @@ def search_catalog(
         q = db.query(Artist).filter(Artist.city == city)
         if category and category != "venue":
             q = q.filter(Artist.category == category)
-        for artist in q.all():
+        artists = q.all()
+        artist_with_account, artist_qa_only = _org_account_flags(
+            db, [artist.organization_id for artist in artists]
+        )
+        for artist in artists:
             if artist.id in excluded:
                 continue
-            if not _has_account(db, artist.organization_id) or _qa_only(db, artist.organization_id):
+            if (
+                artist.organization_id not in artist_with_account
+                or artist.organization_id in artist_qa_only
+            ):
                 continue
             if not artist_publication_eligibility(
                 db, artist, required_through=required_through
@@ -909,8 +931,12 @@ def search_catalog(
     venue_results = []
     if include_venues:
         seating_l = (seating or "").strip().lower() or None
-        for venue in db.query(Venue).filter(Venue.city == city).all():
-            if _qa_only(db, venue.organization_id):
+        venues = db.query(Venue).filter(Venue.city == city).all()
+        _venue_with_account, venue_qa_only = _org_account_flags(
+            db, [venue.organization_id for venue in venues]
+        )
+        for venue in venues:
+            if venue.organization_id in venue_qa_only:
                 continue
             if not venue_publication_eligibility(
                 db, venue, required_through=required_through
@@ -1200,12 +1226,18 @@ def search_catalog_page(
             [row for resource_type, row in candidates if resource_type == "venue"],
             required_through=day_end,
         )
+        page_with_account, page_qa_only = _org_account_flags(
+            db, [row.organization_id for _resource_type, row in candidates]
+        )
         for index, (resource_type, row) in enumerate(candidates):
             after = resource_type, row.id
             if row.id in excluded:
                 continue
             if resource_type == "artist":
-                if not _has_account(db, row.organization_id) or _qa_only(db, row.organization_id):
+                if (
+                    row.organization_id not in page_with_account
+                    or row.organization_id in page_qa_only
+                ):
                     continue
                 if not eligibility[(resource_type, row.id)].eligible:
                     continue
@@ -1239,6 +1271,8 @@ def search_catalog_page(
                     "tariffs": [{"id": t.id, "title": t.title, "honorarium_rub": t.honorarium_rub} for t in tariffs],
                 })
             else:
+                if row.organization_id in page_qa_only:
+                    continue
                 if not eligibility[(resource_type, row.id)].eligible:
                     continue
                 venue_halls = halls[row.id]

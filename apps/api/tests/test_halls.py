@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from tests.conftest import auth_header, publish_venue, register
 
 
@@ -37,13 +39,15 @@ def test_public_halls_require_catalog_or_member(client):
     foreign = client.get(f"/venues/{venue['id']}/halls", headers=auth_header(stranger["token"]))
     assert foreign.status_code == 403
 
+    starts = datetime.now(timezone.utc) + timedelta(days=14)
+    ends = starts + timedelta(hours=4)
     slot = client.post(
         "/slots",
         json={
             "resource_type": "hall",
             "resource_id": venue["hall_id"],
-            "starts_at": "2026-11-01T18:00:00+00:00",
-            "ends_at": "2026-11-01T22:00:00+00:00",
+            "starts_at": starts.isoformat(),
+            "ends_at": ends.isoformat(),
         },
         headers=auth_header(owner["token"]),
     )
