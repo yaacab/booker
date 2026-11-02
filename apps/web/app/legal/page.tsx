@@ -15,7 +15,7 @@ export default function LegalIndexPage() {
   return (
     <main className="page-enter reference-information legal-reference">
       <header className="information-heading"><p className="kicker">Правила сервиса</p>
-      <h1>Документы</h1><h2>Понятные правила<br />для совместной работы.</h2><p>Здесь собраны условия сервиса и документы о том, как Букер работает с договорённостями и данными.</p></header>
+      <h1>Документы</h1><h2>Понятные правила<br /> для совместной работы.</h2><p>Здесь собраны условия сервиса и документы о том, как Букер работает с договорённостями и данными.</p></header>
       <ReferencePuzzleStrip />
       <div className="legal-banner">
         Редакция {LEGAL_PACK_VERSION}. Документы проходят юридическую проверку. Платежи в пилотной версии отключены.
@@ -33,7 +33,7 @@ export default function LegalIndexPage() {
       <p className="timeline">
         При регистрации необходимо принять условия сервиса и обработки персональных данных. Согласие на рассылки — отдельно и по желанию.
       </p>
-      <aside className="information-help"><p>Есть вопрос по документам?<br />Напишите нам — поможем разобраться.</p><Link className="btn" href="/support">Написать в поддержку →</Link></aside>
+      <aside className="information-help"><p>Есть вопрос по документам?<br /> Напишите нам — поможем разобраться.</p><Link className="btn" href="/support">Написать в поддержку →</Link></aside>
     </main>
   );
 }

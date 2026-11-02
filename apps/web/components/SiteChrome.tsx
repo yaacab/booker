@@ -25,7 +25,9 @@ function tabTitle(path: string): string {
   if (path.startsWith("/profile")) return "Профиль · Букер";
   if (path.startsWith("/admin")) return "Пульт · Букер";
   if (path.startsWith("/login")) return "Вход · Букер";
+  if (path.startsWith("/support")) return "Поддержка · Букер";
   if (path.startsWith("/faq")) return "Помощь · Букер";
+  if (path.startsWith("/for-artists")) return "Для артистов · Букер";
   if (path.startsWith("/deals/")) return "Deal Room · Букер";
   if (path.startsWith("/artists/")) return "Артист · Букер";
   if (path.startsWith("/venues/")) return "Площадка · Букер";
@@ -300,7 +302,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               >
                 Выйти
               </button>
-            ) : (
+            ) : path.startsWith("/login") || path.startsWith("/for-artists") ? null : (
               <Link href={loginHref(path)}>Войти</Link>
             )}
           </div>
@@ -314,7 +316,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <nav aria-label="Информация о сервисе">{process.env.NEXT_PUBLIC_DEMO_CABINETS === "1" && <Link href="/dev/cabinets">Демо-кабинеты</Link>}<Link href="/legal/privacy">Конфиденциальность</Link><Link href="/legal">Документы</Link><Link href="/faq">Вопросы и ответы</Link><Link href="/support">Поддержка</Link></nav>
         </footer>
       </div>
-      {path !== "/for-artists" && <nav className="bottom-nav surface-glass" aria-label="Мобильная навигация">
+      {path !== "/for-artists" && <nav className="bottom-nav" aria-label="Мобильная навигация">
         <Link href="/" aria-label="Главная" className={path === "/" ? "on" : ""}>
           Главная
         </Link>

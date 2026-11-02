@@ -253,7 +253,7 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
           <li><span>03</span><div><h2>Договорись без путаницы</h2><p>Даты, предложения и переписка с заказчиком — в общем пространстве сделки.</p></div></li>
         </ol>
         <p className="artist-benefits-foot">Сначала кабинет. Фото, программу и свободные даты добавишь следующим шагом.</p>
-      </aside> : mode === "register" && queryRead && isSceneRole(selectedRole) ? <RoleHandoffCard role={selectedRole} onArrive={onRoleArrive} /> : <aside className="login-story" aria-label="О Букере"><p className="kicker">Артисты. События. Букер.</p><h2>Хорошие события<br />начинаются с людей.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Находите артистов и заказы, обсуждайте детали и сохраняйте договорённости в одном месте.</p></aside>}
+      </aside> : mode === "register" && queryRead && isSceneRole(selectedRole) ? <RoleHandoffCard role={selectedRole} onArrive={onRoleArrive} /> : <aside className="login-story" aria-label="О Букере"><p className="kicker">Артисты. События. Букер.</p><h2>Хорошие события<br /> начинаются с людей.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Находите артистов и заказы, обсуждайте детали и сохраняйте договорённости в одном месте.</p></aside>}
       <section className="login-fields">
       {!artistWelcome && <p className="brand-lockup-wrap">
         <BrandLockup />

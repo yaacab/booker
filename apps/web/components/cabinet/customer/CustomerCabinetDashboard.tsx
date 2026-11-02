@@ -26,7 +26,7 @@ export function CustomerCabinetDashboard() {
       <div className="customer-event-art" aria-hidden="true"><span /><span /><span /></div>
       <div className="customer-next-event-copy"><p>{formatWhen(nextEvent.event_date)}</p><h2>{nextEvent.title}</h2>{nextEvent.city ? <p><CabinetIcon name="pin" />{nextEvent.city}</p> : null}<span className="customer-event-status">{STATUS_LABEL[nextEvent.status] || nextEvent.status}</span></div>
       <Link className="btn secondary" href={`/events/${nextEvent.id}`}>Перейти к событию <CabinetIcon name="arrow" /></Link>
-    </article> : <article className="customer-start-panel" data-testid="customer-start-card"><div><p className="cabinet-account-context">Ваше первое событие</p><h2>Хорошие события<br />начинаются с людей.</h2><p>Укажите дату, город и нужных специалистов. Найдите тех, кто сделает ваш день особенным.</p><Link className="btn" href="/events/new">Создать событие <CabinetIcon name="arrow" /></Link></div><div className="customer-start-mark" aria-hidden="true">＋</div></article>}
+    </article> : <article className="customer-start-panel" data-testid="customer-start-card"><div><p className="cabinet-account-context">Ваше первое событие</p><h2>Хорошие события<br /> начинаются с людей.</h2><p>Укажите дату, город и нужных специалистов. Найдите тех, кто сделает ваш день особенным.</p><Link className="btn" href="/events/new">Создать событие <CabinetIcon name="arrow" /></Link></div><div className="customer-start-mark" aria-hidden="true">＋</div></article>}
     metrics={[
       { label: "Ближайшие события", value: upcomingEvents.length },
       { label: "Новые предложения", value: newOffers.length, hint: "ждут вашего ответа" },

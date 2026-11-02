@@ -89,7 +89,7 @@ export default function FaqPage() {
     <main className="page-enter reference-information faq-reference">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="information-heading"><p className="kicker">Помощь</p>
-      <h1>Вопросы<br />и ответы</h1><p>Ответы на частые вопросы о Букере.<br />Если не нашли нужную информацию — напишите нам.</p></header>
+      <h1>Вопросы<br /> и ответы</h1><p>Ответы на частые вопросы о Букере.<br /> Если не нашли нужную информацию — напишите нам.</p></header>
       <form className="faq-search" role="search" onSubmit={(event) => event.preventDefault()}>
         <label htmlFor="faq-search">Найти ответ</label><input id="faq-search" type="search" placeholder="Например, как подтвердить условия" value={query} onChange={(event) => setQuery(event.target.value)} />
         {query && <button type="button" className="secondary" onClick={() => setQuery("")}>Сбросить</button>}

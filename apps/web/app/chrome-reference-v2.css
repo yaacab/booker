@@ -17,8 +17,8 @@ body { background: #edf1ef; }
 .site-content .information-heading h1 { font-size: clamp(42px,6.5vw,82px); font-weight: 800; letter-spacing: -.065em; line-height: .99; margin: 10px 0 20px; color: #18251c; }
 .site-content .information-heading h2 { font-size: clamp(22px,3vw,34px); font-weight: 550; letter-spacing: -.035em; margin: 0 0 16px; }
 .information-heading > p:last-child { color: #55665b; max-width: 55ch; margin-bottom: 22px; }
-.reference-puzzle-strip { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; width: min(100%,760px); margin: 8px auto 28px; }
-.reference-puzzle-strip figure { position: relative; margin: 0; min-width: 0; }
+.reference-puzzle-strip { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; width: min(100%,760px); margin: 8px auto 28px; overflow: hidden; }
+.reference-puzzle-strip figure { position: relative; margin: 0; min-width: 0; overflow: hidden; }
 .reference-puzzle-strip img { width: 118%; max-width: none; height: auto; display: block; margin-left: -9%; }
 .reference-puzzle-strip figcaption { position: absolute; left: 11%; right: 13%; bottom: 16%; border-radius: 8px; padding: 8px; background: #10251ccc; color: white; font-size: clamp(9px,1.4vw,17px); line-height: 1.25; font-weight: 600; }
 .site-content .support-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; background: #ffffffa6; border: 1px solid #fff; }
@@ -138,7 +138,9 @@ body { background: #edf1ef; }
  .document-icon { width: 23px; height: 30px; }
  .legal-reference .legal-index strong { font-size: 15px; }
  .reference-footer nav { gap: 0 20px; }
- .reference-puzzle-strip figcaption { padding: 5px; font-size: 9px; }
+ .reference-puzzle-strip { width: 100%; }
+ .reference-puzzle-strip img { width: 100%; margin-left: 0; }
+ .reference-puzzle-strip figcaption { left: 8%; right: 8%; bottom: 12%; padding: 5px; font-size: 9px; }
  .information-help .btn,.support-signin .btn { width: 100%; justify-content: center; }
 }
 @media (prefers-reduced-motion:reduce) {

@@ -10,8 +10,10 @@ const globals = read("../app/globals.css");
 test("SiteChrome header/footer omit surface-glass", () => {
   assert.match(chrome, /<header className="top">/);
   assert.match(chrome, /<footer className="site-footer reference-footer">/);
+  assert.match(chrome, /<nav className="bottom-nav"/);
   assert.doesNotMatch(chrome, /<header className="[^"]*surface-glass/);
   assert.doesNotMatch(chrome, /<footer className="[^"]*surface-glass/);
+  assert.doesNotMatch(chrome, /bottom-nav surface-glass/);
 });
 
 test("cream continuity never paints .top/.site-footer as a plate", () => {
