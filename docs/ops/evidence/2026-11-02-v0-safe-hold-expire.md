@@ -8,12 +8,13 @@
 
 ## Verdict
 
-**BLOCKED** (full V0 PASS criteria) — PostgreSQL concurrency not run (`TEST_POSTGRES_DSN` absent, Docker unavailable).
+**PASS** (V0 technical criteria locally). Merge / port to delivery / production remain NO-GO.
 
-**Code + SQLite verification:** PASS (28 passed, 1 skipped postgres).  
-**Independent security review:** PASS (no CRITICAL/HIGH).
+**Code + SQLite verification:** PASS.  
+**PostgreSQL 16 concurrency + integration:** PASS.  
+**Independent security review:** PASS (no CRITICAL/HIGH; earlier in slice).
 
-Scores unchanged: FULL 59,00% / MVP 56,00% / Design 15,00%.
+Scores unchanged: FULL 59,00% / MVP 56,00% / Design 15,00%. Closing the PG blocker does not change registry weights.
 
 ## Root cause
 
@@ -34,28 +35,53 @@ Scores unchanged: FULL 59,00% / MVP 56,00% / Design 15,00%.
 - `apps/api/booker_api/routers/payments.py`
 - `apps/api/tests/test_hold_expire_v0.py`
 - `apps/api/tests/test_hold_expire_postgres.py`
+- `apps/api/alembic/versions/f05c6d7e8f90_actor_attribution.py` (PG boolean dialect for ack/sign backfill)
+- `apps/api/tests/test_postgres_integration.py` (head revision + irreversible-downgrade seed path)
+- `infra/schema-release-manifest.v1.json` (sha256 for migration fix)
 - `docs/product/CONTRACT.md`
 - `docs/adr/ADR-HOLD-001-atomic-expire.md`
+
+## Local PostgreSQL 16 test runtime
+
+| Item | Value |
+|---|---|
+| Version | PostgreSQL 16.15 (user-space Theseus build) |
+| Bind | `127.0.0.1:55432` only (not public 5432) |
+| Data dir | `~/.local/share/booker-pg16-test/data` |
+| Role/DB | `booker_test` / `booker_test` (no production data) |
+| DSN | `TEST_POSTGRES_DSN` in `~/.config/booker/test-postgres.env` (mode 600, not in Git) |
 
 ## Tests
 
 | Suite | Result |
 |---|---|
-| test_hold_expire_v0 + holds + hold_race + payments | 28 PASS |
-| test_hold_expire_postgres | 1 SKIP (no DSN) |
-| ruff | PASS |
-| C08 non-threaded acceptance | 1 PASS |
-| C08 threaded SQLite | not claimed (segfault risk / not PG proof) |
+| test_hold_expire_v0 + hold_race | PASS |
+| test_hold_expire_postgres (6 concurrency/scenario) | 6 PASS |
+| `-m postgres_integration` | 14 PASS |
+| schema-release head/manifest | PASS |
+| Full API pytest with DSN | 860 PASS / 1 FAIL then fixed → schema PASS; final focused 26 PASS |
+| ruff | PASS (prior) |
+| C08 threaded SQLite | not claimed as PG proof |
+
+### PostgreSQL concurrency covered
+
+- Expire vs webhook: one winner; never Confirmed + open slot
+- Parallel holds on same slot: 200 + 409, one active hold
+- Confirm after expire → `requires_review`, booking Cancelled, slot open
+- Foreign hold slot → `requires_review`, stays AwaitingPayment
+- Webhook redelivery idempotent after Confirmed
+- Concurrent late payment notices after cancel: review or ignored_terminal; never re-confirm
 
 ## Risks for in-flight deals
 
 `count_stale_exclusive_holds()` inventories past-TTL exclusive bookings. Production mass cancel not performed. Release must run inventory on staging copy first.
 
-## Blocked
+## Still NO-GO
 
-1. PostgreSQL expire↔webhook concurrency proof  
-2. Merge / port to delivery / production deploy  
+1. Merge / port to delivery  
+2. Production deploy  
+3. Real payments  
 
 ## Next
 
-Provide `TEST_POSTGRES_DSN` for full V0 PASS, or continue independent Artist IA gaps without claiming V0 complete.
+Artist Profile & Services gaps in a separate working branch (no Identity redesign).

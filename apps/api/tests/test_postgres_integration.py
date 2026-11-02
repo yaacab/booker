@@ -178,7 +178,7 @@ def test_postgres_migration_roundtrip_preserves_nonempty_support_and_triggers(po
                 text(f"SELECT count(*) FROM {table} WHERE id=:id"), {"id": row_id}
             ).scalar_one() == 1
         assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == (
-            "f49a012bc3d4"
+            "b12f34e56a78"
         )
     support_uniques = {
         frozenset(item.get("column_names") or [])
@@ -188,11 +188,51 @@ def test_postgres_migration_roundtrip_preserves_nonempty_support_and_triggers(po
 
 
 def test_postgres_duplicate_provider_reference_blocks_upgrade(postgres_schema):
+    """Seed at f38 via SQL — irreversible later revisions block head→f38 downgrade."""
     engine, config, _schema = postgres_schema
-    command.upgrade(config, "head")
-    _seed_two_payment_bookings(engine)
-    command.downgrade(config, "f38f901ab2c3")
+    command.upgrade(config, "f38f901ab2c3")
     with engine.begin() as connection:
+        connection.execute(text(
+            "INSERT INTO organizations (id,name,kind,city,created_at) VALUES "
+            "('pg-cust','PG Customer','customer','Москва',CURRENT_TIMESTAMP),"
+            "('pg-sup','PG Supplier','artist','Москва',CURRENT_TIMESTAMP)"
+        ))
+        connection.execute(text(
+            "INSERT INTO events (id,organization_id,title,city,event_date,guest_count,notes,"
+            "status) VALUES "
+            "('pg-event','pg-cust','PG test','Москва',CURRENT_TIMESTAMP + interval '2 days',"
+            "20,'','Draft')"
+        ))
+        for index in range(2):
+            connection.execute(text(
+                "INSERT INTO availability_slots (id,resource_type,resource_id,starts_at,ends_at,"
+                "status,buffer_before_min,buffer_after_min) VALUES "
+                f"('pg-slot-{index}','artist','pg-resource-{index}',"
+                "CURRENT_TIMESTAMP + interval '2 days',"
+                "CURRENT_TIMESTAMP + interval '2 days 1 hour','open',0,0)"
+            ))
+            connection.execute(text(
+                "INSERT INTO requests (id,event_id,resource_type,resource_id,supplier_org_id,"
+                "status,created_at) VALUES "
+                f"('pg-req-{index}','pg-event','artist','pg-resource-{index}','pg-sup',"
+                "'RequestSent',CURRENT_TIMESTAMP)"
+            ))
+            connection.execute(text(
+                "INSERT INTO offers (id,request_id,created_at) VALUES "
+                f"('pg-offer-{index}','pg-req-{index}',CURRENT_TIMESTAMP)"
+            ))
+            connection.execute(text(
+                "INSERT INTO bookings (id,event_id,offer_id,slot_id,status,payout_pending,"
+                "created_at) VALUES "
+                f"('pg-book-{index}','pg-event','pg-offer-{index}','pg-slot-{index}',"
+                "'Confirmed',false,CURRENT_TIMESTAMP)"
+            ))
+            connection.execute(text(
+                "INSERT INTO payments (id,booking_id,amount_rub,status,provider,idempotency_key,"
+                "created_at) VALUES "
+                f"('pg-pay-{index}','pg-book-{index}',100,'succeeded','stub',"
+                f"'pg-payment-{index}',CURRENT_TIMESTAMP)"
+            ))
         connection.execute(text("ALTER TABLE payments ADD COLUMN provider_reference varchar(128)"))
         connection.execute(text(
             "ALTER TABLE payments ADD COLUMN provider_merchant varchar(128) NOT NULL DEFAULT ''"

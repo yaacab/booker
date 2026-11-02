@@ -111,6 +111,8 @@ def upgrade() -> None:
         _create_contract_signatures()
 
     bind = op.get_bind()
+    # PostgreSQL stores ack flags as boolean; SQLite historically used 0/1 integers.
+    ack_true = "TRUE" if bind.dialect.name == "postgresql" else "1"
     legacy_acknowledgements = bind.execute(
         sa.text(
             "SELECT ov.id AS offer_version_id, sides.side, "
@@ -122,8 +124,8 @@ def upgrade() -> None:
             "JOIN (SELECT 'customer' AS side UNION ALL SELECT 'supplier') sides ON 1=1 "
             "LEFT JOIN offer_acknowledgements oa ON oa.offer_version_id = ov.id "
             "AND oa.side = sides.side WHERE oa.id IS NULL AND "
-            "((sides.side = 'customer' AND ov.customer_ack = 1) "
-            "OR (sides.side = 'supplier' AND ov.supplier_ack = 1))"
+            f"((sides.side = 'customer' AND ov.customer_ack = {ack_true}) "
+            f"OR (sides.side = 'supplier' AND ov.supplier_ack = {ack_true}))"
         )
     ).mappings()
     for row in legacy_acknowledgements:
@@ -147,8 +149,8 @@ def upgrade() -> None:
             "JOIN conversations cv ON cv.booking_id = b.id "
             "JOIN (SELECT 'customer' AS side UNION ALL SELECT 'supplier') sides ON 1=1 "
             "LEFT JOIN contract_signatures cs ON cs.contract_id = ct.id AND cs.side = sides.side "
-            "WHERE cs.id IS NULL AND ((sides.side = 'customer' AND ct.customer_signed = 1) "
-            "OR (sides.side = 'supplier' AND ct.supplier_signed = 1))"
+            f"WHERE cs.id IS NULL AND ((sides.side = 'customer' AND ct.customer_signed = {ack_true}) "
+            f"OR (sides.side = 'supplier' AND ct.supplier_signed = {ack_true}))"
         )
     ).mappings()
     for row in legacy_signatures:
