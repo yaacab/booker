@@ -11,6 +11,20 @@ import { isSceneRole } from "@/lib/sceneRoles";
 
 type AuthMode = "login" | "register" | "recover" | "reset" | "staff-recover" | "staff-recovery-codes";
 
+type LegalPackDocument = {
+  key: string;
+  version: string;
+  content_hash: string;
+  required: boolean;
+  href?: string;
+};
+
+type LegalPack = {
+  registration_available: boolean;
+  acceptance_effect: string;
+  documents: LegalPackDocument[];
+};
+
 function generateTotpSecret(): string {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   const bytes = new Uint8Array(20);
@@ -43,6 +57,8 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
   const [queryRead, setQueryRead] = useState(false);
   const [roleFromQuery, setRoleFromQuery] = useState(false);
   const [arrival, setArrival] = useState<"none" | "handoff" | "plain">("none");
+  const [legalPack, setLegalPack] = useState<LegalPack | null>(null);
+  const [legalPackError, setLegalPackError] = useState("");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const onRoleArrive = useCallback((hadHandoff: boolean) => {
     setArrival((cur) => {
@@ -83,6 +99,28 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
       "staff-recovery-codes": "Новые резервные коды",
     } as const;
     document.title = `${titles[mode]} · Букер`;
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "register") return;
+    let cancelled = false;
+    setLegalPackError("");
+    api<LegalPack>("/legal/pack")
+      .then((pack) => {
+        if (cancelled) return;
+        setLegalPack(pack);
+        if (!pack.registration_available) {
+          setLegalPackError("Регистрация временно недоступна: документы ещё не утверждены.");
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLegalPack(null);
+        setLegalPackError(err instanceof Error ? err.message : "Не удалось загрузить юридический пакет");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [mode]);
 
   async function recoverStaffTotp(e: FormEvent<HTMLFormElement>) {
@@ -154,10 +192,23 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
         localStorage.removeItem("booker.admin");
       }
       if (mode === "register") {
+        if (!legalPack?.registration_available) {
+          throw new Error(legalPackError || "Регистрация временно недоступна");
+        }
+        const requiredDocs = legalPack.documents.filter((doc) => doc.required);
         payload.full_name = String(form.get("full_name") || "Пользователь");
         payload.accept_offer = form.get("accept_offer") === "on";
         payload.accept_privacy = form.get("accept_privacy") === "on";
+        payload.accept_processing = form.get("accept_processing") === "on";
         payload.marketing_opt_in = form.get("marketing_opt_in") === "on";
+        payload.accepted_documents = requiredDocs.map(({ key, version, content_hash }) => ({
+          key,
+          version,
+          content_hash,
+        }));
+        payload.draft_test_acknowledgement =
+          legalPack.acceptance_effect === "test_acknowledgement" &&
+          form.get("draft_test_acknowledgement") === "on";
       }
       const res = await api<{
         token: string;
@@ -365,6 +416,11 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
         ) : null}
         {mode === "register" ? (
           <>
+            {legalPackError ? (
+              <p className="bk-form-error" role="alert" style={{ color: "var(--danger)" }}>
+                {legalPackError}
+              </p>
+            ) : null}
             <div className="unknown">
               <input id="accept_offer" name="accept_offer" type="checkbox" required />
               <span>
@@ -383,15 +439,50 @@ export default function AuthPage({ artistWelcome = false }: { artistWelcome?: bo
                 с <a href="/legal/privacy">политикой обработки персональных данных</a>.
               </span>
             </div>
-            {!artistWelcome && <label className="unknown">
-              <input name="marketing_opt_in" type="checkbox" />
-              Получать новости продукта и специальные предложения. Необязательно.
-            </label>}
+            <div className="unknown">
+              <input id="accept_processing" name="accept_processing" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_processing" className="inline-label">
+                  Даю отдельное согласие
+                </label>{" "}
+                на обработку персональных данных по{" "}
+                <a href="/legal/consent-texts">текстам согласий</a>.
+              </span>
+            </div>
+            {legalPack?.acceptance_effect === "test_acknowledgement" ? (
+              <div className="unknown">
+                <input
+                  id="draft_test_acknowledgement"
+                  name="draft_test_acknowledgement"
+                  type="checkbox"
+                  required
+                />
+                <span>
+                  <label htmlFor="draft_test_acknowledgement" className="inline-label">
+                    Понимаю
+                  </label>
+                  , что юридические тексты сейчас черновые и регистрация нужна только для теста.
+                </span>
+              </div>
+            ) : null}
+            {!artistWelcome && (
+              <label className="unknown">
+                <input name="marketing_opt_in" type="checkbox" />
+                Получать новости продукта и специальные предложения. Необязательно.
+              </label>
+            )}
           </>
         ) : null}
         {error ? <p className="bk-form-error" role="alert" style={{ color: "var(--danger)" }}>{error}</p> : null}
         {notice ? <p className="timeline" role="status">{notice}</p> : null}
-        <button type="submit" disabled={pending} aria-busy={pending}>
+        <button
+          type="submit"
+          disabled={
+            pending ||
+            (mode === "register" && (!legalPack?.registration_available || Boolean(legalPackError)))
+          }
+          aria-busy={pending}
+        >
           {pending
             ? "Обрабатываем…"
             : mode === "reset"
