@@ -564,9 +564,25 @@
   background: var(--buker-paper);
   outline: none;
 }
-.bk-role-photo,
-.bk-role-photo img {
+.bk-role-photo {
+  border-radius: 0;
+}
+.bk-stacked .bk-role-photo {
+  border-radius: 16px 0 0 16px;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+.bk-stacked .bk-role-photo img {
   border-radius: inherit;
+  /* keep hover zoom inside the clipped photo pane */
+  will-change: transform;
+}
+.bk-root:not(.bk-stacked) .bk-role-photo {
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
 }
 .bk-role-inner::after {
   content: "";
