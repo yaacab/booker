@@ -19,6 +19,8 @@ type Props = { orgId: string; role: string; onChanged?: () => void };
 export function PublicationWidget({ orgId, role, onChanged }: Props) {
   const {
     profile,
+    artistTargets,
+    selectArtist,
     loading,
     error,
     canManage,
@@ -57,6 +59,18 @@ export function PublicationWidget({ orgId, role, onChanged }: Props) {
       {loading ? <p className="timeline">Проверяем готовность…</p> : null}
       {profile ? (
         <>
+          {artistTargets.length > 1 ? (
+            <label className="cabinet-inline-form">
+              Профиль
+              <select value={profile.id} onChange={(e) => selectArtist(e.target.value)}>
+                {artistTargets.map((item) => (
+                  <option key={item.resource_id} value={item.resource_id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <ul className="timeline" data-testid="performer-publication-status">
             <li>
               {profile.publication_enabled ? "● Публичная карточка включена" : "○ Публичная карточка выключена"}

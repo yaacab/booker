@@ -13,17 +13,19 @@
 4. Owner-facing publication fields on `GET /artists/{id}`; completeness exposes `resource_id` + publication state.
 5. Cabinet `PublicationWidget` (evidence + publish toggle) + rider edit in `PortfolioRiderWidget`.
 6. `media_url` in `/catalog/search` artist payloads (legacy + paginated).
+7. `PATCH/DELETE /services/{id}`, publish toggle, `POST /services/{id}/sync-tariff`.
+8. Services cabinet: bind profile, sync tariff, multi-artist selector (localStorage).
 
-## Tests
+## Tests / review
 
-- `test_artist_tariff_crud.py` + `test_artist_profile_patch.py` + related publication/catalog: **37 PASS**
+- Focused V2 API suite: **50 PASS**
+- Ruff on touched modules: PASS
+- Independent security review: **PASS** (no CRITICAL/HIGH/MEDIUM)
 - Merge / push / production: NO-GO
 
-## Still open (next thin slices)
+## Deferred
 
-- Service ↔ Tariff sync / public services discovery in web
-- `PATCH/DELETE /services/{id}` + publish toggle
-- Multi-artist org selector in cabinet
-- Admin verification request from supply UI
+- Supply-initiated admin verification request (operator process remains admin-only)
+- Public `/services/public` discovery page in web (catalog search remains primary)
 
 Scores unchanged: FULL 59,00% / MVP 56,00% / Design 15,00%.

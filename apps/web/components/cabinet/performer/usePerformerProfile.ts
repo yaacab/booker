@@ -2,10 +2,13 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api, isWriteRole, trackClientEvent } from "@/lib/api";
-import type { PerformerArtistProfile } from "./types";
+import type { PerformerArtistProfile, PerformerCalendarTarget } from "./types";
+
+const selectedArtistKey = (orgId: string) => `booker.performer.selectedArtist.${orgId}`;
 
 export function usePerformerProfile(orgId: string, role: string) {
   const [artistId, setArtistId] = useState("");
+  const [artistTargets, setArtistTargets] = useState<PerformerCalendarTarget[]>([]);
   const [profile, setProfile] = useState<PerformerArtistProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [tariffBusy, setTariffBusy] = useState(false);
@@ -15,18 +18,27 @@ export function usePerformerProfile(orgId: string, role: string) {
     if (!orgId) return;
     setLoading(true);
     try {
-      const targets = await api<{ items: { resource_type: string; resource_id: string; label: string }[] }>(
+      const targets = await api<{ items: PerformerCalendarTarget[] }>(
         `/organizations/${encodeURIComponent(orgId)}/calendar-targets`,
       );
-      const artist = targets.items.find((t) => t.resource_type === "artist");
-      if (!artist) {
+      const artists = targets.items.filter((t) => t.resource_type === "artist");
+      setArtistTargets(artists);
+      if (!artists.length) {
         setArtistId("");
         setProfile(null);
         setError("");
         return;
       }
-      setArtistId(artist.resource_id);
-      const page = await api<PerformerArtistProfile>(`/artists/${encodeURIComponent(artist.resource_id)}`);
+      const stored =
+        typeof window !== "undefined" ? window.localStorage.getItem(selectedArtistKey(orgId)) : null;
+      const selected = artists.find((item) => item.resource_id === stored) || artists[0];
+      setArtistId(selected.resource_id);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(selectedArtistKey(orgId), selected.resource_id);
+      }
+      const page = await api<PerformerArtistProfile>(
+        `/artists/${encodeURIComponent(selected.resource_id)}`,
+      );
       setProfile(page);
       setError("");
     } catch (err) {
@@ -40,6 +52,27 @@ export function usePerformerProfile(orgId: string, role: string) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  function selectArtist(nextId: string) {
+    if (!nextId || nextId === artistId) return;
+    setArtistId(nextId);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(selectedArtistKey(orgId), nextId);
+    }
+    void (async () => {
+      setLoading(true);
+      try {
+        const page = await api<PerformerArtistProfile>(`/artists/${encodeURIComponent(nextId)}`);
+        setProfile(page);
+        setError("");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Не удалось загрузить витрину");
+        setProfile(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }
 
   async function addTariff(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -186,6 +219,8 @@ export function usePerformerProfile(orgId: string, role: string) {
 
   return {
     artistId,
+    artistTargets,
+    selectArtist,
     profile,
     loading,
     tariffBusy,

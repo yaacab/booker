@@ -181,7 +181,7 @@ class ArtistPatchIn(BaseModel):
         except json.JSONDecodeError as exc:
             raise ValueError("rider_json должен быть JSON-объектом") from exc
         if not isinstance(parsed, dict):
-            raise ValueError("rider_json должен быть JSON-объектом")
+            raise TypeError("rider_json должен быть JSON-объектом")
         return value
 
 
@@ -526,11 +526,11 @@ class ServiceIn(BaseModel):
     resource_type: Literal["artist", "venue"] | None = None
     resource_id: str | None = None
     category_code: str
-    title: str
+    title: str = Field(min_length=1, max_length=255)
     description: str = ""
     city: str = "Москва"
     published: bool = True
-    honorarium_rub: int | None = None
+    honorarium_rub: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def profile_binding_is_complete(self):
@@ -545,6 +545,20 @@ class ServiceIn(BaseModel):
         if code not in PILOT_SERVICE_CATEGORIES:
             raise ValueError("category_code: dj|host|cover|photo|makeup|decor|catering|venue")
         return code
+
+
+class ServicePatchIn(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    city: str | None = Field(default=None, min_length=1, max_length=128)
+    published: bool | None = None
+    honorarium_rub: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def at_least_one_field(self):
+        if not self.model_fields_set:
+            raise ValueError("Нет полей для обновления")
+        return self
 
 
 class ServiceOut(BaseModel):

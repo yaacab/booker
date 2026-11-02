@@ -50,6 +50,15 @@ export type PerformerService = {
   category_code: string;
   description: string;
   honorarium_rub: number | null;
+  published?: boolean;
+  resource_type?: string | null;
+  resource_id?: string | null;
+};
+
+export type PerformerCalendarTarget = {
+  resource_type: string;
+  resource_id: string;
+  label: string;
 };
 
 export type PerformerArtistProfile = {

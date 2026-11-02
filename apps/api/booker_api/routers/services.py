@@ -1,13 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from booker_api.db import get_db
-from booker_api.models import Artist, Organization, Service, User, Venue
+from booker_api.models import Artist, ArtistTariff, Organization, Service, User, Venue
 from booker_api.publication_eligibility import (
     artist_publication_eligibility,
     venue_publication_eligibility,
 )
-from booker_api.schemas import ServiceFromTemplateIn, ServiceIn, ServiceOut, ServiceProfileBindingIn
+from booker_api.schemas import (
+    ServiceFromTemplateIn,
+    ServiceIn,
+    ServiceOut,
+    ServicePatchIn,
+    ServiceProfileBindingIn,
+)
 from booker_api.security import audit, current_user, require_org_member, require_org_writer
 from booker_api.service_templates import SERVICE_TEMPLATES, get_template
 from booker_api.supply_completeness import supply_completeness as compute_supply_completeness
@@ -154,6 +160,106 @@ def bind_service_profile(
         )
         db.commit()
     return _out(row)
+
+
+@router.patch("/services/{service_id}")
+def patch_service(
+    service_id: str,
+    body: ServicePatchIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    row = db.get(Service, service_id)
+    if not row:
+        raise HTTPException(404, "Услуга не найдена")
+    require_org_writer(db, user, row.organization_id)
+    patch = body.model_dump(exclude_unset=True)
+    for key, value in patch.items():
+        setattr(row, key, value.strip() if isinstance(value, str) else value)
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="service.updated",
+        entity_type="service",
+        entity_id=row.id,
+        payload={"fields": sorted(patch)},
+    )
+    db.commit()
+    db.refresh(row)
+    return _out(row)
+
+
+@router.delete("/services/{service_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_service(
+    service_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    row = db.get(Service, service_id)
+    if not row:
+        raise HTTPException(404, "Услуга не найдена")
+    require_org_writer(db, user, row.organization_id)
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="service.deleted",
+        entity_type="service",
+        entity_id=row.id,
+        payload={"organization_id": row.organization_id, "title": row.title},
+    )
+    db.delete(row)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/services/{service_id}/sync-tariff")
+def sync_service_to_artist_tariff(
+    service_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Create ArtistTariff from a bound artist service when catalog tariff is missing."""
+    row = db.get(Service, service_id)
+    if not row:
+        raise HTTPException(404, "Услуга не найдена")
+    require_org_writer(db, user, row.organization_id)
+    if row.resource_type != "artist" or not row.resource_id:
+        raise HTTPException(409, "Сначала привяжите услугу к профилю артиста")
+    if row.honorarium_rub is None or row.honorarium_rub < 1:
+        raise HTTPException(400, "У услуги должна быть цена")
+    artist = db.get(Artist, row.resource_id)
+    if not artist or artist.organization_id != row.organization_id:
+        raise HTTPException(404, "Профиль артиста не найден")
+    existing = (
+        db.query(ArtistTariff)
+        .filter(
+            ArtistTariff.artist_id == artist.id,
+            ArtistTariff.title == row.title,
+            ArtistTariff.honorarium_rub == row.honorarium_rub,
+        )
+        .one_or_none()
+    )
+    if existing:
+        return {"id": existing.id, "created": False, "title": existing.title}
+    tariff = ArtistTariff(
+        artist_id=artist.id,
+        title=row.title,
+        honorarium_rub=row.honorarium_rub,
+        hours=2,
+    )
+    db.add(tariff)
+    db.flush()
+    audit(
+        db,
+        actor_user_id=user.id,
+        action="service.tariff_synced",
+        entity_type="service",
+        entity_id=row.id,
+        payload={"tariff_id": tariff.id, "artist_id": artist.id},
+    )
+    db.commit()
+    db.refresh(tariff)
+    return {"id": tariff.id, "created": True, "title": tariff.title}
 
 
 @router.get("/services/public")

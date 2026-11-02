@@ -15,6 +15,8 @@ type PortfolioRiderWidgetProps = {
 export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps) {
   const {
     profile,
+    artistTargets,
+    selectArtist,
     loading,
     error,
     canManage,
@@ -44,6 +46,21 @@ export function PortfolioRiderWidget({ orgId, role }: PortfolioRiderWidgetProps)
 
       {profile ? (
         <>
+          {artistTargets.length > 1 ? (
+            <label className="cabinet-inline-form" data-testid="performer-artist-selector">
+              Профиль
+              <select
+                value={profile.id}
+                onChange={(e) => selectArtist(e.target.value)}
+              >
+                {artistTargets.map((item) => (
+                  <option key={item.resource_id} value={item.resource_id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <ul className="timeline" data-testid="performer-portfolio-summary">
             <li>
               <strong>{profile.name}</strong> · {categoryLabel(profile.category)} · {profile.city}
