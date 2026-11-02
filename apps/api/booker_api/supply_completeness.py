@@ -65,10 +65,20 @@ def supply_completeness(db: Session, org: Organization) -> dict:
 
     done_count = sum(1 for item in items if item["done"])
     score = round(100 * done_count / len(items)) if items else 0
-    return {
+    payload = {
         "score": score,
         "items": items,
         "applicable": True,
         "eligible": bool(eligibility and eligibility.eligible),
         "reason_codes": eligibility.reason_codes if eligibility else [item["id"] for item in items],
     }
+    if profile is not None:
+        payload.update(
+            {
+                "resource_type": "artist" if org.kind == "artist" else "venue",
+                "resource_id": profile.id,
+                "publication_enabled": bool(profile.publication_enabled),
+                "publication_state_version": profile.publication_state_version,
+            }
+        )
+    return payload

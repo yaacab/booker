@@ -16,6 +16,7 @@ import { OpenSlotsWidget } from "./widgets/OpenSlotsWidget";
 import { PerformerOnboardingWidget } from "./widgets/PerformerOnboardingWidget";
 import { PortfolioRiderWidget } from "./widgets/PortfolioRiderWidget";
 import { ProfileCompletenessWidget } from "./widgets/ProfileCompletenessWidget";
+import { PublicationWidget } from "./widgets/PublicationWidget";
 import { RequestsInboxWidget } from "./widgets/RequestsInboxWidget";
 import { ServicesWidget } from "./widgets/ServicesWidget";
 import { UpcomingPerformancesWidget } from "./widgets/UpcomingPerformancesWidget";
@@ -82,7 +83,12 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
       </section>
       {orgId ? <details className="workspace-disclosure">
         <summary>Витрина, услуги и свободные даты <span aria-hidden="true">＋</span></summary>
-        <div className="cabinet-zone-grid"><PortfolioRiderWidget orgId={orgId} role={role} /><ServicesWidget orgId={orgId} role={role} compact /><OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="artist" /></div>
+        <div className="cabinet-zone-grid">
+          <PortfolioRiderWidget orgId={orgId} role={role} />
+          <PublicationWidget orgId={orgId} role={role} onChanged={() => void reload()} />
+          <ServicesWidget orgId={orgId} role={role} compact />
+          <OpenSlotsWidget orgId={orgId} role={role} orgName={orgName} supplyKind="artist" />
+        </div>
       </details> : null}
     </> : null}
     {section === "services" && orgId ? <PortfolioRiderWidget orgId={orgId} role={role} /> : null}

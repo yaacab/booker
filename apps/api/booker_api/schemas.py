@@ -163,6 +163,28 @@ class ArtistIn(BaseModel):
     rider_json: str = "{}"
 
 
+class ArtistPatchIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    city: str | None = Field(default=None, min_length=1, max_length=128)
+    category: str | None = Field(default=None, min_length=1, max_length=64)
+    rider_json: str | None = None
+
+    @field_validator("rider_json")
+    @classmethod
+    def rider_json_is_object(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        import json
+
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError("rider_json должен быть JSON-объектом") from exc
+        if not isinstance(parsed, dict):
+            raise ValueError("rider_json должен быть JSON-объектом")
+        return value
+
+
 class VenueIn(BaseModel):
     organization_id: str
     name: str
@@ -212,9 +234,15 @@ class PublicationStateIn(BaseModel):
 
 
 class TariffIn(BaseModel):
-    title: str
-    honorarium_rub: int
-    hours: int = 2
+    title: str = Field(min_length=1, max_length=255)
+    honorarium_rub: int = Field(ge=1)
+    hours: int = Field(default=2, ge=1, le=24)
+
+
+class TariffPatchIn(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    honorarium_rub: int | None = Field(default=None, ge=1)
+    hours: int | None = Field(default=None, ge=1, le=24)
 
 
 class SlotIn(BaseModel):

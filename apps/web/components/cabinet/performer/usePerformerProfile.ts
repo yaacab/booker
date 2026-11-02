@@ -101,6 +101,89 @@ export function usePerformerProfile(orgId: string, role: string) {
     }
   }
 
+  async function updateRider(fields: { format?: string; lineup?: string; tech?: string; travel?: string }) {
+    if (!artistId || !isWriteRole(role) || !profile) return false;
+    setTariffBusy(true);
+    setError("");
+    try {
+      const rider = {
+        ...profile.rider,
+        ...Object.fromEntries(
+          Object.entries(fields)
+            .map(([key, value]) => [key, String(value || "").trim()])
+            .filter(([, value]) => Boolean(value)),
+        ),
+      };
+      await api(`/artists/${encodeURIComponent(artistId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ rider_json: JSON.stringify(rider) }),
+      });
+      await reload();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось сохранить райдер");
+      return false;
+    } finally {
+      setTariffBusy(false);
+    }
+  }
+
+  async function savePublicationEvidence(input: {
+    media_url: string;
+    media_source_url: string;
+    media_rights_status: "owned" | "licensed" | "official_permission";
+    calendar_days: number;
+  }) {
+    if (!artistId || !isWriteRole(role)) return false;
+    setTariffBusy(true);
+    setError("");
+    try {
+      const through = new Date(Date.now() + Math.max(30, input.calendar_days) * 86_400_000).toISOString();
+      await api(`/artists/${encodeURIComponent(artistId)}/publication-evidence`, {
+        method: "PUT",
+        body: JSON.stringify({
+          media_url: input.media_url.trim(),
+          media_source_url: input.media_source_url.trim() || input.media_url.trim(),
+          media_rights_status: input.media_rights_status,
+          rights_attested: true,
+          calendar_confirmed_through: through,
+        }),
+      });
+      await reload();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось сохранить доказательства публикации");
+      return false;
+    } finally {
+      setTariffBusy(false);
+    }
+  }
+
+  async function setPublicationEnabled(enabled: boolean) {
+    if (!artistId || !isWriteRole(role) || !profile) return false;
+    setTariffBusy(true);
+    setError("");
+    try {
+      await api(`/artists/${encodeURIComponent(artistId)}/publication`, {
+        method: "PUT",
+        body: JSON.stringify({
+          enabled,
+          state_version: profile.publication_state_version ?? 0,
+        }),
+      });
+      trackClientEvent(enabled ? "cabinet.publication_enabled" : "cabinet.publication_disabled", {
+        artist_id: artistId,
+      });
+      await reload();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось изменить публикацию");
+      return false;
+    } finally {
+      setTariffBusy(false);
+    }
+  }
+
   return {
     artistId,
     profile,
@@ -108,6 +191,9 @@ export function usePerformerProfile(orgId: string, role: string) {
     tariffBusy,
     updateTariff,
     deleteTariff,
+    updateRider,
+    savePublicationEvidence,
+    setPublicationEnabled,
     error,
     canManage: isWriteRole(role),
     publicHref: artistId ? `/artists/${artistId}` : null,

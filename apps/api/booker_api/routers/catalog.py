@@ -41,11 +41,13 @@ from booker_api.publication_eligibility import (
 )
 from booker_api.schemas import (
     ArtistIn,
+    ArtistPatchIn,
     ArtistPublicationEvidenceIn,
     IcalImportIn,
     PublicationStateIn,
     SlotIn,
     TariffIn,
+    TariffPatchIn,
     VacationClearIn,
     VacationIn,
     VenueIn,
@@ -292,6 +294,39 @@ def create_artist(body: ArtistIn, user: User = Depends(current_user), db: Sessio
     db.commit()
     db.refresh(artist)
     return {"id": artist.id, "name": artist.name}
+
+
+@router.patch("/artists/{artist_id}")
+def patch_artist(
+    artist_id: str,
+    body: ArtistPatchIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    artist = db.get(Artist, artist_id)
+    if not artist:
+        raise HTTPException(404, "Артист не найден")
+    require_org_writer(db, user, artist.organization_id)
+    patch = body.model_dump(exclude_unset=True)
+    if not patch:
+        raise HTTPException(400, "Нет полей для обновления")
+    if "name" in patch:
+        artist.name = patch["name"].strip()
+    if "city" in patch:
+        artist.city = patch["city"].strip()
+    if "category" in patch:
+        artist.category = patch["category"].strip()
+    if "rider_json" in patch:
+        artist.rider_json = patch["rider_json"]
+    db.commit()
+    db.refresh(artist)
+    return {
+        "id": artist.id,
+        "name": artist.name,
+        "city": artist.city,
+        "category": artist.category,
+        "rider_json": artist.rider_json,
+    }
 
 
 @router.post("/venues")
@@ -559,13 +594,65 @@ def add_tariff(
     require_org_writer(db, user, artist.organization_id)
     row = ArtistTariff(
         artist_id=artist_id,
-        title=body.title,
+        title=body.title.strip(),
         honorarium_rub=body.honorarium_rub,
         hours=body.hours,
     )
     db.add(row)
     db.commit()
-    return {"id": row.id}
+    return {"id": row.id, "title": row.title, "honorarium_rub": row.honorarium_rub, "hours": row.hours}
+
+
+@router.patch("/artists/{artist_id}/tariffs/{tariff_id}")
+def patch_artist_tariff(
+    artist_id: str,
+    tariff_id: str,
+    body: TariffPatchIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    artist = db.get(Artist, artist_id)
+    if not artist:
+        raise HTTPException(404, "Артист не найден")
+    require_org_writer(db, user, artist.organization_id)
+    row = db.get(ArtistTariff, tariff_id)
+    if row is None or row.artist_id != artist_id:
+        raise HTTPException(404, "Тариф не найден")
+    patch = body.model_dump(exclude_unset=True)
+    if not patch:
+        raise HTTPException(400, "Нет полей для обновления")
+    if "title" in patch:
+        row.title = patch["title"].strip()
+    if "honorarium_rub" in patch:
+        row.honorarium_rub = patch["honorarium_rub"]
+    if "hours" in patch:
+        row.hours = patch["hours"]
+    db.commit()
+    return {
+        "id": row.id,
+        "title": row.title,
+        "honorarium_rub": row.honorarium_rub,
+        "hours": row.hours,
+    }
+
+
+@router.delete("/artists/{artist_id}/tariffs/{tariff_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_artist_tariff(
+    artist_id: str,
+    tariff_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    artist = db.get(Artist, artist_id)
+    if not artist:
+        raise HTTPException(404, "Артист не найден")
+    require_org_writer(db, user, artist.organization_id)
+    row = db.get(ArtistTariff, tariff_id)
+    if row is None or row.artist_id != artist_id:
+        raise HTTPException(404, "Тариф не найден")
+    db.delete(row)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/venues/{venue_id}/tariffs")
@@ -579,7 +666,7 @@ def add_venue_tariff(
     if not venue:
         raise HTTPException(404, "Площадка не найдена")
     require_org_writer(db, user, venue.organization_id)
-    row = VenueTariff(venue_id=venue_id, title=body.title, honorarium_rub=body.honorarium_rub)
+    row = VenueTariff(venue_id=venue_id, title=body.title.strip(), honorarium_rub=body.honorarium_rub)
     db.add(row)
     db.commit()
     return {"id": row.id}
@@ -916,6 +1003,7 @@ def search_catalog(
                     "city": artist.city,
                     "category": artist.category,
                     "verified": artist.verified,
+                    "media_url": artist.media_url,
                     "has_calendar": True,
                     "open_slots": len(pool),
                     "next_open_at": _catalog_iso(nxt.starts_at) if nxt else None,
@@ -1264,7 +1352,8 @@ def search_catalog_page(
                 nxt = min(pool, key=lambda slot: aware(slot.starts_at))
                 results.append({
                     "id": row.id, "name": row.name, "city": row.city, "category": row.category,
-                    "verified": row.verified, "has_calendar": True, "open_slots": len(pool),
+                    "verified": row.verified, "media_url": row.media_url,
+                    "has_calendar": True, "open_slots": len(pool),
                     "next_open_at": _catalog_iso(nxt.starts_at),
                     "search_date": aware(date).date().isoformat() if date else None,
                     "travel_ok": travel_ok, "formats": _rider_formats(rider),
@@ -1550,7 +1639,7 @@ def get_artist(
     except (json.JSONDecodeError, TypeError):
         rider = {}
     public_open_ids = {slot.id for slot in open_slots_unmasked(slots)}
-    return {
+    payload = {
         "id": artist.id,
         "name": artist.name,
         "city": artist.city,
@@ -1571,3 +1660,14 @@ def get_artist(
             if can_view_private or s.id in public_open_ids
         ],
     }
+    if can_view_private:
+        eligibility = artist_publication_eligibility(db, artist)
+        payload.update(
+            {
+                "publication_enabled": bool(artist.publication_enabled),
+                "publication_state_version": artist.publication_state_version,
+                "publication_eligible": eligibility.eligible,
+                "publication_reason_codes": eligibility.reason_codes,
+            }
+        )
+    return payload

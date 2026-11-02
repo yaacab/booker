@@ -28,6 +28,12 @@ export type ProfileCompleteness = {
   score: number;
   items: { id: string; label: string; done: boolean }[];
   applicable?: boolean;
+  eligible?: boolean;
+  reason_codes?: string[];
+  resource_type?: "artist" | "venue";
+  resource_id?: string;
+  publication_enabled?: boolean;
+  publication_state_version?: number;
 };
 
 export type CalendarConflict = {
@@ -56,6 +62,10 @@ export type PerformerArtistProfile = {
   rider: Record<string, string>;
   tariffs: { id: string; title: string; honorarium_rub: number }[];
   slots: { id: string; status: string; starts_at: string; ends_at: string }[];
+  publication_enabled?: boolean;
+  publication_state_version?: number;
+  publication_eligible?: boolean;
+  publication_reason_codes?: string[];
 };
 
 export type PerformerVacationItem = {
