@@ -4,7 +4,7 @@
   "form_factor": "mobile",
   "viewport": "390x844",
   "throttling": "provided (no simulated 3G)",
-  "note": "Local unthrottled Lighthouse @390. Not staging HAR / not production budget sign-off. A11y contrast fixes applied 2026-11-03.",
+  "note": "Local Lighthouse unthrottled (search perf95/a11y100, home perf88/a11y100). Simulated-throttle run 2026-11-03 failed/empty on this host — not claimed.",
   "pages": {
     "search": {
       "categories": {

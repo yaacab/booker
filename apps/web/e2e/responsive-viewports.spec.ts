@@ -188,6 +188,38 @@ test.describe("V07 responsive viewports (local)", () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  test("keyboard chain unified: search → profile → requests → deal @390", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+
+    await page.goto("/search?city=Москва&kind=artist&category=dj");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+    const artistLink = page.locator('a[href^="/artists/"]').first();
+    await expect(artistLink).toBeVisible({ timeout: 20_000 });
+    await artistLink.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/artists\//);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+    await expectNoHorizontalOverflow(page);
+
+    const ctx = await seedRequestAwaitingOffer(request);
+    await injectSession(page, ctx.ownerToken, ctx.artistOrgId);
+    await page.goto("/cabinet/performer/requests");
+    await expect(page.getByTestId("performer-requests-inbox")).toBeVisible({ timeout: 15_000 });
+    const pick = page.getByRole("button", { name: new RegExp(ctx.eventTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) });
+    await expect(pick).toBeVisible({ timeout: 15_000 });
+    await pick.focus();
+    await page.keyboard.press("Enter");
+    await page.getByLabel(/сумма вашего предложения/i).fill("91000");
+    const createOffer = page.getByRole("button", { name: /создать предложение/i });
+    await createOffer.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/deals\//, { timeout: 20_000 });
+    await expect(page.getByTestId("deal-room-accents")).toBeVisible({ timeout: 15_000 });
+    await expectNoHorizontalOverflow(page);
+  });
+
   test("keyboard chain: cabinet request → deal room @390", async ({ page, request }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
     await page.setViewportSize({ width: 390, height: 844 });

@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "updated_at": "2026-11-02",
-  "updated_at_iso": "2026-11-02T14:42:06Z",
+  "updated_at": "2026-11-03",
+  "updated_at_iso": "2026-11-03T12:56:54Z",
   "formula": "readiness = DONE / (DONE+TODO+IN PROGRESS+BLOCKED+DEFERRED) * 100; CANCELLED excluded",
   "historical_weighted_scores": {
     "as_of": "2026-10-02",
@@ -219,11 +219,12 @@
       ],
       "blocked_by": [
         "REL-SMTP",
+        "OWN-TWO-APPROVER",
         "REL-STAGING-HOST"
       ],
-      "notes": "Локальные offline codes есть; SMTP/two-approver/staging открыты",
+      "notes": "Локальные offline codes есть; для приёмки: SMTP + two-approver + staging.",
       "source": "PROJECT_PROGRESS",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "T08",
@@ -392,12 +393,15 @@
         "DESIGN",
         "FULL"
       ],
-      "status": "TODO",
-      "evidence": [],
+      "status": "IN PROGRESS",
+      "evidence": [
+        "docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md",
+        "docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md"
+      ],
       "blocked_by": [],
-      "notes": "",
+      "notes": "IN PROGRESS DRAFT: матрица состояний ключевых путей зафиксирована. НЕ DONE: полный Figma pack 1440/390 L/E/R/F по списку в матрице; без OWN-DESIGN-ACK и без переноса в web.",
       "source": "PROJECT_PROGRESS",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "V05",
@@ -442,19 +446,17 @@
         "DESIGN",
         "FULL"
       ],
-      "status": "BLOCKED",
+      "status": "IN PROGRESS",
       "evidence": [
         "apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion)",
-        "apps/web/e2e/responsive-viewports.spec.ts 28 PASS (viewports + keyboard chains + deal/events)",
+        "apps/web/e2e/responsive-viewports.spec.ts (viewports + unified keyboard search→profile→requests→deal)",
         "docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json",
         "docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390)",
         "catalog/footer contrast + aria-label fixes",
         "docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md"
       ],
-      "blocked_by": [
-        "OWN-MOTION-ACK"
-      ],
-      "notes": "Локальный агентский объём закрыт (viewports/keyboard/reduced-motion/Lighthouse). НЕ DONE без motion fallback после утверждения D05/OWN-MOTION-ACK. Staging E2E = V08.",
+      "blocked_by": [],
+      "notes": "IN PROGRESS: unified keyboard chain PASS локально. НЕ DONE без formal design/motion sign-off (OWN-MOTION-ACK/D06) и без staging E2E (V08). Simulated-throttle Lighthouse на этом хосте упал interstitial — не заявлять.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-03"
     },
@@ -1227,11 +1229,11 @@
         "docs/ops/STAGING_PROVISION_PLAYBOOK.md"
       ],
       "blocked_by": [
-        "OWN1"
+        "OWN-STAGING-GO"
       ],
-      "notes": "DNS empty; без host нет T10–T13",
+      "notes": "DNS/host пусты. OWN1 DONE только фиксирует packet; реальный Infra/staging GO = OWN-STAGING-GO.",
       "source": "TASK_LEDGER B1a/B1d",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "REL-SMTP",
@@ -1262,9 +1264,9 @@
         "docs/ops/FINAL_DELIVERY_HANDOFF.md"
       ],
       "blocked_by": [],
-      "notes": "",
+      "notes": "Packet A/B/C записан. Это не staging GO и не production GO. Дальше: OWN-STAGING-GO / OWN-GIT-INTEGRATION-GO / OWN-PROD-GO раздельно.",
       "source": "TASK_LEDGER",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "OWN-DESIGN-ACK",
@@ -1369,9 +1371,9 @@
         "F1 NO-GO"
       ],
       "blocked_by": [],
-      "notes": "",
+      "notes": "Только production deploy/live. Не блокирует staging host и не блокирует merge в delivery/live canonical.",
       "source": "TASK_LEDGER F1",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "OWN-PILOT",
@@ -1457,8 +1459,11 @@
         "tests/test_sessions_self_service.py + test_identity.py (17 PASS local suite)",
         "PR #28 CI green through 2d4e4d6+"
       ],
-      "blocked_by": [],
-      "notes": "BLOCKED на owner: Yandex/VK client_id/secret + staging apply миграции c13a45b67c89. Локальные stubs/Telegram/sessions готовы — AUTH дальше не раздувать.",
+      "blocked_by": [
+        "OWN-OAUTH-YANDEX-VK",
+        "REL-STAGING"
+      ],
+      "notes": "Локально готовы: Telegram link/unlink, sessions, Yandex/VK fail-closed stubs. Для DONE нужны: OWN-OAUTH-YANDEX-VK и apply миграции c13a45b67c89 на staging (через REL-STAGING).",
       "source": "IDENTITY_GOAL",
       "updated_at": "2026-11-03"
     },
@@ -1632,14 +1637,15 @@
         "FULL",
         "DESIGN"
       ],
-      "status": "DEFERRED",
+      "status": "IN PROGRESS",
       "evidence": [
+        "docs/design/ARTIST_VNEXT_STORYBOARD_DRAFT_2026-11-03.md",
         "g0 plan D01 DRAFT"
       ],
       "blocked_by": [],
-      "notes": "Artist vNext = DRAFT; CONTRACT канон",
+      "notes": "IN PROGRESS DRAFT: 10 сторибордов описаны. CONTRACT не меняем. Утверждение/перенос — после OWN-DESIGN-ACK.",
       "source": "G0/G1",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "VEN-01",
@@ -1878,11 +1884,11 @@
         "docs/ops/evidence/2026-11-02-v3-calendar-requests.md"
       ],
       "blocked_by": [
-        "OWN-PROD-GO"
+        "OWN-GIT-INTEGRATION-GO"
       ],
-      "notes": "V0+V3 уже в feature-ветке PR #28. Перенос в delivery/live canonical — NO-GO до отдельного разрешения владельца.",
+      "notes": "Локально/feature PR #28: V0+V3 + тесты уже есть. Блокер только на port в delivery/live canonical — не production deploy.",
       "source": "roadmap",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "DEAL-01",
@@ -2381,10 +2387,62 @@
       "status": "BLOCKED",
       "evidence": [],
       "blocked_by": [
-        "OWN-PROD-GO"
+        "REL-STAGING-HOST"
       ],
-      "notes": "staging.bukergo.ru unreachable from this worktree host (2026-11-03)",
+      "notes": "Не путать с OWN-PROD-GO. Staging unreachable (2026-11-03); после host GO проверить health/E2E.",
       "source": "ops check",
+      "updated_at": "2026-11-03"
+    },
+    {
+      "id": "OWN-STAGING-GO",
+      "title": "Owner GO на staging host/DNS/доступ (не production)",
+      "direction": "release",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "TODO",
+      "evidence": [
+        "docs/ops/OWNER_DECISION_PACKET_2026-11-03.md"
+      ],
+      "blocked_by": [],
+      "notes": "Отдельно от OWN-PROD-GO. Нужны: хост, DNS, доступ агента/CI к staging.bukergo.ru. OWN1 = только запись packet A/B/C, не Infra C GO.",
+      "source": "REGISTRY_FIX_2026-11-03",
+      "updated_at": "2026-11-03"
+    },
+    {
+      "id": "OWN-GIT-INTEGRATION-GO",
+      "title": "Owner GO на merge feature → delivery/live canonical (не production)",
+      "direction": "release",
+      "scopes": [
+        "MVP",
+        "FULL",
+        "INFRA"
+      ],
+      "status": "TODO",
+      "evidence": [
+        "docs/ops/OWNER_DECISION_PACKET_2026-11-03.md"
+      ],
+      "blocked_by": [],
+      "notes": "Отдельно от OWN-PROD-GO. Разрешает перенос принятых фич (напр. V0+V3/CAL-07) в delivery/live canonical ветки. Не включает prod deploy.",
+      "source": "REGISTRY_FIX_2026-11-03",
+      "updated_at": "2026-11-03"
+    },
+    {
+      "id": "OWN-OAUTH-YANDEX-VK",
+      "title": "Owner предоставил Yandex/VK OAuth client_id и client_secret",
+      "direction": "auth",
+      "scopes": [
+        "FULL"
+      ],
+      "status": "TODO",
+      "evidence": [
+        "docs/ops/OWNER_DECISION_PACKET_2026-11-03.md"
+      ],
+      "blocked_by": [],
+      "notes": "Секреты только у владельца. Без них AUTH-04 нельзя закрыть дальше fail-closed stubs.",
+      "source": "REGISTRY_FIX_2026-11-03",
       "updated_at": "2026-11-03"
     }
   ],

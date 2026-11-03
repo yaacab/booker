@@ -1,22 +1,22 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-03 12:29 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-03 13:22 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
 
-- Всего: **132** задач
+- Всего: **135** задач
 - Выполнено: **83**
-- В работе: **0**
-- Ожидают: **10**
-- Заблокировано: **33**
-- Отложено: **6**
-- Общая готовность: **62.88%**
-- MVP: **82.61%** (57/69)
+- В работе: **3**
+- Ожидают: **12**
+- Заблокировано: **32**
+- Отложено: **5**
+- Общая готовность: **61.48%**
+- MVP: **80.28%** (57/71)
 - Дизайн: **25.00%** (3/12)
-- Полный запуск (FULL): **62.02%** (80/129)
-- Инфраструктура/релиз (INFRA): **64.00%** (16/25)
-- Следующая задача: **OWN-SMTP** / Owner предоставил рабочий SMTP для staging/prod notifications
+- Полный запуск (FULL): **60.61%** (80/132)
+- Инфраструктура/релиз (INFRA): **59.26%** (16/27)
+- Следующая задача: **ART-07** / Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)
 
 ### Исторические взвешенные шкалы (не пересчитываются этой формулой)
 
@@ -28,9 +28,9 @@
 | Направление | Всего | ✅ | 🔄 | ⬜ | ⛔ | ⏸ | % |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Архитектура и инфраструктура | 9 | 8 | 0 | 0 | 0 | 1 | 88.89% |
-| Авторизация, пользователи, организации и права | 8 | 4 | 0 | 1 | 3 | 0 | 50.00% |
+| Авторизация, пользователи, организации и права | 9 | 4 | 0 | 2 | 3 | 0 | 44.44% |
 | Кабинет заказчика | 4 | 4 | 0 | 0 | 0 | 0 | 100.00% |
-| Кабинет артиста | 7 | 6 | 0 | 0 | 0 | 1 | 85.71% |
+| Кабинет артиста | 7 | 6 | 1 | 0 | 0 | 0 | 85.71% |
 | Кабинет площадки | 3 | 3 | 0 | 0 | 0 | 0 | 100.00% |
 | Каталог и поиск | 8 | 6 | 0 | 0 | 2 | 0 | 75.00% |
 | Календарь и бронирования | 9 | 8 | 0 | 0 | 1 | 0 | 88.89% |
@@ -39,21 +39,21 @@
 | Платежи, возвраты и выплаты | 12 | 7 | 0 | 1 | 1 | 3 | 58.33% |
 | Споры, арбитраж и поддержка | 5 | 4 | 0 | 0 | 0 | 1 | 80.00% |
 | Отзывы, рейтинг и аналитика | 3 | 3 | 0 | 0 | 0 | 0 | 100.00% |
-| UI/UX, адаптивность и дизайн | 16 | 4 | 0 | 3 | 9 | 0 | 25.00% |
+| UI/UX, адаптивность и дизайн | 16 | 4 | 2 | 2 | 8 | 0 | 25.00% |
 | Безопасность и тестирование | 14 | 12 | 0 | 0 | 2 | 0 | 85.71% |
-| Staging, production и релиз | 16 | 1 | 0 | 3 | 12 | 0 | 6.25% |
+| Staging, production и релиз | 18 | 1 | 0 | 5 | 12 | 0 | 5.56% |
 | Документация и юридические требования | 9 | 5 | 0 | 2 | 2 | 0 | 55.56% |
 
 ## Следующие приоритеты
 
+- 🔄 `ART-07` [FULL,DESIGN] — Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)
+- 🔄 `V04` [DESIGN,FULL] — В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей
+- 🔄 `V07` [DESIGN,FULL] — Web принят по адаптивности, доступности и скорости
+- ⬜ `OWN-GIT-INTEGRATION-GO` [MVP,FULL,INFRA] — Owner GO на merge feature → delivery/live canonical (не production)
 - ⬜ `OWN-SMTP` [MVP,FULL] — Owner предоставил рабочий SMTP для staging/prod notifications
+- ⬜ `OWN-STAGING-GO` [MVP,FULL,INFRA] — Owner GO на staging host/DNS/доступ (не production)
 - ⬜ `OWN-TWO-APPROVER` [MVP,FULL] — Два утверждающих для staff recovery приняты
-- ⬜ `V04` [DESIGN,FULL] — В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей
 - ⬜ `LEG-03` [FULL] — Хостинг 152-ФЗ / уведомление РКН
-- ⬜ `OWN-DESIGN-ACK` [DESIGN,FULL] — Владелец утвердил статичный дизайн ключевых путей
-- ⬜ `OWN-LEGAL-GO` [FULL] — Юрист/бухгалтер/реквизиты: legal publish GO
-- ⬜ `OWN-MOTION-ACK` [DESIGN,FULL] — Владелец утвердил конкретный motion «Рамка слота»
-- ⬜ `OWN-PAY-PARTNER` [FULL] — Платёжный партнёр письменно подтвердил схему
 
 ## Полный чек-лист
 
@@ -79,15 +79,18 @@
 - ✅ **AUTH-02** [MVP, FULL] Организации, роли owner/admin/manager/viewer, переключение workspace  <br/>status=`DONE`; evidence: ROADMAP.md phase 1
 - ✅ **AUTH-03** [MVP, FULL] Сессии, 2FA/TOTP storage (hashed/encrypted) локально  <br/>status=`DONE`; evidence: alembic a04f56b78c90; test_totp_storage.py
 - ⛔ **AUTH-04** [FULL] Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт  <br/>status=`BLOCKED`; evidence: IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md; GET /me/identities + LinkedIdentities profile UI; fail-closed /auth/{yandex,vk}/{start,callback}; docs/ops/SESSIONS_SELF_SERVICE_2026-11-03.md; docs/ops/SESSION_CLIENT_METADATA_2026-11-03.md; tests/test_sessions_self_service.py + test_identity.py (17 PASS local suite); PR #28 CI green through 2d4e4d6+
-  - notes: BLOCKED на owner: Yandex/VK client_id/secret + staging apply миграции c13a45b67c89. Локальные stubs/Telegram/sessions готовы — AUTH дальше не раздувать.
+  - blocked_by: OWN-OAUTH-YANDEX-VK, REL-STAGING
+  - notes: Локально готовы: Telegram link/unlink, sessions, Yandex/VK fail-closed stubs. Для DONE нужны: OWN-OAUTH-YANDEX-VK и apply миграции c13a45b67c89 на staging (через REL-STAGING).
 - ✅ **AUTH-05** [MVP, FULL, INFRA] Object-level authz regressions покрыты тестами  <br/>status=`DONE`; evidence: test_authz_regressions.py
+- ⬜ **OWN-OAUTH-YANDEX-VK** [FULL] Owner предоставил Yandex/VK OAuth client_id и client_secret  <br/>status=`TODO`; evidence: docs/ops/OWNER_DECISION_PACKET_2026-11-03.md
+  - notes: Секреты только у владельца. Без них AUTH-04 нельзя закрыть дальше fail-closed stubs.
 - ⬜ **OWN-TWO-APPROVER** [MVP, FULL] Два утверждающих для staff recovery приняты  <br/>status=`TODO`; evidence: docs/ops/evidence/2026-10-15-two-approver-design.md
   - notes: Design+tests flag OFF; SMTP BLOCKED
 - ⛔ **S06** [FULL] Сброс пароля, email и первичный TOTP администратора безопасны end-to-end  <br/>status=`BLOCKED`; evidence: docs/ops/STAFF_RECOVERY_2026-10-02.md
   - blocked_by: REL-SMTP, OWN-TWO-APPROVER
 - ⛔ **T07** [MVP, FULL] Восстановление доступа администратора, email и TOTP принято (два утверждающих + SMTP + staging)  <br/>status=`BLOCKED`; evidence: docs/ops/STAFF_RECOVERY_2026-10-02.md
-  - blocked_by: REL-SMTP, REL-STAGING-HOST
-  - notes: Локальные offline codes есть; SMTP/two-approver/staging открыты
+  - blocked_by: REL-SMTP, OWN-TWO-APPROVER, REL-STAGING-HOST
+  - notes: Локальные offline codes есть; для приёмки: SMTP + two-approver + staging.
 
 ### 3. Кабинет заказчика
 
@@ -105,8 +108,8 @@
 - ✅ **ART-05** [MVP, FULL] Артист: services PATCH/DELETE, sync-tariff, multi-artist selector  <br/>status=`DONE`; evidence: 1944b37; test_service_crud_v2.py
 - ✅ **ART-06** [MVP, FULL] Артист: запрос верификации из кабинета (supply→admin)  <br/>status=`DONE`; evidence: apps/api/booker_api/routers/catalog.py POST /artists/{id}/verification-request; apps/api/tests/test_artist_verification_request.py; apps/web/components/cabinet/performer/widgets/PortfolioRiderWidget.tsx; docs/ops/evidence/2026-11-02-art06-verification-request.md
   - notes: Supply request → Verification queued; admin decide closes queue; cabinet CTA
-- ⏸ **ART-07** [FULL, DESIGN] Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)  <br/>status=`DEFERRED`; evidence: g0 plan D01 DRAFT
-  - notes: Artist vNext = DRAFT; CONTRACT канон
+- 🔄 **ART-07** [FULL, DESIGN] Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)  <br/>status=`IN PROGRESS`; evidence: docs/design/ARTIST_VNEXT_STORYBOARD_DRAFT_2026-11-03.md; g0 plan D01 DRAFT
+  - notes: IN PROGRESS DRAFT: 10 сторибордов описаны. CONTRACT не меняем. Утверждение/перенос — после OWN-DESIGN-ACK.
 
 ### 5. Кабинет площадки
 
@@ -140,8 +143,8 @@
 - ✅ **CAL-05** [MVP, FULL, INFRA] PostgreSQL concurrency proofs для hold expire/confirm  <br/>status=`DONE`; evidence: 14 postgres_integration PASS; 8dd2f67
 - ✅ **CAL-06** [MVP, FULL] DELETE open slots + slot_is_bookable для offer/quick-request  <br/>status=`DONE`; evidence: feat/v3-calendar-requests 0066bb6; test_slot_delete_and_bookable.py
 - ⛔ **CAL-07** [MVP, FULL] Port V0+V3 calendar/hold fixes в delivery/live canonical  <br/>status=`BLOCKED`; evidence: cherry-pick 94d7ac4/8dd2f67/0066bb6 onto feat/v4-offer-versions-audit; apps/api/tests/test_hold_expire_v0.py; apps/api/tests/test_slot_delete_and_bookable.py; docs/ops/evidence/2026-11-02-v0-safe-hold-expire.md; docs/ops/evidence/2026-11-02-v3-calendar-requests.md
-  - blocked_by: OWN-PROD-GO
-  - notes: V0+V3 уже в feature-ветке PR #28. Перенос в delivery/live canonical — NO-GO до отдельного разрешения владельца.
+  - blocked_by: OWN-GIT-INTEGRATION-GO
+  - notes: Локально/feature PR #28: V0+V3 + тесты уже есть. Блокер только на port в delivery/live canonical — не production deploy.
 - ✅ **P03** [FULL] Оффер/hold/бронь защищены локальными тестами (FULL)  <br/>status=`DONE`; evidence: test_hold_race.py
 - ✅ **T03** [MVP, FULL] Версии оффера, hold и запрет двойной брони проверены локально  <br/>status=`DONE`; evidence: apps/api/tests/test_hold_race.py
 
@@ -217,14 +220,14 @@
 - ✅ **V02** [DESIGN, FULL] Визуальное направление и черновик motion сформулированы  <br/>status=`DONE`; evidence: docs/design/MOTION_PREVIEW_SLOT_FRAME_V2_UNAPPROVED.md
 - ⛔ **V03** [DESIGN, FULL] Владелец явно утвердил дизайн ключевых путей  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-DESIGN-ACK
-- ⬜ **V04** [DESIGN, FULL] В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей  <br/>status=`TODO`; evidence: —
+- 🔄 **V04** [DESIGN, FULL] В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей  <br/>status=`IN PROGRESS`; evidence: docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md; docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md
+  - notes: IN PROGRESS DRAFT: матрица состояний ключевых путей зафиксирована. НЕ DONE: полный Figma pack 1440/390 L/E/R/F по списку в матрице; без OWN-DESIGN-ACK и без переноса в web.
 - ⛔ **V05** [DESIGN, FULL] Утверждённый дизайн точно перенесён в работающий web  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: V03, V04
 - ⛔ **V06** [DESIGN, FULL] Motion утверждён, права на ассеты проверены и интеграция выполнена  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-MOTION-ACK
-- ⛔ **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`BLOCKED`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts 28 PASS (viewports + keyboard chains + deal/events); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json; docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390); catalog/footer contrast + aria-label fixes; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
-  - blocked_by: OWN-MOTION-ACK
-  - notes: Локальный агентский объём закрыт (viewports/keyboard/reduced-motion/Lighthouse). НЕ DONE без motion fallback после утверждения D05/OWN-MOTION-ACK. Staging E2E = V08.
+- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts (viewports + unified keyboard search→profile→requests→deal); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json; docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390); catalog/footer contrast + aria-label fixes; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
+  - notes: IN PROGRESS: unified keyboard chain PASS локально. НЕ DONE без formal design/motion sign-off (OWN-MOTION-ACK/D06) и без staging E2E (V08). Simulated-throttle Lighthouse на этом хосте упал interstitial — не заявлять.
 - ⛔ **V08** [DESIGN, FULL] Визуальный и функциональный путь подтверждён browser E2E на staging  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST, V05
 
@@ -260,20 +263,26 @@
   - blocked_by: OWN-PROD-GO, O05, O06, O07
 - ⛔ **O09** [FULL] Реальный concierge pilot и supply приняты по метрикам  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: O08, OWN-PILOT
+- ⬜ **OWN-GIT-INTEGRATION-GO** [MVP, FULL, INFRA] Owner GO на merge feature → delivery/live canonical (не production)  <br/>status=`TODO`; evidence: docs/ops/OWNER_DECISION_PACKET_2026-11-03.md
+  - notes: Отдельно от OWN-PROD-GO. Разрешает перенос принятых фич (напр. V0+V3/CAL-07) в delivery/live canonical ветки. Не включает prod deploy.
 - ⬜ **OWN-PILOT** [FULL] Реальный founding supply/demand pilot согласован  <br/>status=`TODO`; evidence: —
 - ⬜ **OWN-PROD-GO** [FULL, INFRA] Отдельное разрешение владельца на production  <br/>status=`TODO`; evidence: F1 NO-GO
+  - notes: Только production deploy/live. Не блокирует staging host и не блокирует merge в delivery/live canonical.
 - ⬜ **OWN-SMTP** [MVP, FULL] Owner предоставил рабочий SMTP для staging/prod notifications  <br/>status=`TODO`; evidence: —
+- ⬜ **OWN-STAGING-GO** [MVP, FULL, INFRA] Owner GO на staging host/DNS/доступ (не production)  <br/>status=`TODO`; evidence: docs/ops/OWNER_DECISION_PACKET_2026-11-03.md
+  - notes: Отдельно от OWN-PROD-GO. Нужны: хост, DNS, доступ агента/CI к staging.bukergo.ru. OWN1 = только запись packet A/B/C, не Infra C GO.
 - ✅ **OWN1** [INFRA] Owner packet A/B/C записан; ждать Infrastructure C GO  <br/>status=`DONE`; evidence: docs/ops/FINAL_DELIVERY_HANDOFF.md
+  - notes: Packet A/B/C записан. Это не staging GO и не production GO. Дальше: OWN-STAGING-GO / OWN-GIT-INTEGRATION-GO / OWN-PROD-GO раздельно.
 - ⛔ **P06** [FULL] Мобильный путь всех ролей пройден на staging (полный запуск)  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST
 - ⛔ **REL-SMTP** [MVP, FULL] Реальная SMTP доставка для recovery/security notifications  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-SMTP
 - ⛔ **REL-STAGING** [MVP, FULL, INFRA] Staging окружение доступно для измерений и E2E  <br/>status=`BLOCKED`; evidence: —
-  - blocked_by: OWN-PROD-GO
-  - notes: staging.bukergo.ru unreachable from this worktree host (2026-11-03)
+  - blocked_by: REL-STAGING-HOST
+  - notes: Не путать с OWN-PROD-GO. Staging unreachable (2026-11-03); после host GO проверить health/E2E.
 - ⛔ **REL-STAGING-HOST** [MVP, FULL, INFRA] Owner GO на Infrastructure C / remote staging host  <br/>status=`BLOCKED`; evidence: docs/ops/STAGING_PROVISION_PLAYBOOK.md
-  - blocked_by: OWN1
-  - notes: DNS empty; без host нет T10–T13
+  - blocked_by: OWN-STAGING-GO
+  - notes: DNS/host пусты. OWN1 DONE только фиксирует packet; реальный Infra/staging GO = OWN-STAGING-GO.
 - ⛔ **T10** [MVP, FULL, INFRA] Миграции и DB+uploads restore проверены на staging  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST
 - ⛔ **T12** [MVP, FULL] Мобильный путь всех ролей пройден на staging с тестовыми данными  <br/>status=`BLOCKED`; evidence: —

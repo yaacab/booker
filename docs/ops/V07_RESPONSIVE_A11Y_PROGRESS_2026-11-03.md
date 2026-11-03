@@ -1,16 +1,16 @@
-# V07 — адаптив / a11y / скорость (локальный агентский объём закрыт → BLOCKED)
+# V07 — адаптив / a11y / скорость (IN PROGRESS)
 
 **Дата:** 2026-11-03  
-**Статус задачи:** BLOCKED (`OWN-MOTION-ACK`)  
+**Статус задачи:** IN PROGRESS (формальный design DONE всё ещё связан с `OWN-MOTION-ACK`/`D06`)  
 **Уровень:** локально  
-**Приёмка среза:** `responsive-viewports.spec.ts` — **28 passed**; Lighthouse search@390 perf **95** / a11y **100** (без 3G throttle)
+**Приёмка среза:** unified keyboard chain PASS; Lighthouse search@390 perf **95** / a11y **100** (без 3G throttle)
 
 ## Уже есть
 
 | Доказательство | Что закрывает |
 |---|---|
 | `e2e/cabinet-a11y.spec.ts` | landmarks, skip links, Tab, reduced-motion, 390×844 × 3 роли |
-| `e2e/responsive-viewports.spec.ts` | viewports + keyboard chains (search→profile→cabinet, requests→deal) + deal/events |
+| `e2e/responsive-viewports.spec.ts` | viewports + unified keyboard search→profile→requests→deal + deal/events |
 | search labels `htmlFor`/`id` | фокус city / keyboard Найти |
 | `V07_LOCAL_PERF_SMOKE_2026-11-03.json` | DCL/FCP smoke |
 | `V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json` | search perf95/a11y100; home perf88/a11y100 @390 |
@@ -19,9 +19,9 @@
 
 ## Ещё нужно для DONE
 
-- Motion fallback после D05 / `OWN-MOTION-ACK` — **блокер владельца**.
+- Formal design/motion sign-off (`OWN-MOTION-ACK` / D06) — без этого не ставить V07 DONE в weighted design scale.
 - Staging browser E2E — V08.
-- Опционально: Lighthouse simulated throttling / HAR на staging supply.
+- Simulated-throttle Lighthouse / HAR на staging (локальный simulate на этом хосте дал interstitial error).
 
 ## Запуск
 
