@@ -1,0 +1,10 @@
+{
+  "captured_at": "2026-11-03T12:17:01.652Z",
+  "route": "/search?city=Москва&kind=artist",
+  "viewport": "390x844",
+  "elapsed_ms": 700,
+  "domContentLoadedEventEnd": 669,
+  "responseEnd": 658,
+  "transferSize": 20622,
+  "fcp": 676
+}

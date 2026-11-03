@@ -12,7 +12,7 @@
 | `e2e/cabinet-a11y.spec.ts` | landmarks, skip links, Tab, reduced-motion, 390×844 × 3 роли |
 | `e2e/responsive-viewports.spec.ts` | 320/390/768/1440: home + search + customer/artist/venue cabinets; deal room @390; events/new @320 |
 | search labels `htmlFor`/`id` | фокус на `#catalog-search-city`, keyboard path city→Найти→artist profile |
-| local load timing smoke @390 | shell <12s + `domContentLoadedEventEnd` <10s (не Lighthouse LCP) |
+| local load timing smoke @390 | shell <12s, DCL <10s, FCP <8s; артефакт `V07_LOCAL_PERF_SMOKE_2026-11-03.json` (не Lighthouse/HAR) |
 | `catalog-reference-v2.css` `@media (max-width: 380px)` | одноколоночный searchbar / grid на узких |
 
 ## Ещё нужно для DONE (PROJECT_PROGRESS V07)

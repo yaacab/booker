@@ -1,6 +1,6 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-03 12:16 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-03 12:17 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
@@ -222,8 +222,9 @@
   - blocked_by: V03, V04
 - ⛔ **V06** [DESIGN, FULL] Motion утверждён, права на ассеты проверены и интеграция выполнена  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-MOTION-ACK
-- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts 28 PASS (viewports + keyboard chains search→profile→cabinet and requests→deal); apps/web/app/search/page.tsx labeled city/date/budget fields; apps/web/app/catalog-reference-v2.css @media max-width 380px single-column searchbar; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
-  - notes: Углублён локально. НЕ DONE: LCP/INP/HAR; motion fallback после D05; единый chain без разбиения. Staging E2E = V08.
+- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts 28 PASS (viewports + keyboard chains search→profile→cabinet and requests→deal); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json (search@390 FCP/DCL smoke); apps/web/app/search/page.tsx labeled city/date/budget fields; apps/web/app/catalog-reference-v2.css @media max-width 380px single-column searchbar; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
+  - blocked_by: OWN-MOTION-ACK
+  - notes: Углублён локально. НЕ DONE: Lighthouse LCP/INP или HAR; motion fallback после D05/OWN-MOTION-ACK; единый chain. Staging E2E = V08. blocked_by motion-ack честный: fallback критерия V07 без утверждённого motion нельзя закрыть.
 - ⛔ **V08** [DESIGN, FULL] Визуальный и функциональный путь подтверждён browser E2E на staging  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST, V05
 

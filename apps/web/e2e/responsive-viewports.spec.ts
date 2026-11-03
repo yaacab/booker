@@ -87,13 +87,31 @@ test.describe("V07 responsive viewports (local)", () => {
     const elapsed = Date.now() - started;
     // Local smoke budget (not Lighthouse LCP). Fail loudly if catalog shell regresses badly.
     expect(elapsed, `search shell load ${elapsed}ms`).toBeLessThan(12_000);
-    const paint = await page.evaluate(() => {
+    const metrics = await page.evaluate(() => {
       const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-      return nav ? Math.round(nav.domContentLoadedEventEnd) : null;
+      const paints = performance.getEntriesByType("paint") as PerformanceEntry[];
+      const fcp = paints.find((p) => p.name === "first-contentful-paint");
+      return {
+        domContentLoadedEventEnd: nav ? Math.round(nav.domContentLoadedEventEnd) : null,
+        responseEnd: nav ? Math.round(nav.responseEnd) : null,
+        transferSize: nav && "transferSize" in nav ? Number(nav.transferSize) : null,
+        fcp: fcp ? Math.round(fcp.startTime) : null,
+      };
     });
-    if (paint != null) {
-      expect(paint, `domContentLoadedEventEnd=${paint}`).toBeLessThan(10_000);
+    if (metrics.domContentLoadedEventEnd != null) {
+      expect(metrics.domContentLoadedEventEnd, `domContentLoadedEventEnd=${metrics.domContentLoadedEventEnd}`).toBeLessThan(10_000);
     }
+    if (metrics.fcp != null) {
+      expect(metrics.fcp, `fcp=${metrics.fcp}`).toBeLessThan(8_000);
+    }
+    // Persist local evidence for V07 review (not a substitute for Lighthouse/HAR on staging).
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const out = path.resolve(__dirname, "../../../docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json");
+    fs.writeFileSync(
+      out,
+      JSON.stringify({ captured_at: new Date().toISOString(), route: "/search?city=Москва&kind=artist", viewport: "390x844", elapsed_ms: elapsed, ...metrics }, null, 2),
+    );
   });
 
   for (const vp of VIEWPORTS) {
