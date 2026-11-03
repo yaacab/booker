@@ -8,9 +8,22 @@ type SessionRow = {
   id: string;
   created_at?: string | null;
   expires_at?: string | null;
+  last_seen_at?: string | null;
+  user_agent?: string | null;
+  client_ip?: string | null;
   current: boolean;
   admin_2fa_verified?: boolean;
 };
+
+function agentLabel(ua?: string | null): string {
+  if (!ua) return "клиент неизвестен";
+  if (/Mobile|Android|iPhone/i.test(ua)) return "мобильный браузер";
+  if (/Edg\//i.test(ua)) return "Edge";
+  if (/Chrome\//i.test(ua)) return "Chrome";
+  if (/Firefox\//i.test(ua)) return "Firefox";
+  if (/Safari\//i.test(ua)) return "Safari";
+  return "браузер";
+}
 
 export function ActiveSessions() {
   const [items, setItems] = useState<SessionRow[]>([]);
@@ -69,8 +82,10 @@ export function ActiveSessions() {
           {items.map((row) => (
             <li key={row.id}>
               {row.current ? <strong>Этот сеанс</strong> : "Другой сеанс"}
+              {` · ${agentLabel(row.user_agent)}`}
+              {row.client_ip ? ` · ${row.client_ip}` : ""}
+              {row.last_seen_at ? ` · активность ${formatWhen(row.last_seen_at)}` : ""}
               {row.created_at ? ` · с ${formatWhen(row.created_at)}` : ""}
-              {row.expires_at ? ` · до ${formatWhen(row.expires_at)}` : ""}
               {!row.current ? (
                 <>
                   {" "}

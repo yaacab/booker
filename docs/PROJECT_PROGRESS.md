@@ -118,7 +118,7 @@
 
 <!-- BEGIN AUTO-GENERATED TASK-COUNT PROGRESS -->
 
-## Автоматический task-count прогресс (обновлено 2026-11-03 00:31 UTC)
+## Автоматический task-count прогресс (обновлено 2026-11-03 02:12 UTC)
 
 Источник истины: [`docs/progress/tasks.json`](progress/tasks.json). Полный чек-лист: [`docs/PROJECT_CHECKLIST.md`](PROJECT_CHECKLIST.md). Пересчёт: `python3 scripts/progress_recalc.py`.
 

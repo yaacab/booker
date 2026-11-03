@@ -43,16 +43,43 @@ def verify_password(password: str, stored: str | None) -> bool:
 
 
 SESSION_TTL_DAYS = 30
+_SESSION_TOUCH_MIN_SECONDS = 60
 
 
-def issue_token(db: Session, user: User) -> str:
+def sanitize_user_agent(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    cleaned = "".join(ch for ch in raw.strip() if ch.isprintable())
+    if not cleaned:
+        return None
+    return cleaned[:512]
+
+
+def request_client_ip(request: Request | None) -> str | None:
+    if request is None:
+        return None
+    from booker_api.rate_limit import client_key
+
+    # Reuse trusted-proxy parsing; strip the rate-limit prefix.
+    key = client_key(request, "session")
+    ip = key.split(":", 1)[-1].strip()
+    return ip[:64] if ip and ip != "unknown" else None
+
+
+def issue_token(db: Session, user: User, *, request: Request | None = None) -> str:
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    stamped = now()
     db.add(
         SessionToken(
             token=token_hash,
             user_id=user.id,
-            expires_at=now() + timedelta(days=SESSION_TTL_DAYS),
+            expires_at=stamped + timedelta(days=SESSION_TTL_DAYS),
+            user_agent=sanitize_user_agent(
+                request.headers.get("user-agent") if request is not None else None
+            ),
+            client_ip=request_client_ip(request),
+            last_seen_at=stamped,
         )
     )
     db.flush()
@@ -72,6 +99,26 @@ def authenticate_token(db: Session, raw: str) -> tuple[User, SessionToken]:
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Пользователь не найден")
     return user, row
+
+
+def touch_session(db: Session, row: SessionToken, request: Request | None = None) -> None:
+    stamped = now()
+    if row.last_seen_at is not None:
+        age = (stamped - aware(row.last_seen_at)).total_seconds()
+        if age < _SESSION_TOUCH_MIN_SECONDS:
+            return
+    row.last_seen_at = stamped
+    if request is not None:
+        ua = sanitize_user_agent(request.headers.get("user-agent"))
+        if ua:
+            row.user_agent = ua
+        ip = request_client_ip(request)
+        if ip:
+            row.client_ip = ip
+    db.add(row)
+    # Separate commit so request work can still roll back; refresh avoids stale expires.
+    db.commit()
+    db.refresh(row)
 
 
 def _support_operator_route_allowed(request: Request) -> bool:
@@ -114,6 +161,7 @@ def auth_context(
     user, row = authenticate_token(db, creds.credentials)
     if user.is_support_operator and not user.is_platform_admin and not _support_operator_route_allowed(request):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Аккаунт оператора доступен только для поддержки")
+    touch_session(db, row, request)
     return AuthContext(user, row)
 
 

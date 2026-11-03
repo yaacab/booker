@@ -300,7 +300,7 @@ def complete_telegram(body: TelegramCompleteIn, request: Request, db: Session = 
                        "acceptance_effect": pack["acceptance_effect"]})
         is_new = True
     pending.consumed_at = issued_at
-    token = issue_token(db, user)
+    token = issue_token(db, user, request=request)
     if user.is_platform_admin or user.is_support_operator:
         mark_admin_2fa_verified(db, token)
     audit(db, actor_user_id=user.id, action="auth.telegram_login",

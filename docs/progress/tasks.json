@@ -1444,10 +1444,11 @@
         "GET /me/identities + LinkedIdentities profile UI",
         "fail-closed /auth/{yandex,vk}/{start,callback}",
         "docs/ops/SESSIONS_SELF_SERVICE_2026-11-03.md",
-        "tests/test_sessions_self_service.py (5 PASS)"
+        "docs/ops/SESSION_CLIENT_METADATA_2026-11-03.md",
+        "tests/test_sessions_self_service.py + test_identity.py (17 PASS local suite)"
       ],
       "blocked_by": [],
-      "notes": "Telegram link/unlink + session revoke UI есть; Yandex/VK OAuth ждут client_id; nullable credentials / полный onboarding ещё открыты",
+      "notes": "Telegram + session revoke/metadata UI есть; Yandex/VK OAuth ждут client_id; nullable credentials / полный onboarding ещё открыты; миграция c13a45b67c89 только локально",
       "source": "IDENTITY_GOAL",
       "updated_at": "2026-11-03"
     },

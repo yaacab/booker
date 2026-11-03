@@ -173,6 +173,24 @@ def ensure_missing_columns(bind) -> None:
         f"expires_at {ts_type}",
     )
     _add_column_if_missing(
+        bind,
+        "session_tokens",
+        "user_agent",
+        "user_agent VARCHAR(512)",
+    )
+    _add_column_if_missing(
+        bind,
+        "session_tokens",
+        "client_ip",
+        "client_ip VARCHAR(64)",
+    )
+    _add_column_if_missing(
+        bind,
+        "session_tokens",
+        "last_seen_at",
+        f"last_seen_at {ts_type}",
+    )
+    _add_column_if_missing(
         bind, "bookings", "accepted_offer_version_id", "accepted_offer_version_id VARCHAR(36)"
     )
     _add_column_if_missing(bind, "contracts", "offer_version_id", "offer_version_id VARCHAR(36)")

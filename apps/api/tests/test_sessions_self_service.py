@@ -87,3 +87,22 @@ def test_identities_include_provider_config_flags(client):
     assert providers["telegram"]["configured"] is False
     assert providers["yandex"]["configured"] is False
     assert providers["vk"]["configured"] is False
+
+
+def test_login_stores_client_metadata_on_session(client):
+    register(client, "sess-meta@booker.test", "Мета")
+    login = client.post(
+        "/auth/login",
+        json={"email": "sess-meta@booker.test", "password": "password1"},
+        headers={"User-Agent": "BookerTestAgent/1.0"},
+    )
+    assert login.status_code == 200, login.text
+    listed = client.get(
+        "/me/sessions",
+        headers={**auth_header(login.json()["token"]), "User-Agent": "BookerTestAgent/1.0"},
+    )
+    assert listed.status_code == 200, listed.text
+    item = listed.json()["items"][0]
+    assert item["user_agent"] == "BookerTestAgent/1.0"
+    assert item["client_ip"]
+    assert item["last_seen_at"]

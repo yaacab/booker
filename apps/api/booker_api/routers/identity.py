@@ -310,7 +310,7 @@ def register(body: RegisterIn, request: Request, db: Session = Depends(get_db)):
             "marketing_opt_in": body.marketing_opt_in,
         },
     )
-    token = issue_token(db, user)
+    token = issue_token(db, user, request=request)
     db.commit()
     delivery_status = (
         _send_email_verification(db, user) if user.email_verification_required_at
@@ -503,7 +503,7 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
         otp_limiter.check(f"otp:user:{user.id}")
         if not verify_totp_code(user.totp_secret, body.totp):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Нужен код второго фактора")
-    token = issue_token(db, user)
+    token = issue_token(db, user, request=request)
     if user.is_platform_admin or user.is_support_operator:
         mark_admin_2fa_verified(db, token)
     db.commit()
@@ -777,6 +777,9 @@ def _session_item(row: SessionToken, *, current_token: str) -> dict:
         "id": row.token,
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "expires_at": row.expires_at.isoformat() if row.expires_at else None,
+        "last_seen_at": row.last_seen_at.isoformat() if row.last_seen_at else None,
+        "user_agent": row.user_agent,
+        "client_ip": row.client_ip,
         "current": row.token == current_token,
         "admin_2fa_verified": row.admin_2fa_verified_at is not None,
     }
