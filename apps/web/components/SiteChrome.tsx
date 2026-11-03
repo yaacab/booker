@@ -313,7 +313,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <div id="content" className="site-content" data-section={path.split("/")[1] || "home"}>{children}</div>
         </div>
         <footer className="site-footer reference-footer">
-          <Link href="/" className="footer-brand" aria-label="Букер — главная"><BrandLockup /><span>Люди. Места. События.</span></Link>
+          <Link href="/" className="footer-brand" aria-label="Букер. Люди. Места. События."><BrandLockup /><span>Люди. Места. События.</span></Link>
           <nav aria-label="Информация о сервисе">{process.env.NEXT_PUBLIC_DEMO_CABINETS === "1" && <Link href="/dev/cabinets">Демо-кабинеты</Link>}<Link href="/legal/privacy">Конфиденциальность</Link><Link href="/legal">Документы</Link><Link href="/faq">Вопросы и ответы</Link><Link href="/support">Поддержка</Link></nav>
         </footer>
       </div>

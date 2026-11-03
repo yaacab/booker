@@ -1,22 +1,22 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-03 12:17 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-03 12:29 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
 
 - Всего: **132** задач
 - Выполнено: **83**
-- В работе: **2**
+- В работе: **0**
 - Ожидают: **10**
-- Заблокировано: **31**
+- Заблокировано: **33**
 - Отложено: **6**
 - Общая готовность: **62.88%**
 - MVP: **82.61%** (57/69)
 - Дизайн: **25.00%** (3/12)
 - Полный запуск (FULL): **62.02%** (80/129)
 - Инфраструктура/релиз (INFRA): **64.00%** (16/25)
-- Следующая задача: **AUTH-04** / Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт
+- Следующая задача: **OWN-SMTP** / Owner предоставил рабочий SMTP для staging/prod notifications
 
 ### Исторические взвешенные шкалы (не пересчитываются этой формулой)
 
@@ -28,7 +28,7 @@
 | Направление | Всего | ✅ | 🔄 | ⬜ | ⛔ | ⏸ | % |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Архитектура и инфраструктура | 9 | 8 | 0 | 0 | 0 | 1 | 88.89% |
-| Авторизация, пользователи, организации и права | 8 | 4 | 1 | 1 | 2 | 0 | 50.00% |
+| Авторизация, пользователи, организации и права | 8 | 4 | 0 | 1 | 3 | 0 | 50.00% |
 | Кабинет заказчика | 4 | 4 | 0 | 0 | 0 | 0 | 100.00% |
 | Кабинет артиста | 7 | 6 | 0 | 0 | 0 | 1 | 85.71% |
 | Кабинет площадки | 3 | 3 | 0 | 0 | 0 | 0 | 100.00% |
@@ -39,21 +39,21 @@
 | Платежи, возвраты и выплаты | 12 | 7 | 0 | 1 | 1 | 3 | 58.33% |
 | Споры, арбитраж и поддержка | 5 | 4 | 0 | 0 | 0 | 1 | 80.00% |
 | Отзывы, рейтинг и аналитика | 3 | 3 | 0 | 0 | 0 | 0 | 100.00% |
-| UI/UX, адаптивность и дизайн | 16 | 4 | 1 | 3 | 8 | 0 | 25.00% |
+| UI/UX, адаптивность и дизайн | 16 | 4 | 0 | 3 | 9 | 0 | 25.00% |
 | Безопасность и тестирование | 14 | 12 | 0 | 0 | 2 | 0 | 85.71% |
 | Staging, production и релиз | 16 | 1 | 0 | 3 | 12 | 0 | 6.25% |
 | Документация и юридические требования | 9 | 5 | 0 | 2 | 2 | 0 | 55.56% |
 
 ## Следующие приоритеты
 
-- 🔄 `AUTH-04` [FULL] — Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт
-- 🔄 `V07` [DESIGN,FULL] — Web принят по адаптивности, доступности и скорости
 - ⬜ `OWN-SMTP` [MVP,FULL] — Owner предоставил рабочий SMTP для staging/prod notifications
 - ⬜ `OWN-TWO-APPROVER` [MVP,FULL] — Два утверждающих для staff recovery приняты
 - ⬜ `V04` [DESIGN,FULL] — В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей
 - ⬜ `LEG-03` [FULL] — Хостинг 152-ФЗ / уведомление РКН
 - ⬜ `OWN-DESIGN-ACK` [DESIGN,FULL] — Владелец утвердил статичный дизайн ключевых путей
 - ⬜ `OWN-LEGAL-GO` [FULL] — Юрист/бухгалтер/реквизиты: legal publish GO
+- ⬜ `OWN-MOTION-ACK` [DESIGN,FULL] — Владелец утвердил конкретный motion «Рамка слота»
+- ⬜ `OWN-PAY-PARTNER` [FULL] — Платёжный партнёр письменно подтвердил схему
 
 ## Полный чек-лист
 
@@ -78,8 +78,8 @@
 - ✅ **AUTH-01** [MVP, FULL] Регистрация с legal pack / draft acknowledgement  <br/>status=`DONE`; evidence: apps/api/tests/; 0bd7aa0 registration wiring
 - ✅ **AUTH-02** [MVP, FULL] Организации, роли owner/admin/manager/viewer, переключение workspace  <br/>status=`DONE`; evidence: ROADMAP.md phase 1
 - ✅ **AUTH-03** [MVP, FULL] Сессии, 2FA/TOTP storage (hashed/encrypted) локально  <br/>status=`DONE`; evidence: alembic a04f56b78c90; test_totp_storage.py
-- 🔄 **AUTH-04** [FULL] Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт  <br/>status=`IN PROGRESS`; evidence: IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md; GET /me/identities + LinkedIdentities profile UI; fail-closed /auth/{yandex,vk}/{start,callback}; docs/ops/SESSIONS_SELF_SERVICE_2026-11-03.md; docs/ops/SESSION_CLIENT_METADATA_2026-11-03.md; tests/test_sessions_self_service.py + test_identity.py (17 PASS local suite); PR #28 7070d55/a50eb72/1711b54 CI green
-  - notes: Локально: Telegram link/unlink, sessions revoke+metadata, Yandex/VK fail-closed stubs. НЕ DONE: реальные Yandex/VK OAuth (нужны client_id/secret владельца), полный onboarding, staging apply миграции c13a45b67c89. Дальше не раздувать AUTH без owner credentials.
+- ⛔ **AUTH-04** [FULL] Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт  <br/>status=`BLOCKED`; evidence: IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md; GET /me/identities + LinkedIdentities profile UI; fail-closed /auth/{yandex,vk}/{start,callback}; docs/ops/SESSIONS_SELF_SERVICE_2026-11-03.md; docs/ops/SESSION_CLIENT_METADATA_2026-11-03.md; tests/test_sessions_self_service.py + test_identity.py (17 PASS local suite); PR #28 CI green through 2d4e4d6+
+  - notes: BLOCKED на owner: Yandex/VK client_id/secret + staging apply миграции c13a45b67c89. Локальные stubs/Telegram/sessions готовы — AUTH дальше не раздувать.
 - ✅ **AUTH-05** [MVP, FULL, INFRA] Object-level authz regressions покрыты тестами  <br/>status=`DONE`; evidence: test_authz_regressions.py
 - ⬜ **OWN-TWO-APPROVER** [MVP, FULL] Два утверждающих для staff recovery приняты  <br/>status=`TODO`; evidence: docs/ops/evidence/2026-10-15-two-approver-design.md
   - notes: Design+tests flag OFF; SMTP BLOCKED
@@ -222,8 +222,9 @@
   - blocked_by: V03, V04
 - ⛔ **V06** [DESIGN, FULL] Motion утверждён, права на ассеты проверены и интеграция выполнена  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-MOTION-ACK
-- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts 28 PASS (viewports + keyboard chains search→profile→cabinet and requests→deal); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json (search@390 FCP/DCL smoke); apps/web/app/search/page.tsx labeled city/date/budget fields; apps/web/app/catalog-reference-v2.css @media max-width 380px single-column searchbar; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
-  - notes: Углублён локально. НЕ DONE: Lighthouse LCP/INP или представительный HAR; motion fallback после D05/OWN-MOTION-ACK; единый chain. Staging E2E = V08.
+- ⛔ **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`BLOCKED`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts 28 PASS (viewports + keyboard chains + deal/events); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json; docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390); catalog/footer contrast + aria-label fixes; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
+  - blocked_by: OWN-MOTION-ACK
+  - notes: Локальный агентский объём закрыт (viewports/keyboard/reduced-motion/Lighthouse). НЕ DONE без motion fallback после утверждения D05/OWN-MOTION-ACK. Staging E2E = V08.
 - ⛔ **V08** [DESIGN, FULL] Визуальный и функциональный путь подтверждён browser E2E на staging  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST, V05
 

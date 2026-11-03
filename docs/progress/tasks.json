@@ -442,17 +442,19 @@
         "DESIGN",
         "FULL"
       ],
-      "status": "IN PROGRESS",
+      "status": "BLOCKED",
       "evidence": [
         "apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion)",
-        "apps/web/e2e/responsive-viewports.spec.ts 28 PASS (viewports + keyboard chains search→profile→cabinet and requests→deal)",
-        "docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json (search@390 FCP/DCL smoke)",
-        "apps/web/app/search/page.tsx labeled city/date/budget fields",
-        "apps/web/app/catalog-reference-v2.css @media max-width 380px single-column searchbar",
+        "apps/web/e2e/responsive-viewports.spec.ts 28 PASS (viewports + keyboard chains + deal/events)",
+        "docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json",
+        "docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390)",
+        "catalog/footer contrast + aria-label fixes",
         "docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md"
       ],
-      "blocked_by": [],
-      "notes": "Углублён локально. НЕ DONE: Lighthouse LCP/INP или представительный HAR; motion fallback после D05/OWN-MOTION-ACK; единый chain. Staging E2E = V08.",
+      "blocked_by": [
+        "OWN-MOTION-ACK"
+      ],
+      "notes": "Локальный агентский объём закрыт (viewports/keyboard/reduced-motion/Lighthouse). НЕ DONE без motion fallback после утверждения D05/OWN-MOTION-ACK. Staging E2E = V08.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-03"
     },
@@ -1445,7 +1447,7 @@
       "scopes": [
         "FULL"
       ],
-      "status": "IN PROGRESS",
+      "status": "BLOCKED",
       "evidence": [
         "IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md",
         "GET /me/identities + LinkedIdentities profile UI",
@@ -1453,10 +1455,10 @@
         "docs/ops/SESSIONS_SELF_SERVICE_2026-11-03.md",
         "docs/ops/SESSION_CLIENT_METADATA_2026-11-03.md",
         "tests/test_sessions_self_service.py + test_identity.py (17 PASS local suite)",
-        "PR #28 7070d55/a50eb72/1711b54 CI green"
+        "PR #28 CI green through 2d4e4d6+"
       ],
       "blocked_by": [],
-      "notes": "Локально: Telegram link/unlink, sessions revoke+metadata, Yandex/VK fail-closed stubs. НЕ DONE: реальные Yandex/VK OAuth (нужны client_id/secret владельца), полный onboarding, staging apply миграции c13a45b67c89. Дальше не раздувать AUTH без owner credentials.",
+      "notes": "BLOCKED на owner: Yandex/VK client_id/secret + staging apply миграции c13a45b67c89. Локальные stubs/Telegram/sessions готовы — AUTH дальше не раздувать.",
       "source": "IDENTITY_GOAL",
       "updated_at": "2026-11-03"
     },

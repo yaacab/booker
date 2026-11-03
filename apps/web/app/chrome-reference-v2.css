@@ -9,7 +9,7 @@ body { background: #edf1ef; }
 .footer-brand { display: flex; align-items: center; gap: 18px; }
 .footer-brand .brand-word { font-size: 28px; }
 .footer-brand .brand-lime-dot { font-size: 26px; }
-.footer-brand > span:last-child { font-size: 11px; color: #617166; }
+.footer-brand > span:last-child { font-size: 11px; color: #3f4a43; }
 .reference-footer nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .reference-footer nav a { color: #55645b; font-size: 12px; min-height: 44px; display: inline-flex; align-items: center; }
 .reference-footer a:hover { color: #233d25; text-decoration: underline; text-underline-offset: 4px; }

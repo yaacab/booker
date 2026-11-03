@@ -75,15 +75,15 @@
 .catalog-result .card-head > a { min-width: 0; }
 .site-content .catalog-reference .catalog-result .card-head strong { display: block; font-size: 15px; font-weight: 750; line-height: 1.3; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .catalog-verified-mark { display: inline-flex; justify-content: center; align-items: center; flex: 0 0 13px; width: 13px; height: 13px; border-radius: 5px; background: #9cbe50; color: #fff; font-size: 9px; transform: rotate(-9deg); }
-.site-content .catalog-reference .catalog-card-location { margin: 3px 0 7px; color: #87907e; font-size: 10px; line-height: 1.5; }
+.site-content .catalog-reference .catalog-card-location { margin: 3px 0 7px; color: #4f5848; font-size: 10px; line-height: 1.5; }
 .catalog-card-location > span { margin-inline: 3px; }
 .catalog-card-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 20px; }
 .catalog-card-facts > span { max-width: 100%; padding: 4px 7px; border-radius: 999px; background: #e9eee6; color: #515d48; font-size: 9px; line-height: 1.1; overflow-wrap: anywhere; }
 .catalog-card-facts .catalog-origin-note { background: #eeeee2; color: #6b705b; }
-.site-content .catalog-reference .catalog-card-address,.site-content .catalog-reference .catalog-card-date { margin: 7px 0 0; color: #75816b; font-size: 9px; line-height: 1.5; }
+.site-content .catalog-reference .catalog-card-address,.site-content .catalog-reference .catalog-card-date { margin: 7px 0 0; color: #4a5343; font-size: 9px; line-height: 1.5; }
 .catalog-card-footer { display: flex; justify-content: space-between; align-items: end; gap: 8px; margin-top: auto; padding-top: 12px; }
 .site-content .catalog-reference .catalog-price { flex: 0 1 auto; margin: 0; padding: 0; border: 0; color: #232a1d; font-size: 17px; font-weight: 700; line-height: 1.3; letter-spacing: -.035em; }
-.catalog-reference .catalog-price > span { display: block; margin: 0 0 2px; font-size: 8px; font-weight: 400; color: #89927d; letter-spacing: 0; }
+.catalog-reference .catalog-price > span { display: block; margin: 0 0 2px; font-size: 8px; font-weight: 400; color: #4a5343; letter-spacing: 0; }
 .catalog-reference .catalog-price .catalog-price-request { margin-bottom: 7px; color: #5f6b54; font-size: 11px; font-weight: 500; }
 .site-content .catalog-reference .catalog-open.btn { display: inline-flex; flex-direction: row; justify-content: center; align-items: center; flex: 0 0 auto; gap: 5px; min-height: 32px; margin: 0; padding: 6px 12px; border: 1px solid #f2f5ed; border-radius: 999px; background: #eaf0e4; color: #2c3623; font-size: 10px; font-weight: 500; line-height: 1.3; white-space: nowrap; }
 .catalog-open > span { font-size: 13px; }
