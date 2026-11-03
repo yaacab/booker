@@ -6,6 +6,7 @@ import { api, createOrgWithConfirm, getActiveOrg, getToken, setActiveOrg, setTok
 import { KIND_LABEL } from "@/lib/copy";
 import { loginHref } from "@/lib/next";
 import StaffRecoverySecurity from "@/components/StaffRecoverySecurity";
+import { LinkedIdentities } from "@/components/profile/LinkedIdentities";
 
 type Org = { id: string; name: string; kind: string; role: string };
 
@@ -162,6 +163,7 @@ export default function ProfilePage() {
         </button>
       </form>
       </div>
+      <LinkedIdentities />
       {me.is_platform_admin ? (
         <p>
           <Link href="/admin">Панель оператора →</Link>

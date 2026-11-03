@@ -31,6 +31,7 @@ from booker_api.routers import (
     trust,
     venue_admin,
 )
+from booker_api.auth_providers.oauth_stub import router as oauth_stub_router
 from booker_api.seed import link_orphan_verified_artists
 
 
@@ -65,6 +66,7 @@ app.add_middleware(OpsHttpMiddleware)
 app.include_router(health.router)
 app.include_router(identity.router)
 app.include_router(telegram_auth.router)
+app.include_router(oauth_stub_router)
 app.include_router(legal.router)
 app.include_router(data_subject.router)
 app.include_router(analytics.router)

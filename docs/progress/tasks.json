@@ -1438,14 +1438,16 @@
       "scopes": [
         "FULL"
       ],
-      "status": "DEFERRED",
+      "status": "IN PROGRESS",
       "evidence": [
-        "IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md"
+        "IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md",
+        "GET /me/identities + LinkedIdentities profile UI",
+        "fail-closed /auth/{yandex,vk}/{start,callback}"
       ],
       "blocked_by": [],
-      "notes": "Частичные миграции a09–a11 есть; полный UX/провайдеры не закрыты",
+      "notes": "Telegram link/unlink есть; Yandex/VK OAuth ждут client_id от владельца; nullable credentials и полный onboarding ещё открыты",
       "source": "IDENTITY_GOAL",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "AUTH-05",

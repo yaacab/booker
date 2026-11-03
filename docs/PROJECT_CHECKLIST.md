@@ -1,22 +1,22 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-02 23:59 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-03 00:00 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
 
 - Всего: **132** задач
 - Выполнено: **83**
-- В работе: **0**
+- В работе: **1**
 - Ожидают: **11**
 - Заблокировано: **31**
-- Отложено: **7**
+- Отложено: **6**
 - Общая готовность: **62.88%**
 - MVP: **82.61%** (57/69)
 - Дизайн: **25.00%** (3/12)
 - Полный запуск (FULL): **62.02%** (80/129)
 - Инфраструктура/релиз (INFRA): **64.00%** (16/25)
-- Следующая задача: **OWN-SMTP** / Owner предоставил рабочий SMTP для staging/prod notifications
+- Следующая задача: **AUTH-04** / Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт
 
 ### Исторические взвешенные шкалы (не пересчитываются этой формулой)
 
@@ -28,7 +28,7 @@
 | Направление | Всего | ✅ | 🔄 | ⬜ | ⛔ | ⏸ | % |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Архитектура и инфраструктура | 9 | 8 | 0 | 0 | 0 | 1 | 88.89% |
-| Авторизация, пользователи, организации и права | 8 | 4 | 0 | 1 | 2 | 1 | 50.00% |
+| Авторизация, пользователи, организации и права | 8 | 4 | 1 | 1 | 2 | 0 | 50.00% |
 | Кабинет заказчика | 4 | 4 | 0 | 0 | 0 | 0 | 100.00% |
 | Кабинет артиста | 7 | 6 | 0 | 0 | 0 | 1 | 85.71% |
 | Кабинет площадки | 3 | 3 | 0 | 0 | 0 | 0 | 100.00% |
@@ -46,6 +46,7 @@
 
 ## Следующие приоритеты
 
+- 🔄 `AUTH-04` [FULL] — Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт
 - ⬜ `OWN-SMTP` [MVP,FULL] — Owner предоставил рабочий SMTP для staging/prod notifications
 - ⬜ `OWN-TWO-APPROVER` [MVP,FULL] — Два утверждающих для staff recovery приняты
 - ⬜ `V04` [DESIGN,FULL] — В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей
@@ -53,7 +54,6 @@
 - ⬜ `LEG-03` [FULL] — Хостинг 152-ФЗ / уведомление РКН
 - ⬜ `OWN-DESIGN-ACK` [DESIGN,FULL] — Владелец утвердил статичный дизайн ключевых путей
 - ⬜ `OWN-LEGAL-GO` [FULL] — Юрист/бухгалтер/реквизиты: legal publish GO
-- ⬜ `OWN-MOTION-ACK` [DESIGN,FULL] — Владелец утвердил конкретный motion «Рамка слота»
 
 ## Полный чек-лист
 
@@ -78,8 +78,8 @@
 - ✅ **AUTH-01** [MVP, FULL] Регистрация с legal pack / draft acknowledgement  <br/>status=`DONE`; evidence: apps/api/tests/; 0bd7aa0 registration wiring
 - ✅ **AUTH-02** [MVP, FULL] Организации, роли owner/admin/manager/viewer, переключение workspace  <br/>status=`DONE`; evidence: ROADMAP.md phase 1
 - ✅ **AUTH-03** [MVP, FULL] Сессии, 2FA/TOTP storage (hashed/encrypted) локально  <br/>status=`DONE`; evidence: alembic a04f56b78c90; test_totp_storage.py
-- ⏸ **AUTH-04** [FULL] Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт  <br/>status=`DEFERRED`; evidence: IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md
-  - notes: Частичные миграции a09–a11 есть; полный UX/провайдеры не закрыты
+- 🔄 **AUTH-04** [FULL] Внешние identity bindings (Telegram/Яндекс/VK) — полный единый аккаунт  <br/>status=`IN PROGRESS`; evidence: IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md; GET /me/identities + LinkedIdentities profile UI; fail-closed /auth/{yandex,vk}/{start,callback}
+  - notes: Telegram link/unlink есть; Yandex/VK OAuth ждут client_id от владельца; nullable credentials и полный onboarding ещё открыты
 - ✅ **AUTH-05** [MVP, FULL, INFRA] Object-level authz regressions покрыты тестами  <br/>status=`DONE`; evidence: test_authz_regressions.py
 - ⬜ **OWN-TWO-APPROVER** [MVP, FULL] Два утверждающих для staff recovery приняты  <br/>status=`TODO`; evidence: docs/ops/evidence/2026-10-15-two-approver-design.md
   - notes: Design+tests flag OFF; SMTP BLOCKED
