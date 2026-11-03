@@ -178,7 +178,7 @@ def test_postgres_migration_roundtrip_preserves_nonempty_support_and_triggers(po
                 text(f"SELECT count(*) FROM {table} WHERE id=:id"), {"id": row_id}
             ).scalar_one() == 1
         assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == (
-            "b12f34e56a78"
+            "c13a45b67c89"
         )
     support_uniques = {
         frozenset(item.get("column_names") or [])

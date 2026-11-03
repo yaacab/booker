@@ -113,7 +113,7 @@ def test_copy_upgrade_preserves_existing_account_and_session(tmp_path):
     assert original.read_bytes() == before
     with sqlite3.connect(candidate) as db:
         assert db.execute("SELECT version_num FROM alembic_version").fetchone() == (
-            "b12f34e56a78",
+            "c13a45b67c89",
         )
         assert db.execute("SELECT email,password_hash FROM users WHERE id='legacy'").fetchone() == (
             "legacy@booker.test", "existing-hash",
