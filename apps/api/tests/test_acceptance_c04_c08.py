@@ -51,11 +51,12 @@ def test_c04_deal_message_create_peer_sees_reload_stranger_denied(client):
 
 
 def test_c08_hold_exclusivity_same_slot(client):
-    """Two negotiations on one slot → exactly one active hold.
+    """Two negotiations on one slot → exactly one active hold (sequential SQLite).
 
-    Shared FastAPI TestClient is not a thread-safe race harness (401/404/[409,409]
-    flakes and occasional hangs). Prove exclusivity sequentially here; real concurrent
-    race remains a Postgres/staging gate.
+    Shared FastAPI TestClient is not a thread-safe race harness. Concurrent coverage
+    lives in `test_postgres_concurrent_hold_same_slot_only_one_succeeds` (opt-in
+    TEST_POSTGRES_DSN, independent sessions + Barrier). This test only proves the
+    product invariant without claiming a race harness.
     """
     suffix = str(time.time_ns())
     ctx = setup_same_slot_negotiations(client, suffix)

@@ -20,6 +20,7 @@ from booker_api.main import app
 from booker_api.models import (
     AvailabilitySlot,
     Booking,
+    BookingHold,
     Contract,
     ContractSignature,
     Event,
@@ -37,6 +38,7 @@ from booker_api.routers import deals, payments
 from booker_api.schemas import SignIn
 from tests.conftest import auth_header, contract_otps
 from tests.postgres_harness import isolated_postgres_schema
+from tests.test_hold_race import setup_same_slot_negotiations
 from tests.test_offers import ack_both, setup_negotiation
 
 pytestmark = pytest.mark.postgres_integration
@@ -467,3 +469,68 @@ def test_postgres_concurrent_opposite_contract_acknowledgements_transition_booki
         assert contract.supplier_signed is True
         assert booking is not None and booking.status == "AwaitingPayment"
         assert {signature.side for signature in signatures} == {"customer", "supplier"}
+
+
+def test_postgres_concurrent_hold_same_slot_only_one_succeeds(postgres_schema):
+    """C08: two bookings, one slot — independent PG transactions, exactly one hold.
+
+    Uses router callables + Barrier (not shared TestClient threads). Skips without
+    TEST_POSTGRES_DSN; sequential SQLite exclusivity remains in acceptance C08.
+    """
+    engine, config, _schema = postgres_schema
+    command.upgrade(config, "head")
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    with SessionLocal() as db:
+        seed_draft_versions(db)
+        db.commit()
+
+    def override_db():
+        with SessionLocal() as db:
+            yield db
+
+    previous_session_factory = getattr(app.state, "SessionLocal", None)
+    app.dependency_overrides[get_db] = override_db
+    app.state.SessionLocal = SessionLocal
+    try:
+        with TestClient(app) as client:
+            ctx = setup_same_slot_negotiations(client, f"pg-hold-{os.getpid()}")
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        if previous_session_factory is None:
+            delattr(app.state, "SessionLocal")
+        else:
+            app.state.SessionLocal = previous_session_factory
+
+    barrier = Barrier(2)
+
+    def hold_once(booking_id: str, user_id: str) -> int:
+        with SessionLocal() as db:
+            db.execute(text("SET LOCAL lock_timeout = '5s'"))
+            actor = db.get(User, user_id)
+            assert actor is not None
+            barrier.wait(timeout=10)
+            try:
+                deals.hold_booking(booking_id, user=actor, db=db)
+                return 200
+            except HTTPException as exc:
+                db.rollback()
+                return int(exc.status_code)
+
+    calls = (
+        (ctx["booking_id"], ctx["customer"]["user_id"]),
+        (ctx["booking_id_2"], ctx["customer2"]["user_id"]),
+    )
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda args: hold_once(*args), calls))
+
+    assert sorted(results) == [200, 409], results
+    with SessionLocal() as db:
+        active = db.query(BookingHold).filter(BookingHold.status == "active").all()
+        assert len(active) == 1
+        held_slots = {
+            row.status
+            for row in db.query(AvailabilitySlot)
+            .filter(AvailabilitySlot.id == active[0].slot_id)
+            .all()
+        }
+        assert held_slots == {"held"}

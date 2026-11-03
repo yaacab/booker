@@ -442,12 +442,15 @@
         "DESIGN",
         "FULL"
       ],
-      "status": "TODO",
-      "evidence": [],
+      "status": "IN PROGRESS",
+      "evidence": [
+        "apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion)",
+        "apps/web/e2e/responsive-viewports.spec.ts (320/390/768/1440 search+cabinet)"
+      ],
       "blocked_by": [],
-      "notes": "",
+      "notes": "Частично: viewport matrix + cabinet a11y. НЕ DONE без performance/fallback приёмки и полного keyboard path по ключевым экранам (критерий PROJECT_PROGRESS V07).",
       "source": "PROJECT_PROGRESS",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-03"
     },
     {
       "id": "V08",
@@ -1445,10 +1448,11 @@
         "fail-closed /auth/{yandex,vk}/{start,callback}",
         "docs/ops/SESSIONS_SELF_SERVICE_2026-11-03.md",
         "docs/ops/SESSION_CLIENT_METADATA_2026-11-03.md",
-        "tests/test_sessions_self_service.py + test_identity.py (17 PASS local suite)"
+        "tests/test_sessions_self_service.py + test_identity.py (17 PASS local suite)",
+        "PR #28 7070d55/a50eb72/1711b54 CI green"
       ],
       "blocked_by": [],
-      "notes": "Telegram + session revoke/metadata UI есть; Yandex/VK OAuth ждут client_id; nullable credentials / полный onboarding ещё открыты; миграция c13a45b67c89 только локально",
+      "notes": "Локально: Telegram link/unlink, sessions revoke+metadata, Yandex/VK fail-closed stubs. НЕ DONE: реальные Yandex/VK OAuth (нужны client_id/secret владельца), полный onboarding, staging apply миграции c13a45b67c89. Дальше не раздувать AUTH без owner credentials.",
       "source": "IDENTITY_GOAL",
       "updated_at": "2026-11-03"
     },
