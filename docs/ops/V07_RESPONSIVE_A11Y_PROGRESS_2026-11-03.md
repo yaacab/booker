@@ -3,7 +3,7 @@
 **Дата:** 2026-11-03  
 **Статус задачи:** IN PROGRESS  
 **Уровень:** локально  
-**Приёмка среза:** `responsive-viewports.spec.ts` — **27 passed** (2026-11-03; +keyboard chain search→profile→cabinet)
+**Приёмка среза:** `responsive-viewports.spec.ts` — **28 passed** (2026-11-03; +keyboard cabinet request→deal)
 
 ## Уже есть
 
@@ -17,7 +17,7 @@
 
 ## Ещё нужно для DONE (PROJECT_PROGRESS V07)
 
-- Сквозной keyboard path с созданием заявки и входом в deal room (есть search→profile→cabinet; нет заявки→deal в одной сессии).
+- Единый end-to-end keyboard path одной сессией (сейчас два chain-теста: search→profile→cabinet и requests→deal).
 - Performance budget (LCP/INP или локальный HAR) — smoke timing не заменяет.
 - Fallback / reduced-motion на motion после D05 (motion UNAPPROVED).
 - Staging browser E2E — V08.

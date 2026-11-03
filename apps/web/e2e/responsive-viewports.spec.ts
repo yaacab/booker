@@ -7,6 +7,7 @@ import {
   injectSession,
   login,
   seedNegotiation,
+  seedRequestAwaitingOffer,
 } from "./helpers";
 
 /** V07 matrix: key public + cabinet shells across required widths. */
@@ -164,6 +165,34 @@ test.describe("V07 responsive viewports (local)", () => {
     await injectSession(page, session.token, org.id);
     await page.goto("/cabinet/customer");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.press("Tab");
+    await expect(page.locator(":focus")).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("keyboard chain: cabinet request → deal room @390", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+
+    const ctx = await seedRequestAwaitingOffer(request);
+    await injectSession(page, ctx.ownerToken, ctx.artistOrgId);
+    await page.goto("/cabinet/performer/requests");
+    await expect(page.getByTestId("performer-requests-inbox")).toBeVisible({ timeout: 15_000 });
+    const pick = page.getByRole("button", { name: new RegExp(ctx.eventTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) });
+    await expect(pick).toBeVisible({ timeout: 15_000 });
+    await pick.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("heading", { level: 2, name: ctx.eventTitle })).toBeVisible();
+    const amount = page.getByLabel(/сумма вашего предложения/i);
+    await amount.focus();
+    await amount.fill("90000");
+    const createOffer = page.getByRole("button", { name: /создать предложение/i });
+    await createOffer.focus();
+    await expect(createOffer).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/deals\//, { timeout: 20_000 });
+    await expect(page.getByTestId("deal-room-accents")).toBeVisible({ timeout: 15_000 });
     await page.keyboard.press("Tab");
     await expect(page.locator(":focus")).toBeVisible();
     await expectNoHorizontalOverflow(page);
