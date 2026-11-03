@@ -82,10 +82,14 @@ def _support_operator_route_allowed(request: Request) -> bool:
                           ("/me/identities", "GET"),
                           ("/me/identities/telegram/link", "POST"),
                           ("/me/identities/telegram/unlink", "POST"),
+                          ("/me/sessions", "GET"),
+                          ("/me/sessions/revoke-others", "POST"),
                           ("/auth/logout", "POST"),
                           ("/auth/admin-totp/recovery-codes/count", "GET"),
                           ("/admin/support/tickets", "GET"),
                           ("/admin/support/staff", "GET")}:
+        return True
+    if path.startswith("/me/sessions/") and method == "DELETE":
         return True
     parts = path.strip("/").split("/")
     if len(parts) < 4 or parts[:3] != ["admin", "support", "tickets"] or not parts[3]:

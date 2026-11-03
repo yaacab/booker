@@ -13,6 +13,7 @@ type IdentityRow = {
 type IdentitiesPayload = {
   has_password_login: boolean;
   identities: IdentityRow[];
+  providers?: Record<string, { configured?: boolean }>;
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -70,12 +71,15 @@ export function LinkedIdentities() {
                 </li>
               );
             }
+            const configured = data.providers?.[provider]?.configured;
             return (
               <li key={provider}>
                 {label}: не привязан
-                {provider === "telegram"
-                  ? " · вход через Mini App, когда бот настроен"
-                  : " · OAuth пока выключен (fail-closed)"}
+                {configured
+                  ? " · провайдер настроен, привязка ещё не сделана"
+                  : provider === "telegram"
+                    ? " · бот не настроен"
+                    : " · OAuth выключен (fail-closed)"}
               </li>
             );
           })}

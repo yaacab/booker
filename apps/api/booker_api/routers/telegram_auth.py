@@ -107,6 +107,11 @@ def my_identities(ctx: AuthContext = Depends(auth_context), db: Session = Depend
              "last_login_at": row.last_login_at}
             for row in rows
         ],
+        "providers": {
+            "telegram": {"configured": bool(settings.telegram_bot_token.strip())},
+            "yandex": {"configured": False},
+            "vk": {"configured": False},
+        },
     }
 
 

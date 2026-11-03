@@ -772,6 +772,89 @@ def logout(ctx: AuthContext = Depends(auth_context), db: Session = Depends(get_d
     return {"ok": True}
 
 
+def _session_item(row: SessionToken, *, current_token: str) -> dict:
+    return {
+        "id": row.token,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "expires_at": row.expires_at.isoformat() if row.expires_at else None,
+        "current": row.token == current_token,
+        "admin_2fa_verified": row.admin_2fa_verified_at is not None,
+    }
+
+
+@router.get("/me/sessions")
+def list_my_sessions(ctx: AuthContext = Depends(auth_context), db: Session = Depends(get_db)):
+    rows = (
+        db.query(SessionToken)
+        .filter(SessionToken.user_id == ctx.user.id)
+        .order_by(SessionToken.created_at.desc())
+        .all()
+    )
+    return {
+        "items": [_session_item(row, current_token=ctx.session.token) for row in rows],
+    }
+
+
+@router.post("/me/sessions/revoke-others")
+def revoke_other_sessions(ctx: AuthContext = Depends(auth_context), db: Session = Depends(get_db)):
+    deleted = db.execute(
+        delete(SessionToken).where(
+            SessionToken.user_id == ctx.user.id,
+            SessionToken.token != ctx.session.token,
+        )
+    )
+    audit(
+        db,
+        actor_user_id=ctx.user.id,
+        action="auth.sessions_revoked_others",
+        entity_type="user",
+        entity_id=ctx.user.id,
+        payload={"revoked": int(deleted.rowcount or 0)},
+    )
+    queue_security_notice(
+        db,
+        recipient=ctx.user,
+        template="security.sessions_revoked",
+        actor_user_id=ctx.user.id,
+    )
+    db.commit()
+    return {"ok": True, "revoked": int(deleted.rowcount or 0)}
+
+
+@router.delete("/me/sessions/{session_id}")
+def revoke_session(
+    session_id: str,
+    ctx: AuthContext = Depends(auth_context),
+    db: Session = Depends(get_db),
+):
+    if session_id == ctx.session.token:
+        raise HTTPException(409, "Текущую сессию завершите через выход")
+    row = (
+        db.query(SessionToken)
+        .filter(SessionToken.user_id == ctx.user.id, SessionToken.token == session_id)
+        .one_or_none()
+    )
+    if not row:
+        raise HTTPException(404, "Сессия не найдена")
+    db.delete(row)
+    audit(
+        db,
+        actor_user_id=ctx.user.id,
+        action="auth.session_revoked",
+        entity_type="user",
+        entity_id=ctx.user.id,
+        payload={"session_id_prefix": session_id[:12]},
+    )
+    queue_security_notice(
+        db,
+        recipient=ctx.user,
+        template="security.session_revoked",
+        actor_user_id=ctx.user.id,
+    )
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/auth/recover")
 def recover(body: dict, request: Request, db: Session = Depends(get_db)):
     auth_limiter.check(client_key(request, "recover"))

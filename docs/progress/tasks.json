@@ -1442,10 +1442,12 @@
       "evidence": [
         "IDENTITY_SUPPORT_INVESTOR_GOAL_2026-10-02.md",
         "GET /me/identities + LinkedIdentities profile UI",
-        "fail-closed /auth/{yandex,vk}/{start,callback}"
+        "fail-closed /auth/{yandex,vk}/{start,callback}",
+        "docs/ops/SESSIONS_SELF_SERVICE_2026-11-03.md",
+        "tests/test_sessions_self_service.py (5 PASS)"
       ],
       "blocked_by": [],
-      "notes": "Telegram link/unlink есть; Yandex/VK OAuth ждут client_id от владельца; nullable credentials и полный onboarding ещё открыты",
+      "notes": "Telegram link/unlink + session revoke UI есть; Yandex/VK OAuth ждут client_id; nullable credentials / полный onboarding ещё открыты",
       "source": "IDENTITY_GOAL",
       "updated_at": "2026-11-03"
     },
