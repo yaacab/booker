@@ -61,14 +61,26 @@ test("ordinary user handoff reaches protected operator queue and returns one rep
   await queue.getByRole("button", { name: "Сохранить заметку" }).click();
   await expect(queue.getByText("Только внутренний контекст")).toBeVisible();
   await fillTotp();
-  await queue.getByLabel("Ответ пользователю").fill("Оператор проверяет обращение");
-  await queue.getByRole("button", { name: "Отправить ответ" }).evaluate((button: HTMLButtonElement) => {
-    button.click();
-    button.click();
+  const replyBox = queue.getByLabel("Ответ пользователю");
+  await replyBox.fill("Оператор проверяет обращение");
+  const sendReply = queue.getByRole("button", { name: "Отправить ответ" });
+  await expect(sendReply).toBeEnabled();
+  // Sync double submit: busyRef must keep a single in-flight reply (CI flake was 409 + cleared notice).
+  await sendReply.evaluate((button: HTMLButtonElement) => {
+    const form = button.closest("form");
+    if (!form) throw new Error("reply form missing");
+    form.requestSubmit(button);
+    form.requestSubmit(button);
   });
-  await expect(queue.getByText("Ответ отправлен пользователю.")).toBeVisible();
+  const thread = queue.getByRole("region", { name: "Переписка с пользователем" });
+  await expect(thread.getByText(/Оператор проверяет обращение/)).toBeVisible({ timeout: 20_000 });
+  await expect(queue.getByRole("status").filter({ hasText: "Ответ отправлен пользователю." })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(replyBox).toHaveValue("");
   await page.reload();
-  await expect(page.getByText("Оператор проверяет обращение")).toBeVisible();
+  await page.getByRole("button", { name: new RegExp(ticketNumber) }).click();
+  await expect(page.getByText("Оператор проверяет обращение")).toBeVisible({ timeout: 15_000 });
   expect(await page.getByText("Оператор проверяет обращение").count()).toBe(1);
   await expect(page.getByText("Только внутренний контекст")).toHaveCount(0);
 

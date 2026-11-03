@@ -59,6 +59,7 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
   const noteKey = useRef<StableSupportKey | null>(null);
   const detailHeading = useRef<HTMLHeadingElement | null>(null);
   const verified = useRef(false);
+  const busyRef = useRef(false);
 
   useEffect(() => {
     if (ticket) detailHeading.current?.focus();
@@ -94,7 +95,9 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
   }
 
   async function run(action: string, task: () => Promise<void>, refreshId?: string) {
-    if (busy) return;
+    // busyRef blocks sync double-submit before React re-renders disabled=busy.
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(action);
     setError("");
     setNotice("");
@@ -118,6 +121,7 @@ export default function AdminSupportQueue({ operatorId, canReassign = false }: {
         }
       }
     } finally {
+      busyRef.current = false;
       setBusy("");
     }
   }
