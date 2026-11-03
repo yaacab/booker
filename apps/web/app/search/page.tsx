@@ -183,17 +183,17 @@ export default async function SearchPage({
             <label key={choice.value}><input type="radio" name="kind" value={choice.value} defaultChecked={(q.kind || "") === choice.value} /><span>{choice.label}</span></label>
           ))}
         </fieldset>
-        <label className="catalog-search-field">
+        <label className="catalog-search-field" htmlFor="catalog-search-date">
           <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="3" /><path d="M8 3v4M16 3v4M4 11h16M8 15h2M14 15h2" /></svg>
-          <span>Дата<input type="date" name="date" defaultValue={q.date || ""} /></span>
+          <span>Дата<input id="catalog-search-date" type="date" name="date" defaultValue={q.date || ""} /></span>
         </label>
-        <label className="catalog-search-field">
+        <label className="catalog-search-field" htmlFor="catalog-search-city">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
-          <span>Город<input name="city" defaultValue={city} placeholder="Все города" autoComplete="address-level2" /></span>
+          <span>Город<input id="catalog-search-city" name="city" defaultValue={city} placeholder="Все города" autoComplete="address-level2" /></span>
         </label>
-        <label className="catalog-search-field">
+        <label className="catalog-search-field" htmlFor="catalog-search-budget">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 4h6a5 5 0 0 1 0 10H7M9 3v18M6 18h9" /></svg>
-          <span>Бюджет, ₽<input aria-label="Бюджет в быстром поиске" type="number" name="budget_max" min="0" defaultValue={q.budget_max || ""} placeholder="Любой" /></span>
+          <span>Бюджет, ₽<input id="catalog-search-budget" aria-label="Бюджет в быстром поиске" type="number" name="budget_max" min="0" defaultValue={q.budget_max || ""} placeholder="Любой" /></span>
         </label>
         {Object.entries(q).filter(([key,value]) => value && !["kind","date","city","budget_max"].includes(key)).map(([key,value]) => <input key={key} type="hidden" name={key} value={value} />)}
         <button className="catalog-find" type="submit"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>Найти</button>
