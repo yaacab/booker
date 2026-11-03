@@ -21,7 +21,6 @@ from booker_api.composition import ensure_requirements, replace_requirements, re
 from booker_api.config import settings
 from booker_api.db import get_db
 from booker_api.disputes import ACTIVE_DISPUTE_STATUSES, create_dispute, dispute_payload
-from booker_api.review_facts import deal_review_projection
 from booker_api.event_day import (
     build_day_status,
     check_in_booking,
@@ -85,6 +84,7 @@ from booker_api.rate_limit import (
     upload_limiter,
 )
 from booker_api.replacement import build_replacement_plan
+from booker_api.review_facts import deal_review_projection
 from booker_api.schemas import DisputeEvidenceIn, DisputeIn, MessageIn
 from booker_api.security import (
     AuthContext,

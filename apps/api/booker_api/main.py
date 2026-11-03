@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from booker_api.auth_providers.oauth_stub import router as oauth_stub_router
 from booker_api.composition import seed_categories
 from booker_api.config import settings, validate_runtime_config
 from booker_api.db import SessionLocal, engine, init_schema
@@ -31,7 +32,6 @@ from booker_api.routers import (
     trust,
     venue_admin,
 )
-from booker_api.auth_providers.oauth_stub import router as oauth_stub_router
 from booker_api.seed import link_orphan_verified_artists
 
 
