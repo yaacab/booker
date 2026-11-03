@@ -1,5 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
-import { API_BASE, apiHealth, DEMO_ACCOUNTS, fetchMe, injectSession, login } from "./helpers";
+import {
+  API_BASE,
+  apiHealth,
+  DEMO_ACCOUNTS,
+  fetchMe,
+  injectSession,
+  login,
+  seedNegotiation,
+} from "./helpers";
 
 /** V07 matrix: key public + cabinet shells across required widths. */
 const VIEWPORTS = [
@@ -133,4 +141,37 @@ test.describe("V07 responsive viewports (local)", () => {
       });
     }
   }
+
+  test("deal room: landmark + no overflow + Tab @390", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const negotiation = await seedNegotiation(request, {
+      honorariumRub: 77_000,
+      terms: "V07 deal room viewport",
+      slotStartsAt: "2026-12-15T18:00:00+00:00",
+      slotEndsAt: "2026-12-15T22:00:00+00:00",
+    });
+    await injectSession(page, negotiation.customer.token, negotiation.customer.orgId);
+    await page.goto(`/deals/${negotiation.bookingId}`);
+    await expect(page.getByTestId("deal-room-accents")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("main")).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(page.locator(":focus")).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("event studio new: no overflow @320", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const session = await login(request, DEMO_ACCOUNTS.customer);
+    const me = await fetchMe(request, session.token);
+    const org = me.organizations.find((o) => o.kind === "customer");
+    if (!org) throw new Error("Demo customer org missing — run make seed");
+    await injectSession(page, session.token, org.id);
+    await page.goto("/events/new");
+    await expect(page.locator("main, form, h1").first()).toBeVisible({ timeout: 20_000 });
+    await expectNoHorizontalOverflow(page);
+  });
 });
