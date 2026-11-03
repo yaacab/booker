@@ -142,6 +142,33 @@ test.describe("V07 responsive viewports (local)", () => {
     }
   }
 
+  test("keyboard chain: search → profile → cabinet @390", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+
+    await page.goto("/search?city=Москва&kind=artist&category=dj");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+    const artistLink = page.locator('a[href^="/artists/"]').first();
+    await expect(artistLink).toBeVisible({ timeout: 20_000 });
+    await artistLink.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/artists\//);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+    await expectNoHorizontalOverflow(page);
+
+    const session = await login(request, DEMO_ACCOUNTS.customer);
+    const me = await fetchMe(request, session.token);
+    const org = me.organizations.find((o) => o.kind === "customer");
+    if (!org) throw new Error("Demo customer org missing — run make seed");
+    await injectSession(page, session.token, org.id);
+    await page.goto("/cabinet/customer");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.press("Tab");
+    await expect(page.locator(":focus")).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
   test("deal room: landmark + no overflow + Tab @390", async ({ page, request }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
     await page.setViewportSize({ width: 390, height: 844 });

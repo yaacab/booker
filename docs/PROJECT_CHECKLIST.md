@@ -222,8 +222,8 @@
   - blocked_by: V03, V04
 - ⛔ **V06** [DESIGN, FULL] Motion утверждён, права на ассеты проверены и интеграция выполнена  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-MOTION-ACK
-- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts 26 PASS (home+search+3 cabinets × viewports, keyboard→artist, deal room@390, events/new@320, load smoke); apps/web/app/search/page.tsx labeled city/date/budget fields; apps/web/app/catalog-reference-v2.css @media max-width 380px single-column searchbar; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
-  - notes: Углублён локально. НЕ DONE: полный keyboard path каталог→deal→кабинеты; LCP/INP/HAR; motion fallback после D05. Staging E2E = V08.
+- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts 27 PASS (viewports + keyboard chain search→profile→cabinet + deal/events); apps/web/app/search/page.tsx labeled city/date/budget fields; apps/web/app/catalog-reference-v2.css @media max-width 380px single-column searchbar; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
+  - notes: Углублён локально. НЕ DONE: keyboard path с заявкой→deal в одной сессии; LCP/INP/HAR; motion fallback после D05. Staging E2E = V08.
 - ⛔ **V08** [DESIGN, FULL] Визуальный и функциональный путь подтверждён browser E2E на staging  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST, V05
 
