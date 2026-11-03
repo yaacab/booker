@@ -1,6 +1,6 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-03 13:22 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-03 13:46 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
@@ -220,14 +220,14 @@
 - ✅ **V02** [DESIGN, FULL] Визуальное направление и черновик motion сформулированы  <br/>status=`DONE`; evidence: docs/design/MOTION_PREVIEW_SLOT_FRAME_V2_UNAPPROVED.md
 - ⛔ **V03** [DESIGN, FULL] Владелец явно утвердил дизайн ключевых путей  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-DESIGN-ACK
-- 🔄 **V04** [DESIGN, FULL] В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей  <br/>status=`IN PROGRESS`; evidence: docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md; docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md
-  - notes: IN PROGRESS DRAFT: матрица состояний ключевых путей зафиксирована. НЕ DONE: полный Figma pack 1440/390 L/E/R/F по списку в матрице; без OWN-DESIGN-ACK и без переноса в web.
+- 🔄 **V04** [DESIGN, FULL] В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей  <br/>status=`IN PROGRESS`; evidence: docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md; docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md; docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md
+  - notes: IN PROGRESS DRAFT: матрица + wireframe copy Home L/E/R и Deal hold/forbidden. НЕ DONE без полного Figma pack и OWN-DESIGN-ACK; web не меняем.
 - ⛔ **V05** [DESIGN, FULL] Утверждённый дизайн точно перенесён в работающий web  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: V03, V04
 - ⛔ **V06** [DESIGN, FULL] Motion утверждён, права на ассеты проверены и интеграция выполнена  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-MOTION-ACK
-- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts (viewports + unified keyboard search→profile→requests→deal); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json; docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390); catalog/footer contrast + aria-label fixes; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
-  - notes: IN PROGRESS: unified keyboard chain PASS локально. НЕ DONE без formal design/motion sign-off (OWN-MOTION-ACK/D06) и без staging E2E (V08). Simulated-throttle Lighthouse на этом хосте упал interstitial — не заявлять.
+- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts (viewports + unified keyboard + login shell); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json; docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390); fix(support) 9010ef1 busyRef + durable reply assert; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md
+  - notes: IN PROGRESS: login viewport/keyboard PASS; support e2e CI green 9010ef1. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.
 - ⛔ **V08** [DESIGN, FULL] Визуальный и функциональный путь подтверждён browser E2E на staging  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST, V05
 

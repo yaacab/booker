@@ -267,6 +267,27 @@ test.describe("V07 responsive viewports (local)", () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  for (const vp of VIEWPORTS) {
+    test(`login shell @${vp.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.goto("/login");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+      await expect(page.locator("main, form").first()).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+    });
+  }
+
+  test("login: keyboard reaches email @390", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/login");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+    const email = page.getByLabel(/email|почта|e-mail/i).first();
+    await email.focus();
+    await expect(email).toBeFocused();
+  });
+
   test("event studio new: no overflow @320", async ({ page, request }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
     await page.setViewportSize({ width: 320, height: 568 });
