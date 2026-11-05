@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — DRAFT: Deal hold / forbidden</title>
+  <style>
+    :root {
+      --ink: #1c1915; --ink-2: #6d6358; --cream: #f2ede5; --paper: #fbf8f3;
+      --gold: #b8955a; --mint: #3d7a5c; --mint-soft: #dce8df; --terra: #8f3d2d;
+      --line: #d8cbb9; --serif: "Cormorant Garamond", Georgia, serif;
+      --sans: "Manrope", "Segoe UI", sans-serif;
+      --frame: 0 0 0 1px #b8955a55, 0 0 0 8px #b8955a14;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; font: 16px/1.5 var(--sans); color: var(--ink);
+      background: radial-gradient(800px 400px at 0% 0%, #e8efe4, transparent 50%), var(--cream);
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 72px; }
+    .kicker {
+      display: inline-flex; font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--gold); border: 1px solid #b8955a59; background: #fbf8f3ed;
+      padding: 6px 12px; border-radius: 999px;
+    }
+    h1 { font-family: var(--serif); font-size: clamp(30px, 4vw, 46px); margin: 12px 0 8px; }
+    .lead { color: var(--ink-2); max-width: 60ch; margin: 0 0 22px; }
+    .pair { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 22px; }
+    @media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
+    .label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #807568; margin: 0 0 8px; }
+    .device {
+      background: var(--paper); border: 1px solid var(--line); border-radius: 22px;
+      min-height: 560px; overflow: hidden; box-shadow: 0 24px 48px rgba(28,25,21,.08);
+      display: flex; flex-direction: column;
+    }
+    .device.phone { max-width: 390px; margin: 0 auto; width: 100%; border-radius: 28px; }
+    .top { display: flex; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .brand { font-family: var(--serif); font-size: 22px; }
+    .pill { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--mint); background: var(--mint-soft); padding: 6px 10px; border-radius: 999px; }
+    .tabs { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+    .tabs span { min-height: 40px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 10px; color: #6d6358; font-size: 13px; }
+    .tabs span[aria-current="page"] { color: var(--mint); background: var(--mint-soft); font-weight: 600; }
+    .body { padding: 20px 16px 24px; }
+    .chip { display: inline-flex; min-height: 28px; align-items: center; padding: 0 8px; border-radius: 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }
+    .chip.warn { background: #f3e6d4; color: #7a4e1f; }
+    .chip.bad { background: #f9e7e9; color: var(--terra); }
+    h2 { font-family: var(--serif); font-size: 28px; margin: 0 0 8px; }
+    .card { margin-top: 12px; padding: 18px; border-radius: 16px; border: 1px solid var(--line); background: #fffdf8; box-shadow: var(--frame); }
+    .muted { color: var(--ink-2); margin: 0 0 14px; }
+    .cta { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; border-radius: 12px; background: var(--ink); color: var(--paper); text-decoration: none; font-weight: 600; }
+    .cta.gold { background: transparent; color: var(--ink); border: 1px solid #b8955a88; margin-left: 8px; }
+    .meta { display: grid; gap: 6px; margin: 0 0 14px; font-size: 14px; color: var(--ink-2); }
+    .meta strong { color: var(--ink); }
+    .note { margin-top: 24px; padding: 14px 16px; border-left: 3px solid var(--gold); background: #fffdf8cc; color: var(--ink-2); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">DRAFT · Deal Room · hold expired / forbidden</div>
+    <h1>Deal Room: hold истёк и нет доступа</h1>
+    <p class="lead">Дополнение к Home/Deal wireframe. Held ≠ confirmed. Forbidden без сумм и имён сторон.</p>
+    <div class="pair">
+      <div>
+        <p class="label">deal / hold-expired · 390</p>
+        <article class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">сделка</span></div>
+          <div class="tabs"><span aria-current="page">Обзор</span><span>Условия</span><span>Чат</span></div>
+          <div class="body">
+            <div class="chip warn">Hold expired</div>
+            <h2>Слот больше не удерживается</h2>
+            <div class="card">
+              <div class="meta">
+                <div><strong>Статус:</strong> hold истёк</div>
+                <div><strong>Версия условий:</strong> из API (не макет)</div>
+              </div>
+              <p class="muted">Нельзя CTA «Оплатить» или confirm, будто слот ещё жив. Можно открыть условия и чат.</p>
+              <a class="cta" href="#terms">Открыть условия</a>
+              <a class="cta gold" href="#chat">Чат</a>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div>
+        <p class="label">deal / forbidden · 1440</p>
+        <article class="device">
+          <div class="top"><span class="brand">Букер</span><span class="pill">нет доступа</span></div>
+          <div class="body">
+            <div class="chip bad">Forbidden</div>
+            <h2>Нет доступа к этой сделке</h2>
+            <div class="card">
+              <p class="muted">Без subject, сумм и имён сторон. Гость или чужая org видят только этот кадр.</p>
+              <a class="cta" href="#cabinet">В кабинет</a>
+              <a class="cta gold" href="#login">Войти</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+    <p class="note">Канон: <code>docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md</code>. Runtime Deal Room не менялся.</p>
+  </div>
+</body>
+</html>

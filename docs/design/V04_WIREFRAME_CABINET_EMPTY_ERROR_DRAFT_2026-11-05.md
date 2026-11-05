@@ -78,9 +78,21 @@
 - Soft empty: `.workspace-soft-empty`.  
 - Preview **не** подменяет runtime.
 
+## Preview coverage (static)
+
+| Роль | Empty кадры в HTML | Error кадры в HTML |
+|---|---|---|
+| Customer | home, favorites, messages | home, favorites, messages, saved-searches |
+| Performer | home checklist, requests, calendar, services | requests, calendar, services, messages |
+| Venue | home, halls, requests, calendar | halls, calendar, requests, messages |
+
+Deal hold/forbidden — отдельный preview: `docs/design/previews/deal-hold-forbidden.html`.
+
 ## Чеклист Figma
 
-- [ ] Customer home/favorites E+R+L+F @1440+390  
-- [ ] Performer home checklist + requests/calendar E+R @1440+390  
-- [ ] Venue home/halls/calendar E+R @1440+390  
+- [ ] Customer home/favorites/messages E+R+L+F @1440+390  
+- [ ] Performer home checklist + requests/calendar/services E+R @1440+390  
+- [ ] Venue home/halls/requests/calendar E+R @1440+390  
 - [ ] Reduced-motion кадр рамки без пульса  
+- [ ] Deal hold-expired + forbidden @1440+390  
+

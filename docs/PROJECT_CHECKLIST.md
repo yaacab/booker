@@ -1,6 +1,6 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-05 07:28 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-05 07:45 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
@@ -220,8 +220,8 @@
 - ✅ **V02** [DESIGN, FULL] Визуальное направление и черновик motion сформулированы  <br/>status=`DONE`; evidence: docs/design/MOTION_PREVIEW_SLOT_FRAME_V2_UNAPPROVED.md
 - ✅ **V03** [DESIGN, FULL] Владелец явно утвердил дизайн ключевых путей  <br/>status=`DONE`; evidence: docs/ops/OWNER_GO_EXECUTION_2026-11-05.md; OWN-DESIGN-ACK
   - notes: Закрыто через OWN-DESIGN-ACK 2026-11-05 (DRAFT pack).
-- 🔄 **V04** [DESIGN, FULL] В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей  <br/>status=`IN PROGRESS`; evidence: docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md; docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md; docs/design/V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_DRAFT_2026-11-03.md; docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md; docs/design/V04_WIREFRAME_PROFILE_ARTIST_VENUE_DRAFT_2026-11-05.md; docs/design/V04_WIREFRAME_CABINET_EMPTY_ERROR_DRAFT_2026-11-05.md; docs/design/previews/cabinet-empty-error.html
-  - notes: IN PROGRESS: + cabinet empty/error DRAFT + static preview. НЕ DONE без pixel Figma; web не меняем.
+- 🔄 **V04** [DESIGN, FULL] В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей  <br/>status=`IN PROGRESS`; evidence: docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md; docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md; docs/design/V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_DRAFT_2026-11-03.md; docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md; docs/design/V04_WIREFRAME_PROFILE_ARTIST_VENUE_DRAFT_2026-11-05.md; docs/design/V04_WIREFRAME_CABINET_EMPTY_ERROR_DRAFT_2026-11-05.md; docs/design/previews/cabinet-empty-error.html; docs/design/previews/deal-hold-forbidden.html; docs/design/previews/cabinet-empty-error.html (expanded second-row screens)
+  - notes: IN PROGRESS: cabinet E/R expanded + deal hold/forbidden preview. НЕ DONE без pixel Figma; web runtime не меняем.
 - ⛔ **V05** [DESIGN, FULL] Утверждённый дизайн точно перенесён в работающий web  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: V04
 - ⛔ **V06** [DESIGN, FULL] Motion утверждён, права на ассеты проверены и интеграция выполнена  <br/>status=`BLOCKED`; evidence: —
