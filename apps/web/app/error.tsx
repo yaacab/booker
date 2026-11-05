@@ -4,10 +4,10 @@ import Link from "next/link";
 
 export default function AppError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <main>
+    <main className="reference-empty">
       <p className="kicker">Техническая ошибка</p>
       <h1>Не удалось открыть экран</h1>
-      <p className="timeline">Данные сделки не изменены. Повторите попытку или вернитесь в каталог.</p>
+      <p className="timeline">Повторите попытку. Если ошибка сохраняется, напишите в поддержку.</p>
       <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="button" onClick={() => reset()}>
           Ещё раз
@@ -15,6 +15,7 @@ export default function AppError({ reset }: { error: Error & { digest?: string }
         <Link className="btn secondary" href="/search">
           Открыть каталог
         </Link>
+        <Link className="btn secondary" href="/support">Поддержка</Link>
       </p>
     </main>
   );

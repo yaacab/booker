@@ -1,0 +1,552 @@
+"use client";
+
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { BrandLockup } from "@/components/BrandLockup";
+import { api, createOrgWithConfirm, setActiveOrg, setToken } from "@/lib/api";
+import { cabinetPathForKind } from "@/lib/cabinetRoutes";
+import { safeNext } from "@/lib/next";
+import { RoleHandoffCard } from "@/components/scene/RoleHandoffCard";
+import { isSceneRole } from "@/lib/sceneRoles";
+
+type AuthMode = "login" | "register" | "recover" | "reset" | "staff-recover" | "staff-recovery-codes";
+
+type LegalPackDocument = {
+  key: string;
+  version: string;
+  content_hash: string;
+  required: boolean;
+  href?: string;
+};
+
+type LegalPack = {
+  registration_available: boolean;
+  acceptance_effect: string;
+  documents: LegalPackDocument[];
+};
+
+function generateTotpSecret(): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const bytes = new Uint8Array(20);
+  window.crypto.getRandomValues(bytes);
+  let value = 0;
+  let bits = 0;
+  let secret = "";
+  for (const byte of bytes) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      secret += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  return secret;
+}
+
+export default function AuthPage({ artistWelcome = false }: { artistWelcome?: boolean }) {
+  const router = useRouter();
+  const [mode, setMode] = useState<AuthMode>(artistWelcome ? "register" : "login");
+  const [resetToken, setResetToken] = useState("");
+  const [enrollSecret, setEnrollSecret] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [recoverySaved, setRecoverySaved] = useState(false);
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [selectedRole, setSelectedRole] = useState(artistWelcome ? "artist" : "customer");
+  const [queryRead, setQueryRead] = useState(false);
+  const [roleFromQuery, setRoleFromQuery] = useState(false);
+  const [arrival, setArrival] = useState<"none" | "handoff" | "plain">("none");
+  const [legalPack, setLegalPack] = useState<LegalPack | null>(null);
+  const [legalPackError, setLegalPackError] = useState("");
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const onRoleArrive = useCallback((hadHandoff: boolean) => {
+    setArrival((cur) => {
+      if (cur !== "none") return cur;
+      if (hadHandoff) requestAnimationFrame(() => headingRef.current?.focus({ preventScroll: true }));
+      return hadHandoff ? "handoff" : "plain";
+    });
+  }, []);
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const modeParam = query.get("mode");
+    if (modeParam === "register") setMode("register");
+    if (modeParam === "staff-recover") {
+      setEnrollSecret(generateTotpSecret());
+      setMode("staff-recover");
+    }
+    const requestedRole = query.get("role");
+    if (requestedRole === "customer" || requestedRole === "artist" || requestedRole === "venue") {
+      setSelectedRole(requestedRole);
+      setRoleFromQuery(true);
+    }
+    const token = query.get("reset");
+    if (token) {
+      setResetToken(token);
+      setMode("reset");
+    }
+    setQueryRead(true);
+  }, []);
+
+  useEffect(() => {
+    const titles = {
+      login: "Вход",
+      register: "Регистрация",
+      recover: "Восстановление доступа",
+      reset: "Новый пароль",
+      "staff-recover": "Восстановить второй фактор",
+      "staff-recovery-codes": "Новые резервные коды",
+    } as const;
+    document.title = `${titles[mode]} · Букер`;
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "register") return;
+    let cancelled = false;
+    setLegalPackError("");
+    api<LegalPack>("/legal/pack")
+      .then((pack) => {
+        if (cancelled) return;
+        setLegalPack(pack);
+        if (!pack.registration_available) {
+          setLegalPackError("Регистрация временно недоступна: документы ещё не утверждены.");
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLegalPack(null);
+        setLegalPackError(err instanceof Error ? err.message : "Не удалось загрузить юридический пакет");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
+
+  async function recoverStaffTotp(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    setPending(true);
+    const form = new FormData(e.currentTarget);
+    try {
+      const result = await api<{ recovery_codes: string[] }>("/auth/admin-totp/recover", {
+        method: "POST",
+        body: JSON.stringify({
+          email: String(form.get("email") || "").trim(),
+          password: String(form.get("password") || ""),
+          recovery_code: String(form.get("recovery_code") || "").trim(),
+          secret: enrollSecret,
+          code: String(form.get("code") || "").trim(),
+        }),
+      });
+      setToken(null);
+      localStorage.removeItem("booker.admin");
+      setEnrollSecret("");
+      setRecoveryCodes(result.recovery_codes);
+      setRecoverySaved(false);
+      setMode("staff-recovery-codes");
+      setNotice("Доступ восстановлен. Сохраните новые резервные коды и войдите с новым Authenticator.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось восстановить доступ");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    setPending(true);
+    const form = new FormData(e.currentTarget);
+    try {
+      if (mode === "reset") {
+        await api("/auth/recover/confirm", {
+          method: "POST",
+          body: JSON.stringify({
+            token: resetToken,
+            password: String(form.get("password") || ""),
+          }),
+        });
+        setNotice("Пароль обновлён. Войдите с новым паролем.");
+        setMode("login");
+        return;
+      }
+      if (mode === "recover") {
+        await api("/auth/recover", {
+          method: "POST",
+          body: JSON.stringify({ email: String(form.get("email") || "") }),
+        });
+        setNotice("Если аккаунт существует, инструкция для восстановления будет отправлена на указанную почту.");
+        return;
+      }
+      const path = mode === "login" ? "/auth/login" : "/auth/register";
+      const payload: Record<string, unknown> = {
+        email: String(form.get("email") || ""),
+        password: String(form.get("password") || ""),
+      };
+      if (mode === "login") {
+        const totp = String(form.get("totp") || "").trim();
+        if (totp) payload.totp = totp;
+        setToken(null);
+        localStorage.removeItem("booker.admin");
+      }
+      if (mode === "register") {
+        if (!legalPack?.registration_available) {
+          throw new Error(legalPackError || "Регистрация временно недоступна");
+        }
+        const requiredDocs = legalPack.documents.filter((doc) => doc.required);
+        payload.full_name = String(form.get("full_name") || "Пользователь");
+        payload.accept_offer = form.get("accept_offer") === "on";
+        payload.accept_privacy = form.get("accept_privacy") === "on";
+        payload.accept_processing = form.get("accept_processing") === "on";
+        payload.marketing_opt_in = form.get("marketing_opt_in") === "on";
+        payload.accepted_documents = requiredDocs.map(({ key, version, content_hash }) => ({
+          key,
+          version,
+          content_hash,
+        }));
+        payload.draft_test_acknowledgement =
+          legalPack.acceptance_effect === "test_acknowledgement" &&
+          form.get("draft_test_acknowledgement") === "on";
+      }
+      const res = await api<{
+        token: string;
+        is_platform_admin?: boolean;
+        is_support_operator?: boolean;
+      }>(path, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      setToken(res.token);
+      if (res.is_platform_admin) localStorage.setItem("booker.admin", "1");
+      else localStorage.removeItem("booker.admin");
+      if (mode === "register") {
+        const kind = String(form.get("kind") || "customer");
+        const org = await createOrgWithConfirm({
+          name: String(payload.full_name || "Пользователь"),
+          kind,
+          city: "Москва",
+        });
+        setActiveOrg(org.id);
+        const rawNext = new URLSearchParams(window.location.search).get("next");
+        const roleCabinet = cabinetPathForKind(kind);
+        const next = safeNext(rawNext, roleCabinet);
+        router.push(!rawNext || next === "/cabinet" ? roleCabinet : next);
+        return;
+      }
+      const me = await api<{
+        organizations?: { id: string; kind: string }[];
+        active_organization_id?: string;
+        is_support_operator?: boolean;
+      }>("/me");
+      if (me.is_support_operator || res.is_support_operator) {
+        router.push("/operator");
+        return;
+      }
+      if (res.is_platform_admin) {
+        const rawNext = new URLSearchParams(window.location.search).get("next");
+        router.push(safeNext(rawNext, "/admin"));
+        return;
+      }
+      const activeOrgId = me.active_organization_id || me.organizations?.[0]?.id;
+      if (activeOrgId) setActiveOrg(activeOrgId);
+      const org = me.organizations?.find((o) => o.id === activeOrgId) || me.organizations?.[0];
+      const rawNext = new URLSearchParams(window.location.search).get("next");
+      const next = safeNext(rawNext);
+      if (!rawNext || next === "/cabinet") {
+        router.push(cabinetPathForKind(org?.kind || "customer"));
+      } else {
+        router.push(next);
+      }
+    } catch (err) {
+      if (mode === "login") {
+        setToken(null);
+        localStorage.removeItem("booker.admin");
+      }
+      const message = err instanceof Error ? err.message : "Ошибка входа";
+      setError(
+        mode === "login" && message === "Нужен код второго фактора"
+          ? "Нужен шестизначный код из приложения-аутентификатора. Введите его и повторите вход."
+          : message,
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const heading =
+    mode === "staff-recover" || mode === "staff-recovery-codes"
+      ? "Восстановить второй фактор"
+      : mode === "reset"
+        ? "Задайте новый пароль"
+        : mode === "recover"
+          ? "Вернём доступ к кабинету"
+          : mode === "login"
+            ? "Войти в Букер"
+            : "Создать кабинет";
+
+  const kicker =
+    mode === "staff-recover" || mode === "staff-recovery-codes"
+      ? "Служебный доступ"
+      : mode === "reset"
+        ? "Подтверждение восстановления"
+        : mode === "recover"
+          ? "Восстановление доступа"
+          : mode === "login"
+            ? "Ваше пространство событий"
+            : "Новый аккаунт";
+
+  return (
+    <main className={`login-layout bk-scene-auth ${artistWelcome ? "artist-welcome" : ""}${arrival === "handoff" ? " is-arriving" : ""}`}>
+      {artistWelcome ? <aside className="artist-benefits" aria-label="Букер для артистов">
+        <p className="kicker">Твоя следующая сцена</p>
+        <h1>Ты создаёшь атмосферу.<br /><em>Мы помогаем встретиться.</em></h1>
+        <p className="artist-benefits-lead">С заказчиками, которым нужен именно твой талант. Создай кабинет и собери всё для будущих выступлений в одном месте.</p>
+        <ol>
+          <li><span>01</span><div><h2>Покажи, что умеешь</h2><p>Профиль с видео, программой и условиями поможет заказчику познакомиться с тобой.</p></div></li>
+          <li><span>02</span><div><h2>Выбирай свои выступления</h2><p>Смотри открытые заказы, откликайся на подходящие события и получай личные заявки.</p></div></li>
+          <li><span>03</span><div><h2>Договорись без путаницы</h2><p>Даты, предложения и переписка с заказчиком — в общем пространстве сделки.</p></div></li>
+        </ol>
+        <p className="artist-benefits-foot">Сначала кабинет. Фото, программу и свободные даты добавишь следующим шагом.</p>
+      </aside> : mode === "register" && queryRead && isSceneRole(selectedRole) ? <RoleHandoffCard role={selectedRole} onArrive={onRoleArrive} /> : <aside className="login-story" aria-label="О Букере"><p className="kicker">Артисты. События. Букер.</p><h2>Хорошие события<br /> начинаются с людей.</h2><img src="/design/puzzle-dj.png" alt="Декоративный пазл — музыка для события" width="1280" height="1280" /><p>Находите артистов и заказы, обсуждайте детали и сохраняйте договорённости в одном месте.</p></aside>}
+      <section className="login-fields">
+      {!artistWelcome && <p className="brand-lockup-wrap">
+        <BrandLockup />
+      </p>}
+      <p className="kicker">{kicker}</p>
+      {artistWelcome ? <h2>{mode === "register" ? "Начни с простого" : heading}</h2> : <h1 ref={headingRef} tabIndex={-1}>{heading}</h1>}
+      {mode === "staff-recover" ? (
+        <p className="timeline">Используйте заранее сохранённый одноразовый код, пароль и новый код из приложения-аутентификатора.</p>
+      ) : mode === "register" ? (
+        <p className="timeline">{artistWelcome ? "Три поля — и у тебя будет кабинет артиста." : "Выберите роль — мы настроим кабинет и первый сценарий под ваши задачи."}</p>
+      ) : mode === "reset" ? (
+        <p className="timeline">Введите новый пароль для аккаунта.</p>
+      ) : mode === "recover" ? (
+        <p className="timeline">Укажите email — отправим инструкцию, если аккаунт существует.</p>
+      ) : null}
+      {mode === "staff-recover" ? (
+        <form className="card surface-glass" style={{ display: "grid", gap: 16 }} onSubmit={recoverStaffTotp}>
+          <label>Email<input name="email" type="email" autoComplete="username" required /></label>
+          <label>Пароль<input name="password" type="password" autoComplete="current-password" required /></label>
+          <label>Сохранённый резервный код<input name="recovery_code" autoComplete="off" minLength={24} maxLength={40} required /></label>
+          <p className="timeline">Добавьте новый аккаунт Букера в приложение-аутентификатор с этим секретом. После подтверждения старый Authenticator и старые коды перестанут работать.</p>
+          <label htmlFor="staff-new-totp-secret">Новый секрет TOTP</label>
+          <input id="staff-new-totp-secret" value={enrollSecret} readOnly autoComplete="off" spellCheck={false} />
+          <label>Текущий код нового приложения<input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required /></label>
+          {error ? <p className="bk-form-error" role="alert" style={{ color: "var(--danger)" }}>{error}</p> : null}
+          <button type="submit" disabled={pending} aria-busy={pending}>{pending ? "Проверяем…" : "Восстановить доступ"}</button>
+        </form>
+      ) : mode === "staff-recovery-codes" ? (
+        <section className="card surface-glass" style={{ display: "grid", gap: 16 }} aria-label="Новые резервные коды">
+          <p role="status" className="timeline">{notice} Каждый код работает один раз и больше не появится на этой странице.</p>
+          <label htmlFor="new-staff-recovery-codes">Новые резервные коды</label>
+          <textarea id="new-staff-recovery-codes" readOnly rows={10} value={recoveryCodes.join("\n")} autoComplete="off" spellCheck={false} />
+          <label><input type="checkbox" checked={recoverySaved} onChange={(event) => setRecoverySaved(event.target.checked)} /> Я сохранил новые коды вне Букера</label>
+          <button type="button" disabled={!recoverySaved} onClick={() => { setRecoveryCodes([]); setRecoverySaved(false); setMode("login"); setNotice(""); }}>Перейти ко входу</button>
+        </section>
+      ) : (
+      <form className="card surface-glass" style={{ display: "grid", gap: 16 }} onSubmit={onSubmit}>
+        {mode === "register" ? (
+          <>
+            <label>
+              Имя
+              <input name="full_name" autoComplete="name" placeholder={artistWelcome ? "Как тебя зовут?" : undefined} required />
+            </label>
+            {artistWelcome ? <input type="hidden" name="kind" value="artist" /> : roleFromQuery ? (
+              <input type="hidden" name="kind" value={selectedRole} />
+            ) : <fieldset className="role-picker" data-testid="role-picker">
+              <legend>Роль</legend>
+              <input type="hidden" name="kind" value={selectedRole} />
+              {[
+                ["customer", "Заказчик", "Ищу артистов для своего события"],
+                ["artist", "Артист / менеджер", "Ищу заказы и управляю выступлениями"],
+                ["venue", "Площадка", "Размещаю пространство и слоты"],
+              ].map(([value, title, description]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`role-option ${selectedRole === value ? "on" : ""}`}
+                  aria-pressed={selectedRole === value}
+                  data-testid={`role-option-${value}`}
+                  onClick={() => setSelectedRole(value)}
+                >
+                  <span><strong>{title}</strong><small>{description}</small></span>
+                  <span aria-hidden>{selectedRole === value ? "✓" : ""}</span>
+                </button>
+              ))}
+            </fieldset>}
+          </>
+        ) : null}
+        {mode !== "reset" ? (
+          <label>
+            Email
+            <input name="email" type="email" autoComplete="username" required />
+          </label>
+        ) : null}
+        {mode !== "recover" ? (
+          <label>
+            {mode === "reset" ? "Новый пароль" : "Пароль"}
+            <input
+              name="password"
+              type="password"
+              autoComplete={mode === "register" || mode === "reset" ? "new-password" : "current-password"}
+              required
+              minLength={8}
+              placeholder={artistWelcome ? "Не меньше 8 символов" : undefined}
+            />
+          </label>
+        ) : null}
+        {mode === "login" ? (
+          <div style={{ display: "grid", gap: 4 }}>
+            <label htmlFor="login-totp">Код из приложения-аутентификатора</label>
+            <input
+              id="login-totp"
+              name="totp"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              minLength={6}
+              maxLength={6}
+              aria-describedby="login-totp-help"
+            />
+            <small id="login-totp-help">Шесть цифр. Заполните, если у вас включён второй фактор.</small>
+          </div>
+        ) : null}
+        {mode === "register" ? (
+          <>
+            {legalPackError ? (
+              <p className="bk-form-error" role="alert" style={{ color: "var(--danger)" }}>
+                {legalPackError}
+              </p>
+            ) : null}
+            <div className="unknown">
+              <input id="accept_offer" name="accept_offer" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_offer" className="inline-label">
+                  Принимаю
+                </label>{" "}
+                <a href="/legal/offer">оферту</a> и правила использования сервиса.
+              </span>
+            </div>
+            <div className="unknown">
+              <input id="accept_privacy" name="accept_privacy" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_privacy" className="inline-label">
+                  Согласен
+                </label>{" "}
+                с <a href="/legal/privacy">политикой обработки персональных данных</a>.
+              </span>
+            </div>
+            <div className="unknown">
+              <input id="accept_processing" name="accept_processing" type="checkbox" required />
+              <span>
+                <label htmlFor="accept_processing" className="inline-label">
+                  Даю отдельное согласие
+                </label>{" "}
+                на обработку персональных данных по{" "}
+                <a href="/legal/consent-texts">текстам согласий</a>.
+              </span>
+            </div>
+            {legalPack?.acceptance_effect === "test_acknowledgement" ? (
+              <div className="unknown">
+                <input
+                  id="draft_test_acknowledgement"
+                  name="draft_test_acknowledgement"
+                  type="checkbox"
+                  required
+                />
+                <span>
+                  <label htmlFor="draft_test_acknowledgement" className="inline-label">
+                    Понимаю
+                  </label>
+                  , что юридические тексты сейчас черновые и регистрация нужна только для теста.
+                </span>
+              </div>
+            ) : null}
+            {!artistWelcome && (
+              <label className="unknown">
+                <input name="marketing_opt_in" type="checkbox" />
+                Получать новости продукта и специальные предложения. Необязательно.
+              </label>
+            )}
+          </>
+        ) : null}
+        {error ? <p className="bk-form-error" role="alert" style={{ color: "var(--danger)" }}>{error}</p> : null}
+        {notice ? <p className="timeline" role="status">{notice}</p> : null}
+        <button
+          type="submit"
+          disabled={
+            pending ||
+            (mode === "register" && (!legalPack?.registration_available || Boolean(legalPackError)))
+          }
+          aria-busy={pending}
+        >
+          {pending
+            ? "Обрабатываем…"
+            : mode === "reset"
+              ? "Сохранить пароль"
+              : mode === "recover"
+                ? "Отправить инструкцию"
+                : mode === "login"
+                  ? "Войти"
+                  : artistWelcome ? "Создать кабинет артиста →" : "Создать аккаунт"}
+        </button>
+      </form>
+      )}
+      <p className="login-secondary-actions">
+        {mode === "staff-recovery-codes" ? null : mode === "staff-recover" ? (
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              setEnrollSecret("");
+              setMode("login");
+              setError("");
+              const url = new URL(window.location.href);
+              url.searchParams.delete("mode");
+              window.history.replaceState(null, "", url.pathname + url.search);
+            }}
+          >
+            Вернуться ко входу
+          </button>
+        ) : mode === "reset" ? (
+          <button type="button" className="secondary" onClick={() => setMode("login")}>
+            Вернуться ко входу
+          </button>
+        ) : (
+          <>
+            <button type="button" className="secondary" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+              {mode === "login" ? "Создать аккаунт" : "Вернуться ко входу"}
+            </button>
+            {mode === "login" ? (
+              <>
+                <button type="button" className="secondary" onClick={() => setMode("recover")}>
+                  Забыли пароль?
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setEnrollSecret(generateTotpSecret());
+                    setError("");
+                    setNotice("");
+                    setMode("staff-recover");
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("mode", "staff-recover");
+                    window.history.replaceState(null, "", url.pathname + url.search);
+                  }}
+                >
+                  Потеряли Authenticator?
+                </button>
+              </>
+            ) : null}
+          </>
+        )}
+      </p>
+      {!artistWelcome && process.env.NEXT_PUBLIC_DEMO_CABINETS === "1" && <p className="login-demo-note"><a href="/dev/cabinets">Тестовые кабинеты и данные для проверки ↗</a></p>}
+      </section>
+    </main>
+  );
+}

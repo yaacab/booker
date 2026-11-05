@@ -1,9 +1,13 @@
 export type AvailabilityState = "available" | "tentative" | "hold" | "busy" | "on_request";
 
 export type EventStudioDraft = {
+  assemblyV5?: import("./v5Adapter").VisualDraft;
   title: string;
   kind: string;
   city: string;
+  district?: string;
+  address?: string;
+  metro?: string;
   date: string;
   startsAt: string;
   endsAt: string;
@@ -15,6 +19,7 @@ export type EventStudioDraft = {
 };
 
 export type TalentItem = {
+  mediaUrl?: string;
   id: string;
   name: string;
   categoryCode: string;
@@ -29,11 +34,16 @@ export type TalentItem = {
 };
 
 export type VenueItem = {
+  mediaUrl?: string;
   id: string;
   name: string;
   city: string;
+  district?: string;
+  address?: string;
+  metro?: string;
   honorariumFrom: number | null;
   availabilityLabel?: string;
+  halls?: { id: string; name: string; capacity: number | null }[];
 };
 
 export type BudgetHint = {

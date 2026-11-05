@@ -100,8 +100,8 @@ export function usePerformerCabinetData() {
   const newRequests = useMemo(
     () =>
       requests
-        .filter((r) => !r.offer_id && !r.booking_id)
-        .sort((a, b) => (b.event_date || "").localeCompare(a.event_date || "")),
+        .filter((r) => !r.offer_id && !r.booking_id && !["Cancelled", "Declined", "Expired", "Completed"].includes(r.status))
+        .sort((a, b) => (a.event_date || "").localeCompare(b.event_date || "")),
     [requests],
   );
 
@@ -190,16 +190,21 @@ export function usePerformerCabinetData() {
     calendarConflicts.length === 0 &&
     !profileIncomplete;
 
-  async function sendOffer(item: PerformerRequest) {
+  async function sendOffer(item: PerformerRequest, amount?: number) {
     if (!item.slot_id) {
       setError("Нет свободного слота для оффера");
+      return;
+    }
+    const honorarium = amount ?? item.honorarium_rub;
+    if (!honorarium || honorarium <= 0) {
+      setError("Укажите сумму предложения");
       return;
     }
     setOfferBusy(item.id);
     try {
       const res = await api<{ booking_id: string }>(`/requests/${item.id}/offers`, {
         method: "POST",
-        body: JSON.stringify({ honorarium_rub: item.honorarium_rub, slot_id: item.slot_id }),
+        body: JSON.stringify({ honorarium_rub: honorarium, slot_id: item.slot_id }),
       });
       trackClientEvent("cabinet.offer_sent", { request_id: item.id });
       window.location.href = `/deals/${res.booking_id}`;
@@ -222,11 +227,13 @@ export function usePerformerCabinetData() {
     bookings,
     newRequests,
     awaitingResponse,
+    negotiations: dealRooms.filter(d=>d.status==="Negotiation"),
     expiringOffers,
     activeHolds,
     upcomingPerformances,
     calendarConflicts,
     profileIncomplete,
+    profileCompleteness: completeness?.applicable ? completeness : null,
     empty,
     offerBusy,
     sendOffer,

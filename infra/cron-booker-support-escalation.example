@@ -1,0 +1,2 @@
+# EXAMPLE ONLY. Do not install before schema/staff/staging approval.
+# */5 * * * * root /opt/booker/current/infra/run-booker-support-escalation.sh >> /var/log/booker-support-escalation.log 2>&1

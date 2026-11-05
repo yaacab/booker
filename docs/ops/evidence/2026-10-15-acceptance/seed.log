@@ -1,0 +1,2 @@
+{'status': 'ok', 'customer': 'customer@booker.test', 'artist': 'artist@booker.test', 'venue': 'venue@booker.test', 'admin': 'admin@booker.test', 'password': 'password1', 'artist_id': '857c49f6-5697-4c2f-857c-21cbc7e42c15'}
+{'batch_id': 'moscow-performance-research-2026-09-11', 'org_id': '4716be51-5aa8-4d2e-a58e-33c4dda06d23', 'created_venues': 300, 'updated_venues': 0, 'slots_created': 0, 'total_in_file': 300, 'published': 0, 'needs_review': 300, 'with_contacts': 300, 'with_prices': 300, 'with_photos': 0, 'with_official_website': 0}

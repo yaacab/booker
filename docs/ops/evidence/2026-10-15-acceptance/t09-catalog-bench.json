@@ -1,0 +1,42 @@
+{
+  "level": "LOCAL",
+  "claim_staging_p95": false,
+  "seed_mode": "test_catalog_search_pagination._seed_artists",
+  "profiles_requested": 24,
+  "items_last_page": 24,
+  "rounds": 3,
+  "http_status_last": 200,
+  "response_keys": [
+    "has_more",
+    "items",
+    "next_cursor",
+    "venues"
+  ],
+  "latency_ms": {
+    "samples": [
+      39.79,
+      8.6,
+      7.43
+    ],
+    "median": 8.6,
+    "mean": 18.6
+  },
+  "sql_statements": {
+    "samples": [
+      7,
+      7,
+      7
+    ],
+    "median": 7
+  },
+  "index_proposals": [
+    "artists(city, category, id) — verify EXPLAIN on PG before migration",
+    "venues(city, id)",
+    "availability_slots(resource_type, resource_id, starts_at) — only if ANALYZE wins"
+  ],
+  "still_required_for_T09": [
+    "staging supply p50/p95",
+    "EXPLAIN on factual engine",
+    "mobile image HAR"
+  ]
+}

@@ -1,8 +1,9 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from booker_api.composition import replace_requirements
 from booker_api.models import Event, EventTeamRequirement, Organization, Request
-from tests.conftest import auth_header, register
+from booker_api.security import now
+from tests.conftest import auth_header, publish_artist, register
 
 
 def test_replace_requirements_reuses_rows_and_nulls_leftover_fks(SessionLocal):
@@ -76,23 +77,25 @@ def test_request_requirement_id_and_event_requests(client):
         json={"organization_id": artist_org["id"], "name": "DJ Nova", "category": "dj"},
         headers=oh,
     ).json()
+    starts = (now() + timedelta(days=45)).replace(microsecond=0)
     slot = client.post(
         "/slots",
         json={
             "resource_type": "artist",
             "resource_id": artist["id"],
-            "starts_at": "2026-09-01T18:00:00+00:00",
-            "ends_at": "2026-09-01T22:00:00+00:00",
+            "starts_at": starts.isoformat(),
+            "ends_at": (starts + timedelta(hours=4)).isoformat(),
         },
         headers=oh,
     ).json()
+    publish_artist(client, owner, artist["id"])
 
     event = client.post(
         "/events",
         json={
             "organization_id": cust_org["id"],
             "title": "Корпоратив",
-            "event_date": "2026-09-01T18:00:00+00:00",
+            "event_date": starts.isoformat(),
         },
         headers=ch,
     ).json()
@@ -101,7 +104,7 @@ def test_request_requirement_id_and_event_requests(client):
         json={
             "organization_id": cust_org["id"],
             "title": "Другое",
-            "event_date": "2026-09-02T18:00:00+00:00",
+            "event_date": (starts + timedelta(days=1)).isoformat(),
         },
         headers=ch,
     ).json()
@@ -171,6 +174,24 @@ def test_request_requirement_id_and_event_requests(client):
     assert item["requirement_id"] == requirement_id
     assert item["booking_id"] is None
     assert "quote_id" not in item
+    assert got.json()["readiness"] == {
+        "state": "incomplete",
+        "required_total": 1,
+        "ready_total": 0,
+        "missing_total": 1,
+        "positions": [
+            {
+                "requirement_id": requirement_id,
+                "category_code": "dj",
+                "role_label": "DJ",
+                "required": 1,
+                "ready": 0,
+                "missing": 1,
+                "blocker": "no_offer",
+            }
+        ],
+        "payment_blockers": [],
+    }
 
     offer = client.post(
         f"/requests/{linked_id}/offers",
@@ -186,6 +207,9 @@ def test_request_requirement_id_and_event_requests(client):
     assert linked_row["booking_id"] == booking_id
     assert linked_row["quote_id"] == quote_id
     assert linked_row["requirement_id"] == requirement_id
+    assert linked_row["booking_status"] == "Negotiation"
+    assert after["readiness"]["state"] == "incomplete"
+    assert after["readiness"]["positions"][0]["blocker"] == "not_confirmed"
 
     kept = client.put(
         f"/events/{event['id']}/requirements",
@@ -241,12 +265,25 @@ def test_replace_requirements_preserves_then_nulls_request_links(client):
         json={"organization_id": artist_org["id"], "name": "DJ Link", "category": "dj"},
         headers=oh,
     ).json()
+    starts = (now() + timedelta(days=45)).replace(microsecond=0)
+    slot = client.post(
+        "/slots",
+        json={
+            "resource_type": "artist",
+            "resource_id": artist["id"],
+            "starts_at": starts.isoformat(),
+            "ends_at": (starts + timedelta(hours=4)).isoformat(),
+        },
+        headers=oh,
+    )
+    assert slot.status_code == 200, slot.text
+    publish_artist(client, owner, artist["id"])
     event = client.post(
         "/events",
         json={
             "organization_id": cust_org["id"],
             "title": "Свадьба",
-            "event_date": "2026-10-01T18:00:00+00:00",
+            "event_date": starts.isoformat(),
         },
         headers=ch,
     ).json()

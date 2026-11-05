@@ -132,3 +132,24 @@ test("getOrCreateSubmitIdempotencyKey is stable and peek finds cached result", (
     else g.sessionStorage = prevSession;
   }
 });
+
+test("v5 sends real IDs, user budget and rider notes through existing API", async () => {
+ const store=new Map<string,string>();
+ const storage={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,String(v));},removeItem:(k:string)=>{store.delete(k);}} as Storage;
+ const prev={window:globalThis.window,session:globalThis.sessionStorage,local:globalThis.localStorage,fetch:globalThis.fetch};
+ Object.assign(globalThis,{window:globalThis,sessionStorage:storage,localStorage:storage});
+ const calls:{url:string;body:any}[]=[];
+ globalThis.fetch=async(url,init)=>{const path=String(url);const body=init?.body?JSON.parse(String(init.body)):null;calls.push({url:path,body});
+  return new Response(JSON.stringify(path.endsWith('/me')?{organizations:[{id:'customer-real',kind:'customer'}]}:path.endsWith('/events')?{id:'event-real',requirements:[{id:'req-real',category_code:'dj'}]}:{id:'request-real'}),{status:200});};
+ try {
+  const {submitEventStudioDraft}=await import('./adapter');
+  const {fromVisual,toVisual}=await import('./v5Adapter');
+  const d=fromVisual({...baseDraft,date:'2027-02-11',venueId:'venue-real'}, {...toVisual({...baseDraft,date:'2027-02-11',venueId:'venue-real'}),budget:123456,rider:{matches:0,open:1,requirements:['Звук'],notes:'Монтаж в 16:00'}});
+  const talent=mapCatalogTalent({id:'a1',name:'Real artist',city:'Москва',category:'dj'});
+  const result=await submitEventStudioDraft(d,[talent],'test-v5-key');assert.equal(result.eventId,'event-real');
+  const create=calls.find(c=>c.url.endsWith('/events'))!.body;
+  assert.equal(create.budget_rub,123456);assert.equal(create.organization_id,'customer-real');assert.match(create.notes,/Монтаж в 16:00/);assert.match(create.notes,/окончание:23:00/);
+  assert.deepEqual(calls.filter(c=>c.url.endsWith('/requests')).map(c=>c.body.resource_id),['a1','venue-real']);
+  await submitEventStudioDraft(d,[talent],'test-v5-key');assert.equal(calls.filter(c=>c.url.endsWith('/events')).length,1);
+ } finally {globalThis.fetch=prev.fetch;for(const [key,value] of [['window',prev.window],['sessionStorage',prev.session],['localStorage',prev.local]] as const){if(value===undefined)delete (globalThis as any)[key];else (globalThis as any)[key]=value;}}
+});

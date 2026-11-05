@@ -108,15 +108,24 @@ test.describe("Deal path E07–E09", () => {
     });
 
     await test.step("v1: двусторонний ack", async () => {
-      await postJson(request, `/offers/${ctx.offerId}/ack`, ctx.owner.token, { side: "supplier" }, ctx.owner.orgId);
+      await postJson(
+        request,
+        `/offers/${ctx.offerId}/ack`,
+        ctx.owner.token,
+        { side: "supplier", quote_id: ctx.quoteId },
+        ctx.owner.orgId,
+      );
       await postJson(
         request,
         `/offers/${ctx.offerId}/ack`,
         ctx.customer.token,
-        { side: "customer" },
+        { side: "customer", quote_id: ctx.quoteId },
         ctx.customer.orgId,
       );
-      const room = await getJson<{ quote: DealRoomQuote }>(
+      const room = await getJson<{
+        quote: DealRoomQuote;
+        accepted_offer_version_id?: string | null;
+      }>(
         request,
         `/deal-room/${ctx.bookingId}`,
         ctx.customer.token,
@@ -125,6 +134,7 @@ test.describe("Deal path E07–E09", () => {
       expect(room.quote.supplier_ack).toBe(true);
       expect(room.quote.customer_ack).toBe(true);
       expect(room.quote.quote_id).toBe(ctx.quoteId);
+      expect(room.accepted_offer_version_id).toBe(ctx.quoteId);
     });
 
     const v2 = await test.step("v2: новая смета, старые ack не действуют", async () => {
@@ -145,7 +155,11 @@ test.describe("Deal path E07–E09", () => {
       expect(bumped.quote_id).not.toBe(ctx.quoteId);
       expect(bumped.honorarium_rub).toBe(120_000);
 
-      const room = await getJson<{ quote: DealRoomQuote }>(
+      const room = await getJson<{
+        quote: DealRoomQuote;
+        accepted_offer_version_id?: string | null;
+        renegotiation_pending?: boolean;
+      }>(
         request,
         `/deal-room/${ctx.bookingId}`,
         ctx.customer.token,
@@ -154,6 +168,8 @@ test.describe("Deal path E07–E09", () => {
       expect(room.quote.quote_id).toBe(bumped.quote_id);
       expect(room.quote.customer_ack).toBe(false);
       expect(room.quote.supplier_ack).toBe(false);
+      expect(room.accepted_offer_version_id).toBeNull();
+      expect(room.renegotiation_pending).toBe(true);
       return bumped;
     });
 

@@ -1,2 +1,3 @@
 # Example cron for VPS — install manually: sudo cp infra/cron-booker-backup.example /etc/cron.d/booker-backup
-15 2 * * * root /opt/booker/infra/backup-booker.sh >> /var/log/booker-backup.log 2>&1
+# The wrapper reads /etc/booker/booker-api.env, so Postgres cutover also changes backups.
+15 2 * * * root /opt/booker/current/infra/run-booker-ops-backup.sh >> /var/log/booker-backup.log 2>&1

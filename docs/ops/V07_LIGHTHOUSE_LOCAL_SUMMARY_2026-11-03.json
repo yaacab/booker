@@ -1,0 +1,38 @@
+{
+  "captured_at": "2026-11-03",
+  "level": "local",
+  "form_factor": "mobile",
+  "viewport": "390x844",
+  "throttling": "provided (no simulated 3G)",
+  "note": "Local Lighthouse unthrottled (search perf95/a11y100, home perf88/a11y100). Simulated-throttle run 2026-11-03 failed/empty on this host — not claimed.",
+  "pages": {
+    "search": {
+      "categories": {
+        "performance": 95,
+        "accessibility": 100
+      },
+      "metrics": {
+        "first-contentful-paint": "0.1 s",
+        "largest-contentful-paint": "0.7 s",
+        "total-blocking-time": "260 ms",
+        "cumulative-layout-shift": "0",
+        "interactive": "0.7 s"
+      },
+      "url": "http://127.0.0.1:3000/search?city=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&kind=artist"
+    },
+    "home": {
+      "categories": {
+        "performance": 88,
+        "accessibility": 100
+      },
+      "metrics": {
+        "first-contentful-paint": "0.1 s",
+        "largest-contentful-paint": "1.1 s",
+        "total-blocking-time": "480 ms",
+        "cumulative-layout-shift": "0.019",
+        "interactive": "1.0 s"
+      },
+      "url": "http://127.0.0.1:3000/"
+    }
+  }
+}

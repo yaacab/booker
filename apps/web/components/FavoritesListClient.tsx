@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { loginHref } from "@/lib/next";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
+import { ProfileMedia } from "@/components/ProfileMedia";
+import { categoryLabel } from "@/lib/copy";
+import { money } from "@/lib/format";
 
 type FavoriteItem = {
   id: string;
@@ -13,12 +16,18 @@ type FavoriteItem = {
   name?: string | null;
   city?: string | null;
   created_at?: string | null;
+  media_url?: string | null;
+  category?: string;
+  honorarium_rub?: number;
 };
 
 export function FavoritesListClient() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState<FavoriteItem[]>([]);
+  const [activeType, setActiveType] = useState<"artist" | "venue">("artist");
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -28,9 +37,17 @@ export function FavoritesListClient() {
     }
     let cancelled = false;
     api<{ items: FavoriteItem[] }>("/favorites")
-      .then((res) => {
+      .then(async (res) => {
+        const favorites = res.items || [];
+        const enriched = await Promise.all(favorites.map(async (item) => {
+          try {
+            const profile = await api<{ media_url?: string | null; category?: string; tariffs?: { honorarium_rub: number }[] }>(`/${item.target_type === "artist" ? "artists" : "venues"}/${encodeURIComponent(item.target_id)}`);
+            return { ...item, media_url: profile.media_url, category: profile.category, honorarium_rub: profile.tariffs?.[0]?.honorarium_rub };
+          } catch { return item; }
+        }));
         if (!cancelled) {
-          setItems(res.items || []);
+          setItems(enriched);
+          if (!favorites.some((item) => item.target_type === "artist") && favorites.some((item) => item.target_type === "venue")) setActiveType("venue");
           setError("");
         }
       })
@@ -47,7 +64,7 @@ export function FavoritesListClient() {
 
   if (!ready) {
     return (
-      <main>
+      <main className="saved-collection-reference">
         <p className="kicker">Букер</p>
         <h1>Избранное</h1>
         <div className="grid">
@@ -60,7 +77,7 @@ export function FavoritesListClient() {
 
   if (!getToken()) {
     return (
-      <main>
+      <main className="saved-collection-reference">
         <p className="kicker">Букер</p>
         <h1>Избранное</h1>
         <p>{error}</p>
@@ -73,93 +90,41 @@ export function FavoritesListClient() {
     );
   }
 
+  const visibleItems = items.filter((item) => item.target_type === activeType);
+  const compareIds = compareMode ? selectedIds : visibleItems.slice(0, 4).map((item) => item.target_id);
+  const compareHref = `/compare?${new URLSearchParams({ type: activeType, ids: compareIds.join(",") }).toString()}`;
+
   return (
-    <main>
-      <p className="kicker">Кабинет заказчика</p>
-      <h1>Избранное</h1>
-      <p className="timeline">
-        Сохранённые артисты и площадки. Добавление в избранное не создаёт заявку и не бронирует слот.
-      </p>
-      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-        <Link className="btn secondary" href="/cabinet/customer">
-          К кабинету
-        </Link>
-        <Link className="btn" href="/search">
-          Каталог
-        </Link>
-        {items.filter((i) => i.target_type === "artist").length >= 2 ? (
-          <Link
-            className="btn secondary"
-            href={`/compare?type=artist&ids=${items
-              .filter((i) => i.target_type === "artist")
-              .slice(0, 4)
-              .map((i) => i.target_id)
-              .join(",")}`}
-          >
-            Сравнить артистов
-          </Link>
-        ) : null}
-        {items.filter((i) => i.target_type === "venue").length >= 2 ? (
-          <Link
-            className="btn secondary"
-            href={`/compare?type=venue&ids=${items
-              .filter((i) => i.target_type === "venue")
-              .slice(0, 4)
-              .map((i) => i.target_id)
-              .join(",")}`}
-          >
-            Сравнить площадки
-          </Link>
-        ) : null}
-      </p>
-      {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
-      {!error && items.length === 0 ? (
-        <article className="card empty" style={{ marginTop: 20 }}>
-          <h2>Пока пусто</h2>
-          <p>Отметьте артиста или площадку кнопкой «В избранное» в каталоге или на профиле.</p>
-          <Link className="btn" href="/search">
-            Открыть каталог
-          </Link>
-        </article>
-      ) : null}
-      {items.length > 0 ? (
-        <div className="grid" style={{ marginTop: 20 }}>
-          {items.map((item) => {
-            const href =
-              item.target_type === "artist"
-                ? `/artists/${item.target_id}`
-                : `/venues/${item.target_id}`;
-            const kind = item.target_type === "artist" ? "Артист" : "Площадка";
-            return (
-              <article className="card" key={item.id}>
-                <div className="card-head">
-                  <strong>
-                    <Link href={href}>{item.name || item.target_id}</Link>
-                  </strong>
-                </div>
-                <p className="timeline">
-                  {kind}
-                  {item.city ? ` · ${item.city}` : ""}
-                </p>
-                <p style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                  <Link className="btn" href={href}>
-                    Открыть
-                  </Link>
-                  <FavoriteToggle
-                    targetType={item.target_type}
-                    targetId={item.target_id}
-                    onChanged={(favorited) => {
-                      if (!favorited) {
-                        setItems((prev) => prev.filter((row) => row.id !== item.id));
-                      }
-                    }}
-                  />
-                </p>
-              </article>
-            );
-          })}
+    <main className="saved-collection-reference catalog-reference page-enter">
+      <header className="saved-collection-heading">
+        <div><h1>Избранное</h1><p>Артисты и площадки, которые вам нравятся. Сравнивайте и выбирайте для своего события.</p></div>
+        <Link className="btn saved-collection-add" href="/search">Найти ещё <span aria-hidden="true">↗</span></Link>
+      </header>
+      <div className="saved-collection-toolbar">
+        <div className="saved-type-switch" role="group" aria-label="Тип избранного">
+          {([{ type: "artist", label: "Артисты" }, { type: "venue", label: "Площадки" }] as const).map((tab) => <button key={tab.type} type="button" aria-pressed={activeType === tab.type} onClick={() => { setActiveType(tab.type); setSelectedIds([]); }}>{tab.label}<span>{items.filter((item) => item.target_type === tab.type).length}</span></button>)}
         </div>
-      ) : null}
+        <div className="saved-comparison-controls">
+          <label><input type="checkbox" checked={compareMode} onChange={(event) => { setCompareMode(event.target.checked); setSelectedIds([]); }} />Режим сравнения</label>
+          {compareIds.length >= 2 ? <Link className="btn secondary" href={compareHref}>{compareMode ? `Сравнить (${selectedIds.length})` : activeType === "artist" ? "Сравнить артистов" : "Сравнить площадки"}</Link> : <button type="button" className="btn secondary" disabled>Сравнить ({compareIds.length})</button>}
+        </div>
+      </div>
+      {compareMode ? <p className="saved-comparison-hint" role="status">Выберите от 2 до 4 {activeType === "artist" ? "артистов" : "площадок"}. Выбрано: {selectedIds.length}.</p> : null}
+      {error ? <p className="profile-error" role="alert">{error}</p> : null}
+      {!error && visibleItems.length === 0 ? <article className="card saved-empty-state"><span className="saved-empty-icon" aria-hidden="true">♡</span><h2>{items.length ? `В избранном пока нет ${activeType === "artist" ? "артистов" : "площадок"}` : "Здесь будут ваши любимые"}</h2><p>Нажмите на сердце в каталоге, чтобы сохранить подходящие варианты.</p><Link className="btn" href={`/search?kind=${activeType}`}>Открыть каталог <span aria-hidden="true">→</span></Link></article> : null}
+      {visibleItems.length > 0 ? <div className="saved-collection-grid">{visibleItems.map((item) => {
+        const href = `/${item.target_type === "artist" ? "artists" : "venues"}/${item.target_id}`;
+        const name = item.name || (item.target_type === "artist" ? "Профиль артиста" : "Профиль площадки");
+        const selected = selectedIds.includes(item.target_id);
+        return <article className={`saved-profile-card${selected ? " is-selected" : ""}`} key={item.id}>
+          <div className="saved-profile-media"><Link href={href} aria-label={`Открыть профиль: ${name}`}><ProfileMedia src={item.media_url} name={name} compact /></Link>
+            {compareMode ? <label className="saved-compare-checkbox"><input type="checkbox" aria-label={`Сравнить: ${name}`} checked={selected} disabled={!selected && selectedIds.length >= 4} onChange={(event) => setSelectedIds((previous) => event.target.checked ? [...previous, item.target_id] : previous.filter((id) => id !== item.target_id))} /></label> : null}
+            <FavoriteToggle compact className="catalog-card-favorite" targetType={item.target_type} targetId={item.target_id} onChanged={(favorited) => { if (!favorited) { setItems((previous) => previous.filter((row) => row.id !== item.id)); setSelectedIds((previous) => previous.filter((id) => id !== item.target_id)); } }} />
+          </div>
+          <div className="saved-profile-content"><h2><Link href={href}>{name}</Link></h2><p>{item.target_type === "artist" ? categoryLabel(item.category) || "Артист" : "Площадка"}{item.city ? ` · ${item.city}` : ""}</p>{item.honorarium_rub != null ? <strong className="saved-profile-price">{money(item.honorarium_rub)}<small>Ориентир</small></strong> : <span className="saved-price-request">Стоимость по запросу</span>}<Link className="btn secondary" href={href}>Открыть профиль <span aria-hidden="true">↗</span></Link></div>
+        </article>;
+      })}</div> : null}
+      <p className="saved-collection-footnote">Сохранённые варианты всегда под рукой. Дату и условия вы согласуете после заявки.</p>
     </main>
   );
 }

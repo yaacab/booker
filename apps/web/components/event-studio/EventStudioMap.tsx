@@ -1,6 +1,7 @@
 "use client";
+import { MoscowMap } from "@/components/MoscowMap";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CityField } from "@/components/CityField";
 import { categoryLabel } from "@/lib/copy";
 import { formatDay, guestsLabel, money } from "@/lib/format";
@@ -110,17 +111,56 @@ export default function EventStudioMap({
   submitError,
   legacyLink,
 }: EventStudioMapProps) {
-  const [stage, setStage] = useState<StudioStage>("Команда");
+  const [stage, setStage] = useState<StudioStage>("Основа");
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<(typeof ROLE_FILTERS)[number]>("Все");
   const [panelOpen, setPanelOpen] = useState(false);
-  const [editingTime, setEditingTime] = useState(false);
-  const [editingVenue, setEditingVenue] = useState(false);
+  const [compactPanel, setCompactPanel] = useState(false);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotion = () => setReducedMotion(media.matches);
+    updateMotion();
+    media.addEventListener("change", updateMotion);
+    return () => media.removeEventListener("change", updateMotion);
   }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1180px)");
+    const update = () => setCompactPanel(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (!panelOpen || !compactPanel) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    workspaceRef.current?.setAttribute("inert", "");
+    const frame = requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('button[aria-label="Закрыть панель"]')?.focus({ preventScroll: true }));
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setPanelOpen(false); }
+      if (event.key !== "Tab") return;
+      const controls = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]') || []).filter(el => el.getClientRects().length > 0);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (!first) { event.preventDefault(); panelRef.current?.focus(); return; }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+      workspaceRef.current?.removeAttribute("inert");
+      if (previousFocus?.isConnected && previousFocus.getClientRects().length) previousFocus.focus({ preventScroll: true });
+    };
+  }, [panelOpen, compactPanel]);
 
   const selected = talents.filter((item) => draft.talentIds.includes(item.id));
   const venue = venues.find((item) => item.id === draft.venueId);
@@ -133,7 +173,8 @@ export default function EventStudioMap({
   const dateLabel = draft.date
     ? formatDay(`${draft.date}T12:00:00+03:00`)
     : "дата позже";
-  const positionsTotal = Math.max(selected.length + (venue ? 1 : 0) + 2, 4);
+  const selectedCount = draft.talentIds.length + (draft.venueId ? 1 : 0);
+  const missingTalents = draft.talentIds.filter((id) => !talents.some((item) => item.id === id));
 
   function update(next: EventStudioDraft) {
     onDraftChange(next);
@@ -170,343 +211,149 @@ export default function EventStudioMap({
     });
   }, [draft.date, draft.talentIds, dateLabel, venue, talents]);
 
+  function goToStage(next: StudioStage) {
+    setStage(next);
+    const ids: Record<StudioStage, string> = {
+      Основа: "studio-basics", Место: "studio-venue", Команда: "studio-team", Детали: "studio-details", Проверка: "studio-summary",
+    };
+    document.getElementById(ids[next])?.scrollIntoView({ behavior: reducedMotion ? "instant" : "smooth", block: "center" });
+  }
+
+  function openCatalog() {
+    setPanelOpen(true);
+    setStage("Команда");
+    if (!compactPanel) panelRef.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+  }
+
   return (
     <main className={`event-studio-shell${panelOpen ? " panel-open" : ""}`}>
-      <header className="event-studio-header">
-        <div className="event-studio-brand">
-          <span className="brand-mark">Б</span>
-          <strong>Букер</strong>
-        </div>
-        <div className="event-studio-title">
-          <h1>Соберите событие</h1>
-          <span role="status" aria-live="polite">
-            <i aria-hidden="true" /> {saveLabel(saveStatus)}
-            {saveStatus === "error" && onRetrySave ? (
-              <button type="button" className="text-button" onClick={onRetrySave}>
-                Повторить
-              </button>
-            ) : null}
+      <div ref={workspaceRef} className="studio-workspace">
+        <header className="event-studio-header">
+          <a className="event-studio-brand" href="/" aria-label="Букер — на главную">Букер<span aria-hidden="true" /></a>
+          <span className="studio-header-caption">Люди. Место. Событие.</span>
+          <div className="event-studio-actions">{legacyLink}<a href="/cabinet">Мои события <Icon name="arrow" /></a></div>
+        </header>
+        <div className="studio-heading">
+          <div>
+            <p className="studio-eyebrow">События <span>/</span> Новое событие</p>
+            <h1>Соберите событие</h1>
+            <p>Расскажите о планах и соберите команду — всё начинается с ваших идей.</p>
+          </div>
+          <span className={`studio-save studio-save-${saveStatus}`} role="status" aria-live="polite">
+            <Icon name={saveStatus === "saved" ? "check" : "calendar"} />
+            {saveLabel(saveStatus)}
+            {saveStatus === "error" && onRetrySave ? <button type="button" className="text-button" onClick={onRetrySave}>Повторить</button> : null}
           </span>
         </div>
-        <div className="event-studio-actions">
-          {legacyLink}
-          <span className="avatar" aria-hidden="true">
-            Б
-          </span>
-        </div>
-      </header>
-
-      <div className="event-studio-grid">
-        <aside className="stage-rail" aria-label="Этапы создания события">
-          <a className="home-button" href="/" aria-label="На главную">
-            <Icon name="home" />
-          </a>
+        <nav className="stage-rail" aria-label="Этапы создания события">
           <ol>
-            {STUDIO_STAGES.map((item, index) => {
-              const activeIndex = STUDIO_STAGES.indexOf(stage);
-              const completed = index < activeIndex;
-              return (
-                <li key={item} className={item === stage ? "active" : completed ? "done" : ""}>
-                  <button type="button" onClick={() => setStage(item)}>
-                    <span>{completed ? <Icon name="check" /> : index + 1}</span>
-                    {item}
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </aside>
-
-        <section className="event-map" aria-label="Карта события">
-          <div className="connection-lines" aria-hidden="true">
-            <i className="line venue-line" />
-            <i className="line time-line" />
-            <i className="line team-line" />
-            <i className="line terms-line" />
-          </div>
-
-          <div className={`puzzle-stage${stage === "Основа" || stage === "Команда" || stage === "Место" ? " map-card-focus" : ""}`}>
-            <PuzzleBoard slots={puzzleSlots} reducedMotion={reducedMotion} />
-            <div className="puzzle-event-meta">
-              <label className="sr-only" htmlFor="event-title">
-                Название события
-              </label>
-              <input
-                id="event-title"
-                className="event-core-title"
-                value={draft.title}
-                placeholder="Название события"
-                onChange={(e) => update({ ...draft, title: e.target.value })}
-              />
-              <small>
-                {dateLabel} · {draft.city || "город"} · {guestsLabel(draft.guests)}
-              </small>
-              <label className="field-inline guests-field">
-                Гостей
-                <input
-                  type="number"
-                  min={1}
-                  max={5000}
-                  value={draft.guests}
-                  onChange={(e) => update({ ...draft, guests: Number(e.target.value) || 0 })}
-                />
-              </label>
-            </div>
-          </div>
-
-          <article className={`map-card venue-card${stage === "Место" ? " map-card-focus" : ""}`}>
-            <h2>
-              <Icon name="place" /> Площадка
-            </h2>
-            <h3>{venue?.name || "Площадка не выбрана"}</h3>
-            <p>{venue ? `${venue.city}` : "Можно выбрать позже"}</p>
-            <div className="card-meta">
-              <span>{guestsLabel(draft.guests)}</span>
-              <span>{venue ? "из каталога" : "подбор позже"}</span>
-            </div>
-            {venues.length && editingVenue ? (
-              <label className="sr-only" htmlFor="venue-select">
-                Площадка
-              </label>
-            ) : null}
-            {venues.length && editingVenue ? (
-              <select
-                id="venue-select"
-                className="card-button"
-                value={draft.venueId || ""}
-                onChange={(e) => {
-                  setVenue(e.target.value);
-                  setEditingVenue(false);
-                }}
-              >
-                <option value="">Выберите площадку</option>
-                {venues.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                    {item.availabilityLabel ? ` · ${item.availabilityLabel}` : ""}
-                  </option>
-                ))}
-              </select>
-            ) : venues.length ? (
-              <button type="button" className="card-button" onClick={() => setEditingVenue(true)}>
-                {venue ? "Изменить" : "Выбрать площадку"}
-              </button>
-            ) : (
-              <button type="button" className="card-button" onClick={onReloadCatalog}>
-                Обновить каталог
-              </button>
-            )}
-          </article>
-
-          <article className={`map-card time-card${stage === "Основа" ? " map-card-focus" : ""}`}>
-            <h2>
-              <Icon name="calendar" /> Дата и время
-            </h2>
-            <div className="time-row">
-              <strong>{dateLabel}</strong>
-              <small>{draft.city || "город позже"}</small>
-            </div>
-            <div className="time-row">
-              <strong>
-                {draft.startsAt} — {draft.endsAt}
-              </strong>
-              <small>Europe/Moscow</small>
-            </div>
-            {editingTime ? (
-              <div className="time-editor">
-                <label className="field-inline">
-                  Дата
-                  <input type="date" value={draft.date} onChange={(e) => update({ ...draft, date: e.target.value })} />
-                </label>
-                <label className="field-inline">
-                  Начало
-                  <input type="time" value={draft.startsAt} onChange={(e) => update({ ...draft, startsAt: e.target.value })} />
-                </label>
-                <label className="field-inline">
-                  Конец
-                  <input type="time" value={draft.endsAt} onChange={(e) => update({ ...draft, endsAt: e.target.value })} />
-                </label>
-                <CityField value={draft.city} onChange={(city) => update({ ...draft, city })} />
-                <button type="button" className="card-button" onClick={() => setEditingTime(false)}>Готово</button>
-              </div>
-            ) : (
-              <button type="button" className="card-button" onClick={() => setEditingTime(true)}>Изменить</button>
-            )}
-          </article>
-
-          <article className={`map-card team-card${stage === "Команда" ? " map-card-focus" : ""}`}>
-            <h2>
-              <Icon name="users" /> Команда
-            </h2>
-            <div className="team-faces">
-              {selected.slice(0, 3).map((item) => (
-                <span key={item.id} className="talent-face talent-initials" title={item.name}>
-                  <span aria-hidden="true">{item.initials}</span><span className="sr-only">{item.name}</span>
-                </span>
-              ))}
-              <button type="button" className="add-face" aria-label="Добавить исполнителя" onClick={() => setPanelOpen(true)}>
-                <Icon name="plus" />
-              </button>
-            </div>
-            <div className="role-chips">
-              {selected.map((item) => (
-                <button key={item.id} type="button" onClick={() => toggleTalent(item.id)}>
-                  {item.roleLabel}
+            {STUDIO_STAGES.map((item, index) => (
+              <li key={item} className={item === stage ? "active" : ""}>
+                <button type="button" aria-current={item === stage ? "step" : undefined} onClick={() => goToStage(item)}>
+                  <span>{index + 1}</span>{item}
                 </button>
-              ))}
-              <button type="button" className="ghost-chip" onClick={() => setPanelOpen(true)}>
-                + Добавить
-              </button>
-            </div>
-            <button type="button" className="card-button" onClick={() => setPanelOpen(true)}>
-              Смотреть всех
-            </button>
-          </article>
-
-          <article className={`map-card terms-card${stage === "Детали" ? " map-card-focus" : ""}`}>
-            <h2>Условия</h2>
-            {draft.requirements.map((item) => (
-              <div className="requirement" key={item}>
-                <span>
-                  {item}
-                  <small>Уточняется в Deal Room</small>
-                </span>
-                <i aria-hidden="true">
-                  <Icon name="check" />
-                </i>
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <div className="event-studio-grid">
+          <section className="event-map" aria-label="Карта события">
+            <article className={`map-card studio-basics${stage === "Основа" ? " map-card-focus" : ""}`} id="studio-basics">
+              <div className="studio-section-head"><span className="studio-step">01</span><h2>О событии</h2></div>
+              <label htmlFor="event-title">Название события</label>
+              <input id="event-title" className="event-core-title" value={draft.title} placeholder="Например, наш летний праздник" onChange={(e) => update({ ...draft, title: e.target.value })} />
+              <div className="studio-field-grid">
+                <label>Дата события<input id="studio-date" type="date" value={draft.date} onChange={(e) => update({ ...draft, date: e.target.value })} /></label>
+                <CityField value={draft.city} onChange={(city) => update({ ...draft, city })} />
+                <label>Начало<input type="time" value={draft.startsAt} onChange={(e) => update({ ...draft, startsAt: e.target.value })} /></label>
+                <label>Окончание<input type="time" value={draft.endsAt} onChange={(e) => update({ ...draft, endsAt: e.target.value })} /></label>
+                <label>Формат<input value={draft.kind} placeholder="Свадьба, вечеринка…" onChange={(e) => update({ ...draft, kind: e.target.value })} /></label>
+                <label>Гостей<input type="number" min={1} max={5000} value={draft.guests} onChange={(e) => update({ ...draft, guests: Number(e.target.value) || 0 })} /></label>
               </div>
-            ))}
-          </article>
+              <p className="studio-field-note">Время события — московское</p>
+            </article>
 
-          <div className="compatibility-note" role="note">
-            <strong>✣ Мы анализируем совместимость</strong>
-            <span>команды и площадки · данные из каталога</span>
-          </div>
-
-          <div className={`event-summary${stage === "Проверка" ? " map-card-focus" : ""}`}>
-            <div>
-              <small>Состав</small>
-              <strong>
-                {selected.length + (venue ? 1 : 0)} из {positionsTotal}
-              </strong>
-              <span>
-                {selected.length ? "Можно добавить ещё роли" : "Добавьте исполнителей"}
-              </span>
+            <div className="puzzle-stage">
+              <div className="studio-puzzle-caption"><span>Собираем вашу команду</span><span aria-hidden="true">↘</span></div>
+              <PuzzleBoard slots={puzzleSlots} reducedMotion={reducedMotion} onSlotSelect={(slot) => {
+                if (slot.id === "date") { goToStage("Основа"); document.getElementById("studio-date")?.focus({ preventScroll: true }); }
+                else if (slot.id === "venue") { goToStage("Место"); document.getElementById("venue-select")?.focus({ preventScroll: true }); }
+                else openCatalog();
+              }} />
+              <p className="puzzle-event-meta">{dateLabel} <span>·</span> {draft.city || "Город не указан"} <span>·</span> {guestsLabel(draft.guests)}</p>
+              <small>Нажмите на часть пазла, чтобы выбрать детали</small>
             </div>
-            <div>
-              <small>Ориентир бюджета</small>
-              <strong>{budgetText}</strong>
-              <span>
-                Итог — только после
-                <br />
-                серверных предложений
-              </span>
-            </div>
-            {submitError ? (
-              <p className="submit-error" role="alert">
-                {submitError}
-              </p>
-            ) : null}
-            <button type="button" disabled={submitting} onClick={onContinue}>
-              {submitting ? "Отправляем…" : "Продолжить"} <Icon name="arrow" />
-            </button>
-          </div>
-        </section>
 
-        <aside className="talent-panel" aria-label="Добавить исполнителя">
-          <div className="panel-header">
-            <button type="button" aria-label="Назад" onClick={() => setPanelOpen(false)}>
-              ←
-            </button>
-            <h2>Добавить исполнителя</h2>
-            <button type="button" aria-label="Закрыть панель" onClick={() => setPanelOpen(false)}>
-              ×
-            </button>
-          </div>
-          <label className="search-box">
-            <Icon name="search" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Поиск по имени, роли, стилю…"
-              aria-label="Поиск исполнителя"
-            />
-          </label>
-          <div className="role-tabs" role="tablist" aria-label="Фильтр по роли">
-            {ROLE_FILTERS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                role="tab"
-                aria-selected={role === item}
-                className={role === item ? "selected" : ""}
-                onClick={() => setRole(item)}
-              >
-                {item === "Все" ? "Все" : categoryLabel(item) || item}
-              </button>
-            ))}
-          </div>
-          {loadingTalents ? <p className="panel-state">Загружаем каталог…</p> : null}
-          {talentsError ? (
-            <p className="panel-state" role="alert">
-              {talentsError}{" "}
-              <button type="button" className="text-button" onClick={onReloadCatalog}>
-                Повторить
-              </button>
-            </p>
-          ) : null}
-          {!loadingTalents && !talentsError && filtered.length === 0 ? (
-            <p className="panel-state">Никого не нашли — попробуйте другую дату или роль.</p>
-          ) : null}
-          <div className="talent-list">
-            {filtered.map((item) => {
-              const isSelected = draft.talentIds.includes(item.id);
-              return (
-                <article className="talent-card" key={item.id}>
-                  <div className="talent-photo talent-initials" aria-label={`Фото не добавлено: ${item.name}`}>
-                    <span aria-hidden="true">{item.initials}</span>
-                  </div>
-                  <div className="talent-copy">
-                    <h3>{item.name}</h3>
-                    <p>{item.roleLabel}</p>
-                    {item.honorariumFrom != null ? (
-                      <strong>от {money(item.honorariumFrom).replace(" ₽", "")} ₽</strong>
-                    ) : (
-                      <strong>цена после предложения</strong>
-                    )}
-                    <span className={availabilityClass(item.availability)}>{item.availabilityLabel}</span>
-                    <small>{item.verified ? "Верифицирован" : "Нужна проверка"}</small>
-                  </div>
-                  <button
-                    type="button"
-                    className={isSelected ? "remove-talent" : "add-talent"}
-                    onClick={() => toggleTalent(item.id)}
-                  >
-                    {isSelected ? "Убрать из события" : "Добавить в событие"}
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-        </aside>
+            <article id="studio-venue" className={`map-card venue-card${stage === "Место" ? " map-card-focus" : ""}`}>
+              <div className="studio-section-head"><span className="studio-step"><Icon name="place" /></span><h2>Место встречи</h2></div>
+              <h3>{venue?.name || (draft.venueId ? "Выбранная площадка" : "Где всё случится?")}</h3>
+              <p>{venue ? venue.city : draft.venueId ? "Площадка недоступна в текущем каталоге" : "Выберите пространство под ваш формат"}</p>
+              <label>Район Москвы<input value={draft.district || ""} placeholder="Например, Хамовники" onChange={e => update({...draft,district:e.target.value})}/></label>
+              <MoscowMap venues={venues.filter(v=>!draft.district || v.district?.toLocaleLowerCase().includes(draft.district.toLocaleLowerCase()))} district={draft.district} onSelect={setVenue}/>
+              {venues.length ? (
+                <label className="studio-venue-field">Площадка
+                  <select id="venue-select" value={draft.venueId || ""} onChange={(e) => setVenue(e.target.value)}>
+                    <option value="">Подберём позже</option>
+                    {draft.venueId && !venue ? <option value={draft.venueId}>Ранее выбранная площадка</option> : null}
+                    {venues.map((item) => <option key={item.id} value={item.id}>{item.name}{item.availabilityLabel ? ` · ${item.availabilityLabel}` : ""}</option>)}
+                  </select>
+                </label>
+              ) : <button type="button" className="card-button" onClick={onReloadCatalog} disabled={loadingTalents}>{loadingTalents ? "Загружаем…" : "Обновить площадки"}</button>}
+              {draft.venueId ? <button type="button" className="text-button studio-remove-venue" onClick={() => setVenue("")}>Убрать площадку</button> : null}
+            </article>
+
+            <article id="studio-team" className={`map-card team-card${stage === "Команда" ? " map-card-focus" : ""}`}>
+              <div className="studio-section-head"><span className="studio-step"><Icon name="users" /></span><h2>Команда события</h2><span className="studio-count">{draft.talentIds.length}</span></div>
+              {selected.length || missingTalents.length ? <ul className="studio-selected-team">
+                {selected.map((item) => <li key={item.id}><span className="talent-face talent-initials" aria-hidden="true">{item.initials}</span><span><strong>{item.name}</strong><small>{item.roleLabel}</small></span><button type="button" className="studio-remove" onClick={() => toggleTalent(item.id)} aria-label={`Убрать ${item.name} из события`}>×</button></li>)}
+                {missingTalents.map((id) => <li key={id}><span><strong>Выбранный исполнитель</strong><small>Недоступен в текущем каталоге</small></span><button type="button" className="studio-remove" onClick={() => toggleTalent(id)} aria-label="Убрать недоступного исполнителя">×</button></li>)}
+              </ul> : <p className="studio-empty-team">Музыка, эмоции, воспоминания.<br />Добавьте людей, которые создадут атмосферу.</p>}
+              <button type="button" className="card-button" onClick={openCatalog}><Icon name="plus" /> Добавить исполнителя</button>
+            </article>
+
+            <article id="studio-details" className={`map-card terms-card${stage === "Детали" ? " map-card-focus" : ""}`}>
+              <div className="studio-section-head"><span className="studio-step">04</span><h2>Важные детали</h2></div>
+              <p>Что ещё понадобится на событии?</p>
+              <div className="studio-requirements">
+                {Array.from(new Set(["Звук и свет", "Кейтеринг", ...draft.requirements])).map((item) => <label key={item}><input type="checkbox" checked={draft.requirements.includes(item)} onChange={() => update({ ...draft, requirements: draft.requirements.includes(item) ? draft.requirements.filter((value) => value !== item) : [...draft.requirements, item] })} /><span>{item}</span></label>)}
+              </div>
+              <p className="studio-field-note">Детали согласуете с командой в сделке.</p>
+            </article>
+
+            <div id="studio-summary" className={`event-summary${stage === "Проверка" ? " map-card-focus" : ""}`}>
+              <div className="studio-composition"><small>В вашем событии</small><strong>{selectedCount} {selectedCount === 1 ? "участник" : selectedCount > 1 && selectedCount < 5 ? "участника" : "участников"}</strong><span>Команду можно дополнить позже</span></div>
+              <div className="studio-budget"><small>Ориентир бюджета</small><strong className={!budgetHint ? "budget-pending" : ""}>{budgetText}</strong><span>Точную стоимость предложат участники</span></div>
+              <button type="button" disabled={submitting} onClick={onContinue}>{submitting ? "Отправляем…" : "Продолжить"}<Icon name="arrow" /></button>
+              {submitError ? <p className="submit-error" role="alert">{submitError}</p> : null}
+            </div>
+          </section>
+        </div>
       </div>
 
-      {panelOpen ? (
-        <button type="button" className="panel-backdrop" aria-label="Закрыть каталог исполнителей" onClick={() => setPanelOpen(false)} />
-      ) : null}
-
-      <button
-        type="button"
-        className="mobile-panel-toggle"
-        aria-expanded={panelOpen}
-        onClick={() => setPanelOpen((value) => !value)}
-      >
-        {panelOpen ? "Свернуть каталог" : "Добавить исполнителя"}
-      </button>
-
-      {!reducedMotion ? null : (
-        <style>{`.event-studio-shell * { transition: none !important; animation: none !important; }`}</style>
-      )}
+      <aside ref={panelRef} tabIndex={-1} className="talent-panel" aria-label="Добавить исполнителя" role={compactPanel && panelOpen ? "dialog" : undefined} aria-modal={compactPanel && panelOpen ? true : undefined}>
+        <div className="panel-header"><div><p className="studio-eyebrow">Ваша команда</p><h2>Добавить исполнителя</h2></div><button type="button" aria-label="Закрыть панель" onClick={() => setPanelOpen(false)}>×</button></div>
+        <p className="studio-catalog-context">{draft.city || "Все города"} · {dateLabel}</p>
+        <label className="search-box"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Имя или роль" aria-label="Поиск исполнителя" /></label>
+        <div className="role-tabs" role="group" aria-label="Фильтр по роли">
+          {ROLE_FILTERS.map((item) => <button key={item} type="button" aria-pressed={role === item} className={role === item ? "selected" : ""} onClick={() => setRole(item)}>{item === "Все" ? "Все" : categoryLabel(item) || item}</button>)}
+        </div>
+        {loadingTalents ? <p className="panel-state" role="status">Загружаем каталог…</p> : null}
+        {talentsError ? <p className="panel-state" role="alert">{talentsError} <button type="button" className="text-button" onClick={onReloadCatalog}>Повторить</button></p> : null}
+        {!loadingTalents && !talentsError && filtered.length === 0 ? <div className="studio-catalog-empty"><Icon name="search" /><h3>Пока нет подходящих участников</h3><p>Попробуйте другую дату, город или роль.</p>{query || role !== "Все" ? <button type="button" className="card-button" onClick={() => { setQuery(""); setRole("Все"); }}>Сбросить фильтры</button> : null}</div> : null}
+        <div className="talent-list">
+          {filtered.map((item) => {
+            const isSelected = draft.talentIds.includes(item.id);
+            return <article className={`talent-card${isSelected ? " is-selected" : ""}`} key={item.id}>
+              <div className="talent-photo talent-initials" aria-hidden="true">{item.initials}</div>
+              <div className="talent-copy"><h3>{item.name}</h3><p>{item.roleLabel}</p><span className={availabilityClass(item.availability)}>{item.availabilityLabel}</span><small>{item.verified ? "Профиль проверен" : "Профиль не проверен"}</small></div>
+              <div className="talent-card-footer"><strong>{item.honorariumFrom != null ? `от ${money(item.honorariumFrom)}` : "Цена по запросу"}</strong><button type="button" className={isSelected ? "remove-talent" : "add-talent"} aria-pressed={isSelected} onClick={() => toggleTalent(item.id)}>{isSelected ? "Убрать" : "Добавить"}<Icon name={isSelected ? "check" : "plus"} /></button></div>
+            </article>;
+          })}
+        </div>
+        <p className="studio-catalog-note">Вы выбираете команду. Участники подтвердят дату и условия в предложениях.</p>
+      </aside>
+      {panelOpen && compactPanel ? <button type="button" className="panel-backdrop" aria-label="Закрыть каталог исполнителей" onClick={() => setPanelOpen(false)} /> : null}
+      <button type="button" className="mobile-panel-toggle" aria-expanded={panelOpen} onClick={openCatalog}><Icon name="plus" /> Добавить исполнителя</button>
     </main>
   );
 }

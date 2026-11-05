@@ -1,9 +1,5 @@
-export default function LoginLoading() {
-  return (
-    <main>
-      <p className="kicker">Свои</p>
-      <h1>Зайти, пока дата не утекла</h1>
-      <div className="skeleton" style={{ minHeight: 180, maxWidth: 420 }} />
-    </main>
-  );
+import { PageLoading } from "@/components/PageLoading";
+
+export default function Loading() {
+  return <PageLoading title="Войти в Букер" />;
 }

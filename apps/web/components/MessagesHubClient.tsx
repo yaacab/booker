@@ -62,7 +62,7 @@ export function MessagesHubClient({ backHref }: { backHref: string }) {
     <main>
       <p className="kicker">Центр сообщений</p>
       <h1>Сообщения</h1>
-      <p className="timeline">Переписки по сделкам. Без спама и без чужих deal room.</p>
+      <p className="timeline">Все обсуждения и договорённости по вашим событиям.</p>
       <p>
         <Link className="btn secondary" href={backHref}>
           К кабинету
@@ -76,16 +76,16 @@ export function MessagesHubClient({ backHref }: { backHref: string }) {
           <p>Когда появится сделка с перепиской, она будет здесь.</p>
         </article>
       ) : null}
-      <div className="grid" style={{ marginTop: 16 }}>
+      <div className="inbox-list" style={{ marginTop: 16 }}>
         {items.map((it) => (
-          <article className="card" key={it.booking_id}>
+          <article className="card inbox-row" key={it.booking_id}>
             <h2>{it.event_title || "Сделка"}</h2>
             <p className="timeline">
               {it.customer_org} ↔ {it.supplier_org} · {it.booking_status}
             </p>
             {it.last_message ? <p>{it.last_message.body}</p> : <p>Нет сообщений</p>}
             <Link className="btn" href={it.deal_path}>
-              Открыть Deal Room
+              Открыть переписку
             </Link>
           </article>
         ))}

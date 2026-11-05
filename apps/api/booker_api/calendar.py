@@ -43,6 +43,22 @@ def open_slots_unmasked(
     return result
 
 
+def slot_is_bookable(db: Session, slot: AvailabilitySlot) -> bool:
+    """True when the slot is open and not masked by busy/vacation/iCal overlays."""
+    if slot.status != "open":
+        return False
+    peers = (
+        db.query(AvailabilitySlot)
+        .filter(
+            AvailabilitySlot.resource_type == slot.resource_type,
+            AvailabilitySlot.resource_id == slot.resource_id,
+            AvailabilitySlot.status.in_(("open", "busy")),
+        )
+        .all()
+    )
+    return any(candidate.id == slot.id for candidate in open_slots_unmasked(peers))
+
+
 def calendar_day_bounds(dt: datetime) -> tuple[datetime, datetime]:
     """Границы календарного дня в Москве, независимо от таймзоны входящей даты."""
     local = aware(dt).astimezone(MSK)

@@ -36,6 +36,16 @@ def test_external_adapter_selected(monkeypatch):
     assert payment_live_enabled() is False
 
 
+def test_external_refund_does_not_claim_success_or_touch_ledger():
+    from booker_api.payments.external import ExternalPaymentAdapter
+
+    ledger = MagicMock()
+    adapter = ExternalPaymentAdapter(ledger=ledger)
+    with pytest.raises(PaymentAdapterError, match="вне Букера"):
+        adapter.refund(payment_id="pay-1", amount_rub=1_000, total_rub=1_000)
+    ledger.on_refund.assert_not_called()
+
+
 def test_payment_live_disabled_without_merchant(monkeypatch):
     monkeypatch.setattr(settings, "payment_provider", "yookassa")
     monkeypatch.setattr(settings, "payment_merchant_id", "")
@@ -144,7 +154,7 @@ def test_live_adapter_is_fail_closed(monkeypatch):
 
 
 def test_health_payment_flags(client):
-    res = client.get("/health")
+    res = client.get("/readiness")
     assert res.status_code == 200
     flags = res.json()["flags"]
     assert flags["payment_provider"] == "stub"

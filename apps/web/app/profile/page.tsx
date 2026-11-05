@@ -5,6 +5,9 @@ import { FormEvent, useEffect, useState } from "react";
 import { api, createOrgWithConfirm, getActiveOrg, getToken, setActiveOrg, setToken } from "@/lib/api";
 import { KIND_LABEL } from "@/lib/copy";
 import { loginHref } from "@/lib/next";
+import StaffRecoverySecurity from "@/components/StaffRecoverySecurity";
+import { ActiveSessions } from "@/components/profile/ActiveSessions";
+import { LinkedIdentities } from "@/components/profile/LinkedIdentities";
 
 type Org = { id: string; name: string; kind: string; role: string };
 
@@ -94,10 +97,10 @@ export default function ProfilePage() {
   }
 
   return (
-    <main>
-      <p className="kicker">Это вы</p>
-      <h1>{me.full_name}</h1>
-      <p className="timeline">{me.email}</p>
+    <main className="account-reference">
+      <header className="account-heading"><p className="kicker">Ваш аккаунт</p><h1>Мой профиль</h1><p>Личные данные и рабочие пространства.</p></header>
+      <section className="card account-identity"><span className="account-monogram" aria-hidden="true">{me.full_name.trim().slice(0,1).toLocaleUpperCase("ru") || "Б"}</span><div><h2>{me.full_name}</h2><p>{me.email}</p></div><Link href="/support">Помощь с аккаунтом →</Link></section>
+      <div className="account-columns"><section className="account-organizations"><h2>Мои пространства</h2><p className="timeline">Переключайтесь между своими организациями и ролями.</p>
       {orgs.length > 1 ? (
         <label>
           Активное пространство
@@ -132,7 +135,7 @@ export default function ProfilePage() {
       ) : null}
       {error ? <p className="timeline">{error}</p> : null}
       {orgs.map((o) => (
-        <article className="card surface-glass" key={o.id}>
+        <article className={`card surface-glass account-organization${active === o.id ? " is-active" : ""}`} key={o.id}>
           <strong>{o.name}</strong>
           <div>
             {KIND_LABEL[o.kind] || o.kind} · {ROLE[o.role] || o.role}
@@ -140,8 +143,10 @@ export default function ProfilePage() {
           </div>
         </article>
       ))}
-      <form className="card surface-glass" style={{ display: "grid", gap: 12, maxWidth: 420, marginTop: 16 }} onSubmit={addOrg}>
+      </section>
+      <form className="card surface-glass account-create" onSubmit={addOrg}>
         <h2>Добавить пространство</h2>
+        <p className="timeline">Для новой команды, артиста или площадки.</p>
         <label>
           Название
           <input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} required />
@@ -158,9 +163,21 @@ export default function ProfilePage() {
           {orgBusy ? "Создаём…" : "Создать"}
         </button>
       </form>
+      </div>
+      <LinkedIdentities />
+      <ActiveSessions />
       {me.is_platform_admin ? (
         <p>
-          <Link href="/admin">Пульт. Без нейронки.</Link>
+          <Link href="/admin">Панель оператора →</Link>
+        </p>
+      ) : null}
+      {me.is_platform_admin && me.email ? (
+        <StaffRecoverySecurity email={me.email} />
+      ) : null}
+      {me.is_platform_admin ? (
+        <p className="timeline">
+          Потеряли Authenticator? Восстановление доступно на{" "}
+          <Link href="/login?mode=staff-recover">странице входа</Link>.
         </p>
       ) : null}
       <p style={{ display: "flex", gap: 8 }}>

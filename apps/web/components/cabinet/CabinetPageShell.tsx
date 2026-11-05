@@ -3,10 +3,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { setToken } from "@/lib/api";
-import { CabinetMode, cabinetHeadline, cabinetTitle, isSupplyCabinet } from "@/lib/cabinetRoutes";
+import { CabinetMode, cabinetHeadline } from "@/lib/cabinetRoutes";
 import { KIND_LABEL } from "@/lib/copy";
 import { loginHref } from "@/lib/next";
-import { SupplyCabinetNav } from "./SupplyCabinetNav";
+import { CabinetIcon } from "./CabinetIcon";
 
 export type CabinetMetric = {
   label: string;
@@ -38,6 +38,9 @@ type CabinetPageShellProps = {
   metrics?: CabinetMetric[];
   actions?: CabinetAction[];
   lead?: ReactNode;
+  title?: string;
+  section?: string;
+  leadBeforeMetrics?: boolean;
 };
 
 function kindLabelForMode(mode: CabinetMode, kindKey?: string): string {
@@ -71,13 +74,16 @@ export function CabinetPageShell({
   metrics,
   actions,
   lead,
+  title,
+  section = "home",
+  leadBeforeMetrics = false,
 }: CabinetPageShellProps) {
   const cabinetPath = `/cabinet/${mode}`;
-  const showWidgets = ready && !error && !empty;
+  const showWidgets = ready && !error;
   const roleLabel = kindLabelForMode(mode, kindKey);
 
   return (
-    <main className={`cabinet-v2 cabinet-${mode}`} data-cabinet={mode} aria-labelledby="cabinet-heading">
+    <main className={`cabinet-v2 cabinet-reference cabinet-${mode}`} data-cabinet={mode} data-cabinet-section={section} aria-labelledby="cabinet-heading">
       {showWidgets ? (
         <a className="skip" href="#cabinet-widgets">
           К виджетам кабинета
@@ -86,47 +92,43 @@ export function CabinetPageShell({
 
       <header className="cabinet-hero">
         <div className="cabinet-hero-copy">
-          <p className="cabinet-eyebrow">
-            <span className="cabinet-role-pill">{cabinetTitle(mode)}</span>
-            <span className="cabinet-role-sep" aria-hidden>
-              ·
-            </span>
-            <span>{roleLabel}</span>
-          </p>
-          <h1 id="cabinet-heading">{cabinetHeadline(mode)}</h1>
+          <p className="cabinet-account-context" title={email || undefined}>{orgName || roleLabel}</p>
+          <h1 id="cabinet-heading">{title || cabinetHeadline(mode)}</h1>
           <p className="cabinet-lede">{subtitle || roleBlurb(mode)}</p>
-          {isSupplyCabinet(mode) ? <SupplyCabinetNav mode={mode} /> : null}
-          {email ? (
-            <p className="cabinet-identity">
-              <span className="cabinet-identity-mail">{email}</span>
-              {orgName ? <span className="cabinet-identity-org">{orgName}</span> : null}
-            </p>
-          ) : null}
         </div>
-        {actions && actions.length > 0 ? (
+        {actions && actions.length > 0 && ready && !error ? (
           <div className="cabinet-hero-actions">
             {actions.map((a) => (
               <Link
                 key={a.href + a.label}
                 className={a.primary ? "btn" : "btn secondary"}
                 href={a.href}
+                onClick={() => {
+                  if (!a.href.startsWith("#")) return;
+                  const target = document.getElementById(a.href.slice(1));
+                  if (target instanceof HTMLDetailsElement) target.open = true;
+                }}
               >
                 {a.label}
+                {a.primary ? <CabinetIcon name="arrow" /> : null}
               </Link>
             ))}
           </div>
         ) : null}
       </header>
 
-      {ready && metrics && metrics.length > 0 ? (
+      {leadBeforeMetrics && lead && ready && !error ? <div className="cabinet-lead">{lead}</div> : null}
+
+      {ready && !error && metrics && metrics.length > 0 ? (
         <section className="cabinet-metrics" aria-label="Сводка кабинета">
-          {metrics.map((m) => (
+          {metrics.map((m, index) => (
             <article
               key={m.label}
               className={`cabinet-metric tone-${m.tone || "default"}${m.glow ? " is-glow" : ""}`}
             >
-              <p className="cabinet-metric-value">{m.value}</p>
               <p className="cabinet-metric-label">{m.label}</p>
+              <span className="cabinet-metric-icon"><CabinetIcon name={index === 0 ? "request" : index === 3 ? "profile" : "calendar"} /></span>
+              <p className="cabinet-metric-value">{m.value}</p>
               {m.hint ? <p className="cabinet-metric-hint">{m.hint}</p> : null}
             </article>
           ))}
@@ -143,12 +145,23 @@ export function CabinetPageShell({
       ) : null}
 
       {error ? (
-        <p className="cabinet-alert" role="alert">
-          {error}. <Link href={loginHref(cabinetPath)}>Войти</Link>
-        </p>
+        <div className="cabinet-alert" role="alert">
+          <p>
+            {error === "Нужен вход"
+              ? "Чтобы открыть кабинет, войдите в аккаунт. Сводка и виджеты появятся после входа."
+              : `${error}.`}{" "}
+            <Link href={loginHref(cabinetPath)}>Войти</Link>
+            {error === "Нужен вход" ? (
+              <>
+                {" · "}
+                <Link href={`/login?mode=register&next=${encodeURIComponent(cabinetPath)}`}>Создать аккаунт</Link>
+              </>
+            ) : null}
+          </p>
+        </div>
       ) : null}
 
-      {lead && ready && !error ? <div className="cabinet-lead">{lead}</div> : null}
+      {!leadBeforeMetrics && lead && ready && !error ? <div className="cabinet-lead">{lead}</div> : null}
 
       {ready && !error && empty ? <div className="cabinet-empty">{emptyState}</div> : null}
 
@@ -160,20 +173,22 @@ export function CabinetPageShell({
 
       {footer && ready && !error ? <div className="cabinet-footer-block">{footer}</div> : null}
 
-      <p className="cabinet-signout">
-        <button
-          type="button"
-          className="secondary"
-          aria-label="Выйти из аккаунта"
-          onClick={() => {
-            setToken(null);
-            localStorage.removeItem("booker.admin");
-            window.location.href = "/login";
-          }}
-        >
-          Выйти
-        </button>
-      </p>
+      {ready && !error ? (
+        <p className="cabinet-signout">
+          <button
+            type="button"
+            className="secondary"
+            aria-label="Выйти из аккаунта"
+            onClick={() => {
+              setToken(null);
+              localStorage.removeItem("booker.admin");
+              window.location.href = "/login";
+            }}
+          >
+            Выйти
+          </button>
+        </p>
+      ) : null}
     </main>
   );
 }

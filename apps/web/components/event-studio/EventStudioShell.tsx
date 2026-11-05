@@ -20,7 +20,8 @@ import {
   saveStoredDraft,
   submitEventStudioDraft,
 } from "./adapter";
-import EventStudioMap from "./EventStudioMap";
+import FlexibleEventV5 from "./FlexibleEventV5";
+import M04Puzzle, { type M04Submitted } from "./M04Puzzle";
 import type { EventStudioDraft, SaveStatus, TalentItem, VenueItem } from "./types";
 import { EMPTY_DRAFT } from "./types";
 
@@ -39,6 +40,8 @@ export default function EventStudioShell() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
+  const [submitted, setSubmitted] = useState<M04Submitted>(null);
+  const [useV5, setUseV5] = useState(false);
   const idempotencyRef = useRef("");
   const catalogAbortRef = useRef<AbortController | null>(null);
   const submitLockRef = useRef(false);
@@ -52,6 +55,7 @@ export default function EventStudioShell() {
       clearSubmitIdempotency();
     }
     idempotencyRef.current = getOrCreateSubmitIdempotencyKey();
+    setUseV5(new URLSearchParams(window.location.search).get("m04") === "0");
     setHydrated(true);
     trackClientEvent("event.studio.started");
   }, []);
@@ -134,6 +138,7 @@ export default function EventStudioShell() {
 
   async function handleContinue() {
     if (submitLockRef.current) return;
+    try { saveStoredDraft(draft); } catch { setSubmitError("Не удалось сохранить черновик. Проверьте доступ к хранилищу браузера."); return; }
     if (!getToken()) {
       router.push(loginHref("/events/new?event_studio_map_v1=1"));
       return;
@@ -154,6 +159,11 @@ export default function EventStudioShell() {
         idempotencyRef.current = getOrCreateSubmitIdempotencyKey();
       }
       const { eventId, reused } = await submitEventStudioDraft(draft, talents, idempotencyRef.current);
+      if (!useV5) {
+        // M04: the finale plays only after the server confirmed; the user then opens the event or goes home.
+        setSubmitted({ eventId, reused });
+        return;
+      }
       if (reused) {
         setSubmitError("Заявка уже отправлена — открываем событие.");
       }
@@ -169,15 +179,52 @@ export default function EventStudioShell() {
   if (!hydrated) {
     return (
       <main className="event-studio-shell">
-        <p className="kicker">Event Studio Map</p>
-        <h1 className="event-studio-loading-title">Загрузка карты события</h1>
-        <div className="skeleton" style={{ minHeight: 240 }} />
+        <div className="studio-loading-panel" aria-busy="true">
+          <p className="studio-eyebrow">Конструктор события</p>
+          <h1 className="event-studio-loading-title">Загружаем ваши планы</h1>
+          <div className="skeleton" style={{ minHeight: 240 }} />
+        </div>
       </main>
     );
   }
 
+  const studioProps = {
+      draft,
+      onDraftChange: (next: EventStudioDraft) =>
+        setDraft((prev) => bumpDraftVersion({ ...next, version: prev.version || 1 })),
+      talents,
+      venues,
+      budgetHint,
+      loadingTalents,
+      talentsError,
+      saveStatus,
+      onRetrySave: () => {
+        try {
+          saveStoredDraft(draft);
+          setSaveStatus(online ? "saved" : "offline");
+        } catch {
+          setSaveStatus("error");
+        }
+      },
+      onReloadCatalog: () => void reloadCatalog(),
+      onContinue: () => void handleContinue(),
+      submitting,
+      submitError,
+      legacyLink: <Link href="/events/new?event_studio_map_v1=0">Классический мастер</Link>,
+  };
+  if (!useV5) {
+    return (
+      <M04Puzzle
+        {...studioProps}
+        submitted={submitted}
+        onGoEvent={() => submitted && router.push(`/events/${submitted.eventId}`)}
+        onGoHome={() => router.push("/")}
+      />
+    );
+  }
+
   return (
-    <EventStudioMap
+    <FlexibleEventV5
       draft={draft}
       onDraftChange={(next) =>
         setDraft((prev) => bumpDraftVersion({ ...next, version: prev.version || 1 }))

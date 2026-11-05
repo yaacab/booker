@@ -1,0 +1,39 @@
+# Standalone staging compose — DO NOT merge with infra/docker-compose.yml.
+# Only loopback ports 15432/16379. Project: COMPOSE_PROJECT_NAME=booker-staging
+#
+#   docker compose -f infra/docker-compose.staging.yml --env-file /tmp/booker-staging/secrets.env up -d
+#
+# Secrets (POSTGRES_PASSWORD etc.) MUST come from an env-file outside Git.
+
+name: booker-staging
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${BOOKER_STAGING_PGUSER:?set BOOKER_STAGING_PGUSER in secrets env-file}
+      POSTGRES_PASSWORD: ${BOOKER_STAGING_PGPASSWORD:?set BOOKER_STAGING_PGPASSWORD in secrets env-file}
+      POSTGRES_DB: ${BOOKER_STAGING_PGDATABASE:?set BOOKER_STAGING_PGDATABASE in secrets env-file}
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - booker_pg_staging:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\"",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:16379:6379"
+
+volumes:
+  booker_pg_staging:
+    name: booker_pg_staging
+    # Never use external:true against unknown volumes; create only under this project name.

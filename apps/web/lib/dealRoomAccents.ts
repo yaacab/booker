@@ -35,6 +35,8 @@ export type DealRoomAccentSource = {
   status: string;
   event_id?: string;
   event_title?: string;
+  hall_name?: string | null;
+  venue_name?: string | null;
   requirement_id?: string | null;
   next_step: string;
   quote: {
@@ -158,8 +160,8 @@ function buildAccentBody(id: DealRoomAccentId, room: DealRoomAccentSource): { bo
       };
     case "hall":
       return {
-        body: room.event_title || "Зал и слот",
-        detail: room.booking_id ? `deal_id: ${room.booking_id}` : undefined,
+        body: room.hall_name || "Зал уточняется",
+        detail: room.venue_name || undefined,
       };
     case "resources":
       return {

@@ -1,15 +1,15 @@
 # Metrics snapshot (шаблон)
 
-Заполнять перед питчем. Источник в продукте: `GET /admin/metrics`, audit (`docs/product/ANALYTICS.md`).
+Заполнять **после сверки с фактическим окружением и периодом** перед питчем. Источник в продукте: `GET /admin/metrics`, audit (`docs/product/ANALYTICS.md`). Пустое поле означает «не измерено», а не ноль. Для каждого числа приложить среду, дату, период и способ подсчёта.
 
-> **Примечание:** до первых design-partner сделок цифры каталога могут быть **seeded** (founding artists + open-data venues). Не выдавать seed за organic traction.
+> **Примечание:** seed и исследовательские площадки показываются отдельно от подтверждённых партнёров. Не выдавать seed за organic traction, тестовую оплату за capture, а техническое подтверждение черновика за юридически подписанный договор.
 
 ## Каталог / supply
 
 | Метрика | Значение | Дата | Примечание |
 |---------|----------|------|------------|
-| Founding artists (verified) | _|_ | _|_ | в т.ч. seed Wave D |
-| Open-data venues (Москва) | _|_ | _|_ | `listing_origin=open_data` |
+| Founding artists (verified, реальные) | _|_ | _|_ | только после проверки представителя, календаря, цены и медиа |
+| Research/open-data venues (Москва, не партнёры) | _|_ | _|_ | `listing_origin=open_data`; отдельно от публичного supply |
 | Active profiles (цена + календарь ≥30д) | _|_ | _|_ | |
 
 ## Воронка (7 / 30 дней)
@@ -20,9 +20,9 @@
 | Requests created | | | |
 | Offers / time-to-offer (p50) | | | цель <2 ч |
 | Holds created / expired | | | |
-| Contracts signed | | | |
-| Payments pending / captured | | | external vs live |
-| Double-book incidents | **0** | **0** | инвариант |
+| Технические подтверждения черновика | | | не юридическая подпись |
+| Внешние сообщения об оплате / подтверждённые денежные факты | | | отдельно по надёжному источнику; тестовые записи исключить |
+| Double-book incidents | | | указывать 0 только при измеренном периоде и проверенной полноте журнала |
 
 ## Pipeline deals
 

@@ -53,7 +53,10 @@ test("buildDealRoomAccents keeps shared quote_id in customer total", () => {
   const performerPayout = buildDealRoomAccents("performer", sampleRoom).find((a) => a.id === "payout");
   assert.match(performerPayout?.body ?? "", /100/);
   const venueHall = buildDealRoomAccents("venue", sampleRoom).find((a) => a.id === "hall");
-  assert.equal(venueHall?.detail, "deal_id: bk-1");
+  assert.equal(venueHall?.body, "Зал уточняется"); // never the event title
+  const withHall = buildDealRoomAccents("venue", { ...sampleRoom, hall_name: "Основной зал", venue_name: "Лофт" }).find((a) => a.id === "hall");
+  assert.equal(withHall?.body, "Основной зал");
+  assert.equal(withHall?.detail, "Лофт");
 });
 
 test("buildDealRoomAccents surfaces rider for performer", () => {

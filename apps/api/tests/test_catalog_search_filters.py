@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 
-from tests.conftest import auth_header, register
+from tests.conftest import auth_header, publish_artist, publish_venue, register
 
 
 def _future_slot(hours=18):
@@ -60,6 +60,7 @@ def test_search_artist_format_travel_budget(client):
             ).status_code
             == 200
         )
+        publish_artist(client, owner, artist_id, add_tariff=False)
 
     by_format = client.get("/catalog/search", params={"city": "Москва", "format": "wedding"}).json()
     names = {i["name"] for i in by_format["items"]}
@@ -114,6 +115,7 @@ def test_search_venue_guests_matching_halls(client):
                 },
                 headers=auth_header(owner["token"]),
             )
+        publish_venue(client, owner, venue_id)
 
     res = client.get(
         "/catalog/search",
@@ -164,6 +166,7 @@ def test_search_synthetic_venue_flag_present(client):
         },
         headers=auth_header(owner["token"]),
     )
+    publish_venue(client, owner, venue["id"])
     res = client.get("/catalog/search", params={"city": "Москва", "kind": "venue"}).json()
     syn = next(v for v in res["venues"] if v["name"] == "Синтетика Холл")
     assert syn["availability_mode"] == "synthetic"
@@ -200,6 +203,7 @@ def test_search_next_open_at_includes_timezone_offset(client):
         ).status_code
         == 200
     )
+    publish_artist(client, owner, artist["id"])
     res = client.get("/catalog/search", params={"city": "Москва", "category": "dj"}).json()
     hit = next(i for i in res["items"] if i["name"] == "TZ DJ")
     assert hit["next_open_at"]

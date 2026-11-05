@@ -6,7 +6,13 @@ export type PerformerRequest = {
   offer_id: string | null;
   booking_id: string | null;
   slot_id: string | null;
-  honorarium_rub: number;
+  honorarium_rub: number | null; // the supplier's own catalogue tariff; null = no tariff, the supplier enters the amount
+  honorarium_source?: "tariff" | "none";
+  event_city?: string | null;
+  guest_count?: number | null;
+  budget_rub?: number | null; // the customer's limit, not a price
+  customer_name?: string | null;
+  brief?: { rider: string[]; wishes: string; hall: string | null };
 };
 
 export type PerformerBooking = {
@@ -16,24 +22,18 @@ export type PerformerBooking = {
   event_date?: string;
 };
 
-export type PerformerDealRoom = {
-  booking_id: string;
-  event_title: string;
-  status: string;
-  quote: {
-    quote_id: string;
-    honorarium_rub: number;
-    total_rub: number;
-    customer_ack: boolean;
-    supplier_ack: boolean;
-  };
-  hold?: { status: string; expires_at: string } | null;
-};
+export type PerformerDealRoom = import("../DealCard").CabinetDeal;
 
 export type ProfileCompleteness = {
   score: number;
   items: { id: string; label: string; done: boolean }[];
   applicable?: boolean;
+  eligible?: boolean;
+  reason_codes?: string[];
+  resource_type?: "artist" | "venue";
+  resource_id?: string;
+  publication_enabled?: boolean;
+  publication_state_version?: number;
 };
 
 export type CalendarConflict = {
@@ -50,6 +50,15 @@ export type PerformerService = {
   category_code: string;
   description: string;
   honorarium_rub: number | null;
+  published?: boolean;
+  resource_type?: string | null;
+  resource_id?: string | null;
+};
+
+export type PerformerCalendarTarget = {
+  resource_type: string;
+  resource_id: string;
+  label: string;
 };
 
 export type PerformerArtistProfile = {
@@ -58,10 +67,18 @@ export type PerformerArtistProfile = {
   city: string;
   category: string;
   verified: boolean;
+  verified_status?: string;
   media_url: string | null;
   rider: Record<string, string>;
   tariffs: { id: string; title: string; honorarium_rub: number }[];
   slots: { id: string; status: string; starts_at: string; ends_at: string }[];
+  publication_enabled?: boolean;
+  publication_state_version?: number;
+  publication_eligible?: boolean;
+  publication_reason_codes?: string[];
+  verification_request_queued?: boolean;
+  verification_request_id?: string | null;
+  can_request_verification?: boolean;
 };
 
 export type PerformerVacationItem = {

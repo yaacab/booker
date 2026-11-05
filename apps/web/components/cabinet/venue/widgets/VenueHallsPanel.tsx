@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api, isWriteRole, trackClientEvent } from "@/lib/api";
+import { money } from "@/lib/format";
 import { DashboardWidget } from "../../DashboardWidget";
 import type { VenueHall } from "../types";
 
@@ -20,6 +21,36 @@ export function VenueHallsPanel({ venueId, venueName, role }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const canManage = isWriteRole(role);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [tariffs, setTariffs] = useState<{ id: string; title: string; honorarium_rub: number }[]>([]);
+  const [tariffEditing, setTariffEditing] = useState<string | null>(null);
+
+  const loadTariffs = useCallback(async () => {
+    if (!venueId) return;
+    try {
+      const v = await api<{ tariffs?: { id: string; title: string; honorarium_rub: number }[] }>(`/venues/${encodeURIComponent(venueId)}`);
+      setTariffs(v.tariffs || []);
+    } catch {
+      setTariffs([]);
+    }
+  }, [venueId]);
+  useEffect(() => { void loadTariffs(); }, [loadTariffs]);
+
+  async function run(action: () => Promise<unknown>, after: () => Promise<void>) {
+    setBusy(true);
+    setError("");
+    try {
+      await action();
+      await after();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось сохранить");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+  const base = `/venues/${encodeURIComponent(venueId)}`;
 
   const loadHalls = useCallback(async () => {
     if (!venueId) {
@@ -105,10 +136,20 @@ export function VenueHallsPanel({ venueId, venueName, role }: Props) {
           {halls.map((h) => (
             <li key={h.id}>
               <article className="dashboard-action-card hall-card">
-                <div>
-                  <strong>{h.name}</strong>
-                  <p className="timeline">Вместимость: {h.capacity} гостей</p>
-                </div>
+                {editing === h.id ? (
+                  <form className="cabinet-inline-form" onSubmit={async (e) => { e.preventDefault(); const d = new FormData(e.currentTarget); if (await run(() => api(`${base}/halls/${encodeURIComponent(h.id)}`, { method: "PATCH", body: JSON.stringify({ name: String(d.get("name") || "").trim(), capacity: Number(d.get("capacity") || 0) }) }), loadHalls)) setEditing(null); }}>
+                    <label>Название<input name="name" defaultValue={h.name} required /></label>
+                    <label>Вместимость<input name="capacity" type="number" min={1} defaultValue={h.capacity} required /></label>
+                    <button type="submit" disabled={busy}>Сохранить</button>
+                    <button type="button" className="secondary" onClick={() => setEditing(null)}>Отмена</button>
+                  </form>
+                ) : (
+                  <div>
+                    <strong>{h.name}</strong>
+                    <p className="timeline">Вместимость: {h.capacity} гостей</p>
+                    {canManage ? <p><button type="button" className="linkish" onClick={() => setEditing(h.id)}>Изменить</button> <button type="button" className="linkish" disabled={busy} onClick={() => { if (window.confirm(`Удалить зал «${h.name}»? Свободные даты зала тоже удалятся.`)) void run(() => api(`${base}/halls/${encodeURIComponent(h.id)}`, { method: "DELETE" }), loadHalls); }}>Удалить</button></p> : null}
+                  </div>
+                )}
                 <div className="dashboard-action-meta">
                   <span className="chip chip-glass">Зал</span>
                   <Link className="btn secondary" href={`/venues/${venueId}`}>
@@ -152,6 +193,25 @@ export function VenueHallsPanel({ venueId, venueName, role }: Props) {
           </button>
         </form>
       ) : null}
+      <section className="venue-tariffs" aria-labelledby="venue-tariffs-heading">
+        <h3 id="venue-tariffs-heading">Стоимость аренды</h3>
+        <p className="timeline">Эта цена подставится в предложение по заявке — её можно изменить для каждой заявки. Без тарифа заказчик видит «Цена по запросу».</p>
+        {tariffs.length ? <ul className="dashboard-list">{tariffs.map((t) => <li key={t.id}>
+          {tariffEditing === t.id ? (
+            <form className="cabinet-inline-form" onSubmit={async (e) => { e.preventDefault(); const d = new FormData(e.currentTarget); if (await run(() => api(`${base}/tariffs/${encodeURIComponent(t.id)}`, { method: "PATCH", body: JSON.stringify({ title: String(d.get("title") || "").trim(), honorarium_rub: Number(d.get("amount") || 0) }) }), loadTariffs)) setTariffEditing(null); }}>
+              <label>Название<input name="title" defaultValue={t.title} required /></label>
+              <label>Стоимость, ₽<input name="amount" type="number" min={1} defaultValue={t.honorarium_rub} required /></label>
+              <button type="submit" disabled={busy}>Сохранить</button>
+              <button type="button" className="secondary" onClick={() => setTariffEditing(null)}>Отмена</button>
+            </form>
+          ) : <span>{t.title} · {money(t.honorarium_rub)}{canManage ? <> <button type="button" className="linkish" onClick={() => setTariffEditing(t.id)}>Изменить</button> <button type="button" className="linkish" disabled={busy} onClick={() => { if (window.confirm(`Удалить тариф «${t.title}»?`)) void run(() => api(`${base}/tariffs/${encodeURIComponent(t.id)}`, { method: "DELETE" }), loadTariffs); }}>Удалить</button></> : null}</span>}
+        </li>)}</ul> : <p className="timeline">Тарифов пока нет.</p>}
+        {canManage ? <form className="cabinet-inline-form" onSubmit={async (e) => { e.preventDefault(); const f = e.currentTarget; const d = new FormData(f); const title = String(d.get("title") || "").trim(); const amount = Number(d.get("amount") || 0); if (!title || !(amount > 0)) { setError("Укажите название тарифа и стоимость больше нуля"); return; } if (await run(() => api(`${base}/tariffs`, { method: "POST", body: JSON.stringify({ title, honorarium_rub: amount }) }), loadTariffs)) f.reset(); }}>
+          <label>Тариф<input name="title" placeholder="Вечер до 23:00" required /></label>
+          <label>Стоимость, ₽<input name="amount" type="number" min={1} required /></label>
+          <button type="submit" disabled={busy}>Добавить тариф</button>
+        </form> : null}
+      </section>
     </DashboardWidget>
   );
 }

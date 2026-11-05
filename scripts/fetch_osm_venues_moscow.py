@@ -107,6 +107,34 @@ def _quality(tags: dict, address: str, website: str) -> int:
     return score
 
 
+def _commons_photo(tags: dict) -> list[dict]:
+    raw = str(tags.get("wikimedia_commons") or tags.get("image") or "").strip()
+    if not raw:
+        return []
+    if raw.startswith("File:"):
+        filename = raw[5:].strip().replace(" ", "_")
+        encoded = urllib.parse.quote(filename, safe="():,_-.")
+        return [
+            {
+                "photo_url": f"https://commons.wikimedia.org/wiki/Special:FilePath/{encoded}",
+                "photo_source_url": f"https://commons.wikimedia.org/wiki/File:{encoded}",
+                "photo_rights_status": "licensed",
+            }
+        ]
+    marker = "/Special:FilePath/"
+    if "commons.wikimedia.org" in raw and marker in raw:
+        filename = urllib.parse.unquote(raw.split(marker, 1)[1]).replace(" ", "_")
+        encoded = urllib.parse.quote(filename, safe="():,_-.")
+        return [
+            {
+                "photo_url": raw,
+                "photo_source_url": f"https://commons.wikimedia.org/wiki/File:{encoded}",
+                "photo_rights_status": "licensed",
+            }
+        ]
+    return []
+
+
 def parse_elements(elements: list) -> list[dict]:
     rows: list[dict] = []
     for el in elements:
@@ -124,6 +152,14 @@ def parse_elements(elements: list) -> list[dict]:
         capacity_raw = tags.get("capacity") or tags.get("seats") or ""
         capacity = int(capacity_raw) if str(capacity_raw).isdigit() else None
         website = tags.get("website") or tags.get("contact:website") or ""
+        venue_type = tags.get("amenity") or tags.get("tourism") or tags.get("leisure") or ""
+        sources = [
+            {
+                "field_name": "name,address,capacity,description,venue_type,contact",
+                "source_url": osm_url,
+                "source_kind": "openstreetmap_odbl",
+            }
+        ]
         rows.append(
             {
                 "name": name.strip(),
@@ -135,8 +171,14 @@ def parse_elements(elements: list) -> list[dict]:
                 or "",
                 "capacity": capacity,
                 "description": tags.get("description") or tags.get("note") or "",
-                "source_url": website or osm_url,
+                "source_url": osm_url,
                 "attribution": "openstreetmap",
+                "official_website": website,
+                "phone": tags.get("contact:phone") or tags.get("phone") or "",
+                "email": tags.get("contact:email") or tags.get("email") or "",
+                "venue_type": venue_type,
+                "sources": sources,
+                "photos": _commons_photo(tags),
                 "osm_url": osm_url,
                 "lat": lat,
                 "lon": lon,
@@ -144,7 +186,17 @@ def parse_elements(elements: list) -> list[dict]:
                 "osm_tags": {
                     k: tags[k]
                     for k in sorted(tags)
-                    if k.startswith(("amenity", "tourism", "leisure", "building", "addr", "club"))
+                    if k.startswith(
+                        (
+                            "amenity",
+                            "tourism",
+                            "leisure",
+                            "building",
+                            "addr",
+                            "club",
+                            "contact",
+                        )
+                    )
                 },
             }
         )
