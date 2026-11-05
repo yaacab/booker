@@ -55,19 +55,19 @@ export function performerOnboardingItems(input: {
   return [
     {
       id: "profile",
-      label: "Заполнить профиль и портфолио",
+      label: "Витрина: услуга и медиа с правами",
       done: input.profileComplete,
-      href: "/cabinet/performer#supply",
+      href: "/cabinet/performer/services",
     },
     {
       id: "slots",
-      label: "Открыть слоты в календаре",
+      label: "Слот: хотя бы одна свободная дата",
       done: input.hasOpenSlots || input.hasRequests,
       href: "/cabinet/performer/calendar",
     },
     {
       id: "requests",
-      label: "Ответить на входящую заявку предложением",
+      label: "Готовность: ответить на входящую заявку",
       done: input.hasRequests,
       href: "/cabinet/performer/requests",
     },

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "updated_at": "2026-11-05",
-  "updated_at_iso": "2026-11-05T08:43:02Z",
+  "updated_at_iso": "2026-11-05T12:03:01Z",
   "formula": "readiness = DONE / (DONE+TODO+IN PROGRESS+BLOCKED+DEFERRED) * 100; CANCELLED excluded",
   "historical_weighted_scores": {
     "as_of": "2026-10-02",
@@ -478,10 +478,11 @@
         "local playwright 2026-11-05f: venue halls/requests/calendar + customer messages/favorites @390 PASS",
         "local playwright 2026-11-05f: login recover + control room event @390 PASS",
         "local playwright 2026-11-05g: saved-searches + motion preview @390 PASS",
-        "docs/ops/OWN_MOTION_ACK_PACKET_2026-11-05.md"
+        "docs/ops/OWN_MOTION_ACK_PACKET_2026-11-05.md",
+        "local playwright 2026-11-05h: venue stats + /profile @390 PASS"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: + saved-searches + motion preview shell @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
+      "notes": "IN PROGRESS: + venue stats + profile @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -643,10 +644,12 @@
       "scopes": [
         "FULL"
       ],
-      "status": "TODO",
-      "evidence": [],
+      "status": "IN PROGRESS",
+      "evidence": [
+        "ART-07 runtime IA slice 2026-11-05: onboarding copy + performer draft banner"
+      ],
       "blocked_by": [],
-      "notes": " Unblocked 2026-11-05 after owner GO cascade.",
+      "notes": "IN PROGRESS soft: частичный IA transfer без pixel Figma. НЕ DONE до полного Figma+web.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -1250,11 +1253,11 @@
       ],
       "status": "TODO",
       "evidence": [
-        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md",
-        "docs/ops/STAGING_PROVISION_PLAYBOOK.md"
+        "docs/ops/STAGING_HOST_INTAKE_2026-11-05.md",
+        "OWN-STAGING-GO 2026-11-05"
       ],
       "blocked_by": [],
-      "notes": "OWN-STAGING-GO DONE. Нужны: отдельный VPS IP, SSH, DNS staging.bukergo.ru → этот IP. Prod IP запрещён.",
+      "notes": "TODO: intake готов; ждём VPS IP/SSH/DNS. Prod IP запрещён.",
       "source": "TASK_LEDGER B1a/B1d",
       "updated_at": "2026-11-05"
     },
@@ -1680,10 +1683,13 @@
         "docs/design/ART07_ROUTE_AUDIT_DRAFT_2026-11-05.md",
         "docs/design/previews/artist-vnext-storyboards.html",
         "docs/design/previews/index.html (ART-07 card)",
-        "OWN-DESIGN-ACK 2026-11-05 DRAFT IA"
+        "OWN-DESIGN-ACK 2026-11-05 DRAFT IA",
+        "apps/web/lib/onboardingChecklists.ts (Витрина/Слот/Готовность)",
+        "apps/web/components/cabinet/performer/PerformerCabinetDashboard.tsx (draft banner)",
+        "docs/ops/STAGING_HOST_INTAKE_2026-11-05.md"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: agent DRAFT pack COMPLETE (10 SB + route audit + static preview index). НЕ DONE — pixel Figma + web transfer V05/D03.",
+      "notes": "IN PROGRESS: DRAFT pack + runtime IA (checklist/draft banner). НЕ DONE — pixel Figma + полный V05 transfer.",
       "source": "G0/G1",
       "updated_at": "2026-11-05"
     },

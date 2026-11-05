@@ -209,7 +209,7 @@ export function usePerformerCabinetData() {
       trackClientEvent("cabinet.offer_sent", { request_id: item.id });
       window.location.href = `/deals/${res.booking_id}`;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось ответить");
+      setError(err instanceof Error ? err.message : "Не удалось создать предложение");
     } finally {
       setOfferBusy(null);
     }

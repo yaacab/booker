@@ -17,6 +17,7 @@
 | local 2026-11-05c | + legal/privacy @390 — 4/4 PASS (venue catalog skipped: published=0) |
 | local 2026-11-05d | assemble / briefs / investor venues @390 — 3/3 PASS |
 | local 2026-11-05e | performer services / calendar / messages @390 landmark+Tab+overflow |
+| local 2026-11-05h | venue stats + /profile @390 PASS |
 | local 2026-11-05g | customer saved-searches + motion-slot-frame preview @390 PASS |
 | local 2026-11-05f | venue halls/requests/calendar + customer messages/favorites + recover + control room @390 PASS |
 | `V07_LOCAL_PERF_SMOKE_2026-11-03.json` | DCL/FCP smoke |
