@@ -36,6 +36,18 @@ test("customer checklist hides when journey complete", () => {
   assert.equal(open.length, 0);
 });
 
+test("performer checklist matches ART-07 DRAFT three steps", () => {
+  const items = performerOnboardingItems({
+    profileComplete: false,
+    hasOpenSlots: false,
+    hasRequests: false,
+  });
+  assert.equal(openOnboardingItems(items).length, 3);
+  assert.match(items[0].label, /витрина/i);
+  assert.match(items[1].label, /слот/i);
+  assert.match(items[2].label, /готовность/i);
+});
+
 test("performer and venue checklists stay step lists", () => {
   assert.equal(
     openOnboardingItems(

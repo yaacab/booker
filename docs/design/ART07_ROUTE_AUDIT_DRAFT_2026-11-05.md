@@ -8,13 +8,13 @@
 
 | # | Сториборд | Route(ы) сейчас | UI якорь | Gap для переноса |
 |---|---|---|---|---|
-| 1 | Первый визит | `/cabinet/performer` | `PerformerOnboardingWidget`, `ProfileCompletenessWidget` | empty checklist copy выровнять с DRAFT 3 пункта |
+| 1 | Первый визит | `/cabinet/performer` | `PerformerOnboardingWidget`, `ProfileCompletenessWidget` | ✓ copy «Витрина / Слот / Готовность» 2026-11-05 |
 | 2 | Витрина | `/cabinet/performer/services` + home `#supply-settings` | `ServicesWidget`, `PortfolioRiderWidget`, `PublicationWidget` | media-rights checkbox UI уже есть; draft watermark — отдельный visual |
 | 3 | Календарь слотов | `/cabinet/performer/calendar` | `CalendarOverviewWidget`, `OpenSlotsWidget`, `CalendarConflictsWidget` | held chip → deal CTA без «оплаты» — ок; conflict inline — проверить copy |
 | 4 | Входящая заявка | `/cabinet/performer/requests` | `data-testid=performer-requests-inbox` | комиссия hint «посчитает сервер» — сверить label суммы |
 | 5 | Deal Room supply | `/deals/{id}` | `data-testid=deal-room-accents` | terms version banner уже в Deal Room; forbidden org — API 403 |
 | 6 | Публичный профиль | `/artists/{id}` | catalog → profile e2e | sticky CTA @390 — visual; busy chip — слоты |
-| 7 | Draft vs published | home + `PublicationWidget` | `performer-publication-status` / toggle | banner «черновик» на public preview — gap |
+| 7 | Draft vs published | home + `PublicationWidget` | `performer-draft-banner` + publication toggle | ✓ cabinet draft banner 2026-11-05; public watermark — ещё gap |
 | 8 | Сообщения до оффера | `/cabinet/performer/messages` | `MessagesHubClient` h1 «Сообщения» | тот же thread id после offer — API; UI не плодит новый чат |
 | 9 | Мобильный ответ | `/cabinet/performer/requests` @390 | keyboard chain e2e unified | covered V07 local |
 | 10 | Ошибка и отказ | requests + deal | offer error toast / decline | decline reason select — проверить наличие |

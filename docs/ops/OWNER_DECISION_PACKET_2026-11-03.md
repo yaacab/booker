@@ -6,7 +6,7 @@
 
 | ID | Решение | Не путать с |
 |---|---|---|
-| `OWN-STAGING-GO` | ✅ GO записан 05.11.2026; **хост/DNS ещё нужны** → `REL-STAGING-HOST` | production |
+| `OWN-STAGING-GO` | ✅ GO записан 05.11.2026; **хост/DNS ещё нужны** → intake `STAGING_HOST_INTAKE_2026-11-05.md` | production |
 | `OWN-GIT-INTEGRATION-GO` | ✅ DONE — PR #28 merged → `master` `3f52b58` | production deploy |
 | `OWN-PROD-GO` | Только production release — **ещё TODO** | staging и git-canonical |
 

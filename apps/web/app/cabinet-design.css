@@ -77,6 +77,20 @@
   line-height: 1.65;
 }
 .cabinet-v2 .cabinet-alert a { color: inherit; text-decoration: underline; }
+.cabinet-v2 .cabinet-draft-banner {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #c2a76b;
+  background: #faf0d3;
+  color: #725309;
+  line-height: 1.55;
+}
+.cabinet-v2 .cabinet-draft-banner strong { color: #1c1915; font-size: 15px; }
+.cabinet-v2 .cabinet-draft-banner p { margin: 0; max-width: 62ch; }
+.cabinet-v2 .cabinet-draft-banner .btn { justify-self: start; }
 .cabinet-v2 .chrome-puzzle-label { white-space: normal; line-height: 1.4; }
 
 /* Semantic status colors must stay legible on dark surfaces. */

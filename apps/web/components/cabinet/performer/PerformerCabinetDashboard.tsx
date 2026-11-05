@@ -40,6 +40,10 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
   const [calendarRevision, setCalendarRevision] = useState(0);
   const completenessScore = profileCompleteness?.score;
   const [title, subtitle] = SECTION_COPY[section];
+  const showDraftBanner =
+    section === "home" &&
+    Boolean(profileCompleteness) &&
+    profileCompleteness?.publication_enabled === false;
   const actions = section === "calendar"
     ? [{ href: "#calendar-manage", label: "Открыть свободные даты", primary: true }]
     : section === "requests"
@@ -76,6 +80,24 @@ export function PerformerCabinetDashboard({ section = "home" }: { section?: Perf
     </details> : null}
   >
     {section === "home" ? <>
+      {showDraftBanner ? (
+        <div className="cabinet-draft-banner" role="status" data-testid="performer-draft-banner">
+          <strong>Черновик</strong>
+          <p>Профиль ещё не в публичном каталоге. Откройте настройки публикации, когда витрина и слот готовы.</p>
+          <a
+            className="btn secondary"
+            href="#supply-settings"
+            onClick={(e) => {
+              e.preventDefault();
+              const target = document.getElementById("supply-settings");
+              if (target instanceof HTMLDetailsElement) target.open = true;
+              target?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            К публикации
+          </a>
+        </div>
+      ) : null}
       <ArtistOpportunities artistId={artistId}/>
       <section className="cabinet-zone-grid workspace-secondary-grid" aria-label="Заявки и профиль">
         {activeHolds.length>0||negotiations.length>0?<UpcomingPerformancesWidget bookings={upcomingPerformances} />:null}

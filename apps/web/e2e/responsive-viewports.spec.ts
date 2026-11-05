@@ -414,6 +414,42 @@ test.describe("V07 responsive viewports (local)", () => {
     });
   }
 
+  test("venue stats: landmark + no overflow @390", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const session = await login(request, DEMO_ACCOUNTS.venue);
+    const me = await fetchMe(request, session.token);
+    const org = me.organizations.find((o) => o.kind === "venue");
+    if (!org) throw new Error("Demo venue org missing — run make seed");
+    await injectSession(page, session.token, org.id);
+    await page.goto("/cabinet/venue/stats");
+    await expect(page.getByRole("heading", { level: 1, name: /статистика площадки/i })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator("main")).toBeVisible();
+    const loading = page.getByRole("status", { name: /загрузка/i });
+    if (await loading.count()) {
+      await expect(loading).toBeHidden({ timeout: 30_000 });
+    }
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("account profile shell no overflow @390", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const session = await login(request, DEMO_ACCOUNTS.customer);
+    const me = await fetchMe(request, session.token);
+    const org = me.organizations.find((o) => o.kind === "customer");
+    if (!org) throw new Error("Demo customer org missing — run make seed");
+    await injectSession(page, session.token, org.id);
+    await page.goto("/profile");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("main")).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
   test("motion slot-frame preview no overflow @390", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });

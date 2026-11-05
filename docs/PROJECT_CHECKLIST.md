@@ -1,14 +1,14 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-05 08:43 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-05 12:03 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
 
 - Всего: **135** задач
 - Выполнено: **89**
-- В работе: **3**
-- Ожидают: **11**
+- В работе: **4**
+- Ожидают: **10**
 - Заблокировано: **27**
 - Отложено: **5**
 - Общая готовность: **65.93%**
@@ -39,7 +39,7 @@
 | Платежи, возвраты и выплаты | 12 | 7 | 0 | 1 | 1 | 3 | 58.33% |
 | Споры, арбитраж и поддержка | 5 | 4 | 0 | 0 | 0 | 1 | 80.00% |
 | Отзывы, рейтинг и аналитика | 3 | 3 | 0 | 0 | 0 | 0 | 100.00% |
-| UI/UX, адаптивность и дизайн | 16 | 7 | 2 | 2 | 5 | 0 | 43.75% |
+| UI/UX, адаптивность и дизайн | 16 | 7 | 3 | 1 | 5 | 0 | 43.75% |
 | Безопасность и тестирование | 14 | 12 | 0 | 0 | 2 | 0 | 85.71% |
 | Staging, production и релиз | 18 | 3 | 0 | 4 | 11 | 0 | 16.67% |
 | Документация и юридические требования | 9 | 5 | 0 | 2 | 2 | 0 | 55.56% |
@@ -47,12 +47,12 @@
 ## Следующие приоритеты
 
 - 🔄 `ART-07` [FULL,DESIGN] — Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)
+- 🔄 `D03` [FULL] — Согласованные экраны и состояния перенесены в Figma и web
 - 🔄 `V04` [DESIGN,FULL] — В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей
 - 🔄 `V07` [DESIGN,FULL] — Web принят по адаптивности, доступности и скорости
 - ⬜ `REL-STAGING-HOST` [MVP,FULL,INFRA] — Owner GO на Infrastructure C / remote staging host
 - ⬜ `OWN-SMTP` [MVP,FULL] — Owner предоставил рабочий SMTP для staging/prod notifications
 - ⬜ `OWN-TWO-APPROVER` [MVP,FULL] — Два утверждающих для staff recovery приняты
-- ⬜ `D03` [FULL] — Согласованные экраны и состояния перенесены в Figma и web
 - ⬜ `LEG-03` [FULL] — Хостинг 152-ФЗ / уведомление РКН
 
 ## Полный чек-лист
@@ -108,8 +108,8 @@
 - ✅ **ART-05** [MVP, FULL] Артист: services PATCH/DELETE, sync-tariff, multi-artist selector  <br/>status=`DONE`; evidence: 1944b37; test_service_crud_v2.py
 - ✅ **ART-06** [MVP, FULL] Артист: запрос верификации из кабинета (supply→admin)  <br/>status=`DONE`; evidence: apps/api/booker_api/routers/catalog.py POST /artists/{id}/verification-request; apps/api/tests/test_artist_verification_request.py; apps/web/components/cabinet/performer/widgets/PortfolioRiderWidget.tsx; docs/ops/evidence/2026-11-02-art06-verification-request.md
   - notes: Supply request → Verification queued; admin decide closes queue; cabinet CTA
-- 🔄 **ART-07** [FULL, DESIGN] Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)  <br/>status=`IN PROGRESS`; evidence: docs/design/ARTIST_VNEXT_STORYBOARD_DRAFT_2026-11-03.md; g0 plan D01 DRAFT; docs/design/ART07_ROUTE_AUDIT_DRAFT_2026-11-05.md; docs/design/previews/artist-vnext-storyboards.html; docs/design/previews/index.html (ART-07 card); OWN-DESIGN-ACK 2026-11-05 DRAFT IA
-  - notes: IN PROGRESS: agent DRAFT pack COMPLETE (10 SB + route audit + static preview index). НЕ DONE — pixel Figma + web transfer V05/D03.
+- 🔄 **ART-07** [FULL, DESIGN] Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)  <br/>status=`IN PROGRESS`; evidence: docs/design/ARTIST_VNEXT_STORYBOARD_DRAFT_2026-11-03.md; g0 plan D01 DRAFT; docs/design/ART07_ROUTE_AUDIT_DRAFT_2026-11-05.md; docs/design/previews/artist-vnext-storyboards.html; docs/design/previews/index.html (ART-07 card); OWN-DESIGN-ACK 2026-11-05 DRAFT IA; apps/web/lib/onboardingChecklists.ts (Витрина/Слот/Готовность); apps/web/components/cabinet/performer/PerformerCabinetDashboard.tsx (draft banner); docs/ops/STAGING_HOST_INTAKE_2026-11-05.md
+  - notes: IN PROGRESS: DRAFT pack + runtime IA (checklist/draft banner). НЕ DONE — pixel Figma + полный V05 transfer.
 
 ### 5. Кабинет площадки
 
@@ -206,8 +206,8 @@
 - ✅ **D01** [FULL] Атлас экранов и карта переходов (FULL)  <br/>status=`DONE`; evidence: SCREEN_REFERENCE_ATLAS.md
 - ✅ **D02** [FULL] Статичный дизайн ключевых путей явно утверждён владельцем  <br/>status=`DONE`; evidence: docs/ops/OWNER_GO_EXECUTION_2026-11-05.md; OWN-DESIGN-ACK
   - notes: Закрыто через OWN-DESIGN-ACK 2026-11-05.
-- ⬜ **D03** [FULL] Согласованные экраны и состояния перенесены в Figma и web  <br/>status=`TODO`; evidence: —
-  - notes:  Unblocked 2026-11-05 after owner GO cascade.
+- 🔄 **D03** [FULL] Согласованные экраны и состояния перенесены в Figma и web  <br/>status=`IN PROGRESS`; evidence: ART-07 runtime IA slice 2026-11-05: onboarding copy + performer draft banner
+  - notes: IN PROGRESS soft: частичный IA transfer без pixel Figma. НЕ DONE до полного Figma+web.
 - ✅ **D04** [FULL, DESIGN] Направление «Рамка слота» и интерактивный черновик motion  <br/>status=`DONE`; evidence: MOTION_PREVIEW_SLOT_FRAME_V2_UNAPPROVED.md
 - ⛔ **D05** [FULL] Конкретный motion утверждён и интегрирован  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-MOTION-ACK
@@ -227,8 +227,8 @@
   - blocked_by: V04
 - ⛔ **V06** [DESIGN, FULL] Motion утверждён, права на ассеты проверены и интеграция выполнена  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-MOTION-ACK
-- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts (viewports + unified keyboard + login + artist/compare/legal); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json; docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390); fix(support) 9010ef1 busyRef + durable reply assert; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md; local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS; local playwright 2026-11-05: faq/for-artists/support@390 PASS; local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS; local playwright 2026-11-05d: assemble/briefs/investor@390 PASS; local playwright 2026-11-05e: performer services/calendar/messages @390 PASS; local playwright 2026-11-05f: venue halls/requests/calendar + customer messages/favorites @390 PASS; local playwright 2026-11-05f: login recover + control room event @390 PASS; local playwright 2026-11-05g: saved-searches + motion preview @390 PASS; docs/ops/OWN_MOTION_ACK_PACKET_2026-11-05.md
-  - notes: IN PROGRESS: + saved-searches + motion preview shell @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.
+- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts (viewports + unified keyboard + login + artist/compare/legal); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json; docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390); fix(support) 9010ef1 busyRef + durable reply assert; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md; local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS; local playwright 2026-11-05: faq/for-artists/support@390 PASS; local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS; local playwright 2026-11-05d: assemble/briefs/investor@390 PASS; local playwright 2026-11-05e: performer services/calendar/messages @390 PASS; local playwright 2026-11-05f: venue halls/requests/calendar + customer messages/favorites @390 PASS; local playwright 2026-11-05f: login recover + control room event @390 PASS; local playwright 2026-11-05g: saved-searches + motion preview @390 PASS; docs/ops/OWN_MOTION_ACK_PACKET_2026-11-05.md; local playwright 2026-11-05h: venue stats + /profile @390 PASS
+  - notes: IN PROGRESS: + venue stats + profile @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.
 - ⛔ **V08** [DESIGN, FULL] Визуальный и функциональный путь подтверждён browser E2E на staging  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST, V05
 
@@ -282,8 +282,8 @@
 - ⛔ **REL-STAGING** [MVP, FULL, INFRA] Staging окружение доступно для измерений и E2E  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST
   - notes: Не путать с OWN-PROD-GO. Staging unreachable (2026-11-03); после host GO проверить health/E2E.
-- ⬜ **REL-STAGING-HOST** [MVP, FULL, INFRA] Owner GO на Infrastructure C / remote staging host  <br/>status=`TODO`; evidence: docs/ops/OWNER_GO_EXECUTION_2026-11-05.md; docs/ops/STAGING_PROVISION_PLAYBOOK.md
-  - notes: OWN-STAGING-GO DONE. Нужны: отдельный VPS IP, SSH, DNS staging.bukergo.ru → этот IP. Prod IP запрещён.
+- ⬜ **REL-STAGING-HOST** [MVP, FULL, INFRA] Owner GO на Infrastructure C / remote staging host  <br/>status=`TODO`; evidence: docs/ops/STAGING_HOST_INTAKE_2026-11-05.md; OWN-STAGING-GO 2026-11-05
+  - notes: TODO: intake готов; ждём VPS IP/SSH/DNS. Prod IP запрещён.
 - ⛔ **T10** [MVP, FULL, INFRA] Миграции и DB+uploads restore проверены на staging  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST
 - ⛔ **T12** [MVP, FULL] Мобильный путь всех ролей пройден на staging с тестовыми данными  <br/>status=`BLOCKED`; evidence: —
