@@ -6,9 +6,9 @@
 
 | ID | Решение | Не путать с |
 |---|---|---|
-| `OWN-STAGING-GO` | Хост + DNS + доступ к staging для измерений/E2E/миграций | production |
-| `OWN-GIT-INTEGRATION-GO` | Merge принятых фич (PR #28 / V0+V3) в delivery/live canonical | production deploy |
-| `OWN-PROD-GO` | Только production release | staging и git-canonical |
+| `OWN-STAGING-GO` | ✅ GO записан 05.11.2026; **хост/DNS ещё нужны** → `REL-STAGING-HOST` | production |
+| `OWN-GIT-INTEGRATION-GO` | ✅ DONE — PR #28 merged → `master` `3f52b58` | production deploy |
+| `OWN-PROD-GO` | Только production release — **ещё TODO** | staging и git-canonical |
 
 `OWN1` уже DONE = packet A/B/C записан, **не** Infra C GO.
 
@@ -16,16 +16,16 @@
 
 | ID | Нужно |
 |---|---|
-| `OWN-SMTP` | Рабочий SMTP для recovery/security notifications |
+| `OWN-SMTP` | ⏳ GO есть; нужны значения → `SECRETS_INTAKE_OAUTH_SMTP_2026-11-05.md` |
 | `OWN-TWO-APPROVER` | Два утверждающих staff recovery |
-| `OWN-OAUTH-YANDEX-VK` | `client_id`/`client_secret` Yandex и VK |
+| `OWN-OAUTH-YANDEX-VK` | ⏳ GO есть; нужны значения → тот же intake |
 
 ## Дизайн / motion
 
 | ID | Нужно |
 |---|---|
-| `OWN-DESIGN-ACK` | Утвердить статику ключевых путей (после V04 draft pack) |
-| `OWN-MOTION-ACK` | Утвердить конкретный motion «Рамка слота» |
+| `OWN-DESIGN-ACK` | ✅ DONE 05.11.2026 (DRAFT pack); V04 pixel Figma ещё открыт |
+| `OWN-MOTION-ACK` | Утвердить конкретный motion «Рамка слота» — ещё TODO |
 
 ## Право / деньги / пилот (не трогаем кодом)
 

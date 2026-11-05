@@ -376,14 +376,15 @@
         "DESIGN",
         "FULL"
       ],
-      "status": "BLOCKED",
-      "evidence": [],
-      "blocked_by": [
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md",
         "OWN-DESIGN-ACK"
       ],
-      "notes": "",
+      "blocked_by": [],
+      "notes": "Закрыто через OWN-DESIGN-ACK 2026-11-05 (DRAFT pack).",
       "source": "PROJECT_PROGRESS",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "V04",
@@ -401,7 +402,7 @@
         "docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS DRAFT: матрица + Home/Deal + Event Studio 2–5 + Control Room card states. НЕ DONE без полного Figma pack и OWN-DESIGN-ACK; web не меняем.",
+      "notes": "IN PROGRESS: DRAFT + OWN-DESIGN-ACK есть. НЕ DONE без полного pixel Figma pack; web не меняем.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -416,7 +417,6 @@
       "status": "BLOCKED",
       "evidence": [],
       "blocked_by": [
-        "V03",
         "V04"
       ],
       "notes": "",
@@ -606,14 +606,15 @@
       "scopes": [
         "FULL"
       ],
-      "status": "BLOCKED",
-      "evidence": [],
-      "blocked_by": [
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md",
         "OWN-DESIGN-ACK"
       ],
-      "notes": "",
+      "blocked_by": [],
+      "notes": "Закрыто через OWN-DESIGN-ACK 2026-11-05.",
       "source": "PROJECT_PROGRESS",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "D03",
@@ -622,14 +623,12 @@
       "scopes": [
         "FULL"
       ],
-      "status": "BLOCKED",
+      "status": "TODO",
       "evidence": [],
-      "blocked_by": [
-        "D02"
-      ],
-      "notes": "",
+      "blocked_by": [],
+      "notes": " Unblocked 2026-11-05 after owner GO cascade.",
       "source": "PROJECT_PROGRESS",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "D05",
@@ -1229,16 +1228,15 @@
         "FULL",
         "INFRA"
       ],
-      "status": "BLOCKED",
+      "status": "TODO",
       "evidence": [
+        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md",
         "docs/ops/STAGING_PROVISION_PLAYBOOK.md"
       ],
-      "blocked_by": [
-        "OWN-STAGING-GO"
-      ],
-      "notes": "DNS/host пусты. OWN1 DONE только фиксирует packet; реальный Infra/staging GO = OWN-STAGING-GO.",
+      "blocked_by": [],
+      "notes": "OWN-STAGING-GO DONE. Нужны: отдельный VPS IP, SSH, DNS staging.bukergo.ru → этот IP. Prod IP запрещён.",
       "source": "TASK_LEDGER B1a/B1d",
-      "updated_at": "2026-11-03"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "REL-SMTP",
@@ -1281,12 +1279,18 @@
         "DESIGN",
         "FULL"
       ],
-      "status": "TODO",
-      "evidence": [],
+      "status": "DONE",
+      "evidence": [
+        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md",
+        "docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md",
+        "docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md",
+        "docs/design/V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_DRAFT_2026-11-03.md",
+        "docs/design/ARTIST_VNEXT_STORYBOARD_DRAFT_2026-11-03.md"
+      ],
       "blocked_by": [],
-      "notes": "",
+      "notes": "ACK на DRAFT wireframe/IA pack ключевых путей. Motion отдельно. V04 pixel Figma ещё открыт.",
       "source": "PROJECT_PROGRESS D02",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "OWN-MOTION-ACK",
@@ -1357,11 +1361,14 @@
         "FULL"
       ],
       "status": "TODO",
-      "evidence": [],
+      "evidence": [
+        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md",
+        "docs/ops/SECRETS_INTAKE_OAUTH_SMTP_2026-11-05.md"
+      ],
       "blocked_by": [],
-      "notes": "",
+      "notes": "GO на предоставление есть; SMTP значений нет. Intake doc.",
       "source": "TASK_LEDGER",
-      "updated_at": "2026-11-02"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "OWN-PROD-GO",
@@ -1648,7 +1655,7 @@
         "g0 plan D01 DRAFT"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS DRAFT: 10 сторибордов + frame lists 1–10. CONTRACT не меняем. Утверждение/перенос — после OWN-DESIGN-ACK.",
+      "notes": "IN PROGRESS DRAFT: frames 1–10. OWN-DESIGN-ACK есть; перенос в web всё ещё после V04/V05.",
       "source": "G0/G1",
       "updated_at": "2026-11-05"
     },
@@ -1880,20 +1887,18 @@
         "MVP",
         "FULL"
       ],
-      "status": "BLOCKED",
+      "status": "DONE",
       "evidence": [
         "cherry-pick 94d7ac4/8dd2f67/0066bb6 onto feat/v4-offer-versions-audit",
         "apps/api/tests/test_hold_expire_v0.py",
         "apps/api/tests/test_slot_delete_and_bookable.py",
-        "docs/ops/evidence/2026-11-02-v0-safe-hold-expire.md",
-        "docs/ops/evidence/2026-11-02-v3-calendar-requests.md"
+        "PR #28 merge 3f52b582309fe95d23a6b402870c7739f319270b",
+        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md"
       ],
-      "blocked_by": [
-        "OWN-GIT-INTEGRATION-GO"
-      ],
-      "notes": "Локально/feature PR #28: V0+V3 + тесты уже есть. Блокер только на port в delivery/live canonical — не production deploy.",
+      "blocked_by": [],
+      "notes": "Port в master через merge PR #28 (OWN-GIT-INTEGRATION-GO).",
       "source": "roadmap",
-      "updated_at": "2026-11-03"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "DEAL-01",
@@ -2407,14 +2412,16 @@
         "FULL",
         "INFRA"
       ],
-      "status": "TODO",
+      "status": "DONE",
       "evidence": [
-        "docs/ops/OWNER_DECISION_PACKET_2026-11-03.md"
+        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md",
+        "docs/ops/STAGING_PROVISION_PLAYBOOK.md",
+        "dig staging.bukergo.ru empty 2026-11-05"
       ],
       "blocked_by": [],
-      "notes": "Отдельно от OWN-PROD-GO. Нужны: хост, DNS, доступ агента/CI к staging.bukergo.ru. OWN1 = только запись packet A/B/C, не Infra C GO.",
+      "notes": "Owner GO записан. Хост/DNS ещё нет (NXDOMAIN). Не использовать prod 5.45.112.180. Дальше REL-STAGING-HOST после IP+SSH+DNS.",
       "source": "REGISTRY_FIX_2026-11-03",
-      "updated_at": "2026-11-03"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "OWN-GIT-INTEGRATION-GO",
@@ -2425,14 +2432,16 @@
         "FULL",
         "INFRA"
       ],
-      "status": "TODO",
+      "status": "DONE",
       "evidence": [
-        "docs/ops/OWNER_DECISION_PACKET_2026-11-03.md"
+        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md",
+        "https://github.com/yaacab/booker/pull/28",
+        "PR #28 merge 3f52b582309fe95d23a6b402870c7739f319270b"
       ],
       "blocked_by": [],
-      "notes": "Отдельно от OWN-PROD-GO. Разрешает перенос принятых фич (напр. V0+V3/CAL-07) в delivery/live canonical ветки. Не включает prod deploy.",
+      "notes": "Merged PR #28 → master. Production deploy не входил.",
       "source": "REGISTRY_FIX_2026-11-03",
-      "updated_at": "2026-11-03"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "OWN-OAUTH-YANDEX-VK",
@@ -2443,12 +2452,13 @@
       ],
       "status": "TODO",
       "evidence": [
-        "docs/ops/OWNER_DECISION_PACKET_2026-11-03.md"
+        "docs/ops/OWNER_GO_EXECUTION_2026-11-05.md",
+        "docs/ops/SECRETS_INTAKE_OAUTH_SMTP_2026-11-05.md"
       ],
       "blocked_by": [],
-      "notes": "Секреты только у владельца. Без них AUTH-04 нельзя закрыть дальше fail-closed stubs.",
+      "notes": "GO на предоставление есть; значений секретов нет. Intake doc.",
       "source": "REGISTRY_FIX_2026-11-03",
-      "updated_at": "2026-11-03"
+      "updated_at": "2026-11-05"
     }
   ],
   "scope_change_log": []
