@@ -326,6 +326,7 @@ test.describe("V07 responsive viewports (local)", () => {
     { path: "/faq", name: "faq" },
     { path: "/for-artists", name: "for-artists" },
     { path: "/support", name: "support public" },
+    { path: "/legal/privacy", name: "legal privacy" },
   ] as const) {
     test(`${route.name} no overflow @390`, async ({ page }) => {
       await page.setViewportSize({ width: 390, height: 844 });

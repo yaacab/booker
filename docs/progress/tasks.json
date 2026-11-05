@@ -401,7 +401,7 @@
         "docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS DRAFT: матрица + Home/Deal + Event Studio steps 2–5 (D/L/E/R/Conflict/M). НЕ DONE без полного Figma pack и OWN-DESIGN-ACK; web не меняем.",
+      "notes": "IN PROGRESS DRAFT: матрица + Home/Deal + Event Studio 2–5 + Control Room card states. НЕ DONE без полного Figma pack и OWN-DESIGN-ACK; web не меняем.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -457,10 +457,11 @@
         "fix(support) 9010ef1 busyRef + durable reply assert",
         "docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md",
         "local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS",
-        "local playwright 2026-11-05: faq/for-artists/support@390 PASS"
+        "local playwright 2026-11-05: faq/for-artists/support@390 PASS",
+        "local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: artist/compare/legal/faq/for-artists/support overflow PASS локально. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
+      "notes": "IN PROGRESS: artist/compare/legal/faq/for-artists/support/privacy overflow PASS локально. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
