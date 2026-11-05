@@ -288,6 +288,40 @@ test.describe("V07 responsive viewports (local)", () => {
     await expect(email).toBeFocused();
   });
 
+  for (const vp of [
+    { name: "390", width: 390, height: 844 },
+    { name: "1440", width: 1440, height: 900 },
+  ] as const) {
+    test(`artist profile from catalog @${vp.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.goto("/search?city=Москва&kind=artist&category=dj");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+      const artistLink = page.locator('a[href^="/artists/"]').first();
+      await expect(artistLink).toBeVisible({ timeout: 20_000 });
+      await artistLink.click();
+      await expect(page).toHaveURL(/\/artists\//);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+      await expectNoHorizontalOverflow(page);
+    });
+  }
+
+  test("compare shell no overflow @390", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/compare");
+    await expect(page.locator("main, h1").first()).toBeVisible({ timeout: 20_000 });
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("legal offer no overflow @320", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/legal/offer");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+    await expectNoHorizontalOverflow(page);
+  });
+
   test("event studio new: no overflow @320", async ({ page, request }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
     await page.setViewportSize({ width: 320, height: 568 });

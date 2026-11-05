@@ -10,8 +10,9 @@
 | Доказательство | Что закрывает |
 |---|---|
 | `e2e/cabinet-a11y.spec.ts` | landmarks, skip links, Tab, reduced-motion, 390×844 × 3 роли |
-| `e2e/responsive-viewports.spec.ts` | viewports + unified keyboard + login shell @320/390/768/1440 |
+| `e2e/responsive-viewports.spec.ts` | viewports + unified keyboard + login + artist profile @390/1440 + compare @390 + legal/offer @320 |
 | search labels `htmlFor`/`id` | фокус city / keyboard Найти |
+| local 2026-11-05 | artist/compare/legal overflow suite 7/7 PASS |
 | `V07_LOCAL_PERF_SMOKE_2026-11-03.json` | DCL/FCP smoke |
 | `V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json` | search perf95/a11y100; home perf88/a11y100 @390 |
 | contrast + footer aria | catalog meta/price; footer tagline; label match |
