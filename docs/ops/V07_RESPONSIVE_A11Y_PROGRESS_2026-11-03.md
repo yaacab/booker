@@ -14,6 +14,7 @@
 | search labels `htmlFor`/`id` | фокус city / keyboard Найти |
 | local 2026-11-05 | artist/compare/legal overflow suite 7/7 PASS |
 | local 2026-11-05b | faq / for-artists / support public @390 — 3/3 PASS |
+| local 2026-11-05c | + legal/privacy @390 — 4/4 PASS (venue catalog skipped: published=0) |
 | `V07_LOCAL_PERF_SMOKE_2026-11-03.json` | DCL/FCP smoke |
 | `V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json` | search perf95/a11y100; home perf88/a11y100 @390 |
 | contrast + footer aria | catalog meta/price; footer tagline; label match |
