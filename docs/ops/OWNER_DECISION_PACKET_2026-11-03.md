@@ -39,8 +39,9 @@
 
 - Локальные V0/V3/hold/calendar тесты в feature-ветке.  
 - Локальный V07 viewport/keyboard/Lighthouse (формальный design DONE всё ещё ждёт motion ack).  
-- DRAFT матрица V04 и Artist vNext storyboards в `docs/design/` без переноса в web.  
-- AUTH stubs/Telegram/sessions локально (live Yandex/VK — только после OAuth secrets + staging).
+- DRAFT матрица V04 (Home/Deal + Event Studio 2–5 + Control Room card states) и Artist vNext storyboards 1–10 в `docs/design/` без переноса в web.  
+- AUTH stubs/Telegram/sessions локально (live Yandex/VK — только после OAuth secrets + staging).  
+- Локальные public shells V07: artist/compare/legal/faq/for-artists/support/privacy @390.
 
 ## Не включать в этот packet
 
