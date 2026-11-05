@@ -397,17 +397,24 @@
       "status": "IN PROGRESS",
       "evidence": [
         "docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md",
+        "docs/design/previews/index.html",
+        "docs/design/previews/home-states.html",
+        "docs/design/previews/search-states.html",
+        "docs/design/previews/profile-states.html",
+        "docs/design/previews/event-studio-states.html",
+        "docs/design/previews/control-room-states.html",
+        "docs/design/previews/deal-hold-forbidden.html",
+        "docs/design/previews/cabinet-empty-error.html",
+        "docs/design/previews/auth-login-recover.html",
         "docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md",
         "docs/design/V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_DRAFT_2026-11-03.md",
-        "docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md",
         "docs/design/V04_WIREFRAME_PROFILE_ARTIST_VENUE_DRAFT_2026-11-05.md",
         "docs/design/V04_WIREFRAME_CABINET_EMPTY_ERROR_DRAFT_2026-11-05.md",
-        "docs/design/previews/cabinet-empty-error.html",
-        "docs/design/previews/deal-hold-forbidden.html",
-        "docs/design/previews/cabinet-empty-error.html (expanded second-row screens)"
+        "docs/design/V04_WIREFRAME_SEARCH_AUTH_DRAFT_2026-11-05.md",
+        "OWN-DESIGN-ACK 2026-11-05"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: cabinet E/R expanded + deal hold/forbidden preview. НЕ DONE без pixel Figma; web runtime не меняем.",
+      "notes": "IN PROGRESS: agent DRAFT pack COMPLETE (wireframe+static previews index). НЕ DONE — нужен pixel Figma pack; web runtime не меняем.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -1661,7 +1668,7 @@
         "g0 plan D01 DRAFT"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS DRAFT: frames 1–10. OWN-DESIGN-ACK есть; перенос в web всё ещё после V04/V05.",
+      "notes": "IN PROGRESS DRAFT frames 1–10 + V04 profile/cabinet previews. Перенос web после V04 pixel/V05.",
       "source": "G0/G1",
       "updated_at": "2026-11-05"
     },

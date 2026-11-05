@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — DRAFT: Event Studio states</title>
+  <link rel="stylesheet" href="_tokens.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">DRAFT · Event Studio 2–5</div>
+    <h1>Event Studio: loading / empty / error / conflict</h1>
+    <p class="lead">Шаги 2–5. Бюджет — ориентир. Итог с сервера.</p>
+    <div class="pair">
+      <div>
+        <p class="label">studio / step2 / L · 390</p>
+        <article class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">студия</span></div>
+          <div class="nav"><span>1</span><span aria-current="page">2 Место</span><span>3</span></div>
+          <div class="body">
+            <div class="chip l">Loading</div>
+            <h2>Ищем площадки…</h2>
+            <div class="card"><div class="skel"><div class="bar h64"></div><div class="bar h64"></div></div><p class="muted" style="margin-top:12px">Дата и город сохранены.</p></div>
+          </div>
+        </article>
+      </div>
+      <div>
+        <p class="label">studio / step2 / E · 1440</p>
+        <article class="device ">
+          <div class="top"><span class="brand">Букер</span><span class="pill">студия · desktop</span></div>
+          <div class="nav"><span>1✓</span><span aria-current="page">2</span><span>3</span><span>4</span></div>
+          <div class="body">
+            <div class="chip e">Empty</div>
+            <h2>В этом районе нет площадок</h2>
+            <div class="card"><p class="muted">На выбранную дату нет опубликованных площадок.</p><div class="actions"><a class="cta" href="#district">Сменить район</a></div></div>
+          </div>
+        </article>
+      </div></div><div class="pair" style="margin-top:22px">
+      <div>
+        <p class="label">studio / step5 / R · 390</p>
+        <article class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">студия</span></div>
+          <div class="nav"><span>1✓</span><span>2✓</span><span aria-current="page">5</span></div>
+          <div class="body">
+            <div class="chip r">Error</div>
+            <h2>Не удалось отправить</h2>
+            <div class="card"><div class="alert" role="alert"><strong>Не удалось отправить заявку</strong>Черновик на месте.</div><div class="actions"><a class="cta" href="#retry">Повторить</a></div></div>
+          </div>
+        </article>
+      </div>
+      <div>
+        <p class="label">studio / step2 / Conflict · 1440</p>
+        <article class="device ">
+          <div class="top"><span class="brand">Букер</span><span class="pill">студия</span></div>
+          <div class="nav"><span>1✓</span><span aria-current="page">2</span></div>
+          <div class="body">
+            <div class="chip w">Conflict</div>
+            <h2>Слот только что заняли</h2>
+            <div class="card"><p class="muted">Рамка слота остаётся. Выберите другую дату или площадку.</p><div class="actions"><a class="cta" href="#date">Другая дата</a></div></div>
+          </div>
+        </article>
+      </div></div>
+    <p class="note">Канон: V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_*.</p>
+  </div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-05 07:45 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-05 07:57 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
@@ -109,7 +109,7 @@
 - ✅ **ART-06** [MVP, FULL] Артист: запрос верификации из кабинета (supply→admin)  <br/>status=`DONE`; evidence: apps/api/booker_api/routers/catalog.py POST /artists/{id}/verification-request; apps/api/tests/test_artist_verification_request.py; apps/web/components/cabinet/performer/widgets/PortfolioRiderWidget.tsx; docs/ops/evidence/2026-11-02-art06-verification-request.md
   - notes: Supply request → Verification queued; admin decide closes queue; cabinet CTA
 - 🔄 **ART-07** [FULL, DESIGN] Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)  <br/>status=`IN PROGRESS`; evidence: docs/design/ARTIST_VNEXT_STORYBOARD_DRAFT_2026-11-03.md; g0 plan D01 DRAFT
-  - notes: IN PROGRESS DRAFT: frames 1–10. OWN-DESIGN-ACK есть; перенос в web всё ещё после V04/V05.
+  - notes: IN PROGRESS DRAFT frames 1–10 + V04 profile/cabinet previews. Перенос web после V04 pixel/V05.
 
 ### 5. Кабинет площадки
 
@@ -220,8 +220,8 @@
 - ✅ **V02** [DESIGN, FULL] Визуальное направление и черновик motion сформулированы  <br/>status=`DONE`; evidence: docs/design/MOTION_PREVIEW_SLOT_FRAME_V2_UNAPPROVED.md
 - ✅ **V03** [DESIGN, FULL] Владелец явно утвердил дизайн ключевых путей  <br/>status=`DONE`; evidence: docs/ops/OWNER_GO_EXECUTION_2026-11-05.md; OWN-DESIGN-ACK
   - notes: Закрыто через OWN-DESIGN-ACK 2026-11-05 (DRAFT pack).
-- 🔄 **V04** [DESIGN, FULL] В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей  <br/>status=`IN PROGRESS`; evidence: docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md; docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md; docs/design/V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_DRAFT_2026-11-03.md; docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md; docs/design/V04_WIREFRAME_PROFILE_ARTIST_VENUE_DRAFT_2026-11-05.md; docs/design/V04_WIREFRAME_CABINET_EMPTY_ERROR_DRAFT_2026-11-05.md; docs/design/previews/cabinet-empty-error.html; docs/design/previews/deal-hold-forbidden.html; docs/design/previews/cabinet-empty-error.html (expanded second-row screens)
-  - notes: IN PROGRESS: cabinet E/R expanded + deal hold/forbidden preview. НЕ DONE без pixel Figma; web runtime не меняем.
+- 🔄 **V04** [DESIGN, FULL] В дизайн-проекте завершены desktop/mobile макеты и состояния ключевых путей  <br/>status=`IN PROGRESS`; evidence: docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md; docs/design/previews/index.html; docs/design/previews/home-states.html; docs/design/previews/search-states.html; docs/design/previews/profile-states.html; docs/design/previews/event-studio-states.html; docs/design/previews/control-room-states.html; docs/design/previews/deal-hold-forbidden.html; docs/design/previews/cabinet-empty-error.html; docs/design/previews/auth-login-recover.html; docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md; docs/design/V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_DRAFT_2026-11-03.md; docs/design/V04_WIREFRAME_PROFILE_ARTIST_VENUE_DRAFT_2026-11-05.md; docs/design/V04_WIREFRAME_CABINET_EMPTY_ERROR_DRAFT_2026-11-05.md; docs/design/V04_WIREFRAME_SEARCH_AUTH_DRAFT_2026-11-05.md; OWN-DESIGN-ACK 2026-11-05
+  - notes: IN PROGRESS: agent DRAFT pack COMPLETE (wireframe+static previews index). НЕ DONE — нужен pixel Figma pack; web runtime не меняем.
 - ⛔ **V05** [DESIGN, FULL] Утверждённый дизайн точно перенесён в работающий web  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: V04
 - ⛔ **V06** [DESIGN, FULL] Motion утверждён, права на ассеты проверены и интеграция выполнена  <br/>status=`BLOCKED`; evidence: —

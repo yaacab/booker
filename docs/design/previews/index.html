@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — V04 DRAFT preview index</title>
+  <link rel="stylesheet" href="_tokens.css" />
+  <style>
+    .cards { display: grid; gap: 12px; }
+    @media (min-width: 800px) { .cards { grid-template-columns: 1fr 1fr; } }
+    a.cardlink {
+      display: block; padding: 18px; border-radius: 16px; border: 1px solid var(--line);
+      background: #fffdf8; text-decoration: none; color: inherit; box-shadow: var(--frame);
+    }
+    a.cardlink strong { display: block; font-family: var(--serif); font-size: 22px; margin-bottom: 6px; }
+    a.cardlink span { color: var(--ink-2); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">DRAFT · V04 agent pack · index</div>
+    <h1>Букер — студия состояний (DRAFT)</h1>
+    <p class="lead">Агентский wireframe/preview pack ключевых путей. Pixel Figma и перенос в web — отдельно. Runtime не менялся.</p>
+    <div class="cards">
+      <a class="cardlink" href="home-states.html"><strong>01 Home</strong><span>L / E / R / M</span></a>
+      <a class="cardlink" href="search-states.html"><strong>02 Search</strong><span>L / E / R / Conflict</span></a>
+      <a class="cardlink" href="profile-states.html"><strong>03 Profile</strong><span>Artist / Venue E R F</span></a>
+      <a class="cardlink" href="event-studio-states.html"><strong>04 Event Studio</strong><span>Step 2–5 L E R Conflict</span></a>
+      <a class="cardlink" href="control-room-states.html"><strong>05 Control Room</strong><span>Empty / Waiting / Error</span></a>
+      <a class="cardlink" href="deal-hold-forbidden.html"><strong>06 Deal Room</strong><span>Hold expired / Forbidden</span></a>
+      <a class="cardlink" href="cabinet-empty-error.html"><strong>07 Cabinets</strong><span>Customer / Performer / Venue · E R L F</span></a>
+      <a class="cardlink" href="auth-login-recover.html"><strong>08 Auth</strong><span>Login / Recover @390</span></a>
+    </div>
+    <p class="note">Источник: docs/design/V04_*_DRAFT_*.md. Локально через Next: /design-previews/</p>
+  </div>
+</body>
+</html>

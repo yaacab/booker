@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — DRAFT: Auth login/recover</title>
+  <link rel="stylesheet" href="_tokens.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">DRAFT · Auth @390</div>
+    <h1>Login / recover: default / error / forbidden</h1>
+    <p class="lead">Без live OAuth кнопок. Без enumeration сверх политики.</p>
+    <div class="pair">
+      <div>
+        <p class="label">login / D · 390</p>
+        <article class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">вход</span></div>
+          <div class="nav"><span aria-current="page">Вход</span></div>
+          <div class="body">
+            <div class="chip e">Default</div>
+            <h2>Вход</h2>
+            <div class="card"><p class="muted">Email и пароль. OAuth — после секретов на staging.</p><div class="actions"><a class="cta" href="#login">Войти</a></div></div>
+          </div>
+        </article>
+      </div>
+      <div>
+        <p class="label">login / R · 390</p>
+        <article class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">вход</span></div>
+          <div class="nav"><span aria-current="page">Вход</span></div>
+          <div class="body">
+            <div class="chip r">Error</div>
+            <h2>Вход</h2>
+            <div class="card"><div class="alert" role="alert"><strong>Не удалось войти</strong>Проверьте данные или сеть.</div><div class="actions"><a class="cta" href="#retry">Повторить</a></div></div>
+          </div>
+        </article>
+      </div></div><div class="pair" style="margin-top:22px">
+      <div>
+        <p class="label">recover / D · 390</p>
+        <article class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">восстановление</span></div>
+          <div class="nav"><span aria-current="page">Recover</span></div>
+          <div class="body">
+            <div class="chip e">Recover</div>
+            <h2>Код доступа</h2>
+            <div class="card"><p class="muted">Offline/сохранённый код. SMTP path — отдельно.</p><div class="actions"><a class="cta" href="#cont">Продолжить</a></div></div>
+          </div>
+        </article>
+      </div>
+      <div>
+        <p class="label">login / F · 390</p>
+        <article class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">вход</span></div>
+          <div class="nav"><span aria-current="page">Вход</span></div>
+          <div class="body">
+            <div class="chip f">Forbidden</div>
+            <h2>Нет доступа</h2>
+            <div class="card"><p class="muted">Нет прав на кабинет. Без деталей чужих org.</p><div class="actions"><a class="cta" href="#home">На главную</a></div></div>
+          </div>
+        </article>
+      </div></div>
+    <p class="note">Канон: V04_WIREFRAME_SEARCH_AUTH_*.</p>
+  </div>
+</body>
+</html>

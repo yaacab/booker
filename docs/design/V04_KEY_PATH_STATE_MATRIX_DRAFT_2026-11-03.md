@@ -1,69 +1,54 @@
 # V04 — матрица desktop/mobile состояний ключевых путей (DRAFT)
 
-**Статус:** DRAFT для дизайн-проекта. Не утверждение владельца. Не разрешение переносить визуальный язык в рабочий web.  
+**Статус:** DRAFT pack агента **закрыт 2026-11-05**. Не pixel Figma. Не перенос в рабочий web. V04 registry **не DONE** до полного Figma pack.  
 **Контракт:** `docs/product/CONTRACT.md` без изменений. Цены/деньги — только API.  
-**База:** `SCREEN_REFERENCE_ATLAS.md`, `SCREEN_FLOW_MAP.md`, `FIGMA_DETAIL_PROGRESS_2026-09-30.md`, `ROUTE_AUDIT_2026-09-30.md`.
+**Студия preview:** `docs/design/previews/index.html` → `/design-previews/` locally.
 
 ## Правило кадров
-
-Для каждого ключевого пути нужны кадры **Desktop 1440** и **Mobile 390** (плюс stress 320 где уже начато) в состояниях:
 
 | Код | Состояние | Смысл |
 |---|---|---|
 | D | Default | Успешные данные / основной путь |
-| L | Loading | Скелетон/spinner без потери фильтров и прогресса |
-| E | Empty | Честное пустое + одно следующее действие |
-| R | Error | Повтор / альтернатива; фильтры не стираются |
+| L | Loading | Скелетон без потери фильтров/прогресса |
+| E | Empty | Честное пусто + одно следующее действие |
+| R | Error | Повтор; chrome/фильтры не стираются |
 | F | Forbidden / Signed-out | Без утечки чужих данных |
-| M | Reduced motion | Без подъёма/параллакса; смысл сохранён |
+| M | Reduced motion | Рамка слота статична |
 
-## Покрытие Figma на 2026-11-03
+## Покрытие DRAFT (wireframe + static preview)
 
-Источник: `FIGMA_DETAIL_PROGRESS_2026-09-30.md` (`Booker Detail / Motion v1`).
+| Путь | Wireframe doc | Preview HTML | Pixel Figma |
+|---|---|---|---|
+| 01 Home L/E/R/M | `V04_WIREFRAME_HOME_DEAL_STATES_*` | `home-states.html` | ○ |
+| 02 Search L/E/R/Conflict | `V04_WIREFRAME_SEARCH_AUTH_*` | `search-states.html` | ○ |
+| 03 Event Studio 2–5 | `V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_*` | `event-studio-states.html` | ○ |
+| 09 Control Room | в Event Studio DRAFT | `control-room-states.html` | ○ |
+| Profile artist/venue | `V04_WIREFRAME_PROFILE_ARTIST_VENUE_*` | `profile-states.html` | ○ |
+| Deal hold/forbidden | Home/Deal DRAFT | `deal-hold-forbidden.html` | ○ |
+| Cabinets E/R/L/F | `V04_WIREFRAME_CABINET_EMPTY_ERROR_*` | `cabinet-empty-error.html` | ○ |
+| Auth login/recover | `V04_WIREFRAME_SEARCH_AUTH_*` | `auth-login-recover.html` | ○ |
 
-| Путь | 1440 D | 390 D | L/E/R | M | 320 | Остаток для V04 |
-|---|---|---|---|---|---|---|
-| 01 Home | ✓ | ✓ | ○ | ✓ | ✓ reflow | Loading/Empty/Error home |
-| 02 Choice / search space | ✓ Date-District | ✓ | ✓ 1440+390 | ○ | ✓ stress | keyboard/scroll-snap interactive; opaque button fallback |
-| 03 Event Studio step 1 | ✓ | ✓ | ○ | storyboard only | ○ | Figma L/E/R/F step 1 |
-| 03b Event Studio steps 2–5 | wireframe DRAFT | wireframe DRAFT | wireframe D/L/E/R/Conflict | wireframe M | ○ | pixel Figma + node ids |
-| 09 Control Room cards | wireframe DRAFT | wireframe DRAFT | wireframe D/E/R | wireframe M | ○ | pixel Figma |
-| Profile artist/venue | wireframe DRAFT | wireframe DRAFT | wireframe D/L/E/R/F | wireframe M | ○ | pixel Figma; см. `V04_WIREFRAME_PROFILE_ARTIST_VENUE_*` |
-| Request → Deal Room | wireframe Home/Deal DRAFT | wireframe | hold/forbidden DRAFT | ○ | ○ | overview/chat + hold expiry pixel |
-| Cabinets customer/performer/venue | wireframe DRAFT | wireframe DRAFT | wireframe E/R (+L/F/M) | wireframe M | ○ | pixel Figma; preview `docs/design/previews/cabinet-empty-error.html` |
+Индекс: `previews/index.html`.
 
-Итого: wireframe DRAFT расширен (Home/Deal + Event Studio 2–5 + Control Room). Pixel Figma pack не закрыт. V04 **не DONE**.
+## Целевой пакет «макеты завершены» = pixel Figma
 
-## Целевой минимальный пакет для «макеты ключевых путей завершены»
+Агентский wireframe/preview закрыт. Для **V04 DONE** владельцу в Figma:
 
-Без этого пакета `OWN-DESIGN-ACK` принимать рано:
+1. Home D/L/E/R/M @1440+390  
+2. Catalog/search D/L/E/R/Conflict @1440/768/390/320  
+3. Artist + Venue profile D/L/E/R/F @1440+390  
+4. Event Studio 1–5 D + L/E/R @1440+390  
+5. Deal overview + hold-expired + forbidden @1440+390  
+6. Cabinets (все роли) E/R минимум @1440+390  
+7. Auth login/recover D/R/F @390  
+8. Node ids → `FIGMA_DETAIL_PROGRESS`
 
-1. Home — D/L/E/R/M @1440+390  
-2. Catalog/search — D/L/E/R/Conflict + API list @1440/768/390/320  
-3. Artist + Venue profile — D/L/E/R/F @1440+390  
-4. Event Studio — шаги 1–5 D + L/E/R на шаге сохранения @1440+390  
-5. Deal Room — overview + terms + hold-expired @1440+390  
-6. Cabinet performer requests — D/E/R @1440+390  
-7. Auth login/recover — D/R/F @390  
+Платежные live-кадры вне пакета.
 
-Платежные кадры live **вне** этого пакета до `OWN-LEGAL-GO` / `OWN-PAY-PARTNER`.
+## Связь с web
 
-## Связь с текущим web (не перенос дизайна)
+Перенос = `V05`/`D03` после pixel + действующего ACK. Этот пакет web runtime не меняет.
 
-| Путь | Код route | Заметка DRAFT |
-|---|---|---|
-| Home | `app/page.tsx` | Scene01 live; reduced-motion CSS есть |
-| Search | `app/search/page.tsx` | labels/overflow e2e есть; Figma Choice ≠ pixel parity |
-| Artist | `app/artists/[id]` | CONTRACT-канон профиля; vNext IA отдельно |
-| Deal | `app/deals/[id]` | accents/tabs; hold UI не путать с confirmed |
-| Performer requests | `app/cabinet/performer/requests` | inbox + «Создать предложение» |
+## Следующий шаг (не агентский DRAFT)
 
-Перенос утвержденных кадров в web = задачи `V05`/`D03` после `OWN-DESIGN-ACK`. Этот документ сам по себе web не меняет.
-
-## Следующий автономный шаг (дизайн-проект)
-
-1. Перенести wireframe DRAFT → pixel Figma: Home L/E/R, Event Studio 2–5, Control Room cards, Deal hold/forbidden.  
-2. Artist + Venue profile D/L/E/R/F @1440+390.  
-3. Cabinet performer requests D/E/R @1440+390.  
-Агент без Figma API владельца фиксирует матрицу и gaps; pixel-кадры — в файле Figma владельца.  
-Wireframe docs: `V04_WIREFRAME_HOME_DEAL_STATES_*`, `V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_*`.
+Pixel Figma владельца → затем оценка V04 DONE. Staging/V07 formal/motion — отдельные линии.
