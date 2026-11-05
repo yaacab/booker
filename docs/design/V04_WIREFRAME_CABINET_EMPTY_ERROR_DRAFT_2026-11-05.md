@@ -1,19 +1,39 @@
 # V04 — Cabinet empty / error states (DRAFT)
 
-**Статус:** DRAFT. Не перенос в `apps/web`. Preview: `docs/design/previews/cabinet-empty-error.html`.  
+**Статус:** DRAFT. Не перенос в `apps/web`.  
+**Preview:** `docs/design/previews/cabinet-empty-error.html`  
+**Локальный URL (если Next уже поднят):** `http://127.0.0.1:3000/design-previews/cabinet-empty-error.html`  
 **Роли:** customer / performer / venue. Viewports: 1440 + 390.  
 **Правила:** цена/комиссия только «из API»; held ≠ confirmed; без Identity redesign.
+
+## Визуальный канон этого пакета
+
+Не invent-new-brand. Токены как у cream / Scene01 / «рамка слота»:
+
+| Токен | Значение | Зачем |
+|---|---|---|
+| cream | `#f2ede5` | фон студии |
+| paper | `#fbf8f3` | поверхность телефона/desk |
+| ink | `#1c1915` | заголовок и primary CTA |
+| ink-2 | `#6d6358` | пояснение |
+| gold | `#b8955a` | рамка слота, secondary border |
+| mint soft | `#dce8df` / `#3d7a5c` | роль, empty chip, nav current |
+| terra | `#8f3d2d` + `#f9e7e9` | error alert (`cabinet-alert`) |
+
+Мотив: **тонкая золотая рамка** вокруг выбранного empty/error card — выбор состояния, не бронь.  
+На 390 один primary ≥ 44px; secondary внизу (sticky) или рядом на 1440.  
+`prefers-reduced-motion`: рамка статична, скелетон без пульса.
 
 ## Общая оболочка
 
 | Состояние | Что на кадре | CTA |
 |---|---|---|
-| L | Shell + nav; content skeletons | disabled primary |
-| E first-run | Заголовок кабинета + честное empty + один primary | роль-специфичный |
+| L | Shell + nav; content skeletons; primary disabled | — |
+| E first-run | Заголовок + честное empty + рамка + один primary | роль-специфичный |
 | E list-empty | Список пуст при уже настроенном профиле | secondary «обновить» / фильтр |
-| R | Banner/alert + сохранить chrome | «Повторить» |
-| F | Нет org / нет доступа | «Выбрать организацию» / «Войти» |
-| M | Без пульсации скелетонов | статичный placeholder |
+| R | Alert `role=alert` + ghost rows + сохранить chrome | «Повторить» |
+| F | Нет org / чужая org | «Выбрать организацию» / «Войти» |
+| M | Как L/E/R без пульса и подъёма | те же CTA |
 
 ## Customer `/cabinet/customer`
 
@@ -44,14 +64,23 @@
 | Calendar | «Календарь начинается с площадки.» | Повторить |
 | Messages | «Переписок нет.» | Повторить |
 
+## A11y в preview
+
+- Error: `role="alert"`.  
+- CTA: min-height 44px, видимый `:focus-visible`.  
+- Декор SVG: `aria-hidden`.  
+- Переключатели роли/состояния: `aria-pressed`.
+
 ## Live сверка (не redesign)
 
-- Shell: `CabinetPageShell` (`empty` / `error` props).  
-- Soft empty уже в виджетах (`workspace-soft-empty`).  
-- Этот пакет фиксирует **канон copy + иерархию** для Figma; web не меняем в этом PR.
+- Shell: `CabinetPageShell` (`empty` / `error`).  
+- Alert live: `.cabinet-alert`.  
+- Soft empty: `.workspace-soft-empty`.  
+- Preview **не** подменяет runtime.
 
 ## Чеклист Figma
 
-- [ ] Customer home/favorites/messages E+R @1440+390  
-- [ ] Performer home/requests/calendar E+R @1440+390  
-- [ ] Venue home/halls/requests E+R @1440+390  
+- [ ] Customer home/favorites E+R+L+F @1440+390  
+- [ ] Performer home checklist + requests/calendar E+R @1440+390  
+- [ ] Venue home/halls/calendar E+R @1440+390  
+- [ ] Reduced-motion кадр рамки без пульса  
