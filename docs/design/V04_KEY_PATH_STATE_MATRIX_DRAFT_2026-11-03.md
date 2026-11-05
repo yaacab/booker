@@ -25,12 +25,14 @@
 |---|---|---|---|---|---|---|
 | 01 Home | ✓ | ✓ | ○ | ✓ | ✓ reflow | Loading/Empty/Error home |
 | 02 Choice / search space | ✓ Date-District | ✓ | ✓ 1440+390 | ○ | ✓ stress | keyboard/scroll-snap interactive; opaque button fallback |
-| 03 Event Studio step 1 | ✓ | ✓ | ○ | storyboard only | ○ | steps 2–5 + L/E/R/F |
+| 03 Event Studio step 1 | ✓ | ✓ | ○ | storyboard only | ○ | Figma L/E/R/F step 1 |
+| 03b Event Studio steps 2–5 | wireframe DRAFT | wireframe DRAFT | wireframe D/L/E/R/Conflict | wireframe M | ○ | pixel Figma + node ids |
+| 09 Control Room cards | wireframe DRAFT | wireframe DRAFT | wireframe D/E/R | wireframe M | ○ | pixel Figma |
 | Profile artist/venue | ○ | ○ | ○ | ○ | ○ | полный набор состояний |
-| Request → Deal Room | ○ | ○ | ○ | ○ | ○ | overview/chat/terms + hold expiry |
+| Request → Deal Room | wireframe Home/Deal DRAFT | wireframe | hold/forbidden DRAFT | ○ | ○ | overview/chat + hold expiry pixel |
 | Cabinets customer/performer/venue | ○ | ○ | ○ | ○ | ○ | home + requests + empty/error |
 
-Итого: закрыта **часть 3 семейств** из ключевых путей. V04 **не DONE**.
+Итого: wireframe DRAFT расширен (Home/Deal + Event Studio 2–5 + Control Room). Pixel Figma pack не закрыт. V04 **не DONE**.
 
 ## Целевой минимальный пакет для «макеты ключевых путей завершены»
 
@@ -60,7 +62,8 @@
 
 ## Следующий автономный шаг (дизайн-проект)
 
-1. Дорисовать Home L/E/R @1440+390 в Figma (без публикации в `apps/web`).  
-2. Event Studio steps 2–5 wireframe-level в том же файле.  
-3. Deal Room hold-expired + Forbidden guest.  
-Агент без Figma API владельца фиксирует матрицу и gaps; pixel-кадры — в файле Figma владельца.
+1. Перенести wireframe DRAFT → pixel Figma: Home L/E/R, Event Studio 2–5, Control Room cards, Deal hold/forbidden.  
+2. Artist + Venue profile D/L/E/R/F @1440+390.  
+3. Cabinet performer requests D/E/R @1440+390.  
+Агент без Figma API владельца фиксирует матрицу и gaps; pixel-кадры — в файле Figma владельца.  
+Wireframe docs: `V04_WIREFRAME_HOME_DEAL_STATES_*`, `V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_*`.
