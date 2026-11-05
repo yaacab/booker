@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "updated_at": "2026-11-03",
-  "updated_at_iso": "2026-11-03T12:56:54Z",
+  "updated_at": "2026-11-05",
+  "updated_at_iso": "2026-11-05T08:29:39Z",
   "formula": "readiness = DONE / (DONE+TODO+IN PROGRESS+BLOCKED+DEFERRED) * 100; CANCELLED excluded",
   "historical_weighted_scores": {
     "as_of": "2026-10-02",
@@ -471,10 +471,13 @@
         "local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS",
         "local playwright 2026-11-05: faq/for-artists/support@390 PASS",
         "local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS",
-        "local playwright 2026-11-05d: assemble/briefs/investor@390 PASS"
+        "local playwright 2026-11-05d: assemble/briefs/investor@390 PASS",
+        "local playwright 2026-11-05e: performer services/calendar/messages @390 PASS",
+        "local playwright 2026-11-05f: venue halls/requests/calendar + customer messages/favorites @390 PASS",
+        "local playwright 2026-11-05f: login recover + control room event @390 PASS"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: + assemble/briefs/investor venues @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
+      "notes": "IN PROGRESS: + performer/venue/customer shells + recover + control room @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -1665,10 +1668,14 @@
       "status": "IN PROGRESS",
       "evidence": [
         "docs/design/ARTIST_VNEXT_STORYBOARD_DRAFT_2026-11-03.md",
-        "g0 plan D01 DRAFT"
+        "g0 plan D01 DRAFT",
+        "docs/design/ART07_ROUTE_AUDIT_DRAFT_2026-11-05.md",
+        "docs/design/previews/artist-vnext-storyboards.html",
+        "docs/design/previews/index.html (ART-07 card)",
+        "OWN-DESIGN-ACK 2026-11-05 DRAFT IA"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS DRAFT frames 1–10 + V04 profile/cabinet previews. Перенос web после V04 pixel/V05.",
+      "notes": "IN PROGRESS: agent DRAFT pack COMPLETE (10 SB + route audit + static preview index). НЕ DONE — pixel Figma + web transfer V05/D03.",
       "source": "G0/G1",
       "updated_at": "2026-11-05"
     },

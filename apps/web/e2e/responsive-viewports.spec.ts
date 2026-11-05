@@ -6,6 +6,7 @@ import {
   fetchMe,
   injectSession,
   login,
+  seedCrossRoleEvent,
   seedNegotiation,
   seedRequestAwaitingOffer,
 } from "./helpers";
@@ -351,6 +352,92 @@ test.describe("V07 responsive viewports (local)", () => {
     await injectSession(page, session.token, org.id);
     await page.goto("/events/new");
     await expect(page.locator("main, form, h1").first()).toBeVisible({ timeout: 20_000 });
+    await expectNoHorizontalOverflow(page);
+  });
+
+  for (const route of [
+    { path: "/cabinet/performer/services", name: "performer services", heading: /услуги артиста/i },
+    { path: "/cabinet/performer/calendar", name: "performer calendar", heading: /календарь артиста/i },
+    { path: "/cabinet/performer/messages", name: "performer messages", heading: /сообщения/i },
+  ] as const) {
+    test(`${route.name}: landmark + no overflow @390`, async ({ page, request }) => {
+      test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      const session = await login(request, DEMO_ACCOUNTS.artist);
+      const me = await fetchMe(request, session.token);
+      const org = me.organizations.find((o) => o.kind === "artist");
+      if (!org) throw new Error("Demo artist org missing — run make seed");
+      await injectSession(page, session.token, org.id);
+      await page.goto(route.path);
+      await expect(page.getByRole("heading", { level: 1, name: route.heading })).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.locator("main")).toBeVisible();
+      await page.keyboard.press("Tab");
+      await expect(page.locator(":focus")).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+    });
+  }
+
+  for (const route of [
+    { path: "/cabinet/venue/halls", name: "venue halls", heading: /залы площадки/i },
+    { path: "/cabinet/venue/requests", name: "venue requests", heading: /заявки площадке/i },
+    { path: "/cabinet/venue/calendar", name: "venue calendar", heading: /календарь площадки/i },
+    { path: "/cabinet/customer/messages", name: "customer messages", heading: /сообщения/i },
+    { path: "/cabinet/customer/favorites", name: "customer favorites", heading: /избран/i },
+  ] as const) {
+    test(`${route.name}: landmark + no overflow @390`, async ({ page, request }) => {
+      test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      const kind = route.path.includes("/venue/")
+        ? ("venue" as const)
+        : ("customer" as const);
+      const account = kind === "venue" ? DEMO_ACCOUNTS.venue : DEMO_ACCOUNTS.customer;
+      const session = await login(request, account);
+      const me = await fetchMe(request, session.token);
+      const org = me.organizations.find((o) => o.kind === kind);
+      if (!org) throw new Error(`Demo ${kind} org missing — run make seed`);
+      await injectSession(page, session.token, org.id);
+      await page.goto(route.path);
+      await expect(page.getByRole("heading", { level: 1, name: route.heading })).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.locator("main")).toBeVisible();
+      const loading = page.getByRole("status", { name: /загрузка/i });
+      if (await loading.count()) {
+        await expect(loading).toBeHidden({ timeout: 30_000 });
+      }
+      await expect(page.getByRole("link", { name: /^войти$/i })).toHaveCount(0);
+      await expectNoHorizontalOverflow(page);
+    });
+  }
+
+  test("login recover shell no overflow @390", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/login");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+    const recover = page.getByRole("button", { name: "Забыли пароль?" });
+    await recover.scrollIntoViewIfNeeded();
+    await recover.click({ force: true });
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(/вернём доступ|кабинет/i);
+    await expect(page.getByText(/восстановление доступа/i).first()).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("control room event: landmark + no overflow @390", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const ctx = await seedCrossRoleEvent(request);
+    await injectSession(page, ctx.customer.token, ctx.customer.orgId);
+    await page.goto(`/events/${ctx.eventId}`);
+    await expect(page.getByRole("heading", { level: 1, name: ctx.eventTitle })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.locator("main")).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 });

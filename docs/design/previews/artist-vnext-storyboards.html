@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — ART-07 Artist vNext storyboards (DRAFT)</title>
+  <link rel="stylesheet" href="_tokens.css" />
+  <style>
+    .board { display: grid; gap: 28px; margin-top: 8px; }
+    .sb { margin: 0; }
+    .unread { width: 8px; height: 8px; border-radius: 50%; background: var(--terra); display: inline-block; margin-right: 6px; }
+    .sticky {
+      margin-top: auto; padding: 12px 16px; border-top: 1px solid var(--line);
+      background: #fffdf8; display: flex; gap: 8px;
+    }
+    .facts { display: grid; gap: 6px; margin: 12px 0; }
+    .facts span { font-size: 13px; color: var(--ink-2); }
+    .slot { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; background: var(--paper-2); }
+    .field { margin: 12px 0; }
+    .field label { display: block; font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+    .field input, .field select {
+      width: 100%; min-height: 44px; border-radius: 10px; border: 1px solid var(--line);
+      padding: 0 12px; font: 16px var(--sans); background: #fff;
+    }
+    .hint { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+    .draft-banner {
+      background: #f3e6d4; color: #7a4e1f; padding: 10px 12px; border-radius: 10px;
+      font-size: 13px; margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">DRAFT · ART-07 · frames 1 / 4 / 6 / 9</div>
+    <h1>Artist vNext — сториборды (DRAFT)</h1>
+    <p class="lead">Приоритетные кадры кабинета исполнителя и публичного профиля. Не runtime `apps/web`. Pixel Figma и перенос — после V04 pixel / V05.</p>
+
+    <div class="board">
+      <section class="sb">
+        <p class="label">1 · Первый визит · /cabinet/performer · @390</p>
+        <div class="pair">
+          <div>
+            <p class="label">Empty checklist</p>
+            <div class="device phone">
+              <div class="top"><span class="brand">Букер</span><span class="pill">исполнитель</span></div>
+              <div class="nav"><span aria-current="page">Обзор</span><span>Заявки</span><span>Календарь</span><span>Услуги</span></div>
+              <div class="body">
+                <span class="chip e">Empty</span>
+                <h2>Кабинет артиста</h2>
+                <p class="muted">Три шага до первой заявки.</p>
+                <div class="card">
+                  <article class="list"><strong>1. Витрина</strong><p class="muted" style="margin:4px 0 0">услуга + медиа с правами</p></article>
+                  <article class="list"><strong>2. Слот</strong><p class="muted" style="margin:4px 0 0">хотя бы одна свободная дата</p></article>
+                  <article class="list"><strong>3. Готовность</strong><p class="muted" style="margin:4px 0 0">отвечать на входящие</p></article>
+                  <div class="actions" style="margin-top:14px"><a class="cta" href="#">Заполнить витрину</a></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p class="label">После первого слота · draft banner</p>
+            <div class="device phone">
+              <div class="top"><span class="brand">Букер</span><span class="pill">исполнитель</span></div>
+              <div class="nav"><span aria-current="page">Обзор</span><span>Заявки</span><span>Календарь</span><span>Услуги</span></div>
+              <div class="body">
+                <span class="chip w">Draft</span>
+                <div class="draft-banner">Черновик — не в публичном каталоге, пока не пройден publish gate.</div>
+                <h2>Кабинет артиста</h2>
+                <div class="card">
+                  <p class="muted" style="margin:0">Свободный слот: 12 ноя, 19:00–23:00</p>
+                  <div class="actions" style="margin-top:14px">
+                    <a class="cta" href="#">К публикации</a>
+                    <a class="cta gold" href="#">Открыть календарь</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sb">
+        <p class="label">4 · Входящая заявка · /cabinet/performer/requests</p>
+        <div class="pair">
+          <div>
+            <p class="label">Список «новые»</p>
+            <div class="device phone">
+              <div class="top"><span class="brand">Букер</span><span class="pill">заявки</span></div>
+              <div class="nav"><span>Обзор</span><span aria-current="page">Заявки</span><span>Календарь</span><span>Услуги</span></div>
+              <div class="body">
+                <span class="chip e">List</span>
+                <h2>Заявки артисту</h2>
+                <div class="list">
+                  <article><span class="unread" aria-hidden="true"></span><strong>Корпоратив · Loft</strong><p class="muted" style="margin:4px 0 0">15 ноя · бюджет до 120 000 ₽</p></article>
+                  <article><strong>Свадьба · зал А</strong><p class="muted" style="margin:4px 0 0">22 ноя · бюджет до 90 000 ₽</p></article>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p class="label">Detail → сумма → Deal Room</p>
+            <div class="device phone">
+              <div class="top"><span class="brand">Букер</span><span class="pill">заявка</span></div>
+              <div class="body">
+                <span class="chip l">Offer</span>
+                <h2>Корпоратив · Loft</h2>
+                <p class="muted">15 ноября · 4 часа · Москва</p>
+                <div class="field">
+                  <label for="amt">Сумма вашего предложения, ₽</label>
+                  <input id="amt" value="91000" />
+                  <p class="hint">Комиссию посчитает сервер — не вводите вручную.</p>
+                </div>
+                <div class="actions">
+                  <a class="cta" href="#">Создать предложение</a>
+                  <a class="cta gold" href="#">Отклонить</a>
+                </div>
+                <div class="alert" style="margin-top:14px" hidden id="err-demo">
+                  <strong>Не удалось создать предложение</strong>
+                  Сумма сохранена — повторите отправку.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sb">
+        <p class="label">6 · Публичный профиль visitor · /artists/{id} · @390</p>
+        <div class="pair">
+          <div>
+            <p class="label">Gallery + CTA</p>
+            <div class="device phone">
+              <div class="top"><span class="brand">Букер</span><span class="pill">профиль</span></div>
+              <div class="body" style="display:flex;flex-direction:column;flex:1">
+                <span class="chip e">Visitor</span>
+                <div class="bar h64" style="margin-bottom:12px" aria-hidden="true"></div>
+                <h2>DJ Север</h2>
+                <div class="facts">
+                  <span>Город: Москва</span>
+                  <span>Категория: DJ</span>
+                  <span>От 80 000 ₽ · цена с сервера</span>
+                </div>
+                <div class="slot"><span>12 ноя, вечер</span><span class="pill">свободно</span></div>
+                <div class="slot"><span>13 ноя, вечер</span><span class="tag">занято</span></div>
+                <div class="sticky">
+                  <a class="cta" href="#" style="flex:1">Добавить в событие</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p class="label">Signed-out · login?next=</p>
+            <div class="device phone">
+              <div class="top"><span class="brand">Букер</span><span class="pill">гость</span></div>
+              <div class="body">
+                <span class="chip w">Auth gate</span>
+                <h2>DJ Север</h2>
+                <p class="muted">Чтобы добавить артиста в событие, войдите в аккаунт заказчика.</p>
+                <div class="actions">
+                  <a class="cta" href="#">Войти</a>
+                  <a class="cta gold" href="#">Смотреть слоты</a>
+                </div>
+                <p class="hint">CTA «занято» не притворяется бронью.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sb">
+        <p class="label">9 · Мобильный ответ · keyboard / reduced-motion · @390</p>
+        <div class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">focus</span></div>
+          <div class="nav"><span>Обзор</span><span aria-current="page">Заявки</span><span>Календарь</span><span>Услуги</span></div>
+          <div class="body">
+            <span class="chip f">Keyboard</span>
+            <h2>Заявки артисту</h2>
+            <p class="muted">Tab → заявка → сумма → «Создать предложение». Без анимации панелей при reduced-motion.</p>
+            <div class="field">
+              <label for="amt2">Сумма вашего предложения, ₽</label>
+              <input id="amt2" value="90000" style="outline:2px solid var(--gold); outline-offset:2px" />
+            </div>
+            <div class="actions"><a class="cta" href="#" style="outline:2px solid var(--gold); outline-offset:2px">Создать предложение</a></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sb">
+        <p class="label">Appendix · 2 / 3 / 5 / 7 / 8 / 10 (сжато)</p>
+        <div class="grid3">
+          <div class="card">
+            <strong>2 Витрина</strong>
+            <p class="muted">services empty → add; media rights до publish; preview URL с watermark.</p>
+          </div>
+          <div class="card">
+            <strong>3 Календарь</strong>
+            <p class="muted">@1440 grid / @390 list; free / held→сделка / conflict inline.</p>
+          </div>
+          <div class="card">
+            <strong>5 Deal supply</strong>
+            <p class="muted">terms version → ack → hold; новая цена = новая версия.</p>
+          </div>
+          <div class="card">
+            <strong>7 Draft/Publish</strong>
+            <p class="muted">banner + disabled CTA с причиной API; откат только явным действием.</p>
+          </div>
+          <div class="card">
+            <strong>8 Messages</strong>
+            <p class="muted">тот же thread после offer; attachment fail → retry текста.</p>
+          </div>
+          <div class="card">
+            <strong>10 Error/Decline</strong>
+            <p class="muted">5xx toast + сумма; decline reason обязателен; без чужого PII.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="note">Источник: ARTIST_VNEXT_STORYBOARD_DRAFT + ART07_ROUTE_AUDIT_DRAFT. Runtime не менялся.</p>
+  </div>
+</body>
+</html>
