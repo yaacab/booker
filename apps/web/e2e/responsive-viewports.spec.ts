@@ -414,6 +414,40 @@ test.describe("V07 responsive viewports (local)", () => {
     });
   }
 
+  test("motion slot-frame preview no overflow @390", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/design-previews/motion-slot-frame-v2.html");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: /02 · Место/i }).click();
+    await expect(page.getByRole("button", { name: /02 · Место/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("customer saved-searches: landmark + no overflow @390", async ({ page, request }) => {
+    test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const session = await login(request, DEMO_ACCOUNTS.customer);
+    const me = await fetchMe(request, session.token);
+    const org = me.organizations.find((o) => o.kind === "customer");
+    if (!org) throw new Error("Demo customer org missing — run make seed");
+    await injectSession(page, session.token, org.id);
+    await page.goto("/cabinet/customer/saved-searches");
+    await expect(page.getByRole("heading", { level: 1, name: /сохранённ/i })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator("main")).toBeVisible();
+    const loading = page.getByRole("status", { name: /загрузка/i });
+    if (await loading.count()) {
+      await expect(loading).toBeHidden({ timeout: 30_000 });
+    }
+    await expectNoHorizontalOverflow(page);
+  });
+
   test("login recover shell no overflow @390", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });

@@ -24,8 +24,8 @@
 
 | ID | Нужно |
 |---|---|
-| `OWN-DESIGN-ACK` | ✅ DONE 05.11.2026 (DRAFT pack); V04 pixel Figma ещё открыт |
-| `OWN-MOTION-ACK` | Утвердить конкретный motion «Рамка слота» — ещё TODO |
+| `OWN-DESIGN-ACK` | ✅ DONE 05.11.2026 (DRAFT pack); V04 pixel → `docs/design/V04_FIGMA_HANDOFF_2026-11-05.md` |
+| `OWN-MOTION-ACK` | Ещё TODO — packet готов: `OWN_MOTION_ACK_PACKET_2026-11-05.md` + `/design-previews/motion-slot-frame-v2.html` |
 
 ## Право / деньги / пилот (не трогаем кодом)
 

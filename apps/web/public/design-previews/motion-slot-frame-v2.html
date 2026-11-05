@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — Рамка слота v2 (UNAPPROVED)</title>
+  <style>
+    :root {
+      --bg: #0b100f;
+      --ink: #f4efe6;
+      --ink-2: #b7b0a4;
+      --line: rgba(255, 255, 255, 0.55);
+      --glass: rgba(20, 28, 26, 0.72);
+      --serif: "Cormorant Garamond", Georgia, serif;
+      --sans: "Manrope", "Segoe UI", sans-serif;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+      --dur: 480ms;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--sans); overflow-x: clip; }
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px 16px 40px;
+      background:
+        radial-gradient(900px 480px at 20% -10%, rgba(184, 149, 90, 0.18), transparent 55%),
+        radial-gradient(700px 420px at 90% 10%, rgba(61, 122, 92, 0.14), transparent 50%),
+        var(--bg);
+    }
+    .stage { width: min(960px, 100%); max-width: 100%; overflow-x: clip; }
+    .badge {
+      display: inline-flex; gap: 8px; align-items: center;
+      border: 1px solid rgba(255,255,255,.28); border-radius: 999px;
+      padding: 6px 12px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+      color: #dcc394; margin-bottom: 14px;
+    }
+    h1 {
+      font-family: var(--serif); font-weight: 600; letter-spacing: -.03em;
+      font-size: clamp(34px, 6vw, 58px); line-height: 1.05; margin: 0 0 10px; max-width: 14ch;
+    }
+    .lead { color: var(--ink-2); max-width: 42ch; margin: 0 0 22px; }
+    .panel {
+      position: relative; border: 1px solid rgba(255,255,255,.18);
+      border-radius: 24px; padding: 18px; background: var(--glass);
+      backdrop-filter: blur(16px);
+    }
+    @media (max-width: 600px) {
+      .panel { backdrop-filter: none; background: #121917; }
+    }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .tabs button {
+      appearance: none; min-height: 44px; padding: 0 14px; border-radius: 999px;
+      border: 1px solid var(--line); background: transparent; color: var(--ink);
+      font: 500 14px/1 var(--sans); cursor: pointer;
+    }
+    .tabs button:focus-visible { outline: 2px solid #dcc394; outline-offset: 3px; }
+    .tabs button[aria-pressed="true"] { background: rgba(255,255,255,.1); }
+    .frame-wrap { position: relative; min-height: 220px; overflow: hidden; padding: 8px; }
+    .cards { display: grid; gap: 12px; grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+    .card {
+      border: 1px solid rgba(255,255,255,.12); border-radius: 18px; padding: 18px;
+      background: rgba(255,255,255,.04); transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
+      min-height: 150px; max-width: 100%;
+    }
+    .card .k { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 8px; }
+    .card h2 { font-family: var(--serif); font-size: 28px; margin: 0 0 8px; }
+    .card p { margin: 0; color: var(--ink-2); font-size: 14px; }
+    .card.is-active { transform: translateY(-6px); }
+    @media (max-width: 719px) {
+      .card.is-active { transform: none; box-shadow: 0 0 0 1.5px rgba(255,255,255,.85), 0 0 0 8px rgba(255,255,255,.06); }
+      .frame { display: none; }
+    }
+    .frame {
+      pointer-events: none; position: absolute; border: 1.5px solid rgba(255,255,255,.85);
+      border-radius: 20px; box-shadow: 0 0 0 8px rgba(255,255,255,.06);
+      transition: width var(--dur) var(--ease), height var(--dur) var(--ease), left var(--dur) var(--ease), top var(--dur) var(--ease);
+    }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; align-items: center; }
+    .cta {
+      display: inline-flex; align-items: center; justify-content: center; min-height: 48px;
+      padding: 0 18px; border-radius: 14px; background: var(--ink); color: var(--bg);
+      font-weight: 650; text-decoration: none; border: 0;
+    }
+    .note { margin-top: 16px; color: var(--ink-2); font-size: 13px; max-width: 62ch; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    @media (prefers-reduced-motion: reduce) {
+      .card, .frame { transition: none !important; }
+      .card.is-active { transform: none; }
+    }
+    @media (prefers-reduced-transparency: reduce) {
+      .panel { background: #121917; backdrop-filter: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="badge">UNAPPROVED · Рамка слота v2 · не apps/web</div>
+    <h1>Люди. Место. Дата.</h1>
+    <p class="lead">Рамка выделяет текущий шаг выбора — не бронь и не оплату. CTA виден с первого кадра.</p>
+
+    <div class="panel">
+      <div class="tabs" role="group" aria-label="Шаги рамки слота">
+        <button type="button" data-step="0" aria-pressed="true">01 · Люди</button>
+        <button type="button" data-step="1" aria-pressed="false">02 · Место</button>
+        <button type="button" data-step="2" aria-pressed="false">03 · Дата</button>
+      </div>
+
+      <div class="frame-wrap" id="frameWrap">
+        <div class="cards" id="cards">
+          <article class="card is-active" data-card="0">
+            <p class="k">Люди</p>
+            <h2>Состав</h2>
+            <p>Кто нужен на событие — без чужих фото и чужих цен.</p>
+          </article>
+          <article class="card" data-card="1">
+            <p class="k">Место</p>
+            <h2>Площадка</h2>
+            <p>Где проходит вечер — рамка, не каталог и не карта.</p>
+          </article>
+          <article class="card" data-card="2">
+            <p class="k">Дата</p>
+            <h2>Слот</h2>
+            <p>Когда собираете событие — без обещания hold.</p>
+          </article>
+        </div>
+        <div class="frame" id="frame" aria-hidden="true"></div>
+      </div>
+
+      <div class="cta-row">
+        <a class="cta" href="#">Начать с даты</a>
+        <span class="note" style="margin:0">Preview only · 480&nbsp;ms · reduced-motion уважается</span>
+      </div>
+      <p class="sr" aria-live="polite" id="live"></p>
+    </div>
+
+    <p class="note">Источник решения: docs/design/MOTION_PREVIEW_SLOT_FRAME_V2_UNAPPROVED.md. Для `OWN-MOTION-ACK` — пакет docs/ops/OWN_MOTION_ACK_PACKET_2026-11-05.md. Runtime продукт не менялся.</p>
+  </div>
+  <script>
+    (function () {
+      const buttons = Array.from(document.querySelectorAll(".tabs button"));
+      const cards = Array.from(document.querySelectorAll(".card"));
+      const frame = document.getElementById("frame");
+      const wrap = document.getElementById("frameWrap");
+      const live = document.getElementById("live");
+      const labels = ["Люди", "Место", "Дата"];
+      let step = 0;
+
+      function placeFrame(i) {
+        const card = cards[i];
+        const wr = wrap.getBoundingClientRect();
+        const cr = card.getBoundingClientRect();
+        frame.style.left = (cr.left - wr.left - 6) + "px";
+        frame.style.top = (cr.top - wr.top - 6) + "px";
+        frame.style.width = (cr.width + 12) + "px";
+        frame.style.height = (cr.height + 12) + "px";
+      }
+
+      function setStep(i) {
+        step = i;
+        buttons.forEach((b, idx) => b.setAttribute("aria-pressed", idx === i ? "true" : "false"));
+        cards.forEach((c, idx) => c.classList.toggle("is-active", idx === i));
+        placeFrame(i);
+        live.textContent = "Выбран шаг: " + labels[i];
+      }
+
+      buttons.forEach((b) => b.addEventListener("click", () => setStep(Number(b.dataset.step))));
+      window.addEventListener("resize", () => placeFrame(step));
+      setStep(0);
+    })();
+  </script>
+</body>
+</html>
