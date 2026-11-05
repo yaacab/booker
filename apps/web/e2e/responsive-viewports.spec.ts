@@ -322,6 +322,20 @@ test.describe("V07 responsive viewports (local)", () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  for (const route of [
+    { path: "/faq", name: "faq" },
+    { path: "/for-artists", name: "for-artists" },
+    { path: "/support", name: "support public" },
+  ] as const) {
+    test(`${route.name} no overflow @390`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.goto(route.path);
+      await expect(page.locator("main, h1").first()).toBeVisible({ timeout: 20_000 });
+      await expectNoHorizontalOverflow(page);
+    });
+  }
+
   test("event studio new: no overflow @320", async ({ page, request }) => {
     test.skip(!(await apiHealth(request)), `API недоступен (${API_BASE})`);
     await page.setViewportSize({ width: 320, height: 568 });

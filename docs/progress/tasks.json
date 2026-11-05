@@ -456,10 +456,11 @@
         "docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390)",
         "fix(support) 9010ef1 busyRef + durable reply assert",
         "docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md",
-        "local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS"
+        "local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS",
+        "local playwright 2026-11-05: faq/for-artists/support@390 PASS"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: artist/compare/legal overflow + login keyboard PASS локально. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
+      "notes": "IN PROGRESS: artist/compare/legal/faq/for-artists/support overflow PASS локально. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -1646,9 +1647,9 @@
         "g0 plan D01 DRAFT"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS DRAFT: 10 сторибордов описаны. CONTRACT не меняем. Утверждение/перенос — после OWN-DESIGN-ACK.",
+      "notes": "IN PROGRESS DRAFT: 10 сторибордов + frame lists 1–10. CONTRACT не меняем. Утверждение/перенос — после OWN-DESIGN-ACK.",
       "source": "G0/G1",
-      "updated_at": "2026-11-03"
+      "updated_at": "2026-11-05"
     },
     {
       "id": "VEN-01",

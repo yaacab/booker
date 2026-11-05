@@ -59,6 +59,39 @@
 2. Выбор заявки с клавиатуры → сумма → «Создать предложение».  
 3. Reduced-motion: без анимации панелей.
 
+### 2. Заполнение витрины
+1. `/cabinet/performer/services` — список услуг empty → add.  
+2. Media upload: прогресс + «права подтверждены» checkbox до publish.  
+3. Preview public URL (draft watermark).  
+4. Fail gate: «Нельзя опубликовать: нет слота / нет медиа-прав» — серверный eligibility.
+
+### 3. Календарь слотов
+1. `/cabinet/performer/calendar` @1440 grid / @390 day list.  
+2. Free slot create → chip free.  
+3. Held от заказчика → chip held, CTA «открыть сделку», не «подтвердить оплату».  
+4. Conflict: overlapping create → inline error, слот не создаётся.
+
+### 5. Deal Room supply
+1. `/deals/{id}` сторона исполнителя: terms version banner.  
+2. Ack текущей версии → wait hold.  
+3. Новая цена заказчика → «новая версия, прежний ack снят».  
+4. Forbidden чужой org → 403 copy, без данных чужой сделки.
+
+### 7. Черновик vs опубликовано
+1. Draft banner на кабинете и на public preview.  
+2. Publish CTA disabled с причиной из API.  
+3. После publish — снять draft banner; откат в draft только явным действием.
+
+### 8. Сообщения до оффера
+1. `/cabinet/performer/messages` — thread заявки.  
+2. После offer — тот же thread id, не новый чат.  
+3. Attachment fail → retry без потери текста.
+
+### 10. Ошибка и отказ
+1. API 5xx на create offer → toast + сумма сохранена.  
+2. Decline: причина обязательна (короткий select + optional text).  
+3. Нет PII чужих org в error body на UI.
+
 ## Следующий шаг
 
-Сториборды 1/4/6/9 — приоритет для Figma DRAFT (совпадают с V04 key-path gaps). Не менять CONTRACT.
+Приоритет Figma DRAFT: 1/4/6/9, затем 2/3/5. Кадры 7/8/10 — appendix pack. Не менять CONTRACT.
