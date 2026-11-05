@@ -399,10 +399,11 @@
         "docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md",
         "docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md",
         "docs/design/V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_DRAFT_2026-11-03.md",
-        "docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md"
+        "docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md",
+        "docs/design/V04_WIREFRAME_PROFILE_ARTIST_VENUE_DRAFT_2026-11-05.md"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: DRAFT + OWN-DESIGN-ACK есть. НЕ DONE без полного pixel Figma pack; web не меняем.",
+      "notes": "IN PROGRESS: DRAFT + ACK + profiles wireframe. НЕ DONE без pixel Figma pack; web не меняем.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -458,10 +459,11 @@
         "docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md",
         "local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS",
         "local playwright 2026-11-05: faq/for-artists/support@390 PASS",
-        "local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS"
+        "local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS",
+        "local playwright 2026-11-05d: assemble/briefs/investor@390 PASS"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: artist/compare/legal/faq/for-artists/support/privacy overflow PASS локально. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
+      "notes": "IN PROGRESS: + assemble/briefs/investor venues @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },

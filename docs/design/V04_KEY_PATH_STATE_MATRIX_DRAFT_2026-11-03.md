@@ -28,7 +28,7 @@
 | 03 Event Studio step 1 | ✓ | ✓ | ○ | storyboard only | ○ | Figma L/E/R/F step 1 |
 | 03b Event Studio steps 2–5 | wireframe DRAFT | wireframe DRAFT | wireframe D/L/E/R/Conflict | wireframe M | ○ | pixel Figma + node ids |
 | 09 Control Room cards | wireframe DRAFT | wireframe DRAFT | wireframe D/E/R | wireframe M | ○ | pixel Figma |
-| Profile artist/venue | ○ | ○ | ○ | ○ | ○ | полный набор состояний |
+| Profile artist/venue | wireframe DRAFT | wireframe DRAFT | wireframe D/L/E/R/F | wireframe M | ○ | pixel Figma; см. `V04_WIREFRAME_PROFILE_ARTIST_VENUE_*` |
 | Request → Deal Room | wireframe Home/Deal DRAFT | wireframe | hold/forbidden DRAFT | ○ | ○ | overview/chat + hold expiry pixel |
 | Cabinets customer/performer/venue | ○ | ○ | ○ | ○ | ○ | home + requests + empty/error |
 
