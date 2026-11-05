@@ -1,6 +1,6 @@
 # BUKERGO — PROJECT CHECKLIST
 
-Автогенерация: `2026-11-05 07:57 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
+Автогенерация: `2026-11-05 08:29 UTC` из [`docs/progress/tasks.json`](progress/tasks.json).
 Не редактировать вручную — меняйте `tasks.json` и запускайте `python3 scripts/progress_recalc.py`.
 
 ## BUKERGO — PROJECT PROGRESS
@@ -108,8 +108,8 @@
 - ✅ **ART-05** [MVP, FULL] Артист: services PATCH/DELETE, sync-tariff, multi-artist selector  <br/>status=`DONE`; evidence: 1944b37; test_service_crud_v2.py
 - ✅ **ART-06** [MVP, FULL] Артист: запрос верификации из кабинета (supply→admin)  <br/>status=`DONE`; evidence: apps/api/booker_api/routers/catalog.py POST /artists/{id}/verification-request; apps/api/tests/test_artist_verification_request.py; apps/web/components/cabinet/performer/widgets/PortfolioRiderWidget.tsx; docs/ops/evidence/2026-11-02-art06-verification-request.md
   - notes: Supply request → Verification queued; admin decide closes queue; cabinet CTA
-- 🔄 **ART-07** [FULL, DESIGN] Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)  <br/>status=`IN PROGRESS`; evidence: docs/design/ARTIST_VNEXT_STORYBOARD_DRAFT_2026-11-03.md; g0 plan D01 DRAFT
-  - notes: IN PROGRESS DRAFT frames 1–10 + V04 profile/cabinet previews. Перенос web после V04 pixel/V05.
+- 🔄 **ART-07** [FULL, DESIGN] Artist vNext IA / 10 сторибордов — утверждение и перенос (без Identity redesign)  <br/>status=`IN PROGRESS`; evidence: docs/design/ARTIST_VNEXT_STORYBOARD_DRAFT_2026-11-03.md; g0 plan D01 DRAFT; docs/design/ART07_ROUTE_AUDIT_DRAFT_2026-11-05.md; docs/design/previews/artist-vnext-storyboards.html; docs/design/previews/index.html (ART-07 card); OWN-DESIGN-ACK 2026-11-05 DRAFT IA
+  - notes: IN PROGRESS: agent DRAFT pack COMPLETE (10 SB + route audit + static preview index). НЕ DONE — pixel Figma + web transfer V05/D03.
 
 ### 5. Кабинет площадки
 
@@ -226,8 +226,8 @@
   - blocked_by: V04
 - ⛔ **V06** [DESIGN, FULL] Motion утверждён, права на ассеты проверены и интеграция выполнена  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: OWN-MOTION-ACK
-- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts (viewports + unified keyboard + login + artist/compare/legal); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json; docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390); fix(support) 9010ef1 busyRef + durable reply assert; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md; local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS; local playwright 2026-11-05: faq/for-artists/support@390 PASS; local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS; local playwright 2026-11-05d: assemble/briefs/investor@390 PASS
-  - notes: IN PROGRESS: + assemble/briefs/investor venues @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.
+- 🔄 **V07** [DESIGN, FULL] Web принят по адаптивности, доступности и скорости  <br/>status=`IN PROGRESS`; evidence: apps/web/e2e/cabinet-a11y.spec.ts (390 + keyboard/reduced-motion); apps/web/e2e/responsive-viewports.spec.ts (viewports + unified keyboard + login + artist/compare/legal); docs/ops/V07_LOCAL_PERF_SMOKE_2026-11-03.json; docs/ops/V07_LIGHTHOUSE_LOCAL_SUMMARY_2026-11-03.json (search perf95/a11y100 @390); fix(support) 9010ef1 busyRef + durable reply assert; docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md; local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS; local playwright 2026-11-05: faq/for-artists/support@390 PASS; local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS; local playwright 2026-11-05d: assemble/briefs/investor@390 PASS; local playwright 2026-11-05e: performer services/calendar/messages @390 PASS; local playwright 2026-11-05f: venue halls/requests/calendar + customer messages/favorites @390 PASS; local playwright 2026-11-05f: login recover + control room event @390 PASS
+  - notes: IN PROGRESS: + performer/venue/customer shells + recover + control room @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.
 - ⛔ **V08** [DESIGN, FULL] Визуальный и функциональный путь подтверждён browser E2E на staging  <br/>status=`BLOCKED`; evidence: —
   - blocked_by: REL-STAGING-HOST, V05
 

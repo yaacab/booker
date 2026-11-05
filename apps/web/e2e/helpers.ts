@@ -120,6 +120,7 @@ export async function register(
 }
 
 export type RequestOfferSeed = {
+  eventId: string;
   customerToken: string;
   customerOrgId: string;
   ownerToken: string;
@@ -200,6 +201,7 @@ export async function seedRequestAwaitingOffer(request: APIRequestContext): Prom
   });
 
   return {
+    eventId: event.id,
     customerToken: customer.token,
     customerOrgId: custOrg.id,
     ownerToken: artist.owner.token,

@@ -1,8 +1,8 @@
 # Artist vNext — 10 сторибордов (DRAFT)
 
-**Статус:** DRAFT. Не Identity redesign. Не смена `CONTRACT.md`. Не перенос в production UI.  
+**Статус:** agent DRAFT pack **закрыт 2026-11-05** (frames 1–10 + route audit + static preview). Не Identity redesign. Не смена `CONTRACT.md`. Не перенос в production UI.  
 **Граница:** публичный профиль артиста и кабинет исполнителя в рамках текущего канона публикации/слотов/оффера.  
-**Связь:** `ART-07` IN PROGRESS (draft only); утверждение/перенос — после `OWN-DESIGN-ACK`.
+**Связь:** `ART-07` IN PROGRESS до pixel/V05; `OWN-DESIGN-ACK` 05.11.2026 закрыл DRAFT IA; preview `previews/artist-vnext-storyboards.html`; audit `ART07_ROUTE_AUDIT_DRAFT_2026-11-05.md`.
 
 ## Зачем DRAFT сейчас
 
@@ -94,4 +94,4 @@
 
 ## Следующий шаг
 
-Приоритет Figma DRAFT: 1/4/6/9, затем 2/3/5. Кадры 7/8/10 — appendix pack. Не менять CONTRACT.
+Agent DRAFT закрыт. Приоритет владельца: pixel Figma 1/4/6/9 → 2/3/5 → 7/8/10; затем `V05`/`D03` перенос. Не менять CONTRACT. Runtime shell smoke — V07 performer services/calendar/messages.
