@@ -30,7 +30,7 @@
 | 09 Control Room cards | wireframe DRAFT | wireframe DRAFT | wireframe D/E/R | wireframe M | ○ | pixel Figma |
 | Profile artist/venue | wireframe DRAFT | wireframe DRAFT | wireframe D/L/E/R/F | wireframe M | ○ | pixel Figma; см. `V04_WIREFRAME_PROFILE_ARTIST_VENUE_*` |
 | Request → Deal Room | wireframe Home/Deal DRAFT | wireframe | hold/forbidden DRAFT | ○ | ○ | overview/chat + hold expiry pixel |
-| Cabinets customer/performer/venue | ○ | ○ | ○ | ○ | ○ | home + requests + empty/error |
+| Cabinets customer/performer/venue | wireframe DRAFT | wireframe DRAFT | wireframe E/R (+L/F/M) | wireframe M | ○ | pixel Figma; preview `docs/design/previews/cabinet-empty-error.html` |
 
 Итого: wireframe DRAFT расширен (Home/Deal + Event Studio 2–5 + Control Room). Pixel Figma pack не закрыт. V04 **не DONE**.
 

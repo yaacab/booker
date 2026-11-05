@@ -400,10 +400,12 @@
         "docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md",
         "docs/design/V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_DRAFT_2026-11-03.md",
         "docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md",
-        "docs/design/V04_WIREFRAME_PROFILE_ARTIST_VENUE_DRAFT_2026-11-05.md"
+        "docs/design/V04_WIREFRAME_PROFILE_ARTIST_VENUE_DRAFT_2026-11-05.md",
+        "docs/design/V04_WIREFRAME_CABINET_EMPTY_ERROR_DRAFT_2026-11-05.md",
+        "docs/design/previews/cabinet-empty-error.html"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: DRAFT + ACK + profiles wireframe. НЕ DONE без pixel Figma pack; web не меняем.",
+      "notes": "IN PROGRESS: + cabinet empty/error DRAFT + static preview. НЕ DONE без pixel Figma; web не меняем.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },

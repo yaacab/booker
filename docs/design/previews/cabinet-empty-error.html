@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — DRAFT: кабинет Empty / Error</title>
+  <style>
+    :root {
+      --ink: #1a2218;
+      --muted: #5c6b55;
+      --paper: #f3f0e8;
+      --panel: #fffdf8;
+      --line: #d5d0c4;
+      --accent: #2f5d3a;
+      --accent-2: #c45c26;
+      --danger: #8f2d2d;
+      --danger-bg: #f8e8e6;
+      --ok-bg: #e7efe6;
+      --shadow: 0 18px 40px rgba(26, 34, 24, 0.08);
+      --font: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+      --sans: "Avenir Next", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: var(--sans);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #e7efe4 0%, transparent 55%),
+        radial-gradient(900px 420px at 100% 0%, #f0e2d4 0%, transparent 50%),
+        var(--paper);
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 64px; }
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid #9bb89e;
+      padding: 4px 10px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-family: var(--font);
+      font-weight: 600;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.1;
+      margin: 0 0 8px;
+    }
+    .lead { color: var(--muted); max-width: 52ch; margin: 0 0 22px; }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;
+    }
+    .toolbar button {
+      appearance: none; border: 1px solid var(--line); background: var(--panel);
+      color: var(--ink); padding: 8px 12px; border-radius: 999px; cursor: pointer;
+      font: inherit; font-size: 14px;
+    }
+    .toolbar button[aria-pressed="true"] {
+      background: var(--ink); color: #f7f4ec; border-color: var(--ink);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .phone {
+      width: 100%;
+      max-width: 390px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 640px;
+      display: flex;
+      flex-direction: column;
+    }
+    .phone.desktop {
+      max-width: none;
+      border-radius: 18px;
+      min-height: 520px;
+    }
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 16px; border-bottom: 1px solid var(--line);
+      font-size: 13px; color: var(--muted);
+    }
+    .brand { font-family: var(--font); color: var(--ink); font-size: 18px; }
+    .nav {
+      display: flex; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line);
+      overflow-x: auto; font-size: 13px; color: var(--muted);
+    }
+    .nav span[aria-current="page"] { color: var(--ink); font-weight: 600; }
+    .body { padding: 22px 18px 28px; flex: 1; }
+    .body h2 {
+      font-family: var(--font); font-size: 26px; margin: 0 0 8px; font-weight: 600;
+    }
+    .body p { margin: 0 0 16px; color: var(--muted); line-height: 1.45; }
+    .state-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase;
+      margin-bottom: 14px; padding: 4px 8px; border-radius: 6px;
+    }
+    .state-chip.e { background: var(--ok-bg); color: var(--accent); }
+    .state-chip.r { background: var(--danger-bg); color: var(--danger); }
+    .empty-mark {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 1.5px dashed #a7b5a3; margin: 8px 0 16px;
+      display: grid; place-items: center; color: var(--muted); font-size: 22px;
+    }
+    .cta {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 42px; padding: 0 16px; border-radius: 10px;
+      background: var(--accent); color: #f7fff6; text-decoration: none; font-weight: 600;
+    }
+    .cta.secondary {
+      background: transparent; color: var(--ink); border: 1px solid var(--line); margin-left: 8px;
+    }
+    .alert {
+      border: 1px solid #e0b4b0; background: var(--danger-bg); color: var(--danger);
+      padding: 12px 14px; border-radius: 12px; margin-bottom: 16px;
+    }
+    .alert strong { display: block; margin-bottom: 4px; color: var(--ink); }
+    .caption {
+      margin-top: 10px; text-align: center; font-size: 12px; color: var(--muted);
+    }
+    .note {
+      margin-top: 28px; padding: 14px 16px; border-left: 3px solid var(--accent-2);
+      background: rgba(255,255,255,0.55); color: var(--muted); font-size: 14px;
+    }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="badge">DRAFT · не apps/web · V04 cabinet</div>
+    <h1>Пустые состояния и ошибки кабинета</h1>
+    <p class="lead">Локальный preview для сверки copy и иерархии. Сервер Букера не используется. Staging/deploy не затрагиваются.</p>
+
+    <div class="toolbar" role="tablist" aria-label="Роль">
+      <button type="button" data-role="customer" aria-pressed="true">Заказчик</button>
+      <button type="button" data-role="performer" aria-pressed="false">Артист</button>
+      <button type="button" data-role="venue" aria-pressed="false">Площадка</button>
+    </div>
+
+    <section data-panel="customer">
+      <div class="grid">
+        <div>
+          <article class="phone" aria-label="Customer empty 390">
+            <div class="topbar"><span class="brand">Букер</span><span>кабинет</span></div>
+            <div class="nav"><span aria-current="page">Обзор</span><span>Избранное</span><span>Сообщения</span></div>
+            <div class="body">
+              <div class="state-chip e">Empty · 390</div>
+              <h2>Пока нет активных событий</h2>
+              <p>Соберите событие или найдите артиста в каталоге — заявки появятся здесь.</p>
+              <div class="empty-mark" aria-hidden="true">○</div>
+              <a class="cta" href="#">Собрать событие</a>
+              <a class="cta secondary" href="#">Открыть каталог</a>
+            </div>
+          </article>
+          <p class="caption">customer / home / E</p>
+        </div>
+        <div>
+          <article class="phone" aria-label="Customer error 390">
+            <div class="topbar"><span class="brand">Букер</span><span>кабинет</span></div>
+            <div class="nav"><span aria-current="page">Обзор</span><span>Избранное</span><span>Сообщения</span></div>
+            <div class="body">
+              <div class="state-chip r">Error · 390</div>
+              <h2>Мой кабинет</h2>
+              <div class="alert" role="alert">
+                <strong>Не удалось загрузить кабинет</strong>
+                Проверьте сеть. Данные на экране не очищаем.
+              </div>
+              <a class="cta" href="#">Повторить</a>
+              <a class="cta secondary" href="#">Открыть каталог</a>
+            </div>
+          </article>
+          <p class="caption">customer / home / R</p>
+        </div>
+      </div>
+    </section>
+
+    <section data-panel="performer" hidden>
+      <div class="grid">
+        <div>
+          <article class="phone" aria-label="Performer empty 390">
+            <div class="topbar"><span class="brand">Букер</span><span>исполнитель</span></div>
+            <div class="nav"><span aria-current="page">Заявки</span><span>Календарь</span><span>Услуги</span></div>
+            <div class="body">
+              <div class="state-chip e">Empty · 390</div>
+              <h2>Здесь будут новые заявки</h2>
+              <p>Когда заказчик отправит запрос на свободную дату, он появится в этом списке.</p>
+              <div class="empty-mark" aria-hidden="true">◇</div>
+              <a class="cta" href="#">Открыть календарь</a>
+            </div>
+          </article>
+          <p class="caption">performer / requests / E</p>
+        </div>
+        <div>
+          <article class="phone" aria-label="Performer error 390">
+            <div class="topbar"><span class="brand">Букер</span><span>исполнитель</span></div>
+            <div class="nav"><span aria-current="page">Заявки</span><span>Календарь</span><span>Услуги</span></div>
+            <div class="body">
+              <div class="state-chip r">Error · 390</div>
+              <h2>Заявки</h2>
+              <div class="alert" role="alert">
+                <strong>Не удалось загрузить заявки</strong>
+                Черновик ответа и сумма, если были, остаются на месте.
+              </div>
+              <a class="cta" href="#">Повторить</a>
+            </div>
+          </article>
+          <p class="caption">performer / requests / R</p>
+        </div>
+      </div>
+    </section>
+
+    <section data-panel="venue" hidden>
+      <div class="grid">
+        <div>
+          <article class="phone" aria-label="Venue empty 390">
+            <div class="topbar"><span class="brand">Букер</span><span>площадка</span></div>
+            <div class="nav"><span aria-current="page">Залы</span><span>Заявки</span><span>Календарь</span></div>
+            <div class="body">
+              <div class="state-chip e">Empty · 390</div>
+              <h2>Сначала создайте площадку</h2>
+              <p>После этого добавите залы и откроете свободные даты. Запрос на дату — ещё не бронь.</p>
+              <div class="empty-mark" aria-hidden="true">▢</div>
+              <a class="cta" href="#">Создать площадку</a>
+            </div>
+          </article>
+          <p class="caption">venue / home / E</p>
+        </div>
+        <div>
+          <article class="phone desktop" aria-label="Venue error 1440-ish">
+            <div class="topbar"><span class="brand">Букер</span><span>площадка · desktop shell</span></div>
+            <div class="nav"><span aria-current="page">Залы</span><span>Заявки</span><span>Календарь</span><span>Сообщения</span></div>
+            <div class="body">
+              <div class="state-chip r">Error · desktop</div>
+              <h2>Залы</h2>
+              <div class="alert" role="alert">
+                <strong>Не удалось обновить список залов</strong>
+                Уже загруженные карточки не стираем. Можно повторить запрос.
+              </div>
+              <a class="cta" href="#">Повторить</a>
+              <a class="cta secondary" href="#">К обзору</a>
+            </div>
+          </article>
+          <p class="caption">venue / halls / R</p>
+        </div>
+      </div>
+    </section>
+
+    <p class="note">Источник канона: <code>docs/design/V04_WIREFRAME_CABINET_EMPTY_ERROR_DRAFT_2026-11-05.md</code>. Открыть файл локально: <code>docs/design/previews/cabinet-empty-error.html</code>.</p>
+  </div>
+  <script>
+    const buttons = [...document.querySelectorAll(".toolbar button")];
+    const panels = [...document.querySelectorAll("[data-panel]")];
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const role = btn.dataset.role;
+        buttons.forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+        panels.forEach((p) => { p.hidden = p.dataset.panel !== role; });
+      });
+    });
+  </script>
+</body>
+</html>
