@@ -397,12 +397,24 @@
       "status": "IN PROGRESS",
       "evidence": [
         "docs/design/V04_KEY_PATH_STATE_MATRIX_DRAFT_2026-11-03.md",
+        "docs/design/previews/index.html",
+        "docs/design/previews/home-states.html",
+        "docs/design/previews/search-states.html",
+        "docs/design/previews/profile-states.html",
+        "docs/design/previews/event-studio-states.html",
+        "docs/design/previews/control-room-states.html",
+        "docs/design/previews/deal-hold-forbidden.html",
+        "docs/design/previews/cabinet-empty-error.html",
+        "docs/design/previews/auth-login-recover.html",
         "docs/design/V04_WIREFRAME_HOME_DEAL_STATES_DRAFT_2026-11-03.md",
         "docs/design/V04_WIREFRAME_EVENT_STUDIO_STEPS_2_5_DRAFT_2026-11-03.md",
-        "docs/design/FIGMA_DETAIL_PROGRESS_2026-09-30.md"
+        "docs/design/V04_WIREFRAME_PROFILE_ARTIST_VENUE_DRAFT_2026-11-05.md",
+        "docs/design/V04_WIREFRAME_CABINET_EMPTY_ERROR_DRAFT_2026-11-05.md",
+        "docs/design/V04_WIREFRAME_SEARCH_AUTH_DRAFT_2026-11-05.md",
+        "OWN-DESIGN-ACK 2026-11-05"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: DRAFT + OWN-DESIGN-ACK есть. НЕ DONE без полного pixel Figma pack; web не меняем.",
+      "notes": "IN PROGRESS: agent DRAFT pack COMPLETE (wireframe+static previews index). НЕ DONE — нужен pixel Figma pack; web runtime не меняем.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -458,10 +470,11 @@
         "docs/ops/V07_RESPONSIVE_A11Y_PROGRESS_2026-11-03.md",
         "local playwright 2026-11-05: artist@390/1440 + compare@390 + legal@320 PASS",
         "local playwright 2026-11-05: faq/for-artists/support@390 PASS",
-        "local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS"
+        "local playwright 2026-11-05c: faq/for-artists/support/privacy@390 PASS",
+        "local playwright 2026-11-05d: assemble/briefs/investor@390 PASS"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS: artist/compare/legal/faq/for-artists/support/privacy overflow PASS локально. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
+      "notes": "IN PROGRESS: + assemble/briefs/investor venues @390. НЕ DONE без OWN-MOTION-ACK/D06 и V08 staging.",
       "source": "PROJECT_PROGRESS",
       "updated_at": "2026-11-05"
     },
@@ -1655,7 +1668,7 @@
         "g0 plan D01 DRAFT"
       ],
       "blocked_by": [],
-      "notes": "IN PROGRESS DRAFT: frames 1–10. OWN-DESIGN-ACK есть; перенос в web всё ещё после V04/V05.",
+      "notes": "IN PROGRESS DRAFT frames 1–10 + V04 profile/cabinet previews. Перенос web после V04 pixel/V05.",
       "source": "G0/G1",
       "updated_at": "2026-11-05"
     },

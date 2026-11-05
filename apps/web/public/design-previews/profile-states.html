@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — DRAFT: Profile states</title>
+  <link rel="stylesheet" href="_tokens.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">DRAFT · Artist / Venue profile</div>
+    <h1>Публичный профиль: empty / error / forbidden</h1>
+    <p class="lead">CTA «добавить в событие» не говорит «забронировано».</p>
+    <div class="pair">
+      <div>
+        <p class="label">artist / E visitor · 390</p>
+        <article class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">артист</span></div>
+          <div class="nav"><span aria-current="page">Профиль</span></div>
+          <div class="body">
+            <div class="chip e">Empty</div>
+            <h2>Профиль не опубликован</h2>
+            <div class="card"><p class="muted">Visitor видит «не найдено» без утечки draft. Владелец — banner черновика в кабинете.</p><div class="actions"><a class="cta" href="#search">В каталог</a></div></div>
+          </div>
+        </article>
+      </div>
+      <div>
+        <p class="label">artist / R · 1440</p>
+        <article class="device ">
+          <div class="top"><span class="brand">Букер</span><span class="pill">артист · desktop</span></div>
+          <div class="nav"><span aria-current="page">Профиль</span></div>
+          <div class="body">
+            <div class="chip r">Error</div>
+            <h2>Профиль</h2>
+            <div class="card"><div class="alert" role="alert"><strong>Не удалось загрузить профиль</strong>Повторить. Без чужих org.</div><div class="actions"><a class="cta" href="#retry">Повторить</a></div></div>
+          </div>
+        </article>
+      </div></div><div class="pair" style="margin-top:22px">
+      <div>
+        <p class="label">venue / E halls · 390</p>
+        <article class="device phone">
+          <div class="top"><span class="brand">Букер</span><span class="pill">площадка</span></div>
+          <div class="nav"><span aria-current="page">Профиль</span></div>
+          <div class="body">
+            <div class="chip e">Empty</div>
+            <h2>Залы ещё не опубликованы</h2>
+            <div class="card"><p class="muted">Адрес может быть видим; залы — empty. Запрос на дату ≠ бронь.</p><div class="actions"><a class="cta" href="#event">Добавить в событие</a></div></div>
+          </div>
+        </article>
+      </div>
+      <div>
+        <p class="label">profile / F · 1440</p>
+        <article class="device ">
+          <div class="top"><span class="brand">Букер</span><span class="pill">площадка</span></div>
+          <div class="nav"><span aria-current="page">Профиль</span></div>
+          <div class="body">
+            <div class="chip f">Forbidden</div>
+            <h2>Нужен вход</h2>
+            <div class="card"><p class="muted">CTA signed-out → login?next=profile. Без PII.</p><div class="actions"><a class="cta" href="#login">Войти</a></div></div>
+          </div>
+        </article>
+      </div></div>
+    <p class="note">Канон: V04_WIREFRAME_PROFILE_ARTIST_VENUE_*.</p>
+  </div>
+</body>
+</html>

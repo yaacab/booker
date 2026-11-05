@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — DRAFT: Control Room</title>
+  <link rel="stylesheet" href="_tokens.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">DRAFT · Control Room cards</div>
+    <h1>Control Room: empty / waiting / error</h1>
+    <p class="lead">Один primary на карточку позиции. Не «оплачено».</p>
+    <div class="grid3"><article class="device"><div class="top"><span class="brand">Букер</span><span class="pill">control</span></div><div class="body"><div class="chip e">Empty</div><h2>Позиция открыта</h2><div class="card"><p class="muted">Отправьте запрос поставщику.</p><div class="actions"><a class="cta" href="#req">Отправить запрос</a></div></div></div></article><article class="device"><div class="top"><span class="brand">Букер</span><span class="pill">control</span></div><div class="body"><div class="chip w">Waiting</div><h2>Ждём ответ</h2><div class="card"><p class="muted">SLA текст статичный. Secondary «Напомнить» только если API даёт.</p><div class="actions"><a class="cta gold" href="#nudge">Напомнить</a></div></div></div></article><article class="device"><div class="top"><span class="brand">Букер</span><span class="pill">control</span></div><div class="body"><div class="chip r">Error</div><h2>Позиции</h2><div class="card"><div class="alert" role="alert"><strong>Не удалось обновить позиции</strong>Карточки не очищать.</div><div class="actions"><a class="cta" href="#retry">Повторить</a></div></div></div></article></div>
+    <p class="note">Канон: V04_WIREFRAME_EVENT_STUDIO_* Control Room section.</p>
+  </div>
+</body>
+</html>

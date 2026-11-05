@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Букер — DRAFT: кабинет Empty / Error</title>
+  <style>
+    :root {
+      --ink: #1c1915;
+      --ink-2: #6d6358;
+      --ink-3: #807568;
+      --cream: #f2ede5;
+      --paper: #fbf8f3;
+      --paper-2: #f4eee5;
+      --gold: #b8955a;
+      --gold-soft: #dcc394;
+      --mint: #3d7a5c;
+      --mint-soft: #dce8df;
+      --terra: #8f3d2d;
+      --terra-bg: #f6e6e1;
+      --line: #d8cbb9;
+      --serif: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+      --sans: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+      --shadow: 0 24px 48px rgba(28, 25, 21, 0.08);
+      --frame: 0 0 0 1px #b8955a55, 0 0 0 8px #b8955a14;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      min-height: 100vh;
+      color: var(--ink);
+      font: 16px/1.5 var(--sans);
+      background:
+        radial-gradient(900px 420px at 8% -8%, #e8efe4 0%, transparent 50%),
+        radial-gradient(720px 360px at 100% 0%, #f3e4d4 0%, transparent 46%),
+        var(--cream);
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 20px 80px; }
+    .kicker {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--gold); border: 1px solid #b8955a59; background: #fbf8f3ed;
+      padding: 6px 12px; border-radius: 999px; margin-bottom: 14px;
+    }
+    h1 {
+      font-family: var(--serif); font-weight: 600; letter-spacing: -0.03em;
+      font-size: clamp(32px, 5vw, 52px); line-height: 1.05; margin: 0 0 10px;
+    }
+    .lead { max-width: 62ch; color: var(--ink-2); margin: 0 0 22px; }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px;
+    }
+    .toolbar button {
+      appearance: none; min-height: 44px; padding: 0 14px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+      font: 500 14px/1 var(--sans); cursor: pointer;
+    }
+    .toolbar button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+    .toolbar button[aria-pressed="true"] {
+      background: var(--ink); color: var(--paper); border-color: var(--ink);
+    }
+    .hint { color: var(--ink-3); font-size: 13px; margin: 0 0 22px; }
+    .board { display: grid; gap: 28px; }
+    .pair {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px;
+    }
+    @media (max-width: 980px) { .pair { grid-template-columns: 1fr; } }
+    .stage-label {
+      font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--ink-3); margin: 0 0 8px;
+    }
+    .device {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 680px;
+      display: flex; flex-direction: column;
+    }
+    .device.phone { max-width: 390px; margin: 0 auto; width: 100%; }
+    .device.desk { border-radius: 18px; min-height: 560px; }
+    .chrome {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 16px; border-bottom: 1px solid var(--line);
+    }
+    .brand { font-family: var(--serif); font-size: 22px; }
+    .role-pill {
+      font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--mint); background: var(--mint-soft); border: 1px solid #3d7a5c33;
+      padding: 6px 10px; border-radius: 999px;
+    }
+    .nav {
+      display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line);
+      overflow-x: auto;
+    }
+    .nav span {
+      display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+      border-radius: 10px; color: var(--ink-2); white-space: nowrap; font-size: 13px;
+    }
+    .nav span[aria-current="page"] {
+      color: var(--mint); background: var(--mint-soft); border: 1px solid #3d7a5c4d;
+      font-weight: 600;
+    }
+    .hero { padding: 22px 18px 8px; }
+    .hero h2 {
+      font-family: var(--serif); font-size: clamp(26px, 4vw, 34px);
+      margin: 0 0 6px; font-weight: 600; letter-spacing: -0.03em;
+    }
+    .hero p { margin: 0; color: var(--ink-2); }
+    .chip {
+      display: inline-flex; align-items: center; min-height: 28px;
+      padding: 0 8px; border-radius: 6px; font-size: 11px; letter-spacing: 0.08em;
+      text-transform: uppercase; margin-bottom: 12px;
+    }
+    .chip.e { background: var(--mint-soft); color: var(--mint); }
+    .chip.r { background: var(--terra-bg); color: var(--terra); }
+    .chip.l { background: #eee6d8; color: var(--ink-2); }
+    .chip.f { background: #eee6d8; color: var(--ink); }
+    .chip.m { background: #e8e4dc; color: var(--ink-2); }
+    .card {
+      margin: 8px 16px 20px; padding: 22px 18px;
+      border-radius: 16px; background: #fffdf8;
+      border: 1px solid var(--line);
+    }
+    .card.framed { box-shadow: var(--frame); border-color: #b8955a88; }
+    .mark {
+      width: 64px; height: 64px; margin: 4px 0 16px;
+      display: grid; place-items: center;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cta {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 44px; padding: 0 16px; border-radius: 12px;
+      background: var(--ink); color: var(--paper); text-decoration: none; font-weight: 600;
+    }
+    .cta:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+    .cta.gold { background: transparent; color: var(--ink); border: 1px solid #b8955a88; }
+    .cta[aria-disabled="true"] { opacity: 0.45; pointer-events: none; }
+    .alert {
+      border: 1px solid #d3a1a9; background: #f9e7e9; color: var(--terra);
+      padding: 14px 14px; border-radius: 12px; margin-bottom: 16px;
+    }
+    .alert strong { display: block; color: var(--ink); margin-bottom: 4px; }
+    .muted { color: var(--ink-2); margin: 0 0 16px; }
+    .check { display: grid; gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
+    .check li {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px;
+    }
+    .box {
+      width: 16px; height: 16px; margin-top: 3px; flex: none;
+      border: 1.5px solid var(--gold); border-radius: 4px;
+    }
+    .skel { display: grid; gap: 10px; }
+    .bar { height: 12px; border-radius: 999px; background: #efe7da; }
+    .bar.w60 { width: 60%; } .bar.w80 { width: 80%; } .bar.h72 { height: 72px; border-radius: 12px; }
+    .ghost-list { display: grid; gap: 8px; margin: 0 0 8px; }
+    .ghost {
+      height: 54px; border-radius: 12px; border: 1px dashed var(--line); background: var(--paper-2);
+    }
+    .sticky {
+      margin-top: auto; padding: 12px 16px 18px; border-top: 1px solid var(--line);
+      background: #fbf8f3f2;
+    }
+    .note {
+      margin-top: 28px; padding: 16px 18px; border-left: 3px solid var(--gold);
+      background: #fffdf8cc; color: var(--ink-2);
+    }
+    [hidden] { display: none !important; }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+    body.reduced .bar { background: #e7dfd2; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">DRAFT · не apps/web · V04 cabinet · рамка слота</div>
+    <h1>Пустые состояния и ошибки кабинета</h1>
+    <p class="lead">Статический preview для сверки иерархии, copy и токенов cream/gold. Один primary на кадр. Ошибка не стирает chrome. Цена и бронь здесь не обещаются.</p>
+
+    <div class="toolbar" role="tablist" aria-label="Роль">
+      <button type="button" data-role="customer" aria-pressed="true">Заказчик</button>
+      <button type="button" data-role="performer" aria-pressed="false">Артист</button>
+      <button type="button" data-role="venue" aria-pressed="false">Площадка</button>
+    </div>
+    <div class="toolbar" role="group" aria-label="Состояние">
+      <button type="button" data-state="empty" aria-pressed="true">Empty</button>
+      <button type="button" data-state="error" aria-pressed="false">Error</button>
+      <button type="button" data-state="loading" aria-pressed="false">Loading</button>
+      <button type="button" data-state="forbidden" aria-pressed="false">Forbidden</button>
+    </div>
+    <p class="hint">390 слева, 1440 справа. Ниже — второй ряд экранов той же роли/состояния. Reduced motion: статичная рамка. Фокус на CTA виден.</p>
+
+    <div class="board">
+      <section data-panel="customer-empty">
+        <div class="pair">
+          <div>
+            <p class="stage-label">customer / home / E · 390</p>
+            <article class="device phone" aria-label="Customer empty 390">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">заказчик</span></div>
+              <div class="nav"><span aria-current="page">Обзор</span><span>Избранное</span><span>Сообщения</span></div>
+              <div class="hero">
+                <div class="chip e">Empty</div>
+                <h2>Пока нет активных событий</h2>
+                <p>Соберите событие или найдите артиста — заявки появятся здесь.</p>
+              </div>
+              <div class="card framed">
+                <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="14" width="44" height="36" rx="6" fill="none" stroke="#b8955a" stroke-width="1.6"/><path d="M18 28h28M18 36h16" stroke="#b8955a" stroke-width="1.6"/></svg>
+                <p class="muted">Первый шаг — собрать событие. Это ещё не бронь и не оплата.</p>
+                <div class="actions"><a class="cta" href="#assemble">Собрать событие</a></div>
+              </div>
+              <div class="sticky"><a class="cta gold" href="#search">Открыть каталог</a></div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">customer / home / E · 1440</p>
+            <article class="device desk" aria-label="Customer empty 1440">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">заказчик · desktop</span></div>
+              <div class="nav"><span aria-current="page">Обзор</span><span>Избранное</span><span>Сообщения</span><span>Поиски</span></div>
+              <div class="hero">
+                <div class="chip e">Empty</div>
+                <h2>Пока нет активных событий</h2>
+                <p>Кабинет готов. Когда появится заявка или черновик события, он встанет в эту колонку.</p>
+              </div>
+              <div class="card framed">
+                <p class="muted">Один primary. Каталог — вторичный выход, не конкурирует с «Собрать событие».</p>
+                <div class="actions">
+                  <a class="cta" href="#assemble">Собрать событие</a>
+                  <a class="cta gold" href="#search">Открыть каталог</a>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div class="pair" style="margin-top:22px">
+          <div>
+            <p class="stage-label">customer / favorites / E · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">заказчик</span></div>
+              <div class="nav"><span>Обзор</span><span aria-current="page">Избранное</span><span>Сообщения</span></div>
+              <div class="hero"><div class="chip e">Empty</div><h2>В избранном пусто</h2><p>Сохраняйте артистов и площадки из каталога — они появятся здесь.</p></div>
+              <div class="card framed">
+                <p class="muted">Пустой список ≠ ошибка. Один выход в каталог.</p>
+                <div class="actions"><a class="cta" href="#search">Открыть каталог</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">customer / messages / E · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">заказчик · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span>Избранное</span><span aria-current="page">Сообщения</span></div>
+              <div class="hero"><div class="chip e">Empty</div><h2>Переписок ещё нет</h2></div>
+              <div class="card framed">
+                <p class="muted">Диалог появится после заявки или предложения. Не создаём «пустой чат» заранее.</p>
+                <div class="actions"><a class="cta" href="#assemble">Собрать событие</a></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="customer-error" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">customer / home / R · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">заказчик</span></div>
+              <div class="nav"><span aria-current="page">Обзор</span><span>Избранное</span><span>Сообщения</span></div>
+              <div class="hero">
+                <div class="chip r">Error</div>
+                <h2>Мой кабинет</h2>
+              </div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось загрузить кабинет</strong>
+                  Проверьте сеть. Уже показанный chrome не очищаем.
+                </div>
+                <div class="ghost-list" aria-hidden="true"><div class="ghost"></div><div class="ghost"></div></div>
+                <div class="actions"><a class="cta" href="#retry">Повторить</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">customer / favorites / R · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">заказчик · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span aria-current="page">Избранное</span><span>Сообщения</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Избранное</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось обновить избранное</strong>
+                  Ранее сохранённые карточки, если были, остаются на месте.
+                </div>
+                <div class="actions">
+                  <a class="cta" href="#retry">Повторить</a>
+                  <a class="cta gold" href="#search">Открыть каталог</a>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div class="pair" style="margin-top:22px">
+          <div>
+            <p class="stage-label">customer / messages / R · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">заказчик</span></div>
+              <div class="nav"><span>Обзор</span><span>Избранное</span><span aria-current="page">Сообщения</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Сообщения</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось загрузить сообщения</strong>
+                  Черновик в поле ввода, если был, не очищаем.
+                </div>
+                <div class="actions"><a class="cta" href="#retry">Повторить</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">customer / saved-searches / R · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">заказчик · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span>Избранное</span><span>Сообщения</span><span aria-current="page">Поиски</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Сохранённые поиски</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось обновить поиски</strong>
+                  Уже сохранённые фильтры на экране остаются.
+                </div>
+                <div class="actions">
+                  <a class="cta" href="#retry">Повторить</a>
+                  <a class="cta gold" href="#search">Найти артистов</a>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="customer-loading" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">customer / home / L · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">заказчик</span></div>
+              <div class="nav"><span aria-current="page">Обзор</span><span>Избранное</span><span>Сообщения</span></div>
+              <div class="hero"><div class="chip l">Loading</div><h2>Мой кабинет</h2></div>
+              <div class="card">
+                <div class="skel" aria-hidden="true">
+                  <div class="bar w60"></div><div class="bar w80"></div><div class="bar h72"></div>
+                </div>
+                <p class="muted" style="margin-top:14px">Загружаем кабинет…</p>
+                <div class="actions"><a class="cta" aria-disabled="true">Собрать событие</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">customer / home / M · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">reduced motion</span></div>
+              <div class="nav"><span aria-current="page">Обзор</span></div>
+              <div class="hero"><div class="chip m">Motion off</div><h2>Мой кабинет</h2></div>
+              <div class="card framed">
+                <p class="muted">Рамка слота остаётся. Пульсации скелетона нет — только статичные полосы.</p>
+                <div class="skel" aria-hidden="true"><div class="bar w80"></div><div class="bar w60"></div></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="customer-forbidden" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">customer / F · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">нет org</span></div>
+              <div class="hero"><div class="chip f">Forbidden</div><h2>Нет доступа к кабинету</h2></div>
+              <div class="card framed">
+                <p class="muted">Выберите организацию заказчика или войдите снова. Чужие события не показываем.</p>
+                <div class="actions"><a class="cta" href="#org">Выбрать организацию</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">customer / F · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">нет org</span></div>
+              <div class="hero"><div class="chip f">Forbidden</div><h2>Нет доступа к кабинету</h2></div>
+              <div class="card framed">
+                <p class="muted">Тот же кадр на desktop: без имён сторон и сумм.</p>
+                <div class="actions">
+                  <a class="cta" href="#org">Выбрать организацию</a>
+                  <a class="cta gold" href="#login">Войти</a>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="performer-empty" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">performer / home first-run / E · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель</span></div>
+              <div class="nav"><span aria-current="page">Обзор</span><span>Заявки</span><span>Календарь</span></div>
+              <div class="hero">
+                <div class="chip e">Empty</div>
+                <h2>Кабинет ещё не в каталоге</h2>
+                <p>Три шага до первой заявки. Live payout здесь не обещаем.</p>
+              </div>
+              <div class="card framed">
+                <ul class="check">
+                  <li><span class="box"></span><span>Заполнить витрину и права на медиа</span></li>
+                  <li><span class="box"></span><span>Открыть хотя бы один свободный слот</span></li>
+                  <li><span class="box"></span><span>Ждать заявку — не «подтверждённую бронь»</span></li>
+                </ul>
+                <div class="actions"><a class="cta" href="#services">Заполнить витрину</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">performer / requests / E · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span aria-current="page">Заявки</span><span>Календарь</span><span>Услуги</span></div>
+              <div class="hero"><div class="chip e">Empty</div><h2>Здесь будут новые заявки</h2></div>
+              <div class="card framed">
+                <p class="muted">Когда заказчик отправит запрос на свободную дату, он появится в этом списке. Сумма предложения — из API.</p>
+                <div class="actions"><a class="cta" href="#calendar">Открыть календарь</a></div>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div class="pair" style="margin-top:22px">
+          <div>
+            <p class="stage-label">performer / calendar / E · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель</span></div>
+              <div class="nav"><span>Обзор</span><span>Заявки</span><span aria-current="page">Календарь</span></div>
+              <div class="hero"><div class="chip e">Empty</div><h2>Пока нет открытых дат</h2><p>Откройте свободный слот — иначе заявки не придут.</p></div>
+              <div class="card framed">
+                <p class="muted">Held от заказчика появится отдельным chip. Здесь только empty free-list.</p>
+                <div class="actions"><a class="cta" href="#calendar">Настроить доступность</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">performer / services / E · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span>Заявки</span><span>Календарь</span><span aria-current="page">Услуги</span></div>
+              <div class="hero"><div class="chip e">Empty</div><h2>Добавьте первую услугу</h2></div>
+              <div class="card framed">
+                <p class="muted">Цена услуги — ориентир; итог и комиссия посчитает сервер в оффере.</p>
+                <div class="actions"><a class="cta" href="#service">Добавить услугу</a></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="performer-error" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">performer / requests / R · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель</span></div>
+              <div class="nav"><span aria-current="page">Заявки</span><span>Календарь</span><span>Услуги</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Заявки</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось загрузить заявки</strong>
+                  Черновик ответа и сумма, если были, остаются на месте.
+                </div>
+                <div class="actions"><a class="cta" href="#retry">Повторить</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">performer / calendar / R · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span>Заявки</span><span aria-current="page">Календарь</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Календарь</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось обновить слоты</strong>
+                  Уже открытые даты на экране не стираем. Held ≠ confirmed.
+                </div>
+                <div class="actions"><a class="cta" href="#retry">Повторить</a></div>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div class="pair" style="margin-top:22px">
+          <div>
+            <p class="stage-label">performer / services / R · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель</span></div>
+              <div class="nav"><span>Обзор</span><span>Заявки</span><span>Календарь</span><span aria-current="page">Услуги</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Услуги</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось сохранить услугу</strong>
+                  Поля формы не очищаем. Повтор не создаёт дубликат без ответа API.
+                </div>
+                <div class="actions"><a class="cta" href="#retry">Повторить</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">performer / messages / R · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span>Заявки</span><span aria-current="page">Сообщения</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Сообщения</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось загрузить переписку</strong>
+                  Текст в поле ввода сохраняется.
+                </div>
+                <div class="actions"><a class="cta" href="#retry">Повторить</a></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="performer-loading" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">performer / L · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель</span></div>
+              <div class="nav"><span aria-current="page">Заявки</span></div>
+              <div class="hero"><div class="chip l">Loading</div><h2>Заявки</h2></div>
+              <div class="card"><div class="skel" aria-hidden="true"><div class="bar h72"></div><div class="bar w80"></div></div></div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">performer / L · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">исполнитель</span></div>
+              <div class="hero"><div class="chip l">Loading</div><h2>Заявки</h2></div>
+              <div class="card"><div class="skel" aria-hidden="true"><div class="bar h72"></div><div class="bar w60"></div></div></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="performer-forbidden" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">performer / F · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">чужая org</span></div>
+              <div class="hero"><div class="chip f">Forbidden</div><h2>Нет доступа</h2></div>
+              <div class="card framed">
+                <p class="muted">Кабинет другой организации не открываем. Без имён и сумм чужих заявок.</p>
+                <div class="actions"><a class="cta" href="#org">К своим организациям</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">performer / F · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">чужая org</span></div>
+              <div class="hero"><div class="chip f">Forbidden</div><h2>Нет доступа</h2></div>
+              <div class="card framed"><p class="muted">Тот же запрет на desktop.</p></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="venue-empty" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">venue / home / E · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка</span></div>
+              <div class="nav"><span aria-current="page">Обзор</span><span>Залы</span><span>Календарь</span></div>
+              <div class="hero">
+                <div class="chip e">Empty</div>
+                <h2>Сначала создайте площадку</h2>
+                <p>Затем залы и свободные даты. Запрос на дату — ещё не бронь.</p>
+              </div>
+              <div class="card framed">
+                <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="12" y="18" width="40" height="28" rx="3" fill="none" stroke="#b8955a" stroke-width="1.6"/><path d="M20 46h24" stroke="#b8955a" stroke-width="1.6"/></svg>
+                <div class="actions"><a class="cta" href="#venue">Создать площадку</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">venue / halls / E · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span aria-current="page">Залы</span><span>Заявки</span><span>Календарь</span></div>
+              <div class="hero"><div class="chip e">Empty</div><h2>Добавьте первый зал</h2></div>
+              <div class="card framed">
+                <p class="muted">Календарь откроется после зала. Вместимость и адрес — факты площадки, не оффер.</p>
+                <div class="actions"><a class="cta" href="#hall">Добавить зал</a></div>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div class="pair" style="margin-top:22px">
+          <div>
+            <p class="stage-label">venue / requests / E · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка</span></div>
+              <div class="nav"><span>Обзор</span><span>Залы</span><span aria-current="page">Заявки</span></div>
+              <div class="hero"><div class="chip e">Empty</div><h2>Заявок пока нет</h2><p>Когда заказчик запросит дату, заявка появится здесь.</p></div>
+              <div class="card framed">
+                <p class="muted">Запрос на дату — ещё не бронь и не hold.</p>
+                <div class="actions"><a class="cta" href="#calendar">Открыть календарь</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">venue / calendar / E · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span>Залы</span><span>Заявки</span><span aria-current="page">Календарь</span></div>
+              <div class="hero"><div class="chip e">Empty</div><h2>Календарь начинается с площадки</h2></div>
+              <div class="card framed">
+                <p class="muted">Без зала сетка пустая. Создайте площадку и зал, затем откройте даты.</p>
+                <div class="actions"><a class="cta" href="#hall">Добавить зал</a></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="venue-error" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">venue / halls / R · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка</span></div>
+              <div class="nav"><span aria-current="page">Залы</span><span>Заявки</span><span>Календарь</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Залы</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось обновить список залов</strong>
+                  Уже загруженные карточки не стираем.
+                </div>
+                <div class="actions"><a class="cta" href="#retry">Повторить</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">venue / calendar / R · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span>Залы</span><span aria-current="page">Календарь</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Календарь площадки</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось загрузить календарь</strong>
+                  Даты на экране, если были, остаются. Повтор не создаёт слот.
+                </div>
+                <div class="actions">
+                  <a class="cta" href="#retry">Повторить</a>
+                  <a class="cta gold" href="#home">К обзору</a>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div class="pair" style="margin-top:22px">
+          <div>
+            <p class="stage-label">venue / requests / R · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка</span></div>
+              <div class="nav"><span>Обзор</span><span>Залы</span><span aria-current="page">Заявки</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Заявки</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось загрузить заявки</strong>
+                  Черновик ответа площадки не стираем.
+                </div>
+                <div class="actions"><a class="cta" href="#retry">Повторить</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">venue / messages / R · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка · desktop</span></div>
+              <div class="nav"><span>Обзор</span><span>Залы</span><span aria-current="page">Сообщения</span></div>
+              <div class="hero"><div class="chip r">Error</div><h2>Сообщения</h2></div>
+              <div class="card framed">
+                <div class="alert" role="alert">
+                  <strong>Не удалось загрузить переписку</strong>
+                  Поле ввода сохраняется.
+                </div>
+                <div class="actions"><a class="cta" href="#retry">Повторить</a></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="venue-loading" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">venue / L · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка</span></div>
+              <div class="hero"><div class="chip l">Loading</div><h2>Площадка</h2></div>
+              <div class="card"><div class="skel" aria-hidden="true"><div class="bar h72"></div><div class="bar w80"></div></div></div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">venue / L · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">площадка</span></div>
+              <div class="hero"><div class="chip l">Loading</div><h2>Площадка</h2></div>
+              <div class="card"><div class="skel" aria-hidden="true"><div class="bar h72"></div><div class="bar w60"></div></div></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section data-panel="venue-forbidden" hidden>
+        <div class="pair">
+          <div>
+            <p class="stage-label">venue / F · 390</p>
+            <article class="device phone">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">нет доступа</span></div>
+              <div class="hero"><div class="chip f">Forbidden</div><h2>Нет доступа к площадке</h2></div>
+              <div class="card framed">
+                <p class="muted">Чужой venue не раскрываем. Без залов, цен и контактов.</p>
+                <div class="actions"><a class="cta" href="#org">К своим организациям</a></div>
+              </div>
+            </article>
+          </div>
+          <div>
+            <p class="stage-label">venue / F · 1440</p>
+            <article class="device desk">
+              <div class="chrome"><span class="brand">Букер</span><span class="role-pill">нет доступа</span></div>
+              <div class="hero"><div class="chip f">Forbidden</div><h2>Нет доступа к площадке</h2></div>
+              <div class="card framed"><p class="muted">Тот же запрет на desktop.</p></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="note">Канон: <code>docs/design/V04_WIREFRAME_CABINET_EMPTY_ERROR_DRAFT_2026-11-05.md</code>. Токены: cream <code>#f2ede5</code>, paper <code>#fbf8f3</code>, ink <code>#1c1915</code>, gold/frame <code>#b8955a</code>. Runtime кабинетов не менялся.</p>
+  </div>
+  <script>
+    const roleBtns = [...document.querySelectorAll("[data-role]")];
+    const stateBtns = [...document.querySelectorAll("[data-state]")];
+    const panels = [...document.querySelectorAll("[data-panel]")];
+    let role = "customer";
+    let state = "empty";
+    function paint() {
+      roleBtns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.role === role)));
+      stateBtns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.state === state)));
+      panels.forEach((p) => { p.hidden = p.dataset.panel !== `${role}-${state}`; });
+      document.body.classList.toggle("reduced", state === "loading");
+    }
+    roleBtns.forEach((b) => b.addEventListener("click", () => { role = b.dataset.role; paint(); }));
+    stateBtns.forEach((b) => b.addEventListener("click", () => { state = b.dataset.state; paint(); }));
+    paint();
+  </script>
+</body>
+</html>
