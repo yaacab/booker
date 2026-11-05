@@ -4,7 +4,8 @@
 
 ## Что смотреть
 
-- Основной интерактивный preview: [booker-slot-frame-v2-UNAPPROVED.html](../../outputs/design/booker-slot-frame-v2-UNAPPROVED.html). Кнопки `01 · Люди`, `02 · Место`, `03 · Дата` переключают рамку. Главный CTA виден с первого кадра и показывает начало шага без перехода на действующий продукт.
+- Основной интерактивный preview в репозитории: [previews/motion-slot-frame-v2.html](previews/motion-slot-frame-v2.html) → локально `/design-previews/motion-slot-frame-v2.html`. Кнопки `01 · Люди`, `02 · Место`, `03 · Дата` переключают рамку. Главный CTA виден с первого кадра и показывает начало шага без перехода на действующий продукт. Исторический путь `outputs/design/booker-slot-frame-v2-UNAPPROVED.html` мог отсутствовать в worktree — канон теперь `docs/design/previews/`.
+- Пакет решения владельца: [OWN_MOTION_ACK_PACKET_2026-11-05.md](../ops/OWN_MOTION_ACK_PACKET_2026-11-05.md).
 - Контрольные кадры: [desktop 1440](../../outputs/design/booker-slot-frame-v2-UNAPPROVED-desktop.png), [mobile 390](../../outputs/design/booker-slot-frame-v2-UNAPPROVED-mobile.png), [mobile 320](../../outputs/design/booker-slot-frame-v2-UNAPPROVED-small.png), [reduced motion 390](../../outputs/design/booker-slot-frame-v2-UNAPPROVED-reduced.png).
 - Дополнительный [Higgsfield ambient study](https://d8j0ntlcm91z4.cloudfront.net/user_3AFVTzgnxvsmO3wrGAz7n2IlEId/hf_20261001_154051_92288b8d-f9b4-4eb1-9c28-7400d77b6f80.mp4): job `92288b8d-f9b4-4eb1-9c28-7400d77b6f80`, Kling v3.0, 6 s, 16:9, silent. Это отдельный AI-видеоэтюд без точного UI. В нём заметны псевдобуквы и несовпадение композиции с основным preview; **не переносить его в продукт**. Предыдущие файлы `booker-slot-frame-higgsfield.*` остаются черновиками и не считаются утверждёнными.
 

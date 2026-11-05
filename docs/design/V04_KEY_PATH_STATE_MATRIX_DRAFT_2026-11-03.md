@@ -51,4 +51,4 @@
 
 ## Следующий шаг (не агентский DRAFT)
 
-Pixel Figma владельца → затем оценка V04 DONE. Staging/V07 formal/motion — отдельные линии.
+Pixel Figma по чеклисту `V04_FIGMA_HANDOFF_2026-11-05.md` → оценка V04 DONE. Motion — `OWN_MOTION_ACK_PACKET_2026-11-05.md`. Staging/V07 formal — отдельно.
